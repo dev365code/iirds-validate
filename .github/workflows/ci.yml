@@ -158,3 +158,14 @@ jobs:
           python-version: "3.12"
       - name: has plusmeta changed the rules since the pinned commit?
         run: python tools/extract_catalog.py --ref master --check
+
+      - run: pip install -e .
+
+      - name: agreement with the reference tool's own corpus
+        # Needs the network to fetch the fixtures, so it cannot live in the
+        # main suite. tests/test_reference_agreement.py pins the conclusions;
+        # this is what notices when the corpus itself moves.
+        run: python tools/crossvalidate.py || true
+
+      - name: every silence still has an explanation
+        run: python tools/explain_silence.py --quiet

@@ -15,7 +15,7 @@ import os
 import sys
 
 from . import __version__, runner
-from .model import Severity
+from .model import VERSIONS, Severity
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -25,7 +25,8 @@ EXIT_OK, EXIT_FINDINGS, EXIT_ERROR = 0, 1, 2
 def _add_target(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("package", nargs="+", help="one or more .iirds containers")
     parser.add_argument("-f", "--format", choices=("text", "json"), default="text")
-    parser.add_argument("--iirds-version", dest="version", default=None,
+    parser.add_argument("--iirds-version", dest="version", default=None, choices=VERSIONS,
+                        metavar="{%s}" % ",".join(VERSIONS),
                         help="validate against this version instead of the declared one")
     parser.add_argument("-v", "--verbose", action="store_true", help="include spec links")
     parser.add_argument("-q", "--quiet", action="store_true", help="exit code only")

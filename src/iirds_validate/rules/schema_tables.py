@@ -6,23 +6,24 @@ ontology at generation time, and tests/test_schema_tables.py resolves them
 again on every run, so a name that stops existing fails the suite instead of
 silently matching nothing.
 
-Two shapes, 58 rules:
+Two shapes, 61 rules:
 
     MUST_HAVE_IRI      instances of the class must be named, not blank nodes
     NOT_USED_DIRECTLY  the class is an abstract grouping; use a subclass
 """
 from __future__ import annotations
 
-from rdflib import BNode
 from rdflib.namespace import RDF
 
-from ..model import HOV, IIRDS, MACH, SW, Violation, is_absolute_iri
+from ..model import HOV, IIRDS, MACH, SW, Violation, is_named
 from ..registry import rule
 
 NAMESPACES = {"IIRDS": IIRDS, "MACH": MACH, "SW": SW, "HOV": HOV}
 
-#: 42 rules.
+#: 45 rules.
 MUST_HAVE_IRI = [
+    ("M7.1",  "IIRDS", 'InformationObject'),
+    ("M20.1", "IIRDS", 'IdentityDomain'),
     ("M37",   "IIRDS", 'Document'),
     ("M38",   "IIRDS", 'Component'),
     ("M39",   "IIRDS", 'Concept'),
@@ -65,6 +66,7 @@ MUST_HAVE_IRI = [
     ("M76",   "MACH", 'ProtectiveEquipment'),
     ("M77",   "MACH", 'SparePart'),
     ("M97.1", "IIRDS", 'ClassificationDomain'),
+    ("M97.2", "IIRDS", 'ClassificationDomain'),
 ]
 #: 16 rules.
 NOT_USED_DIRECTLY = [
@@ -93,7 +95,7 @@ def _must_have_iri(prefix: str, class_name: str):
 
     def check(ctx):
         for subject in ctx.instances_of(cls):
-            if isinstance(subject, BNode) or not is_absolute_iri(subject):
+            if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=str(subject))
     return check

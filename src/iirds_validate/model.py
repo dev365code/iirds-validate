@@ -33,9 +33,29 @@ METADATA_JSONLD = "META-INF/metadata.jsonld"
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
+#: The base every metadata document is parsed against. Deliberately a URN:
+#: URNs are not hierarchical, so a relative rdf:about is left relative rather
+#: than being silently joined into something that looks absolute.
+PACKAGE_BASE = "urn:iirds:package:"
+
+
 def is_absolute_iri(node) -> bool:
     """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not."""
     return isinstance(node, URIRef) and bool(_SCHEME.match(str(node)))
+
+
+def is_named(node) -> bool:
+    """The resource was actually given an identifier of its own.
+
+    Three ways it can fail, and the third is easy to miss: `rdf:about=""` is a
+    relative reference to the document itself, so it resolves to the base and
+    comes back looking like a perfectly good absolute IRI. A node that *is* the
+    base was never named. Every "MUST have an IRI" rule turns on this, so
+    getting it wrong silences forty-five of them at once.
+    """
+    return (isinstance(node, URIRef)
+            and str(node) != PACKAGE_BASE
+            and is_absolute_iri(node))
 
 
 class Severity(enum.Enum):

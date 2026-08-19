@@ -20,7 +20,7 @@ from ..registry import rule
 
 NAMESPACES = {"IIRDS": IIRDS, "MACH": MACH, "SW": SW, "HOV": HOV}
 
-#: 45 rules.
+#: 61 rules.
 MUST_HAVE_IRI = [
     ("M7.1",  "IIRDS", 'InformationObject'),
     ("M20.1", "IIRDS", 'IdentityDomain'),
@@ -65,27 +65,27 @@ MUST_HAVE_IRI = [
     ("M75",   "MACH", 'OperatingSupply'),
     ("M76",   "MACH", 'ProtectiveEquipment'),
     ("M77",   "MACH", 'SparePart'),
+    ("M78",   "IIRDS", 'AfterUse'),
+    ("M79",   "IIRDS", 'Collection'),
+    ("M80",   "IIRDS", 'Conformity'),
+    ("M81",   "IIRDS", 'DesignAndRealization'),
+    ("M82",   "IIRDS", 'DocumentationMetadata'),
+    ("M83",   "IIRDS", 'FunctionalMetadata'),
+    ("M84",   "IIRDS", 'iirdsDomainEntity'),
+    ("M85",   "IIRDS", 'AdministrativeMetadata'),
+    ("M86",   "IIRDS", 'InformationSubject'),
+    ("M87",   "IIRDS", 'InformationType'),
+    ("M88",   "IIRDS", 'PlanningTime'),
+    ("M89",   "IIRDS", 'ProductFeature'),
+    ("M90",   "IIRDS", 'ProductLifeCyclePhase'),
+    ("M91",   "IIRDS", 'ProductMetadata'),
+    ("M92",   "IIRDS", 'PuttingToUse'),
+    ("M93",   "IIRDS", 'Qualification'),
     ("M97.1", "IIRDS", 'ClassificationDomain'),
     ("M97.2", "IIRDS", 'ClassificationDomain'),
 ]
-#: 16 rules.
+#: 0 rules.
 NOT_USED_DIRECTLY = [
-    ("M78", "IIRDS", 'AfterUse'),
-    ("M79", "IIRDS", 'Collection'),
-    ("M80", "IIRDS", 'Conformity'),
-    ("M81", "IIRDS", 'DesignAndRealization'),
-    ("M82", "IIRDS", 'DocumentationMetadata'),
-    ("M83", "IIRDS", 'FunctionalMetadata'),
-    ("M84", "IIRDS", 'iirdsDomainEntity'),
-    ("M85", "IIRDS", 'AdministrativeMetadata'),
-    ("M86", "IIRDS", 'InformationSubject'),
-    ("M87", "IIRDS", 'InformationType'),
-    ("M88", "IIRDS", 'PlanningTime'),
-    ("M89", "IIRDS", 'ProductFeature'),
-    ("M90", "IIRDS", 'ProductLifeCyclePhase'),
-    ("M91", "IIRDS", 'ProductMetadata'),
-    ("M92", "IIRDS", 'PuttingToUse'),
-    ("M93", "IIRDS", 'Qualification'),
 ]
 
 
@@ -94,7 +94,12 @@ def _must_have_iri(prefix: str, class_name: str):
     cls = NAMESPACES[prefix][class_name]
 
     def check(ctx):
-        for subject in ctx.instances_of(cls):
+        # Direct typing only. Expanding to subclasses would make a rule about a
+        # grouping class fire on every descendant — iirdsDomainEntity sits above
+        # nearly everything, so its rule would report every blank-node Rendition
+        # in a perfectly good package. Each class's own rule covers its own
+        # instances, and M2.1 covers information units generally.
+        for subject in ctx.typed_exactly(cls):
             if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=str(subject))

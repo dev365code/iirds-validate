@@ -47,9 +47,15 @@ def test_the_tables_are_actually_registered():
         assert rule_id in registered, rule_id
 
 
-def test_not_used_directly_fires_on_a_direct_instance(make_package):
-    """iirds:Qualification is abstract: the standard subclasses are Role and
-    SkillLevel. Typing an instance as Qualification itself is M93."""
+def test_using_an_abstract_class_directly_is_lint_not_conformance(make_package):
+    """iirds:Qualification is abstract — the standard subclasses are Role and
+    SkillLevel — and the ontology says so in the class's own description.
+
+    But M93, which the catalogue files under that wording, is implemented by
+    the reference tool as a check that the element has an rdf:about. Reporting
+    it as a MUST would fail packages nothing else fails, on an interpretation
+    nothing else shares, so the observation is L10 and it is a warning.
+    """
     from conftest import MINIMAL_RDF
     from iirds_validate import runner
 
@@ -57,12 +63,23 @@ def test_not_used_directly_fires_on_a_direct_instance(make_package):
     <rdfs:label xml:lang="en">Service technician</rdfs:label>
   </iirds:Qualification>
 </rdf:RDF>""")
-    report = runner.check(make_package(metadata=metadata))
-    assert "M93" in {f.rule.id for f in report.findings}
+    package = make_package(metadata=metadata)
 
-    # ...and using the standard subclass instead is clean.
+    conformance = runner.check(package)
+    assert "M93" not in {f.rule.id for f in conformance.findings}
+    assert conformance.ok, [f.violation.message for f in conformance.findings]
+
+    interop = runner.lint(package)
+    hits = [f for f in interop.findings if f.rule.id == "L10"]
+    assert hits and "Qualification" in hits[0].violation.message
+    assert "Role" in (hits[0].violation.detail or "")
+    assert interop.ok, "L10 is advisory"
+
+    # Using the standard subclass instead is clean on both axes.
     fixed = metadata.replace("iirds:Qualification", "iirds:Role")
-    assert runner.check(make_package(name="fixed.iirds", metadata=fixed)).ok
+    fixed_pkg = make_package(name="fixed.iirds", metadata=fixed)
+    assert runner.check(fixed_pkg).ok
+    assert not [f for f in runner.lint(fixed_pkg).findings if f.rule.id == "L10"]
 
 
 def test_must_have_iri_fires_on_a_blank_node(make_package):

@@ -129,7 +129,7 @@ def test_l5_leaves_the_vocabularies_the_specification_names_alone(make_package):
 # --- L6: labels ------------------------------------------------------------
 
 def test_l6_a_metadata_value_with_no_label_cannot_be_shown_or_matched(make_package):
-    """An IRI ending in `main-spindle` will never match a query written in
+    """An IRI ending in `cooling-fan` will never match a query written in
     another language. The label travels inside the package; nothing else does."""
     unlabelled = """
   <iirds:Topic rdf:about="urn:test:topic1">
@@ -142,7 +142,7 @@ def test_l6_a_metadata_value_with_no_label_cannot_be_shown_or_matched(make_packa
     labelled = unlabelled.replace(
         '<iirds:Component rdf:about="urn:test:c1"/>',
         '<iirds:Component rdf:about="urn:test:c1">'
-        '<rdfs:label xml:lang="ko">주축</rdfs:label></iirds:Component>')
+        '<rdfs:label xml:lang="de">Kühlgebläse</rdfs:label></iirds:Component>')
     assert "L6" not in lint(make_package, labelled, name="ok6.iirds")
 
 

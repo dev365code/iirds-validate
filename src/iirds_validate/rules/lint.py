@@ -241,7 +241,7 @@ def l6_unlabelled_concepts(ctx):
     """Labels travel inside the package, so a consumer has something to show.
 
     They are also what a search over the package can match against: an IRI
-    ending in `main-spindle` will never match a query written in German or
+    ending in `cooling-fan` will never match a query written in German or
     Korean, but an rdfs:label will. Information units are exempt — they are
     covered by L7, which asks for a title instead.
     """

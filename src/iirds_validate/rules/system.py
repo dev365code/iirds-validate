@@ -12,6 +12,8 @@ in one place.
 """
 from __future__ import annotations
 
+import posixpath
+
 from ..model import VARIANTS, VERSIONS, Violation
 from ..registry import rule
 
@@ -88,3 +90,28 @@ def s5_declared_variant_exists(ctx):
     yield Violation("declared iiRDS profile is not one this standard defines",
                     subject=ctx.variant,
                     detail="defined profiles: A, H, or no iirds:formatRestriction at all")
+
+
+@rule("S6", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      title="every entry in the container must stay inside it")
+def s6_entries_stay_inside_the_container(ctx):
+    """An archive entry named `../../../etc/passwd` or `/tmp/x`.
+
+    This validator never extracts anything, so it is not the one at risk — the
+    consumer that unpacks the package is. Since the packages being checked
+    arrive from suppliers, and since a build gate is the last thing that looks
+    at them before something else does unpack them, it is worth failing on.
+
+    No catalogued rule covers it: the specification constrains name characters
+    and path length but says nothing about escaping the root, because it
+    assumes good faith.
+    """
+    for name in ctx.package.names:
+        if name.startswith("/") or name.startswith("\\") or ":" in name.split("/")[0]:
+            yield Violation("container entry is an absolute path",
+                            subject=name)
+            continue
+        if any(part == ".." for part in name.replace("\\", "/").split("/")):
+            yield Violation("container entry escapes the package root",
+                            subject=name,
+                            detail="resolves to %s" % posixpath.normpath(name))

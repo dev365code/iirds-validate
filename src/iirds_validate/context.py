@@ -117,6 +117,26 @@ _ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
 _HAS_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
+#: rdflib decodes a bytes payload as UTF-8 unconditionally, so a document that
+#: declares — and marks with a byte order mark — any other encoding fails to
+#: parse at all. XML says the BOM decides, so it is honoured here and the
+#: payload handed on as UTF-8.
+_BOMS = ((b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"),
+         (b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"),
+         (b"\xef\xbb\xbf", "utf-8-sig"))
+
+
+def _decode_by_bom(raw: bytes) -> bytes:
+    for bom, encoding in _BOMS:
+        if raw.startswith(bom):
+            text = raw.decode(encoding)
+            # The declaration would now contradict the bytes.
+            text = re.sub(r'(<\?xml[^>]*?)\s+encoding\s*=\s*(["\'])[^"\']*\2',
+                          r"\1", text, count=1)
+            return text.encode("utf-8")
+    return raw
+
+
 def _remote_contexts(node, found=None):
     """Every `@context` in the document that names a location to go and fetch.
 
@@ -162,7 +182,7 @@ def build_graph(package: Package):
                           % (name, info.file_size, MAX_METADATA_BYTES))
             continue
 
-        raw = package.read(name)
+        raw = _decode_by_bom(package.read(name))
 
         # Nested internal entities expand geometrically: a few hundred bytes of
         # declarations can occupy the parser indefinitely. iiRDS metadata has no

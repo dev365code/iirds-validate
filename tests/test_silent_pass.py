@@ -123,3 +123,30 @@ def test_no_rule_crashes_on_any_fixture(make_package):
         report = runner.run(make_package(name="%s.iirds" % name, metadata=metadata),
                             runner.ALL_KINDS)
         assert not [f for f in report.findings if f.rule.id == "S3"], name
+
+
+def test_an_entry_that_escapes_the_container_is_reported(make_package):
+    """This validator never extracts anything, so it is not the one at risk.
+    The consumer that unpacks the package is, and a build gate is the last
+    thing to look at a supplier's archive before something else does."""
+    for entry in ("../../../etc/passwd", "/tmp/evil.sh", "content/../../out"):
+        report = runner.check(make_package(extra=((entry, "x"),)))
+        assert "S6" in {f.rule.id for f in report.findings}, entry
+        assert not report.ok, entry
+
+
+def test_ordinary_entries_are_not_mistaken_for_escapes(make_package):
+    report = runner.check(make_package(extra=(("content/sub/deep/a.xhtml", "<html/>"),)))
+    assert "S6" not in {f.rule.id for f in report.findings}
+
+
+def test_metadata_in_utf16_is_read_not_rejected(make_package):
+    """rdflib decodes a bytes payload as UTF-8 unconditionally, so a document
+    whose byte order mark says otherwise failed to parse at all. XML says the
+    BOM decides."""
+    for encoding in ("utf-16", "utf-8-sig"):
+        report = runner.check(make_package(
+            name="%s.iirds" % encoding,
+            metadata=MINIMAL_RDF.encode(encoding) if encoding != "utf-8-sig"
+            else ("﻿" + MINIMAL_RDF).encode("utf-8")))
+        assert report.ok, (encoding, [f.violation.message for f in report.findings])

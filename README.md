@@ -53,6 +53,14 @@ iirdsv check pkg.iirds -W                           # warnings are errors too
 
 Exit codes: `0` clean, `1` findings, `2` could not run.
 
+Three checks have no counterpart in the catalogue and run whatever you ask for,
+because each is a way a package could otherwise slip past everything: **S4** an
+`iirds:iiRDSVersion` the standard never published, **S5** an
+`iirds:formatRestriction` that matches no profile and so switches off the
+unrestricted rules and the handover rules at once, and **S6** an archive entry
+that escapes the container — harmless to this tool, which never extracts
+anything, and not harmless to whatever unpacks the package next.
+
 ```python
 from iirds_validate import check, lint
 
@@ -120,7 +128,7 @@ Honest numbers, printed by `iirdsv rules`:
 | schema (M\*) | 135 / 135 |
 | system (S\*) | 3 / 3 |
 | **catalogue total** | **157 / 157** |
-| interoperability (L\*) | 9 — this project only |
+| interoperability (L\*) | 13 — this project only |
 
 All 157 catalogued rules are implemented. That is coverage of the catalogue,
 not a certificate: three of them are aliases of rules with identical wording,
@@ -145,6 +153,7 @@ packages still fail in practice.
 | L7 | an information unit with no title |
 | L8 | references out to vocabularies an offline consumer cannot resolve |
 | L9 | the RDF/XML and JSON-LD metadata describe different graphs |
+| L10 | an abstract iiRDS class used to type an instance directly |
 
 L1 is the one that started this. RDF lets the same fact be written inline or as
 a reference; both are conformant; a reader that handles only one of them loses

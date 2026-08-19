@@ -1,0 +1,2804 @@
+{
+  "_source": "https://github.com/plusmeta/iirds-validation-tool",
+  "_licence": "MIT, Copyright 2020 plusmeta GmbH — metadata only, see THIRD_PARTY.md",
+  "_generated_by": "tools/extract_catalog.py",
+  "rules": [
+    {
+      "id": "C1",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": null,
+      "path": null,
+      "en": "ZIP file is corrupt or cannot be processed.",
+      "de": "ZIP-Datei ist beschädigt oder kann nicht verarbeitet werden."
+    },
+    {
+      "id": "C2",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": null,
+      "path": null,
+      "en": "ZIP file is empty.",
+      "de": "ZIP-Datei ist leer."
+    },
+    {
+      "id": "C3",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20file%20name%20of%20the%20iiRDS%20ZIP%20archive%20MUST%20feature%20the%20file%20name%20extension%20.iirds.",
+      "path": null,
+      "en": "The file name of the iiRDS ZIP archive MUST feature the file name extension .iirds.",
+      "de": "Der Dateiname des iiRDS-ZIP-Archivs MUSS die Dateinamenerweiterung .iirds aufweisen."
+    },
+    {
+      "id": "C4",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=In%20addition%20to%20the%20iiRDS%20container%20specifications%2C%20the%20root%20directory%20of%20the%20ZIP%20file%20MUST%20contain%20a%20file%20named%20mimetype.",
+      "path": null,
+      "en": "The root directory of the ZIP file MUST contain a file named mimetype.",
+      "de": "Das Stammverzeichnis der ZIP-Datei MUSS eine Datei namens mimetype enthalten."
+    },
+    {
+      "id": "C5",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=It%20MUST%20contain,application/iirds%2Bzip",
+      "path": null,
+      "en": "The mimetype file MUST contain the following ASCII-encoded text in a single line, without any line delimiters such as CR or LF: application/iirds+zip.",
+      "de": "Die Mimetype-Datei MUSS den folgenden ASCII-codierten Text in einer einzigen Zeile enthalten, ohne Zeilentrennzeichen wie CR oder LF: application/iirds zip."
+    },
+    {
+      "id": "C6",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20file%20MUST%20be%20the%20first%20entry%20in%20the%20ZIP%20file%20and%20it%20MUST%20be%20stored%20uncompressed%20(%22Stored%22%20mode).",
+      "path": null,
+      "en": "The mimetype file MUST be stored uncompressed ('Stored' mode).",
+      "de": "Die Mimetype-Datei MUSS unkomprimiert gespeichert werden ('Stored'-Modus)."
+    },
+    {
+      "id": "C7",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=An%20iiRDS%20container%20MUST%20have%20a%20directory%20META%2DINF.",
+      "path": null,
+      "en": "An iiRDS container MUST have a directory META-INF.",
+      "de": "Ein iiRDS-Container MUSS ein Verzeichnis META-INF haben."
+    },
+    {
+      "id": "C8",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).",
+      "path": null,
+      "en": "The META-INF directory MUST contain the file metadata.rdf.",
+      "de": "Das META-INF-Verzeichnis MUSS die Datei metadata.rdf enthalten."
+    },
+    {
+      "id": "C9",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).",
+      "path": null,
+      "en": "The META-INF directory MUST contain the file metadata.rdf.",
+      "de": "Das META-INF-Verzeichnis MUSS die Datei metadata.rdf enthalten."
+    },
+    {
+      "id": "C10",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=For%20file%20and,use%20Unicode%20areas",
+      "path": null,
+      "en": "For file and directory names, all Unicode characters MAY be used, with the exception of the following characters: /,”*:<>\\, the DEL character (U+007F), characters from the ranges U+0000 to U+001F and U+0080 to U+009F, characters from the private use Unicode areas.",
+      "de": "Für Datei- und Verzeichnisnamen DÜRFEN alle Unicode-Zeichen verwendet werden, mit Ausnahme der folgenden Zeichen: /“,*:<>\\, das DEL-Zeichen (U 007F), Zeichen aus den Bereichen U 0000 bis U 001F und U  0080 bis U 009F, Zeichen aus dem privat genutzten Unicode-Bereich."
+    },
+    {
+      "id": "C11.1",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [
+        "unrestricted",
+        "A"
+      ],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=All%20other%20files%20(content%2C%20like%20PDF%2C%20HTML%2C%20media%2C%20Javascript%2C%20CSS%2C%20nested%20iiRDS%20packages)%20MUST%20be%20stored%20in%20arbitrary%20subdirectories%20below%20the%20root%20directory.",
+      "path": null,
+      "en": "All other files (content, like PDF, HTML, media, Javascript, CSS, nested iiRDS packages) MUST be stored in arbitrary subdirectories below the root directory.",
+      "de": "Alle anderen Dateien (Inhalte wie PDF, HTML, Medien, Javascript, CSS, verschachtelte iiRDS-Pakete) MÜSSEN in beliebigen Unterverzeichnissen unterhalb des Stammverzeichnisses gespeichert werden."
+    },
+    {
+      "id": "C11.1H",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=All%20other%20files%20(content%2C%20like%20PDF%2C%20HTML%2C%20media%2C%20Javascript%2C%20CSS%2C%20nested%20iiRDS%20packages)%20MUST%20be%20stored%20in%20arbitrary%20subdirectories%20below%20the%20root%20directory.",
+      "path": null,
+      "en": "All other files (content, like PDF, HTML, media, Javascript, CSS, nested iiRDS packages) MUST be stored in arbitrary subdirectories below the root directory.",
+      "de": "Alle anderen Dateien (Inhalte wie PDF, HTML, Medien, Javascript, CSS, verschachtelte iiRDS-Pakete) MÜSSEN in beliebigen Unterverzeichnissen unterhalb des Stammverzeichnisses gespeichert werden."
+    },
+    {
+      "id": "C11.2",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#mandatory-content-list",
+      "path": null,
+      "en": "An iiRDS/H package MUST contain a content list as HTML file named index.html, located inside the root folder of the iiRDS package.",
+      "de": "Ein iiRDS/H-Paket MUSS eine Inhaltsübersicht als HTML-Datei mit dem Namen index.html enthalten, die sich im Stammordner des iiRDS-Pakets befindet."
+    },
+    {
+      "id": "C12",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=Content%20files%20MUST%20NOT%20be%20placed%20in%20the%20root%20directory%20or%20in%20META%2DINF%20directory.",
+      "path": null,
+      "en": "Content files MUST NOT be placed in the root directory or in META-INF directory.",
+      "de": "Inhaltsdateien DÜRFEN NICHT im Stammverzeichnis oder im META-INF-Verzeichnis abgelegt werden."
+    },
+    {
+      "id": "C13",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=Full%20path%20names%20(file%20names%20including%20the%20full%20directory%20path%20from%20the%20root)%20MUST%20NOT%20exceed%20260%20characters).",
+      "path": null,
+      "en": "Full path names (file names including the full directory path from the root) MUST NOT exceed 260 characters).",
+      "de": "Vollständige Pfadnamen (Dateinamen einschließlich des vollständigen Verzeichnispfads vom Stammverzeichnis) DÜRFEN 260 Zeichen NICHT überschreiten)."
+    },
+    {
+      "id": "C14",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20length%20of%20file%20names%20is%20limited%20to%20255%20characters.",
+      "path": null,
+      "en": "The length of file names is limited to 255 characters.",
+      "de": "Die Länge von Dateinamen ist auf 255 Zeichen begrenzt."
+    },
+    {
+      "id": "C15",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=File%20names%20are%20case%2Dsensitive%20and%20MUST%20be%20unique%20within%20their%20parent%20directories. ",
+      "path": null,
+      "en": "File names are case-sensitive and MUST be unique within their parent directories",
+      "de": "Bei Dateinamen wird zwischen Groß- und Kleinschreibung unterschieden und sie MÜSSEN innerhalb ihrer übergeordneten Verzeichnisse eindeutig sein"
+    },
+    {
+      "id": "C16.1",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).",
+      "path": null,
+      "en": "The META-INF directory MUST contain the file metadata.rdf in RDF 1.1 XML syntax. XML is invalid.",
+      "de": "Das META-INF-Verzeichnis MUSS die Datei metadata.rdf in RDF 1.1 XML-Syntax enthalten.  XML ist ungültig."
+    },
+    {
+      "id": "C16.2",
+      "kind": "container",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-location-and-rdf-serializations",
+      "path": null,
+      "en": "If metadata is provided in the JSON-LD 1.1 syntax, the META-INF directory MUST contain the file metadata.jsonld. The file metadata.jsonld is optional in unrestricted iiRDS, but mandatory for iiRDS/H packages.",
+      "de": "Wenn Metadaten im JSON-LD 1.1-Syntax bereitgestellt werden, MUSS das META-INF-Verzeichnis die Datei metadata.jsonld enthalten. Die Datei metadata.jsonld ist in uneingeschränktem iiRDS optional, aber für iiRDS/H-Pakete obligatorisch."
+    },
+    {
+      "id": "M1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "not intended to be used directly",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-package-and-container:~:text=iiRDS%20Generators%20MUST%20NOT%20use%20the%20iirds%3AInformationUnit%20class%20directly%20but%20MUST%20use%20one%20of%20the%20subclasses.",
+      "path": "InformationUnit",
+      "en": "iiRDS Generators MUST NOT use the iirds:InformationUnit class directly but MUST use one of the subclasses",
+      "de": "iiRDS-Generatoren DÜRFEN NICHT die Klasse iirds:InformationUnit direkt verwenden, sondern MÜSSEN eine der Unterklassen verwenden"
+    },
+    {
+      "id": "M2.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=An%20instance%20of%20an%20iirds%3AInformationUnit%20subclass%20MUST%20have%20an%20IRI%20and%20MUST%20NOT%20be%20a%20blank%20node.",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "An instance of an iirds:InformationUnit subclass MUST have an IRI.",
+      "de": "Eine Instanz einer iirds:InformationUnit-Unterklasse MUSS einen IRI haben."
+    },
+    {
+      "id": "M2.3",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:dateOfCreation.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft iirds:dateOfCreation haben."
+    },
+    {
+      "id": "M2.4",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfLastModification%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:dateOfLastModification.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft haben iirds:dateOfLastModification."
+    },
+    {
+      "id": "M2.5",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Arevision%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:revision.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft iirds:revision haben."
+    },
+    {
+      "id": "M2.6",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Atitle%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:title.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft iirds:title haben."
+    },
+    {
+      "id": "M2.7",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ahas%2Dabstract%20property",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:has-abstract.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft haben iirds:has-abstract."
+    },
+    {
+      "id": "M2.8",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ais%2Dreplacement%2Dof%20property%20%2D%20iirds%3AInformationUnit",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:is-replacement-of.",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft iirds:is-replacement-of haben."
+    },
+    {
+      "id": "M2.9",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ais%2Dversion%2Dof%20property%20%2D%20iirds%3AInformationObject",
+      "path": "Document, Topic, Fragment, Package",
+      "en": "iirds:InformationUnit MUST NOT have more than one property iirds:is-version-of .",
+      "de": "iirds:InformationUnit DARF NICHT mehr als eine Eigenschaft iirds:is-version-of haben."
+    },
+    {
+      "id": "M3",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=Each%20iiRDS%20package%20MUST%20have%20exactly%20one%20corresponding%20iirds%3APackage%20instance%20in%20the%20metadata.",
+      "path": "Package",
+      "en": "Each iiRDS package MUST have exactly one corresponding iirds:Package instance in the metadata.",
+      "de": "Jedes iiRDS-Paket MUSS genau eine entsprechende iirds:Package-Instanz in den Metadaten haben."
+    },
+    {
+      "id": "M4",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must use property",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=0..1-,iirds%3APackage,1,-iirds%3AParty",
+      "path": "Package",
+      "en": "iiRDS:Package MUST use property iirds:iiRDSVersion",
+      "de": "iiRDS:Package MUSS die Eigenschaft iirds:iiRDSVersion verwenden"
+    },
+    {
+      "id": "M5",
+      "kind": "schema",
+      "prio": "RECOMMENDED",
+      "category": "absolute IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=It%20is%20RECOMMENDED%20to%20use%20absolute%20IRIs%20in%20rdf%3Aabout.",
+      "path": "*",
+      "en": "It is RECOMMENDED to use absolute IRIs in rdf:about.",
+      "de": "Es wird EMPFOHLEN absolute IRIs in rdf:about zu verwenden."
+    },
+    {
+      "id": "M6",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=If%20information%20objects%20are%20used%2C%20each%20information%20unit%20MUST%20only%20be%20related%20to%20exactly%20one%20information%20object%20via%20iirds%3Ais%2Dversion%2Dof.",
+      "path": "RDF",
+      "en": "If information objects are used, each information unit MUST only be related to exactly one information object via iirds:is-version-of.",
+      "de": "Wenn Informationsobjekte verwendet werden, DARF jede Informationseinheit nur auf genau ein Informationsobjekt über iirds:is-version-of bezogen werden."
+    },
+    {
+      "id": "M7.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "absolute IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20information%20object%20MUST%20have%20an%20absolute%20IRI%20and%20MAY%20be%20related%20to%20additional%20identifications%20via%20the%20iirds%3Ahas%2Didentity%20property.",
+      "path": "InformationObject",
+      "en": "An information object MUST have an absolute IRI.",
+      "de": "Ein Informationsobjekt MUSS eine absoluten IRI haben."
+    },
+    {
+      "id": "M8",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "must not use property",
+      "versions": [
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iirds%3APackage%20elements%20representing%20the%20enclosing%20iiRDS%20package%20itself%20MUST%20NOT%20be%20subjects%20of%20any%20iirds%3Ahas%2Drendition%20relation.",
+      "path": "Package",
+      "en": "iirds:Package elements representing the enclosing iiRDS package itself MUST NOT be subjects of any iirds:has-rendition relation.",
+      "de": "iirds:Package-Elemente, die das umschließende iiRDS-Paket selbst darstellen, DÜRFEN NICHT Gegenstand einer iirds:has-rendition-Beziehung sein."
+    },
+    {
+      "id": "M9",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "relative IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20URL%20MUST%20be%20relative%20to%20the%20root%20folder%20of%20the%20iiRDS%20package.",
+      "path": "Rendition source",
+      "en": "The URL MUST be relative to the root folder of the iiRDS package",
+      "de": "Die URL MUSS relativ zum Stammordner des iiRDS-Pakets sein"
+    },
+    {
+      "id": "M10",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must use property",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#properties-and-relations-overview:~:text=1-,iirds%3ARendition,1,-iirds%3ARendition",
+      "path": "Rendition",
+      "en": "An iirds:Rendition MUST have the property iirds:source.",
+      "de": "Eine iirds:Rendition MUSS die Eigenschaft iirds:source haben."
+    },
+    {
+      "id": "M11",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must use property",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3ARendition%20MUST%20also%20have%20the%20property%20iirds%3Aformat.",
+      "path": "Rendition",
+      "en": "An iirds:Rendition MUST have the property iirds:format.",
+      "de": "Eine iirds:Rendition MUSS die Eigenschaft iirds:format haben."
+    },
+    {
+      "id": "M12",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "not intended to be used directly",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x-conformance:~:text=iirds%3ARendition%20MUST%20NOT,an%20end%20identifier",
+      "path": "Rendition has-selector",
+      "en": "iirds:Rendition MUST NOT directly use iirds:Selector but MUST use one of its subclasses to reference parts of a file. The class iirds:Selector has the following subclasses: iirds:FragmentSelector; iirds:RangeSelector",
+      "de": "iirds:Rendition DARF NICHT direkt iirds:Selector verwenden, sondern MUSS eine seiner Unterklassen verwenden, um Teile einer Datei zu referenzieren.  Die Klasse iirds:Selector hat die folgenden Unterklassen: iirds:FragmentSelector;  iirds:RangeSelector"
+    },
+    {
+      "id": "M13.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must use property",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.",
+      "path": "FragmentSelector, RangeSelector",
+      "en": "To select parts of a file, an iirds:Selector MUST have an rdf:value and dcterms:conformsTo. The value MUST conform to the standard specified by the property dcterms:conformsTo. Only a standard from the following list of fragment selectors MUST be used: [https://www.w3.org/TR/annotation-model/#fragment-selector].",
+      "de": "Um Teile einer Datei auszuwählen, MUSS ein iirds:Selector einen rdf:value und dcterms:conformsTo haben.  Der Wert MUSS dem durch die Eigenschaft dcterms:conformsTo angegebenen Standard entsprechen.  Es darf nur ein Standard aus der folgenden Liste von Fragmentselektoren verwendet werden: [https://www.w3.org/TR/annotation-model/"
+    },
+    {
+      "id": "M13.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.",
+      "path": "FragmentSelector, RangeSelector",
+      "en": "To select parts of a file, an iirds:Selector MUST have an rdf:value and dcterms:conformsTo. The value MUST conform to the standard specified by the property dcterms:conformsTo. Only a standard from the following list of fragment selectors MUST be used: [https://www.w3.org/TR/annotation-model/#fragment-selector].",
+      "de": "Um Teile einer Datei auszuwählen, MUSS ein iirds:Selector einen rdf:value und dcterms:conformsTo haben.  Der Wert MUSS dem durch die Eigenschaft dcterms:conformsTo angegebenen Standard entsprechen.  Es darf nur ein Standard aus der folgenden Liste von Fragmentselektoren verwendet werden: [https://www.w3.org/TR/annotation-model/"
+    },
+    {
+      "id": "M14.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.",
+      "path": "RangeSelector",
+      "en": "iirds:RangeSelector must use property iirds:has-start-selector.",
+      "de": "iirds:RangeSelector muss die Eigenschaft iirds:has-start-selector verwenden."
+    },
+    {
+      "id": "M14.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.",
+      "path": "RangeSelector",
+      "en": "iirds:RangeSelector must use property iirds:has-end-selector.",
+      "de": "iirds:RangeSelector muss die Eigenschaft iirds:has-end-selector verwenden."
+    },
+    {
+      "id": "M15.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..n",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20the%20iirds%3ADocument%20class%20MUST%20have%20one%20or%20more%20relations%20to%20one%20of%20the%20standardized%20iirds%3ADocumentTypes%20defined%20in%20iirds%3AInformationType%20%3E%20iirds%3ADocumentType.",
+      "path": "Document",
+      "en": "Instances of the iirds:Document class MUST have one or more relations to one of the standardized iirds:DocumentTypes defined in iirds:InformationType > iirds:DocumentType.",
+      "de": "Instanzen der Klasse iirds:Document MÜSSEN eine oder mehrere Beziehungen zu einem der standardisierten iirds:DocumentTypes haben, die in iirds:InformationType > iirds:DocumentType definiert sind."
+    },
+    {
+      "id": "M15.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H the following metadata is mandatory for each iirds:Document: one iirdsHov:has-document-category.",
+      "de": "In iiRDS/H sind die folgenden Metadaten für jedes iirds:Document obligatorisch: eine iirdsHov:has-document-category."
+    },
+    {
+      "id": "M15.3",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H the following metadata is mandatory for each iirds:Document: iirds:language.",
+      "de": "In iiRDS/H sind die folgenden Metadaten für jedes iirds:Document obligatorisch: iirds:language."
+    },
+    {
+      "id": "M15.4",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H the following metadata is mandatory for each iirds:Document: iirds:title.",
+      "de": "In iiRDS/H sind die folgenden Metadaten für jedes iirds:Document obligatorisch: iirds:title."
+    },
+    {
+      "id": "M15.5",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H the following metadata is mandatory for each iirds:Document: one iirds:is-version-of relating to an iirds:InformationObject",
+      "de": "In iiRDS/H sind die folgenden Metadaten für jedes iirds:Document obligatorisch: ein iirds:is-version-of verknüpft mit einem iirds:InformationObject"
+    },
+    {
+      "id": "M15.6",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H the following metadata is mandatory for each iirds:Document: iirds:has-rendition",
+      "de": "In iiRDS/H sind die folgenden Metadaten für jedes iirds:Document obligatorisch: iirds:has-rendition"
+    },
+    {
+      "id": "M15.7a",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document Package",
+      "en": "In iiRDS/H each iirds:Document must have at least one iirds:relates-to-product-variant relating to an iirds:ProductVariant. This iirds:ProductVariant MUST relate to an iirds:Identity with an iirds:IdentityDomain that has an iirds:has-identity-type of either iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber.",
+      "de": "In iiRDS/H muss jedes iirds:Document und iirds:Package mindestens ein iirds:relates-to-product-variant haben, das sich auf ein iirds:ProductVariant bezieht. Dieses iirds:ProductVariant MUSS sich auf eine iirds:Identity mit einer iirds:IdentityDomain beziehen, die einen iirds:has-identity-type von entweder iirds:ObjectInstanceURI, iirds:ObjectTypeURI oder iirds:SerialNumber hat."
+    },
+    {
+      "id": "M15.7b",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document Package",
+      "en": "The iirds:IdentityDomain of the Instance Identity (ObjectInstanceURI/ObjectTypeURI/SerialNumber) MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name.",
+      "de": "Die iirds:IdentityDomain der Instance-Identity (ObjectInstanceURI/ObjectTypeURI/SerialNumber) MUSS sich auf eine iirds:Party mit iirds:has-party-role iirds:Manufacturer beziehen. Diese Party MUSS mit iirds:relates-to-vcard auf eine vcard:Organization verweisen, die eine vcard:organization-name angibt."
+    },
+    {
+      "id": "M15.7c",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document Package",
+      "en": "The iirds:ProductVariant MUST relate to another iirds:Identity with an iirds:IdentityDomain that has an iirds:has-identity-type of iirds:ProductType.",
+      "de": "Das iirds:ProductVariant MUSS sich auf eine weitere iirds:Identity mit einer iirds:IdentityDomain beziehen, die einen iirds:has-identity-type von iirds:ProductType hat."
+    },
+    {
+      "id": "M15.7d",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document Package",
+      "en": "The iirds:IdentityDomain of the ProductType Identity MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name.",
+      "de": "Die iirds:IdentityDomain der ProductType-Identity MUSS sich auf eine iirds:Party mit iirds:has-party-role iirds:Manufacturer beziehen. Diese Party MUSS mit iirds:relates-to-vcard auf eine vcard:Organization verweisen, die eine vcard:organization-name angibt."
+    },
+    {
+      "id": "M15.8",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Document",
+      "en": "In iiRDS/H each iirds:Document must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Author and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name.",
+      "de": "In iiRDS/H muss jedes iirds:Document mindestens ein iirds:relates-to-Party in Bezug auf eine iirds:Party mit iirds:has-party-role iirds:Autor und iirds:relates-to-vcard in Bezug auf eine vcard:Organization enthalten, die vcard:organization-name angibt."
+    },
+    {
+      "id": "M15.9",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "Package",
+      "en": "In iiRDS/H each iirds:Package must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name.",
+      "de": "In iiRDS/H muss jedes iirds:Package mindestens ein iirds:relates-to-Party in Bezug auf eine iirds:Party mit iirds:has-party-role iirds:Creator und iirds:relates-to-vcard in Bezug auf eine vcard:Organization enthalten, die vcard:organization-name angibt."
+    },
+    {
+      "id": "M15.10",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1..*",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A",
+      "path": "InformationObject",
+      "en": "In iiRDS/H each iirds:InformationObject must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name.",
+      "de": "In iiRDS/H muss jedes iirds:InformationObject mindestens ein iirds:relates-to-Party in Bezug auf eine iirds:Party mit iirds:has-party-role iirds:Creator und iirds:relates-to-vcard in Bezug auf eine vcard:Organization enthalten, die vcard:organization-name angibt."
+    },
+    {
+      "id": "M15.11a",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances",
+      "path": "Topic Fragment",
+      "en": "An iiRDS/H package MUST contain only information units of the subclasses iirds:Document and iirds:Package.",
+      "de": "Ein iiRDS/H-Paket darf nur Informationseinheiten der Unterklassen iirds:Document und iirds:Package enthalten."
+    },
+    {
+      "id": "M15.11b",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances",
+      "path": "DirectoryNode",
+      "en": "An iiRDS/H package MUST NOT contain instances of iirds:DirectoryNode.",
+      "de": "Ein iiRDS/H-Paket darf KEINE Instanzen von iirds:DirectoryNode enthalten."
+    },
+    {
+      "id": "M15.11c",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0",
+      "versions": [
+        "1.3"
+      ],
+      "variants": [
+        "H"
+      ],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances",
+      "path": "Selector",
+      "en": "An iiRDS/H package MUST NOT contain instances of iirds:Selector.",
+      "de": "Ein iiRDS/H-Paket darf KEINE Instanzen von iirds:Selector enthalten."
+    },
+    {
+      "id": "M16.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20the%20iirds%3AEvent%20class%20MUST%20have%20the%20following%20properties%3A%20iirds%3AeventCode%20and%20iirds%3AeventType.",
+      "path": "Event",
+      "en": "Instances of the iirds:Event class MUST have property iirds:eventCode",
+      "de": "Instanzen der Klasse iirds:Event MÜSSEN die Eigenschaft iirds:eventCode haben"
+    },
+    {
+      "id": "M16.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20the%20iirds%3AEvent%20class%20MUST%20have%20the%20following%20properties%3A%20iirds%3AeventCode%20and%20iirds%3AeventType.",
+      "path": "Event",
+      "en": "Instances of the iirds:Event class MUST have property iirds:eventType",
+      "de": "Instanzen der Klasse iirds:Event MÜSSEN die Eigenschaft iirds:eventType haben"
+    },
+    {
+      "id": "M16.3",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#adding-a-proprietary-class:~:text=7.3.2-,Adding%20a%20Proprietary%20Class,-Proprietary%20iiRDS%20extensions",
+      "path": "relates-to-event",
+      "en": "An extension of iirds:Event MUST be defined as a class.",
+      "de": "Eine Erweiterung von iirds:Event MUSS als Klasse definiert werden."
+    },
+    {
+      "id": "M17",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iiRDS%20package%20MUST%20NOT%20use%20an%20external%20product%20ontology%20directly.%20If%20an%20external%20product%20ontology%20is%20available%20and%20used%20in%20the%20iiRDS%20package%2C%20then%20the%20iiRDS%20package%20MUST%20also%20contain%20metadata%20labels%20as%20instances%20of%20iirds%3AComponent.",
+      "path": "relates-to-component",
+      "en": "An iiRDS package MUST NOT use an external product ontology directly. If an external product ontology is available and used in the iiRDS package, then the iiRDS package MUST also contain metadata labels as instances of iirds:Component.",
+      "de": "Ein iiRDS-Paket DARF NICHT direkt eine externe Produktontologie verwenden.  Wenn eine externe Produktontologie verfügbar ist und im iiRDS-Paket verwendet wird, MUSS das iiRDS-Paket auch Metadaten-Labels als Instanzen von iirds:Component enthalten."
+    },
+    {
+      "id": "M18",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iiRDS%20provides%20the%20class%20iirds%3AProductVariant%20for%20extending%20the%20iiRDS%20vocabulary%20and%20adding%20proprietary%20product%20variants.%20As%20product%20variants%20are%20a%20proprietary%20iiRDS%20extension%2C%20they%20MUST%20be%20present%20in%20the%20metadata.rdf%20of%20the%20iiRDS%20package.",
+      "path": "relates-to-product-variant",
+      "en": "iiRDS provides the class iirds:ProductVariant for extending the iiRDS vocabulary and adding proprietary product variants. As product variants are a proprietary iiRDS extension, they MUST be present in the metadata.rdf of the iiRDS package.",
+      "de": "iiRDS stellt die Klasse iirds:ProductVariant bereit, um das iiRDS-Vokabular zu erweitern und proprietäre Produktvarianten hinzuzufügen. Da Produktvarianten eine proprietäre iiRDS-Erweiterung sind, MÜSSEN sie in der metadata.rdf des iiRDS-Pakets vorhanden sein."
+    },
+    {
+      "id": "M19.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must not be empty",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.",
+      "path": "Identity",
+      "en": "An identity MUST point to exactly one domain by the iirds:has-identity-domain property.",
+      "de": "Eine Identität MUSS durch die Eigenschaft iirds:has-identity-domain auf genau eine Domäne verweisen."
+    },
+    {
+      "id": "M19.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "must not be empty",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.",
+      "path": "Identity",
+      "en": "An iirds:Identity instance consists of two parts: the value and the domain. The value MUST be provided as a non-empty string in the iirds:identifier property. ",
+      "de": "Eine iirds:Identity-Instanz besteht aus zwei Teilen: dem Wert und der Domäne.  Der Wert MUSS als nicht leerer String in der Eigenschaft iirds:identifier angegeben werden."
+    },
+    {
+      "id": "M19.3",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.",
+      "path": "Identity",
+      "en": "An identity MUST point to exactly one domain by the iirds:has-identity-domain property.",
+      "de": "Eine Identität MUSS durch die Eigenschaft iirds:has-identity-domain auf genau eine Domäne verweisen."
+    },
+    {
+      "id": "M19.4",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "specific values allowed",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.",
+      "path": "has-identity-domain",
+      "en": "The domain MUST be an instance of the iirdsIdentityDomain class.",
+      "de": "Die Domain MUSS eine Instanz der Klasse iirdsIdentityDomain sein."
+    },
+    {
+      "id": "M20.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "absolute IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20class%20iirds%3AIdentityDomain%20MUST%20have%20an%20absolute%20IRI%20and%20MAY%20link%20to%20the%20custodian%20of%20the%20domain%20via%20the%20iirds%3Ahas%2Dparty%20property.",
+      "path": "IdentityDomain",
+      "en": "Instances of class iirds:IdentityDomain MUST have an absolute IRI.",
+      "de": "Instanzen der Klasse iirds:IdentityDomain MÜSSEN einen absoluten IRI haben."
+    },
+    {
+      "id": "M21.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AContentLifecyleStatus%20MUST%20have%20an%20iirds%3AContentLifecyleStatusValue%20which%20is%20assigned%20by%20the%20iirds%3Ahas%2Dcontent%2Dlifecycle%2Dstatus%2Dvalue%20property.",
+      "path": "ContentLifeCycleStatus",
+      "en": "An iirds:ContentLifecyleStatus MUST have an iirds:ContentLifecyleStatusValue which is assigned by the iirds:has-content-lifecycle-status-value property.",
+      "de": "Ein iirds:ContentLifecyleStatus MUSS einen iirds:ContentLifecyleStatusValue haben, der von der Eigenschaft iirds:has-content-lifecycle-status-value zugewiesen wird."
+    },
+    {
+      "id": "M21.2",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20180418-1.0-release/index.html#:~:text=0..1%C2%A0%20iirds%3AdateOfEffect%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp",
+      "path": "ContentLifeCycleStatus",
+      "en": "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:dateOfEffect.",
+      "de": "iirds:ContentLifeCycleStatus DARF NICHT mehr als eine Eigenschaft iirds:dateOfEffect haben."
+    },
+    {
+      "id": "M21.3",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3AdateOfExpiry%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp",
+      "path": "ContentLifeCycleStatus",
+      "en": "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:dateOfExpiry.",
+      "de": "iirds:ContentLifeCycleStatus DARF NICHT mehr als eine Eigenschaft iirds:dateOfExpiry haben."
+    },
+    {
+      "id": "M21.4",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3AdateOfStatus%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp",
+      "path": "ContentLifeCycleStatus",
+      "en": "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose.",
+      "de": "iirds:ContentLifeCycleStatus DARF NICHT mehr als eine Eigenschaft iirds:purpose haben."
+    },
+    {
+      "id": "M21.5",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3Apurpose%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal",
+      "path": "ContentLifeCycleStatus",
+      "en": "Properties: 0..1  iirds:purpose property - http://www.w3.org/2000/01/rdf-schema#Literal",
+      "de": "Eigenschaften: 0..1 iirds:purpose Eigenschaft - http://www.w3.org/2000/01/rdf-schema"
+    },
+    {
+      "id": "M21.6",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20190712-1.0.1-release/index.html#rdfproperties_core_iirdsAttribute:~:text=rdf%2Dschema%23Literal-,0..1%C2%A0%20iirds%3Arelates%2Dto%2Dparty%20property%20%2D%20iirds%3AParty,-iirds%3AContentLifeCycleStatusValue",
+      "path": "ContentLifeCycleStatus",
+      "en": "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:relates-to-party.",
+      "de": "iirds:ContentLifeCycleStatus DARF NICHT mehr als eine Eigenschaft iirds:relates-to-party haben."
+    },
+    {
+      "id": "M22.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0..1 (Ungenauigkeit in Spec. Text impliziert cardinality 1)",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.",
+      "path": "Party",
+      "en": "An iirds:Party MUST have a related iirds:PartyRole that is assigned by the property iirds:has-party-role, such as author, supplier or manufacturer.",
+      "de": "Eine iirds:Party MUSS eine zugehörige iirds:PartyRole haben, die von der Eigenschaft iirds:has-party-role zugewiesen wird, wie z. B. Autor, Lieferant oder Hersteller."
+    },
+    {
+      "id": "M22.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0..1 (Ungenauigkeit in Spec. Text impliziert cardinality 1)",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.",
+      "path": "Party has-party-role",
+      "en": "An iirds:Party MUST have a related iirds:PartyRole that is assigned by the property iirds:has-party-role, such as author, supplier or manufacturer.",
+      "de": "Eine iirds:Party MUSS eine zugehörige iirds:PartyRole haben, die von der Eigenschaft iirds:has-party-role zugewiesen wird, wie z. B. Autor, Lieferant oder Hersteller."
+    },
+    {
+      "id": "M23",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 0..1 (Ungenauigkeit, siehe M33)",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=In%20addition%20to%20the%20role%2C%20an%20iirds%3AParty%20MUST%20also%20have%20an%20associated%20description%20of%20itself%20as%20compliant%20vcard%3Akind%20object%20which%20is%20assigned%20via%20iirds%3Arelates%2Dto%2Dvcard.",
+      "path": "Party",
+      "en": "In addition to the role, an iirds:Party MUST also have an associated description of itself as compliant vcard:kind object which is assigned via iirds:relates-to-vcard.",
+      "de": "Zusätzlich zur Rolle MUSS eine iirds:Party auch eine zugehörige Beschreibung von sich selbst als konformes vcard:kind-Objekt haben, die über iirds:relates-to-vcard zugewiesen wird."
+    },
+    {
+      "id": "M24.1",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1 (Ungenauigkeit, siehe M33)",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Navigation%20sequences%20and%20hierarchies%20of%20InformationUnits%20MUST%20be%20modeled%20as%20linked%20lists%20of%20instances%20of%20the%20class%20iirds%3ADirectoryNode.%20In%20a%20linked%20list%2C%20an%20iirds%3ADirectoryNode%20references%20the%20following%20node%20by%20the%20property%20iirds%3Ahas%2Dnext%2Dsibling.",
+      "path": "DirectoryNode",
+      "en": "iirds:DirectoryNode MUST NOT have more than one property iirds:has-next-sibling.",
+      "de": "iirds:DirectoryNode DARF NICHT mehr als eine Eigenschaft haben iirds:has-next-sibling."
+    },
+    {
+      "id": "M24.2",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=0..1%C2%A0%20iirds%3Ahas%2Ddirectory%2Dstructure%2Dtype%20property%20%2D%20iirds%3ADirectoryNodeType",
+      "path": "DirectoryNode",
+      "en": "iirds:DirectoryNode MUST NOT have more than one property iirds:has-directory-structure-type.",
+      "de": "iirds:DirectoryNode DARF NICHT mehr als eine Eigenschaft haben iirds:has-directory-structure-type."
+    },
+    {
+      "id": "M24.3",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#:~:text=0..1%C2%A0%20iirds%3Ahas%2Dfirst%2Dchild%20property%20%2D%20iirds%3ADirectoryNode",
+      "path": "DirectoryNode",
+      "en": "iirds:DirectoryNode MUST NOT have more than one property iirds:has-first-child property.",
+      "de": "iirds:DirectoryNode DARF NICHT mehr als eine Eigenschaft haben iirds:has-first-child Eigenschaft."
+    },
+    {
+      "id": "M24.4",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#:~:text=0..1%C2%A0%20iirds%3Arelates%2Dto%2Dinformation%2Dunit%20property%20%2D%20iirds%3AInformationUnit",
+      "path": "DirectoryNode",
+      "en": "iirds:DirectoryNode MUST NOT have more than one property iirds:relates-to-information-unit.",
+      "de": "iirds:DirectoryNode DARF NICHT mehr als eine Eigenschaft haben iirds:relates-to-information-unit."
+    },
+    {
+      "id": "M24.5",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "only root element must have property",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Only%20root%20nodes%20of%20a%20directory%20structure%20MUST%20have%20the%20property%20iirds%3Ahas%2Ddirectory%2Dstructure%2Dtype.",
+      "path": "DirectoryNode",
+      "en": "The root node of a directory structure MUST have one property iirds:has-directory-structure-type.",
+      "de": "Der Wurzelknoten einer Verzeichnisstruktur MUSS eine Eigenschaft haben: iirds:has-directory-structure-type."
+    },
+    {
+      "id": "M24.6",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "there must be at least one root directory node",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=6.9.1-,Directory%20Nodes",
+      "path": "DirectoryNode",
+      "en": "There MUST be at least one root node that has the elements iirds:has-directory-structure-type, iirds:has-first-child and iirds:has-next-sibling and is not itself referenced as iirds:next-sibling or iirds:first-child.",
+      "de": "Es MUSS mindestens ein Wurzelknoten vorhanden sein, der die Elemente iirds:has-directory-structure-type, iirds:has-first-child und iirds:has-next-sibling hat und nicht selbst als iirds:next-sibling oder iirds:first-child referenziert wird."
+    },
+    {
+      "id": "M25",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "rdf:resource relates to class iirds:nil",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20model%20closed%20lists%2C%20the%20last%20node%20in%20a%20list%20level%20MUST%20have%20the%20property%20iirds%3Ahas%2Dnext%2Dsibling%20relating%20to%20an%20instance%20of%20the%20class%20iirds%3Anil.",
+      "path": "DirectoryNode",
+      "en": "To model closed lists, the last node in a list level MUST have the property iirds:has-next-sibling relating to an instance of the class iirds:nil.",
+      "de": "Um geschlossene Listen zu modellieren, MUSS der letzte Knoten in einer Listenebene die Eigenschaft iirds:has-next-sibling haben, die sich auf eine Instanz der Klasse iirds:nil bezieht."
+    },
+    {
+      "id": "M26",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20model%20hierarchy%20levels%20in%20the%20navigation%20structure%2C%20an%20iirds%3ADirectoryNode%20instance%20MUST%20reference%20an%20iirds%3ADirectoryNode%20instance%20on%20the%20next%20lower%20level%20by%20the%20property%20iirds%3Ahas%2Dfirst%2Dchild.",
+      "path": "DirectoryNode",
+      "en": "To model hierarchy levels in the navigation structure, an iirds:DirectoryNode instance MUST reference an iirds:DirectoryNode instance on the next lower level by the property iirds:has-first-child.",
+      "de": "Um Hierarchieebenen in der Navigationsstruktur zu modellieren, MUSS eine iirds:DirectoryNode-Instanz eine iirds:DirectoryNode-Instanz auf der nächstniedrigeren Ebene durch die Eigenschaft iirds:has-first-child referenzieren."
+    },
+    {
+      "id": "M27",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20directory%20node%20on%20the%20next%20lower%20level%20MUST%20be%20the%20first%20item%20of%20another%20linked%20list.",
+      "path": "has-first-child > DirectoryNode",
+      "en": "The directory node on the next lower level MUST be the first item of another linked list.",
+      "de": "Der Verzeichnisknoten auf der nächstniedrigeren Ebene MUSS das erste Element einer anderen verknüpften Liste sein."
+    },
+    {
+      "id": "M30",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20file%20metadata.rdf%20MUST%20NOT%20contain%20the%20iiRDS%20schema%20or%20iiRDS%20domain%20extensions.",
+      "path": "Class, Property, subPropertyOf, subClassOf, domain, range, domainIncludes, rangeIncludes",
+      "en": "The file metadata.rdf MUST NOT contain the iiRDS schema or iiRDS domain extensions.",
+      "de": "Die Datei metadata.rdf DARF NICHT das iiRDS-Schema oder die iiRDS-Domänenerweiterungen enthalten."
+    },
+    {
+      "id": "M35",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=1%C2%A0%20iirds%3Aidentifier%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal",
+      "path": "Identity",
+      "en": "iirds:Identity MUST have property iirds:identifier",
+      "de": "iirds:Identity MUSS die Eigenschaft iirds:identifier haben"
+    },
+    {
+      "id": "M36",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-identity-domain:~:text=1%C2%A0%20iirds%3Ahas%2Didentity%2Ddomain%20property%20%2D%20iirds%3AIdentityDomain",
+      "path": "Identity",
+      "en": "iirds:Identity MUST have property iirds:IdentityDomain",
+      "de": "iirds:Identity MUSS die Eigenschaft iirds:IdentityDomain haben"
+    },
+    {
+      "id": "M37",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=the%20iiRDS%20package.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "Document",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M38",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=external%20component%20definitions.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "Component",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M39",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=product%20or%20system.-,IRI%3A,REQUIRED,-iirds%3AConformity",
+      "path": "Concept",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M40",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=approved%20or%20withdrawn.-,IRI%3A,REQUIRED,-iirds%3ADesignAndRealization",
+      "path": "ContentLifeCycleStatusValue",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M41",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=list%20of%20figures%27.-,IRI%3A,REQUIRED,-iirds%3ADocument",
+      "path": "DirectoryNodeType",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M42",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=of%20a%20document.-,IRI%3A,REQUIRED,-iirds%3ADownTime",
+      "path": "DocumentType",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M43",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=to%20an%20event.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "Event",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M44",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=and%20user%20feedback.-,IRI%3A,REQUIRED,-iirds%3AFormality",
+      "path": "Form",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M45",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=and%20warranty%20conditions.-,IRI%3A,REQUIRED,-iirds%3AFragment",
+      "path": "Formality",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M46",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=a%20fragment%20selector.-,IRI%3A,REQUIRED,-iirds%3AFragmentSelector",
+      "path": "Fragment",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M47",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=of%20the%20product.-,IRI%3A,REQUIRED,-iirds%3AFunctionalMetadata",
+      "path": "Functionality",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M48",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=of%20the%20domain.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "IdentityDomain",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M49",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=by%20the%20domain.-,IRI%3A,REQUIRED,-iirds%3AiirdsDomainEntity",
+      "path": "IdentityType",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M50",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=the%20information%20object.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "InformationObject",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M51",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=summaries%2C%20and%20assessments.-,IRI%3A,REQUIRED,-iirds%3AMaintenanceInterval",
+      "path": "Learning",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M52",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=overall%20iiRDS%20package.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "Package",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M53",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=in%20a%20vCard.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "Party",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M54",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=manufacturer%2C%20author%2C%20inspector.-,IRI%3A,REQUIRED,-iirds%3APlanningTime",
+      "path": "PartyRole",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M55",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=process%2Drelated%20information-,IRI%3A,REQUIRED,-iirds%3AProductFeature",
+      "path": "Process",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M56",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=phone%20call%2C%20ringing.-,IRI%3A,REQUIRED,-iirds%3AProductLifeCyclePhase",
+      "path": "ProductFunction",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M57",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=voltage%2C%20power%2C%20weight.-,IRI%3A,REQUIRED,-iirds%3AProductVariant",
+      "path": "ProductProperty",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M58",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=individually%20manufactured%20good.-,IRI%3A,REQUIRED,-Properties%3A",
+      "path": "ProductVariant",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M59",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=rather%20than%20memorized.-,IRI%3A,REQUIRED,-iirds%3ARendition",
+      "path": "Reference",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M60",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=of%20a%20system.-,IRI%3A,REQUIRED,-iirds%3ASafety",
+      "path": "Role",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M61",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirds%3ASelector",
+      "path": "Safety",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M62",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=the%20technical%20documentation.-,IRI%3A,REQUIRED,-iirds%3ASupply",
+      "path": "SkillLevel",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M63",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirds%3ATask",
+      "path": "Supply",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M64",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=or%20safety%20instructions.-,IRI%3A,REQUIRED,-iirds%3ATechnicalData",
+      "path": "Task",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M65",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=this%20class%20instead.-,IRI%3A,REQUIRED,-iirds%3ATechnicalOverview",
+      "path": "TechnicalData",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M66",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=and%20pneumatic%20diagrams.-,IRI%3A,REQUIRED,-iirds%3ATopic",
+      "path": "TechnicalOverview",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M67",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=is%20a%20file%20in%20the%20iiRDS%20package.-,IRI%3A,REQUIRED,-iirds%3ATopicType",
+      "path": "Topic",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M68",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=no%20specific%20type.-,IRI%3A,REQUIRED,-iirds%3ATroubleshooting",
+      "path": "TopicType",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M69",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=for%20the%20error.-,IRI%3A,REQUIRED,-iirds%3AUse",
+      "path": "Troubleshooting",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M70",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirds%3AWarningMessage",
+      "path": "Use",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M71",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=avoid%20the%20hazard.-,IRI%3A,REQUIRED,-iirds%3AWorkingTime",
+      "path": "WarningMessage",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M72",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=in%20technical%20documentation.-,IRI%3A,REQUIRED,-iirdsMch%3AHardwareTool",
+      "path": "ConsumableSupply",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M73",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirdsMch%3AiirdsMachineryDomainEntity",
+      "path": "HardwareTool",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M74",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirdsMch%3AOperatingSupply",
+      "path": "Lubricant",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M75",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=IRI%3A-,REQUIRED,-iirdsMch%3AProtectiveEquipment",
+      "path": "OperatingSupply",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M76",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=iirdsMch%3AProtectiveEquipment",
+      "path": "ProtectiveEquipment",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M77",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds:~:text=OPTIONAL-,iirdsMch%3ASparePart,-Term",
+      "path": "SparePart",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M78",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-rdf-schema-reference:~:text=use%20of%20the%20product.-,Description%3A,-Not%20intended%20to%20be",
+      "path": "AfterUse",
+      "en": "Not intended to be used directly. Use the subclasses instead. For lifecycle phases not covered by the iiRDS standard subclasses, define custom subclasses.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen.  Definieren Sie für Lebenszyklusphasen, die nicht von den iiRDS-Standardunterklassen abgedeckt werden, benutzerdefinierte Unterklassen."
+    },
+    {
+      "id": "M79",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-rdf-schema-reference:~:text=Not%20intented%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.%20For%20collection%20subjects%20not%20covered%20by%20the%20iiRDS%20standard%20subclasses%2C%20define%20custom%20subclasses.",
+      "path": "Collection",
+      "en": "Not intented to be used directly. Use the subclasses instead. For collection subjects not covered by the iiRDS standard subclasses, define custom subclasses.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen.  Definieren Sie für Sammlungsthemen, die nicht von den iiRDS-Standardunterklassen abgedeckt werden, benutzerdefinierte Unterklassen."
+    },
+    {
+      "id": "M80",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-rdf-schema-reference:~:text=Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.%20For%20information%20subjects%20not%20covered%20by%20the%20iiRDS%20standard%20subclasses%2C%20define%20custom%20subclasses.",
+      "path": "Conformity",
+      "en": "Not intended to be used directly. Use the subclasses instead. For information subjects not covered by the iiRDS standard subclasses, define custom subclasses.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen.  Definieren Sie für Informationsthemen, die nicht von den iiRDS-Standardunterklassen abgedeckt werden, benutzerdefinierte Unterklassen."
+    },
+    {
+      "id": "M81",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-rdf-schema-reference:~:text=of%20a%20product.-,Description%3A,phases%20not%20covered%20by%20the%20iiRDS%20standard%20subclasses%2C%20define%20custom%20subclasses.,-IRI%3A",
+      "path": "DesignAndRealization",
+      "en": "Not intended to be used directly. Use the subclasses instead. For lifecycle phases not covered by the iiRDS standard subclasses, define custom subclasses.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen.  Definieren Sie für Lebenszyklusphasen, die nicht von den iiRDS-Standardunterklassen abgedeckt werden, benutzerdefinierte Unterklassen."
+    },
+    {
+      "id": "M82",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=Description%3A-,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-iirds%3ADocumentType",
+      "path": "DocumentationMetadata",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M83",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=Description%3A-,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-iirds%3AIdentity",
+      "path": "FunctionalMetadata",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M84",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=Description%3A-,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-Properties%3A",
+      "path": "iirdsDomainEntity",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M85",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-rdf-schema-reference:~:text=Description%3A-,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-iirds%3AAfterUse",
+      "path": "AdministrativeMetadata",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M86",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=Description%3A-,Not%20intented%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-IRI%3A",
+      "path": "InformationSubject",
+      "en": "Not intented to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M87",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=Description%3A-,Not%20intented%20to%20be%20used%20directly.,-IRI%3A",
+      "path": "InformationType",
+      "en": "Not intented to be used directly.",
+      "de": "Nicht zur direkten Verwendung bestimmt."
+    },
+    {
+      "id": "M88",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=specific%20working%20tasks.-,Description%3A,-Not%20intended%20to",
+      "path": "PlanningTime",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M89",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=functions%20of%20a%20product%20or%20component.-,Description%3A,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-IRI%3A",
+      "path": "ProductFeature",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M90",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=MAY%20refer%20to.-,Description%3A,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-IRI%3A",
+      "path": "ProductLifeCyclePhase",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M91",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=product%2Drelated%20metadata.-,Description%3A,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-IRI%3A",
+      "path": "ProductMetadata",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M92",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=system%20to%20use.-,Description%3A,phases%20not%20covered%20by%20the%20iiRDS%20standard%20subclasses%2C%20define%20custom%20subclasses.,-IRI%3A",
+      "path": "PuttingToUse",
+      "en": "Not intended to be used directly. Use the subclasses instead. For lifecycle phases not covered by the iiRDS standard subclasses, define custom subclasses.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen.  Definieren Sie für Lebenszyklusphasen, die nicht von den iiRDS-Standardunterklassen abgedeckt werden, benutzerdefinierte Unterklassen."
+    },
+    {
+      "id": "M93",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-content-lifecycle-status-value:~:text=roles%20REQUIRED%20for%20working%20tasks%20described%20in%20technical%20documentation.-,Description%3A,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-IRI%3A",
+      "path": "Qualification",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M94",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "Not intended to be used directly.",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_relates-to-administrative-metadata:~:text=Description%3A-,Not%20intended%20to%20be%20used%20directly.%20Use%20the%20subclasses%20instead.,-iirds%3Arelates%2Dto%2Dcomponent",
+      "path": "relates-to-administrative-metadata",
+      "en": "Not intended to be used directly. Use the subclasses instead.",
+      "de": "Nicht zur direkten Verwendung bestimmt.  Verwenden Sie stattdessen die Unterklassen."
+    },
+    {
+      "id": "M95",
+      "kind": "schema",
+      "prio": "MUST NOT",
+      "category": "cardinality 0..1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_ProductMetadata:~:text=identity%20properties%20%2D%20iirds%3AIdentity-,0..1%C2%A0%20iirds%3Arelates%2Dto%2Dparty%20property%20%2D%20iirds%3AParty,-iirds%3AConcept",
+      "path": "Component",
+      "en": "iirds:Component MUST NOT have more than 1 property iirds:relates-to-party",
+      "de": "iirds:Component DARF NICHT mehr als 1 Eigenschaft iirds:relates-to-party haben"
+    },
+    {
+      "id": "M96.1",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=An%20external%20classification%20MUST%20point%20to%20exactly%20one%20domain%20by%20the%20iirds%3Ahas%2Dclassification%2Ddomain%20property.%20The%20domain%20is%20an%20instance%20of%20the%20iirdsClassificationDomain%20class.",
+      "path": "ExternalClassification",
+      "en": "An external classification MUST point to exactly one classification domain by the iirds:has-classification-domain property.",
+      "de": "Eine externe Klassifikation MUSS über die Eigenschaft iirds:has-classification-domain auf genau eine Klassifikationsdomäne verweisen."
+    },
+    {
+      "id": "M96.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=6.8.4%20External%20Classification",
+      "path": "ExternalClassification",
+      "en": "An external classification MUST have exactly one classification identifier.",
+      "de": "Eine externe Klassifikation MUSS genau einen Klassifikationsidentifikator haben."
+    },
+    {
+      "id": "M96.3",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "cardinality 1",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=6.8.4%20External%20Classification",
+      "path": "ExternalClassification",
+      "en": "The classification identifier MUST be provided as a non-empty string in the iirds:classificationIdentifier property.",
+      "de": "Der Klassifizierungsbezeichner MUSS als nicht leere Zeichenfolge in der Eigenschaft iirds:classificationIdentifier angegeben werden."
+    },
+    {
+      "id": "M96.4",
+      "kind": "schema",
+      "prio": "MAY",
+      "category": "may have properties",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=Instances%20of%20the%20classes%20iirds%3AProductVariant%2C%20iirds%3AProductFeature%2C%20iirds%3AComponent%2C%20and%20iirds%3AInformationUnit%20MAY%20have%20iirds%3Ahas%2Dexternal%2Dclassification%20relations%20to%20iirds%3AExternalClassification%20instances.",
+      "path": "has-external-classification",
+      "en": "Instances of the classes iirds:ProductVariant, iirds:ProductFeature, iirds:Component and iirds:InformationUnit MAY have iirds:has-external-classification relations to iirds:ExternalClassification instances.",
+      "de": "Instanzen der Klassen iirds:ProductVariant, iirds:ProductFeature, iirds:Component und iirds:InformationUnit KÖNNEN iirds:has-external-classification-Beziehungen zu iirds:ExternalClassification-Instanzen haben."
+    },
+    {
+      "id": "M97.1",
+      "kind": "schema",
+      "prio": "REQUIRED",
+      "category": "must have IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "",
+      "path": "ClassificationDomain",
+      "en": "IRI: REQUIRED",
+      "de": "IRI: ERFORDERLICH"
+    },
+    {
+      "id": "M97.2",
+      "kind": "schema",
+      "prio": "MUST",
+      "category": "absolute IRI",
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": "https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=Instances%20of%20class%20iirds%3AClassificationDomain%20MUST%20have%20an%20absolute%20IRI",
+      "path": "ClassificationDomain",
+      "en": "Instances of class iirds:ClassificationDomain MUST have an absolute IRI.",
+      "de": "Instanzen der Klasse iirds:ClassificationDomain MÜSSEN einen absoluten IRI haben."
+    },
+    {
+      "id": "S1",
+      "kind": "system",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": null,
+      "path": null,
+      "en": "iiRDS container is not a readable file",
+      "de": "iiRDS-Container ist keine lesbare Datei"
+    },
+    {
+      "id": "S2",
+      "kind": "system",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": null,
+      "path": null,
+      "en": "Container validation failed",
+      "de": "Container-Validierung fehlgeschlagen"
+    },
+    {
+      "id": "S3",
+      "kind": "system",
+      "prio": "MUST",
+      "category": null,
+      "versions": [
+        "1.0",
+        "1.0.1",
+        "1.1",
+        "1.2",
+        "1.3"
+      ],
+      "variants": [],
+      "spec": null,
+      "path": null,
+      "en": "Schema validation failed",
+      "de": "Schema-Validierung fehlgeschlagen"
+    }
+  ]
+}

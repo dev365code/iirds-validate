@@ -100,6 +100,11 @@ existing tool confirms the file parses and stops; all 135 schema rules read
 `metadata.rdf` and skip a JSON-LD package entirely. Here both serialisations
 parse into the same graph and get the same rules.
 
+Every place the two tools disagree is recorded, with evidence, in
+[docs/divergences.md](docs/divergences.md) — including the places where the
+reference tool's implementation does not match its own rule text, and the
+places where this project was wrong until its corpus said so.
+
 **A missing version declaration passes silently.** Rules are filtered by the
 declared `iirds:iiRDSVersion`; when it is absent the filter matches nothing, no
 rules run, and the report is clean. This tool falls back to the newest version,

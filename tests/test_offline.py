@@ -22,6 +22,38 @@ def test_validation_runs_with_the_network_disabled(make_package, no_network):
     assert report.checked > 40
 
 
+#: A JSON-LD context may be a URL, and the parser dereferences it. The earlier
+#: version of this file validated a package with no JSON-LD in it and therefore
+#: proved nothing about the case that actually reaches the network.
+REMOTE_CONTEXT = '{"@context": "https://example.invalid/ctx.jsonld", "@id": "urn:p"}'
+NESTED_REMOTE_CONTEXT = (
+    '{"@context": [{"iirds": "http://iirds.tekom.de/iirds#"},'
+    ' "http://example.invalid/ctx"], "@id": "urn:p"}')
+INLINE_CONTEXT = ('{"@context": {"iirds": "http://iirds.tekom.de/iirds#"},'
+                  ' "@id": "urn:test:package", "@type": "iirds:Package"}')
+
+
+@pytest.mark.parametrize("jsonld", [REMOTE_CONTEXT, NESTED_REMOTE_CONTEXT],
+                         ids=["top-level", "nested-in-array"])
+def test_a_remote_jsonld_context_is_refused_not_fetched(make_package, no_network, jsonld):
+    """Otherwise a supplier chooses which host the validator connects to.
+
+    Inside a plant network that is worse than a broken promise about being
+    offline: the package decides where a machine behind the firewall reaches
+    out to. Contexts must be inline.
+    """
+    report = runner.check(make_package(jsonld=jsonld))     # no_network would raise on a fetch
+
+    assert not report.ok
+    assert "C16.2" in {f.rule.id for f in report.findings}
+    assert any("inline" in (f.violation.detail or "") for f in report.findings)
+
+
+def test_an_inline_context_still_works(make_package, no_network):
+    report = runner.check(make_package(jsonld=INLINE_CONTEXT))
+    assert report.ok, [f.violation.message for f in report.findings]
+
+
 def test_vendored_ontology_is_intact():
     import hashlib
 

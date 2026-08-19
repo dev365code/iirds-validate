@@ -15,6 +15,22 @@ from ..model import DCTERMS, PACKAGE_BASE, Violation, is_absolute_iri, is_named
 from ..registry import rule
 
 
+def _exactly_one(ctx, cls, prop, label):
+    """`prop` must appear once on every instance of `cls`.
+
+    Distinct from "has at least one": the specification's cardinality tables
+    give 1, not 1..*, for these, and a second value is as much a defect as none
+    — a consumer has no way to choose between them.
+    """
+    for subj in ctx.instances_of(cls):
+        values = ctx.values(subj, prop)
+        if len(values) != 1:
+            yield Violation("%s must have exactly one %s" % (
+                                str(cls).split("#")[-1], label),
+                            subject=str(subj),
+                            detail="%d found" % len(values))
+
+
 def _at_most_one(ctx, cls, prop, label):
     """Shared body for the many 'MUST NOT have more than one X' rules."""
     for subj in ctx.instances_of(cls):
@@ -101,11 +117,7 @@ def m3_exactly_one_package(ctx):
 
 @rule("M4")
 def m4_package_version(ctx):
-    for pkg in ctx.instances_of(T.Package):
-        if ctx.has(pkg, T.is_part_of_package):
-            continue
-        if not ctx.has(pkg, T.iiRDSVersion):
-            yield Violation("iirds:Package must carry iirds:iiRDSVersion", subject=str(pkg))
+    yield from _exactly_one(ctx, T.Package, T.iiRDSVersion, "iirds:iiRDSVersion")
 
 
 @rule("M5")
@@ -153,16 +165,12 @@ def m9_relative_source(ctx):
 
 @rule("M10")
 def m10_rendition_source(ctx):
-    for rend in ctx.instances_of(T.Rendition):
-        if not ctx.has(rend, T.source):
-            yield Violation("iirds:Rendition must have iirds:source", subject=str(rend))
+    yield from _exactly_one(ctx, T.Rendition, T.source, "iirds:source")
 
 
 @rule("M11")
 def m11_rendition_format(ctx):
-    for rend in ctx.instances_of(T.Rendition):
-        if not ctx.has(rend, T.fmt):
-            yield Violation("iirds:Rendition must have iirds:format", subject=str(rend))
+    yield from _exactly_one(ctx, T.Rendition, T.fmt, "iirds:format")
 
 
 @rule("M12")
@@ -172,34 +180,41 @@ def m12_no_direct_selector(ctx):
                         subject=str(subj))
 
 
+def _value_selectors(ctx):
+    """Selectors that address content by a value.
+
+    A RangeSelector does not: it delegates to iirds:has-start-selector and
+    iirds:has-end-selector, which is what M14.1 and M14.2 check. Asking it for
+    an rdf:value reports every correctly-built range in a package.
+    """
+    ranges = set(ctx.instances_of(T.RangeSelector))
+    return [s for s in ctx.instances_of(T.Selector) if s not in ranges]
+
+
 @rule("M13.1")
 def m13_1_selector_value(ctx):
-    for sel in ctx.instances_of(T.Selector):
-        if not ctx.values(sel, RDF.value):
-            yield Violation("iirds:Selector must have rdf:value", subject=str(sel))
+    for sel in _value_selectors(ctx):
+        if len(ctx.values(sel, RDF.value)) != 1:
+            yield Violation("a selector that addresses content by value must have exactly "
+                            "one rdf:value", subject=str(sel))
 
 
 @rule("M13.2")
 def m13_2_selector_conforms_to(ctx):
-    for sel in ctx.instances_of(T.Selector):
-        if not ctx.values(sel, DCTERMS.conformsTo):
-            yield Violation("iirds:Selector must have dcterms:conformsTo", subject=str(sel))
+    for sel in _value_selectors(ctx):
+        if len(ctx.values(sel, DCTERMS.conformsTo)) != 1:
+            yield Violation("a selector that addresses content by value must have exactly "
+                            "one dcterms:conformsTo", subject=str(sel))
 
 
 @rule("M14.1")
 def m14_1_range_start(ctx):
-    for sel in ctx.instances_of(T.RangeSelector):
-        if not ctx.has(sel, T.has_start_selector):
-            yield Violation("iirds:RangeSelector must have iirds:has-start-selector",
-                            subject=str(sel))
+    yield from _exactly_one(ctx, T.RangeSelector, T.has_start_selector, "iirds:has-start-selector")
 
 
 @rule("M14.2")
 def m14_2_range_end(ctx):
-    for sel in ctx.instances_of(T.RangeSelector):
-        if not ctx.has(sel, T.has_end_selector):
-            yield Violation("iirds:RangeSelector must have iirds:has-end-selector",
-                            subject=str(sel))
+    yield from _exactly_one(ctx, T.RangeSelector, T.has_end_selector, "iirds:has-end-selector")
 
 
 # --------------------------------------------------------------------------
@@ -217,20 +232,31 @@ def m15_1_document_type(ctx):
 
 @rule("M16.1")
 def m16_1_event_code(ctx):
-    for ev in ctx.instances_of(T.Event):
-        if not ctx.has(ev, T.has_event_code):
-            yield Violation("iirds:Event must have iirds:eventCode", subject=str(ev))
+    yield from _exactly_one(ctx, T.Event, T.has_event_code, "iirds:has-event-code")
 
 
 @rule("M16.2")
 def m16_2_event_type(ctx):
-    for ev in ctx.instances_of(T.Event):
-        if not ctx.has(ev, T.has_event_type):
-            yield Violation("iirds:Event must have iirds:eventType", subject=str(ev))
+    yield from _exactly_one(ctx, T.Event, T.has_event_type, "iirds:has-event-type")
 
 
 @rule("M19.1")
-def m19_1_identity_domain(ctx):
+def m19_1_identity_identifier(ctx):
+    """The catalogue's wording for M19.1 is about the domain, but the reference
+    tool checks the identifier here and checks the domain under M19.3. Both
+    checks exist either way; adopting their assignment is what keeps a
+    rule-by-rule comparison meaningful. The wording is recorded in
+    docs/divergences.md.
+    """
+    for ident in ctx.instances_of(T.Identity):
+        values = ctx.values(ident, T.identifier)
+        if len(values) != 1:
+            yield Violation("iirds:Identity must have exactly one iirds:identifier",
+                            subject=str(ident), detail="%d found" % len(values))
+
+
+@rule("M19.3")
+def m19_3_identity_domain(ctx):
     for ident in ctx.instances_of(T.Identity):
         domains = ctx.values(ident, T.has_identity_domain)
         if len(domains) != 1:
@@ -261,6 +287,14 @@ def m21_3(ctx):
 
 @rule("M21.4")
 def m21_4(ctx):
+    """The wording says iirds:purpose; the reference tool checks dateOfStatus
+    here and purpose under M21.5. Following the wording for both would leave
+    dateOfStatus unchecked by anything, which is the worse outcome."""
+    yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfStatus, "iirds:dateOfStatus")
+
+
+@rule("M21.5")
+def m21_5(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.purpose, "iirds:purpose")
 
 
@@ -272,9 +306,7 @@ def m21_6(ctx):
 
 @rule("M22.1")
 def m22_1_party_role(ctx):
-    for party in ctx.instances_of(T.Party):
-        if not ctx.has(party, T.has_party_role):
-            yield Violation("iirds:Party must have iirds:has-party-role", subject=str(party))
+    yield from _exactly_one(ctx, T.Party, T.has_party_role, "iirds:has-party-role")
 
 
 # --------------------------------------------------------------------------
@@ -380,11 +412,7 @@ def m27_first_child_starts_a_new_list(ctx):
                             subject=str(parent), detail=str(child))
 
 
-@rule("M35")
-def m35_identity_identifier(ctx):
-    for ident in ctx.instances_of(T.Identity):
-        if not ctx.has(ident, T.identifier):
-            yield Violation("iirds:Identity must have iirds:identifier", subject=str(ident))
+
 
 
 # --------------------------------------------------------------------------
@@ -498,37 +526,42 @@ def m94_administrative_metadata_relation_not_direct(ctx):
 @rule("M19.4")
 def m19_4_identity_domain_is_typed(ctx):
     for identity, domain in ctx.graph.subject_objects(T.has_identity_domain):
+        if (domain, None, None) not in ctx.graph:
+            continue          # not described here at all; L1 reports the dangling reference
         if T.IdentityDomain not in ctx.values(domain, T.RDF_TYPE):
             yield Violation("the object of iirds:has-identity-domain must be an instance of "
                             "iirds:IdentityDomain",
                             subject=str(identity), detail=str(domain))
 
 
-@rule("M36")
-def m36_identity_has_a_domain(ctx):
-    """M19.1 requires exactly one; this requires at least one. Both are in the
-    catalogue and both are reported by the reference tool, so both are here."""
-    for identity in ctx.instances_of(T.Identity):
-        if not ctx.has(identity, T.has_identity_domain):
-            yield Violation("iirds:Identity must have iirds:has-identity-domain",
-                            subject=str(identity))
+
 
 
 @rule("M21.1")
 def m21_1_lifecycle_status_value(ctx):
-    for status in ctx.instances_of(T.ContentLifeCycleStatus):
-        if not ctx.has(status, T.has_content_lifecycle_status_value):
-            yield Violation("iirds:ContentLifeCycleStatus must have "
-                            "iirds:has-content-lifecycle-status-value", subject=str(status))
+    yield from _exactly_one(ctx, T.ContentLifeCycleStatus, T.has_content_lifecycle_status_value, "iirds:has-content-lifecycle-status-value")
+
+
+@rule("M22.2")
+def m22_2_role_is_a_party_role(ctx):
+    """M22.1 asks whether the party has a role; this asks whether the thing it
+    points at is one. They were the same function here, which double-reported
+    one defect and left the actual check missing."""
+    standard = ctx.ontology.subclasses_of(T.PartyRole)
+    for party, role in ctx.graph.subject_objects(T.has_party_role):
+        types = set(ctx.values(role, T.RDF_TYPE))
+        if types & standard or role in ctx.ontology.defined_terms():
+            continue
+        if (role, None, None) not in ctx.graph:
+            continue          # undescribed reference: L1's business
+        yield Violation("iirds:has-party-role must point to an iirds:PartyRole",
+                        subject=str(party), detail=str(role))
 
 
 @rule("M23")
 def m23_party_has_a_vcard(ctx):
     """A role without a description is not something anyone can act on."""
-    for party in ctx.instances_of(T.Party):
-        if not ctx.has(party, T.relates_to_vcard):
-            yield Violation("iirds:Party must describe itself via iirds:relates-to-vcard",
-                            subject=str(party))
+    yield from _exactly_one(ctx, T.Party, T.relates_to_vcard, "iirds:relates-to-vcard")
 
 
 @rule("M95")
@@ -589,14 +622,9 @@ def m96_4_external_classification_is_optional(ctx):
 # are the same check", and costs nothing — `rule()` returns the function
 # unchanged, so the decorators stack.
 
-#: "An identity MUST point to exactly one domain by the
-#: iirds:has-identity-domain property." — identical to M19.1.
-rule("M19.3")(m19_1_identity_domain)
+#: The reference tool gives M35 the same assertion as M19.1 and M36 the same
+#: as M19.3. Registering the same function twice says so exactly.
+rule("M35")(m19_1_identity_identifier)
+rule("M36")(m19_3_identity_domain)
 
-#: "iirds:ContentLifeCycleStatus MUST NOT have more than one property
-#: iirds:purpose." M21.4 states it in prose; M21.5 is the cardinality table row
-#: for the same property.
-rule("M21.5")(m21_4)
 
-#: "An iirds:Party MUST have a related iirds:PartyRole..." — identical to M22.1.
-rule("M22.2")(m22_1_party_role)

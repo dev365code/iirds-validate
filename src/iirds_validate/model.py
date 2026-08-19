@@ -45,17 +45,20 @@ def is_absolute_iri(node) -> bool:
 
 
 def is_named(node) -> bool:
-    """The resource was actually given an identifier of its own.
+    """The resource was given an identifier of its own.
 
-    Three ways it can fail, and the third is easy to miss: `rdf:about=""` is a
-    relative reference to the document itself, so it resolves to the base and
-    comes back looking like a perfectly good absolute IRI. A node that *is* the
-    base was never named. Every "MUST have an IRI" rule turns on this, so
-    getting it wrong silences forty-five of them at once.
+    Two ways it can fail. A blank node has no identifier at all. And
+    `rdf:about=""` is a relative reference to the document itself, so it
+    resolves to the base and comes back looking like a perfectly good IRI — a
+    node that *is* the base was never named. Every "MUST have an IRI" rule
+    turns on this, so getting it wrong silences sixty of them at once.
+
+    A *relative* IRI does count as named. It identifies the resource; whether
+    it should have been absolute is M5's question, and M5 is a RECOMMENDED.
+    Conflating the two turned a recommendation into sixty MUSTs and failed
+    packages the reference tool accepts.
     """
-    return (isinstance(node, URIRef)
-            and str(node) != PACKAGE_BASE
-            and is_absolute_iri(node))
+    return isinstance(node, URIRef) and str(node) not in ("", PACKAGE_BASE)
 
 
 class Severity(enum.Enum):

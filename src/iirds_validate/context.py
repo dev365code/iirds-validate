@@ -21,6 +21,7 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
@@ -112,6 +113,35 @@ def _detect(graph: Graph):
 #: input. Two cheap guards, applied before the parser sees anything.
 MAX_METADATA_BYTES = 64 * 1024 * 1024
 _ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
+_HAS_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def _remote_contexts(node, found=None):
+    """Every `@context` in the document that names a location to go and fetch.
+
+    JSON-LD lets a context be a URL, and the parser will dereference it. In a
+    package that arrived from a supplier that is two separate problems: it
+    breaks the promise that validation touches no network, and it lets the
+    sender choose a host for a machine inside the plant to connect to.
+
+    Contexts nest, and a context can be an array mixing inline objects with
+    URLs, so the whole document is walked rather than just the top level.
+    """
+    found = [] if found is None else found
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "@context":
+                for candidate in (value if isinstance(value, list) else [value]):
+                    if isinstance(candidate, str) and _HAS_SCHEME.match(candidate):
+                        found.append(candidate)
+                    else:
+                        _remote_contexts(candidate, found)
+            else:
+                _remote_contexts(value, found)
+    elif isinstance(node, list):
+        for item in node:
+            _remote_contexts(item, found)
+    return found
 
 
 def build_graph(package: Package):
@@ -139,6 +169,18 @@ def build_graph(package: Package):
         if fmt == "xml" and _ENTITY_DECL.search(raw):
             errors.append("%s: refused: the document declares XML entities" % name)
             continue
+
+        if fmt == "json-ld":
+            try:
+                document = json.loads(raw.decode("utf-8"))
+            except Exception as exc:
+                errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
+                continue
+            remote = _remote_contexts(document)
+            if remote:
+                errors.append("%s: refused: @context must be inline, not fetched from %s"
+                              % (name, ", ".join(sorted(set(remote))[:3])))
+                continue
 
         try:
             single = Graph()

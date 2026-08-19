@@ -9,6 +9,9 @@ description = "Offline, graph-based validator and interoperability linter for ii
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
+# Apache-2.0 covers this project's own code. The bundled iiRDS ontologies stay
+# under CC BY-ND 4.0 and the rule catalogue under MIT; see NOTICE, which ships
+# in the wheel alongside them. docs/licensing.md explains what that means.
 keywords = ["iirds", "tekom", "rdf", "validation", "technical-documentation", "vdi2770"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -26,6 +29,9 @@ dev = ["pytest>=7"]
 [project.scripts]
 iirds-validate = "iirds_validate.cli:main"
 iirdsv = "iirds_validate.cli:main"
+
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

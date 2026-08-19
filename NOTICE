@@ -1,42 +1,76 @@
 iirds-validate
 Copyright 2026 iirds-validate contributors
 
-This product includes software developed by the iirds-validate contributors.
 Licensed under the Apache License, Version 2.0 (see LICENSE).
 
---------------------------------------------------------------------------------
-Third-party material bundled with this distribution
---------------------------------------------------------------------------------
+The Apache licence covers the source code, tests and documentation written for
+this project. It does NOT extend to the third-party material listed below, each
+of which stays under the licence it arrived with. Nothing in this distribution
+adds to, removes from, or otherwise varies the terms of that material.
 
-1. iiRDS rule catalogue (src/iirds_validate/data/rule-catalog.json)
+================================================================================
+1. iiRDS ontologies  —  src/iirds_validate/data/ontologies/
+================================================================================
 
-   Rule identifiers, priorities, specification references and rule wording are
-   derived from the iiRDS Validation Tool by plusmeta GmbH.
+    © 2023 Gesellschaft für Technische Kommunikation – tekom Deutschland e.V.
+    All rights reserved.
 
-       https://github.com/plusmeta/iirds-validation-tool
-       Copyright 2020 plusmeta GmbH
-       Licensed under the MIT License.
+    Licensed under the Creative Commons Attribution-NoDerivatives 4.0
+    International Public License ("CC BY-ND 4.0").
+    Licence: https://creativecommons.org/licenses/by-nd/4.0/
+    Licensed Material: https://www.iirds.org/materials/version-13
+    Licence information: https://iirds.org/iirds-license/
 
-   The rule *implementations* in this project are independent work and share no
-   code with the original, which is a browser application operating on an XML
-   DOM. Rule identifiers are preserved deliberately so that results from both
-   tools can be compared.
+    NOT MODIFIED. These files are redistributed byte-for-byte as published,
+    including their original copyright headers. Their SHA-256 digests are
+    recorded in data/ontologies/sha256sums.txt and checked by
+    `python -m iirds_validate.ontology --verify`.
 
-2. iiRDS ontologies (src/iirds_validate/data/ontologies/)
+    Section 2(a)(1) of CC BY-ND 4.0 grants the right to "reproduce and Share
+    the Licensed Material, in whole or in part"; the NoDerivatives condition
+    restricts Sharing Adapted Material, which this distribution does not do.
+    Any conversion to another RDF serialisation happens in memory at run time
+    and is never redistributed.
 
-       Copyright tekom Deutschland e.V. / iiRDS Consortium
-       Licensed under Creative Commons Attribution-NoDerivatives 4.0
-       International (CC BY-ND 4.0)
-       https://creativecommons.org/licenses/by-nd/4.0/
-       https://iirds.org/iirds-license/
+    DISCLAIMER OF WARRANTIES AND LIMITATION OF LIABILITY: as stated in
+    Section 5 of CC BY-ND 4.0, the Licensor offers the Licensed Material
+    as-is and as-available, and makes no representations or warranties of any
+    kind concerning it. See the licence text for the full disclaimer.
 
-   These files are redistributed VERBATIM and UNMODIFIED, including their
-   original copyright headers, so that validation can run without network
-   access. Do not edit them. Any transformation (for example to Turtle) is
-   performed at run time and is never redistributed.
+    This project is not sponsored or endorsed by the Licensor, and nothing
+    here should be read as implying that it is.
 
-3. iiRDS is a standard of the iiRDS Consortium, hosted by tekom Deutschland e.V.
-   "iiRDS" is used here descriptively to identify the standard this tool
-   validates against. This project is NOT affiliated with, endorsed by, or
-   certified by the iiRDS Consortium, tekom, plusmeta GmbH, or Quanos
-   Solutions GmbH.
+================================================================================
+2. iiRDS rule catalogue  —  src/iirds_validate/data/rule-catalog.json
+================================================================================
+
+    Rule identifiers, priorities, applicable versions and variants,
+    specification references and rule wording are derived from:
+
+        iiRDS Validation Tool
+        https://github.com/plusmeta/iirds-validation-tool
+        Copyright 2020 plusmeta GmbH
+        Licensed under the MIT License.
+
+    Metadata only. The rule implementations in this project are independent
+    work and share no code with the original, which is a browser application
+    operating on an XML DOM. Rule identifiers are preserved deliberately so
+    that results from both tools can be compared rule by rule.
+
+    Regenerate with tools/extract_catalog.py; the source commit is recorded in
+    the catalogue's "_commit" field.
+
+================================================================================
+3. Trademarks
+================================================================================
+
+    "iiRDS" is a standard of the iiRDS Consortium, hosted by tekom Deutschland
+    e.V. The name is used here descriptively, to identify the standard this
+    software validates against.
+
+    This project is NOT affiliated with, endorsed by, or certified by the
+    iiRDS Consortium, tekom Deutschland e.V., plusmeta GmbH, or Quanos
+    Solutions GmbH.
+
+See THIRD_PARTY.md for the full provenance table and docs/licensing.md for what
+the mixed licensing means in practice.

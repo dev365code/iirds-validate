@@ -156,9 +156,12 @@ unrestricted package 1.2 and 1.3 check identically. Override detection with
 Apache-2.0 — see [LICENSE](LICENSE).
 
 The bundled iiRDS ontologies are © tekom Deutschland e.V. / iiRDS Consortium
-under CC BY-ND 4.0 and are redistributed **verbatim**; the rule catalogue is
-derived from plusmeta's MIT-licensed tool. Full provenance in
-[NOTICE](NOTICE) and [THIRD_PARTY.md](THIRD_PARTY.md).
+under **CC BY-ND 4.0** and are redistributed verbatim; the rule catalogue is
+derived from plusmeta's MIT-licensed tool. CC BY-ND is not an OSI-approved
+licence, so this distribution is not wholly open source even though the code
+is — [docs/licensing.md](docs/licensing.md) explains what that means for you
+and what would fix it. Provenance in [NOTICE](NOTICE) and
+[THIRD_PARTY.md](THIRD_PARTY.md).
 
 Not affiliated with, endorsed by, or certified by the iiRDS Consortium, tekom,
 plusmeta GmbH or Quanos Solutions GmbH. "iiRDS" is used descriptively to name

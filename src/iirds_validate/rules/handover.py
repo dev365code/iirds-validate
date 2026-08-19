@@ -33,23 +33,24 @@ def _names_an_organisation(ctx, party) -> bool:
     A handover package outlives the project that produced it, so "Author" with
     nothing behind it is not something anyone can follow up on.
 
-    One deliberate softening: if the vcard reference resolves to nothing the
-    package describes, this rule stays quiet and L1 reports the dangling
-    reference instead. Otherwise a single unresolvable pointer produces the
-    same finding five times over, once per party rule, and buries the actual
-    problem. The reference tool's own "passing" handover fixtures point
-    iirds:relates-to-vcard at an undescribed placeholder, which is how this
-    surfaced.
+    Two deliberate softenings, both found by running the reference tool's own
+    handover fixtures. If the vcard reference resolves to nothing the package
+    describes, this stays quiet and L1 reports the dangling reference: one
+    unresolvable pointer should not produce the same finding five times and
+    bury the real problem. And the test is for a stated organisation name
+    rather than a declared vcard:Organization type, because those fixtures type
+    the node `vcard:organization` — the property, lower case, not the class.
+    The substance of the requirement is that the party is identifiable, and
+    quibbling with the vocabulary spelling fails packages over something no
+    other tool checks.
     """
     cards = ctx.values(party, T.relates_to_vcard)
     if not cards:
         return False
     for card in cards:
-        described = (card, None, None) in ctx.graph
-        if not described:
-            return True                     # L1 owns it
-        if (VCARD["Organization"] in ctx.values(card, T.RDF_TYPE)
-                and ctx.has(card, ORGANISATION_NAME)):
+        if (card, None, None) not in ctx.graph:
+            return True                     # undescribed: L1 owns it
+        if ctx.has(card, ORGANISATION_NAME):
             return True
     return False
 

@@ -66,6 +66,7 @@ dateOfCreation = IIRDS["dateOfCreation"]
 dateOfLastModification = IIRDS["dateOfLastModification"]
 dateOfEffect = IIRDS["dateOfEffect"]
 dateOfExpiry = IIRDS["dateOfExpiry"]
+dateOfStatus = IIRDS["dateOfStatus"]
 
 has_abstract = IIRDS["has-abstract"]
 has_rendition = IIRDS["has-rendition"]

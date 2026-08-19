@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import enum
+import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Tuple
 
-from rdflib import Namespace
+from rdflib import Namespace, URIRef
 from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
 
 # --- iiRDS namespaces -------------------------------------------------------
@@ -27,6 +28,14 @@ MIMETYPE_VALUE = "application/iirds+zip"
 META_DIR = "META-INF"
 METADATA_RDF = "META-INF/metadata.rdf"
 METADATA_JSONLD = "META-INF/metadata.jsonld"
+
+
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def is_absolute_iri(node) -> bool:
+    """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not."""
+    return isinstance(node, URIRef) and bool(_SCHEME.match(str(node)))
 
 
 class Severity(enum.Enum):

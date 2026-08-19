@@ -112,13 +112,13 @@ Honest numbers, printed by `iirdsv rules`:
 | kind | implemented |
 |---|---|
 | container (C\*) | 15 / 19 |
-| schema (M\*) | 46 / 135 |
+| schema (M\*) | 104 / 135 |
 | system (S\*) | 0 / 3 |
-| **catalogue total** | **61 / 157** |
+| **catalogue total** | **119 / 157** |
 | interoperability (L\*) | 8 — this project only |
 
 Not yet implemented means not yet implemented: a clean `check` is evidence about
-those 61 rules, not a certificate. Contributions are welcome and the shape of a
+those 119 rules, not a certificate. Contributions are welcome and the shape of a
 rule is small — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Interoperability rules

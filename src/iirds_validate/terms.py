@@ -18,6 +18,8 @@ Two reasons this module exists rather than spelling terms inline.
 """
 from __future__ import annotations
 
+from rdflib import URIRef
+
 from .model import HOV, IIRDS
 
 # --- classes ---------------------------------------------------------------
@@ -40,9 +42,6 @@ PartyRole = IIRDS["PartyRole"]
 ContentLifeCycleStatus = IIRDS["ContentLifeCycleStatus"]
 DirectoryNode = IIRDS["DirectoryNode"]
 ProductVariant = IIRDS["ProductVariant"]
-
-CLASSES = {name: value for name, value in list(globals().items())
-           if name[0].isupper() and name != "IIRDS" and name != "HOV"}
 
 # --- properties ------------------------------------------------------------
 title = IIRDS["title"]
@@ -91,9 +90,16 @@ is_part_of_package = IIRDS["is-part-of-package"]
 # --- handover domain (iiRDS/H, new in 1.3) ---------------------------------
 hov_has_document_category = HOV["has-document-category"]
 
-PROPERTIES = {name: value for name, value in list(globals().items())
-              if name[0].islower() and name not in ("annotations",)
-              and str(value).startswith("http://iirds.tekom.de/")}
+#: One snapshot, taken at the end of the module, filtered by type rather than
+#: by name. Two positional snapshots meant a term added below the first one was
+#: absent from CLASSES and therefore never checked by tests/test_terms.py —
+#: the exact silent-skip this module exists to prevent, inside this module.
+#: `isinstance(value, URIRef)` also excludes the IIRDS/HOV namespaces, which is
+#: why no name exclusions are needed.
+TERMS = {name: value for name, value in list(globals().items())
+         if isinstance(value, URIRef)}
+CLASSES = {name: value for name, value in TERMS.items() if name[0].isupper()}
+PROPERTIES = {name: value for name, value in TERMS.items() if name[0].islower()}
 
 #: Terms the ontology files do not declare even though the specification uses
 #: them. Tracked explicitly so the guard test stays meaningful.

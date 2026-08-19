@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Optional, Sequence, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 from rdflib import Namespace
-from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
+from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
 
 # --- iiRDS namespaces -------------------------------------------------------
 IIRDS = Namespace("http://iirds.tekom.de/iirds#")
@@ -115,7 +115,8 @@ class Finding:
 @dataclass
 class Report:
     path: str
-    version: Optional[str] = None
+    version: Optional[str] = None            # as declared by the package, if it did
+    effective_version: Optional[str] = None  # what the rules were actually run against
     variant: str = "unrestricted"
     findings: list = field(default_factory=list)
     checked: int = 0                 # rules actually executed
@@ -132,8 +133,10 @@ class Report:
 
     def as_dict(self) -> dict:
         return {
+            "schemaVersion": 1,
             "package": self.path,
             "iirdsVersion": self.version,
+            "validatedAgainst": self.effective_version,
             "variant": self.variant,
             "ok": self.ok,
             "summary": {

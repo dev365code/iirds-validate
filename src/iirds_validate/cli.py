@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from . import __version__, runner
@@ -33,6 +34,15 @@ def _add_target(parser: argparse.ArgumentParser) -> None:
 
 
 def _run(args, kinds) -> int:
+    # A file that is not there is an operator error, not a validation result:
+    # exit 2. A file that opens but is not a valid container is a finding about
+    # the package, so it goes through the rules and exits 1.
+    missing = [p for p in args.package if not os.path.exists(p)]
+    if missing:
+        for path in missing:
+            print("iirds-validate: no such file: %s" % path, file=sys.stderr)
+        return EXIT_ERROR
+
     reports = [runner.run(path, kinds, version=args.version) for path in args.package]
 
     if args.format == "json":

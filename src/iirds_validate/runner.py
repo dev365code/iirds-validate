@@ -1,11 +1,12 @@
 """Rule execution."""
 from __future__ import annotations
 
-from typing import Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
-from .model import Finding, Report, Rule, Severity, Violation
+from .model import (METADATA_JSONLD, METADATA_RDF, Finding, Report, Rule,
+                    Severity, Violation)
 from .package import Package, PackageError
 from .registry import CATALOG, all_rules
 
@@ -19,9 +20,39 @@ def load(path, version: Optional[str] = None) -> Context:
     return load_context(Package(path), version=version)
 
 
-def _synthetic(rule_id: str, kind: str, prio: str, title: str) -> Rule:
-    return Rule(id=rule_id, kind=kind, prio=prio, title=title,
-                versions=(), variants=(), spec=None, fn=lambda ctx: ())
+def _synthetic(rule_id: str, kind: str) -> Rule:
+    """A catalogued rule the runner reports directly rather than executing.
+
+    Title, priority and specification link come from the catalogue like every
+    other rule, so these do not drift into a second source of truth.
+    """
+    meta = CATALOG.get(rule_id, {})
+    return Rule(id=rule_id, kind=meta.get("kind", kind), prio=meta.get("prio", "MUST"),
+                title=meta.get("en") or rule_id, versions=(), variants=(),
+                spec=meta.get("spec"), fn=lambda ctx: ())
+
+
+def _metadata_findings(ctx: Context, kinds: Sequence[str]):
+    """Metadata that did not parse must fail the run whatever is being checked.
+
+    The container rules already report this, but `lint` does not run them: the
+    graph came out empty, every L rule found nothing, and the run went green on
+    a package nobody could read. Notes do not affect the exit status, so the
+    report said "no parsable metadata found" and passed anyway.
+    """
+    if "container" in kinds:
+        return
+
+    for error in ctx.parse_errors:
+        name, _, detail = error.partition(": ")
+        rule_id = "C16.1" if name == METADATA_RDF else "C16.2"
+        yield Finding(_synthetic(rule_id, "container"),
+                      Violation("metadata could not be parsed", subject=name, detail=detail))
+
+    if not ctx.sources and not ctx.parse_errors:
+        yield Finding(_synthetic("S2", "system"),
+                      Violation("the container has no parsable metadata, so no graph rule "
+                                "could run", subject=METADATA_RDF))
 
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,
@@ -29,15 +60,23 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     report = Report(path=str(path))
 
     try:
-        ctx = load(path, version=version)
+        package = Package(path)
     except PackageError as exc:
         report.findings.append(Finding(
-            _synthetic("C1", "container", "MUST", "the container must be a readable ZIP archive"),
+            _synthetic("C1", "container"),
             Violation("cannot open container", subject=str(path), detail=str(exc))))
         report.checked = 1
         return report
 
+    with package:
+        _run_against(package, report, kinds, version, include_info)
+    return report
+
+
+def _run_against(package: Package, report: Report, kinds, version, include_info) -> None:
+    ctx = load_context(package, version=version)
     report.version = ctx.declared_version
+    report.effective_version = ctx.version
     report.variant = ctx.variant
 
     if ctx.declared_version is None:
@@ -67,8 +106,10 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
                 report.findings.append(Finding(rule, violation))
         except Exception as exc:                      # a broken rule must not hide the rest
             report.findings.append(Finding(
-                _synthetic("S3", "system", "MUST", "schema validation failed"),
+                _synthetic("S3", "system"),
                 Violation("rule %s raised %s" % (rule.id, type(exc).__name__), detail=str(exc))))
+
+    report.findings.extend(_metadata_findings(ctx, kinds))
 
     implemented = {r.id for r in all_rules()}
     report.unimplemented = sum(
@@ -80,7 +121,6 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     report.findings.sort(key=lambda f: (f.severity is not Severity.ERROR,
                                         f.severity is not Severity.WARNING,
                                         f.rule.kind, f.rule.id, f.violation.subject or ""))
-    return report
 
 
 def check(path, version: Optional[str] = None) -> Report:

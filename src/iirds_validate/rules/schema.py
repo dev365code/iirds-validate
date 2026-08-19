@@ -7,8 +7,8 @@ from the two tools can be compared directly.
 """
 from __future__ import annotations
 
-from rdflib import BNode, Literal, URIRef
-from rdflib.namespace import RDF, RDFS
+from rdflib import BNode, URIRef
+from rdflib.namespace import RDF
 
 from .. import terms as T
 from ..model import DCTERMS, Violation

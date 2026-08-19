@@ -102,7 +102,7 @@ def build_package(directory, name="test.iirds", *, metadata=MINIMAL_RDF, jsonld=
         if mimetype_first:
             write_mimetype()
         if metadata is not None:
-            zf.writestr("META-INF/metadata.rdf", metadata)
+            zf.writestr("META-INF/metadata.rdf", metadata)  # str or bytes
         if jsonld is not None:
             zf.writestr("META-INF/metadata.jsonld", jsonld)
         for rel in content:

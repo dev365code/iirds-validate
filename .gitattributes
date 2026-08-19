@@ -1,0 +1,3 @@
+* text=auto eol=lf
+*.rdf text eol=lf
+*.iirds binary

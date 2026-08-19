@@ -1,0 +1,98 @@
+"""Navigation structure rules (M24.5, M25, M26, M27) and the iiRDS/H limits.
+
+iiRDS models a table of contents as linked lists: a root node carries
+`has-directory-structure-type`, descends with `has-first-child`, and each level
+is a chain of `has-next-sibling` ending at `iirds:nil`. Four MUSTs govern its
+shape, and getting them wrong produces a package that is valid to a
+conformance checker and unnavigable to a consumer — which is why L3 and L4
+exist alongside them.
+
+The shape used in the "good" fixture below is the shape tekom's own sample
+packages use, so a rule that fires on it is wrong.
+"""
+from __future__ import annotations
+
+from conftest import MINIMAL_RDF
+from iirds_validate import runner
+
+HEAD = MINIMAL_RDF.replace("</rdf:RDF>", "")
+NIL = 'rdf:resource="http://iirds.tekom.de/iirds#nil"'
+
+
+def toc(body: str) -> str:
+    return HEAD + body + "</rdf:RDF>\n"
+
+
+#: Root, two children, list terminated at iirds:nil. What the samples do.
+GOOD = toc("""
+  <iirds:DirectoryNode rdf:about="urn:test:root">
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n2">
+    <iirds:has-next-sibling %s/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+""" % NIL)
+
+
+def ids(report):
+    return {f.rule.id for f in report.findings}
+
+
+def test_a_well_formed_table_of_contents_is_clean(make_package):
+    report = runner.run(make_package(metadata=GOOD), runner.ALL_KINDS)
+    assert report.ok, [(f.rule.id, f.violation.message) for f in report.findings]
+
+
+def test_m24_5_only_the_root_carries_the_structure_type(make_package):
+    """A node hanging off another node is not a root, so it must not claim to
+    be one — two roots in one structure is ambiguous to a consumer."""
+    broken = GOOD.replace(
+        '<iirds:DirectoryNode rdf:about="urn:test:n1">',
+        '<iirds:DirectoryNode rdf:about="urn:test:n1">\n'
+        '    <iirds:has-directory-structure-type '
+        'rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>')
+    assert "M24.5" in ids(runner.check(make_package(metadata=broken)))
+
+
+def test_m25_a_list_must_be_closed_with_nil(make_package):
+    """Without a terminator a consumer cannot tell "end of list" from
+    "truncated data"."""
+    broken = GOOD.replace('    <iirds:has-next-sibling %s/>\n' % NIL, "")
+    assert "M25" in ids(runner.check(make_package(metadata=broken)))
+
+
+def test_m25_does_not_fire_on_the_root(make_package):
+    """The root is not an item in a list, so it has no sibling to point at."""
+    assert "M25" not in ids(runner.check(make_package(metadata=GOOD)))
+
+
+def test_m26_first_child_must_be_a_directory_node(make_package):
+    broken = GOOD.replace('<iirds:has-first-child rdf:resource="urn:test:n1"/>',
+                          '<iirds:has-first-child rdf:resource="urn:test:topic1"/>')
+    assert "M26" in ids(runner.check(make_package(metadata=broken)))
+
+
+def test_m27_first_child_must_start_a_list_not_join_one(make_package):
+    """Pointing has-first-child at the middle of an existing chain makes the
+    same nodes reachable by two routes and the tree ill-defined."""
+    broken = GOOD.replace('<iirds:has-first-child rdf:resource="urn:test:n1"/>',
+                          '<iirds:has-first-child rdf:resource="urn:test:n2"/>')
+    assert "M27" in ids(runner.check(make_package(metadata=broken)))
+
+
+def test_m15_11a_handover_packages_carry_documents_only(make_package):
+    """iiRDS/H delivers documents. A Topic in an H package is not deliverable
+    by the profile's own rules."""
+    handover = GOOD.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:formatRestriction>H</iirds:formatRestriction>\n")
+    report = runner.check(make_package(metadata=handover, jsonld="{}",
+                                       extra=(("index.html", "<html/>"),)))
+    assert "M15.11a" in ids(report)

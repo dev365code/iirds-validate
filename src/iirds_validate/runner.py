@@ -9,9 +9,11 @@ from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
 from .package import Package, PackageError
 from .registry import CATALOG, all_rules
 
-CONFORMANCE_KINDS = ("container", "schema")
-LINT_KINDS = ("lint",)
-ALL_KINDS = CONFORMANCE_KINDS + LINT_KINDS
+#: "system" is in every set: a container that could not be read has to be
+#: reported whichever question the caller asked.
+CONFORMANCE_KINDS = ("container", "schema", "system")
+LINT_KINDS = ("lint", "system")
+ALL_KINDS = ("container", "schema", "lint", "system")
 
 
 def load(path, version: Optional[str] = None) -> Context:
@@ -19,12 +21,17 @@ def load(path, version: Optional[str] = None) -> Context:
     return load_context(Package(path), version=version)
 
 
-def _synthetic(rule_id: str, kind: str) -> Rule:
-    """A catalogued rule the runner reports directly rather than executing.
+def _emitted(rule_id: str, kind: str = "system") -> Rule:
+    """A registered rule the runner reports directly rather than executing.
 
-    Title, priority and specification link come from the catalogue like every
-    other rule, so these do not drift into a second source of truth.
+    S1 fires before a Context exists and S3 fires when another rule raises, so
+    neither can be evaluated in the normal loop. Their identity still comes
+    from the registry, and from the catalogue behind it, rather than being
+    written out a second time here.
     """
+    registered = {r.id: r for r in all_rules()}.get(rule_id)
+    if registered is not None:
+        return registered
     meta = CATALOG.get(rule_id, {})
     return Rule(id=rule_id, kind=meta.get("kind", kind), prio=meta.get("prio", "MUST"),
                 title=meta.get("en") or rule_id, versions=(), variants=(),
@@ -45,13 +52,10 @@ def _metadata_findings(ctx: Context, kinds: Sequence[str]):
     for error in ctx.parse_errors:
         name, _, detail = error.partition(": ")
         rule_id = "C16.1" if name == METADATA_RDF else "C16.2"
-        yield Finding(_synthetic(rule_id, "container"),
+        yield Finding(_emitted(rule_id, "container"),
                       Violation("metadata could not be parsed", subject=name, detail=detail))
 
-    if not ctx.sources and not ctx.parse_errors:
-        yield Finding(_synthetic("S2", "system"),
-                      Violation("the container has no parsable metadata, so no graph rule "
-                                "could run", subject=METADATA_RDF))
+
 
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,
@@ -62,7 +66,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
         package = Package(path)
     except PackageError as exc:
         report.findings.append(Finding(
-            _synthetic("C1", "container"),
+            _emitted("C1", "container"),
             Violation("cannot open container", subject=str(path), detail=str(exc))))
         report.checked = 1
         return report
@@ -105,7 +109,7 @@ def _run_against(package: Package, report: Report, kinds, version, include_info)
                 report.findings.append(Finding(rule, violation))
         except Exception as exc:                      # a broken rule must not hide the rest
             report.findings.append(Finding(
-                _synthetic("S3", "system"),
+                _emitted("S3"),
                 Violation("rule %s raised %s" % (rule.id, type(exc).__name__), detail=str(exc))))
 
     report.findings.extend(_metadata_findings(ctx, kinds))

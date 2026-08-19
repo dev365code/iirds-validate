@@ -333,6 +333,67 @@ def m24_6_root_node(ctx):
                         detail="%d directory nodes present" % len(nodes))
 
 
+def _linked_nodes(ctx):
+    """Directory nodes that sit inside a list: children and siblings.
+
+    A root node is referenced by nothing, which is what distinguishes it — the
+    rules about list membership must not fire on it.
+    """
+    linked = set()
+    for prop in (T.has_first_child, T.has_next_sibling):
+        linked.update(o for _s, o in ctx.graph.subject_objects(prop))
+    return linked
+
+
+@rule("M24.5")
+def m24_5_only_root_has_structure_type(ctx):
+    """The structure type names the whole structure, so only its root carries
+    it. A node reachable from another node is not a root."""
+    linked = _linked_nodes(ctx)
+    for node in ctx.instances_of(T.DirectoryNode):
+        if node in linked and ctx.has(node, T.has_directory_structure_type):
+            yield Violation("only the root node of a directory structure may have "
+                            "iirds:has-directory-structure-type",
+                            subject=str(node), detail=ctx.label_of(node))
+
+
+@rule("M25")
+def m25_lists_are_closed(ctx):
+    """Every level is a closed list: the last node points at iirds:nil.
+
+    Without the terminator a consumer cannot tell the end of a list from
+    truncated data.
+    """
+    for node in sorted(_linked_nodes(ctx) & set(ctx.instances_of(T.DirectoryNode)), key=str):
+        if not ctx.has(node, T.has_next_sibling):
+            yield Violation("the last node in a list level must have iirds:has-next-sibling "
+                            "relating to iirds:nil",
+                            subject=str(node), detail=ctx.label_of(node))
+
+
+@rule("M26")
+def m26_first_child_is_a_directory_node(ctx):
+    nodes = set(ctx.instances_of(T.DirectoryNode))
+    for parent, child in ctx.graph.subject_objects(T.has_first_child):
+        if child == T.nil or child in nodes:
+            continue
+        yield Violation("iirds:has-first-child must reference an iirds:DirectoryNode",
+                        subject=str(parent), detail=str(child))
+
+
+@rule("M27")
+def m27_first_child_starts_a_new_list(ctx):
+    """The node on the next level down heads its own chain. If something else
+    already points at it as a sibling, the same nodes are reachable twice and
+    the tree is ill-defined."""
+    siblings = {o for _s, o in ctx.graph.subject_objects(T.has_next_sibling)}
+    for parent, child in ctx.graph.subject_objects(T.has_first_child):
+        if child in siblings:
+            yield Violation("iirds:has-first-child must reference the first item of a list, "
+                            "but this node is also a iirds:has-next-sibling of another",
+                            subject=str(parent), detail=str(child))
+
+
 @rule("M35")
 def m35_identity_identifier(ctx):
     for ident in ctx.instances_of(T.Identity):
@@ -373,6 +434,15 @@ def m15_6_hov_rendition(ctx):
         if not ctx.has(doc, T.has_rendition):
             yield Violation("iiRDS/H: iirds:Document must have iirds:has-rendition",
                             subject=str(doc))
+
+
+@rule("M15.11a")
+def m15_11a_hov_documents_only(ctx):
+    for cls in (T.Topic, T.Fragment):
+        for unit in ctx.typed_exactly(cls):
+            yield Violation("iiRDS/H packages must contain only iirds:Document and "
+                            "iirds:Package information units",
+                            subject=str(unit), detail=str(cls).split("#")[-1])
 
 
 @rule("M15.11b")

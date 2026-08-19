@@ -42,6 +42,9 @@ PartyRole = IIRDS["PartyRole"]
 ContentLifeCycleStatus = IIRDS["ContentLifeCycleStatus"]
 DirectoryNode = IIRDS["DirectoryNode"]
 ProductVariant = IIRDS["ProductVariant"]
+#: The list terminator. Declared in the ontology as a subclass of
+#: DirectoryNode, though it is used as an individual.
+nil = IIRDS["nil"]
 
 # --- properties ------------------------------------------------------------
 title = IIRDS["title"]

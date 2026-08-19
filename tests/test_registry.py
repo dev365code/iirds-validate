@@ -7,15 +7,24 @@ packages it was not written for. Silent, and invisible in the coverage table.
 """
 from __future__ import annotations
 
-from iirds_validate.registry import CATALOG, all_rules, coverage, implemented_ids
-
-LINT_IDS = {"L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"}
+#: Ours, not plusmeta's. Derived rather than listed so adding one is a
+#: one-line change and a *mistyped* one still fails the test below.
+from iirds_validate.registry import (
+    CATALOG,
+    all_rules,
+    coverage,
+    implemented_ids,
+    rules_of_kind,  # noqa: E402
+)
 
 
 def test_no_rule_id_is_missing_from_the_catalogue():
+    """A typo registers as kind="lint" and is then never run by `check`."""
     uncatalogued = implemented_ids() - set(CATALOG)
-    assert uncatalogued == LINT_IDS, \
-        "uncatalogued ids are a typo unless they are ours: %s" % sorted(uncatalogued - LINT_IDS)
+    lint_ids = {r.id for r in rules_of_kind("lint")}
+    assert uncatalogued == lint_ids, \
+        "uncatalogued ids are a typo unless they are ours: %s" % sorted(uncatalogued - lint_ids)
+    assert all(rid.startswith("L") and rid[1:].isdigit() for rid in lint_ids), sorted(lint_ids)
 
 
 def test_every_rule_kind_matches_the_catalogue():
@@ -37,7 +46,9 @@ def test_coverage_matches_the_readme():
 
     readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
     cov = coverage()
-    for kind, label in (("container", r"container \(C\\\*\)"), ("schema", r"schema \(M\\\*\)")):
+    for kind, label in (("container", r"container \(C\\\*\)"),
+                        ("schema", r"schema \(M\\\*\)"),
+                        ("system", r"system \(S\\\*\)")):
         m = re.search(label + r"\s*\|\s*(\d+)\s*/\s*(\d+)", readme)
         assert m, "coverage row for %s not found in README" % kind
         assert (int(m.group(1)), int(m.group(2))) == (cov[kind]["implemented"], cov[kind]["total"]), \

@@ -44,6 +44,10 @@ class Context:
     declared_version: Optional[str] = None      # None when the package omits it
     parse_errors: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
+    #: One graph per metadata file, kept alongside the merged `graph` so a rule
+    #: can ask whether the serialisations agree. Merging is right for every
+    #: other rule and is exactly what hides a disagreement.
+    per_source: dict = field(default_factory=dict)
 
     # -- graph helpers ------------------------------------------------------
     def instances_of(self, cls: URIRef, include_subclasses: bool = True) -> List:
@@ -115,6 +119,7 @@ def build_graph(package: Package):
     graph = Graph()
     errors: List[str] = []
     sources: List[str] = []
+    per_source = {}
 
     for name, fmt in ((METADATA_RDF, "xml"), (METADATA_JSONLD, "json-ld")):
         if not package.has(name):
@@ -136,16 +141,20 @@ def build_graph(package: Package):
             continue
 
         try:
-            graph.parse(data=raw, format=fmt, publicID="urn:iirds:package:")
-            sources.append(name)
+            single = Graph()
+            single.parse(data=raw, format=fmt, publicID="urn:iirds:package:")
         except Exception as exc:
             errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
+            continue
+        per_source[name] = single
+        graph += single
+        sources.append(name)
 
-    return graph, errors, sources
+    return graph, errors, sources, per_source
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources = build_graph(package)
+    graph, errors, sources, per_source = build_graph(package)
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -165,4 +174,5 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         declared_version=declared,
         parse_errors=errors,
         sources=sources,
+        per_source=per_source,
     )

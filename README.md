@@ -157,7 +157,16 @@ iiRDS 1.0, 1.0.1, 1.1, 1.2 and 1.3 are supported, and the version and profile
 axes are independent — a rule can be 1.3-only, iiRDS/H-only, or both. Everything
 1.3 added to the rule set belongs to the handover profile (iiRDS/H), so on an
 unrestricted package 1.2 and 1.3 check identically. Override detection with
-`--iirds-version 1.2` when you need to.
+`--iirds-version 1.2`; an unpublished version is rejected rather than ignored.
+
+Every version and profile combination is exercised by the suite. Until it was,
+four of the five versions were supported only in the sense that nobody had run
+them — and a package could declare `iirds:formatRestriction` of `Z` and skip
+both the unrestricted rules and the handover ones without a word. That is now
+S5, and an unpublished `iirds:iiRDSVersion` is S4.
+
+Only the 1.3 ontology is bundled, so validating against an earlier version
+borrows its class hierarchy. The report says so when it happens.
 
 ## Licence
 

@@ -82,14 +82,25 @@ def _run_against(package: Package, report: Report, kinds, version, include_info)
     report.effective_version = ctx.version
     report.variant = ctx.variant
 
-    if ctx.declared_version is None:
+    # Three different situations used to share one message, which is how a
+    # package declaring 1.3 came to be told that 1.3 is not a known version.
+    if ctx.requested_version and ctx.requested_version != ctx.declared_version:
+        report.notes.append(
+            "validated against %s because it was asked for; the package declares %s"
+            % (ctx.version, ctx.declared_version or "no version"))
+    elif ctx.declared_version is None:
         report.notes.append(
             "no iirds:iiRDSVersion in the package; validated against %s. "
             "(Tools that filter rules by the declared version run zero rules here "
             "and report a clean package.)" % ctx.version)
     elif ctx.declared_version != ctx.version:
-        report.notes.append("declared version %r is not a known iiRDS version; "
-                            "validated against %s" % (ctx.declared_version, ctx.version))
+        report.notes.append("declared version %r is not one this standard has published; "
+                            "validated against %s instead" % (ctx.declared_version, ctx.version))
+    if ctx.ontology.substituted:
+        report.notes.append(
+            "no ontology bundled for iiRDS %s; class hierarchy taken from %s, so rules that "
+            "depend on subclassing may differ from that version"
+            % (ctx.version, ctx.ontology.substituted))
     if ctx.sources:
         report.notes.append("metadata read from " + ", ".join(ctx.sources))
     if not ctx.sources:

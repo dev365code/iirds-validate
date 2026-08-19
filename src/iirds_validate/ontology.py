@@ -28,7 +28,13 @@ class Ontology:
     def __init__(self, version: str = LATEST_VERSION, files: Iterable[str] = DEFAULT_FILES):
         self.version = version
         self.dir = DATA / version
+        #: True when this version's ontology is not bundled and another was
+        #: used instead. The caller reports it; validating a 1.0 package
+        #: against the 1.3 class hierarchy without saying so is the same kind
+        #: of silence this project exists to remove.
+        self.substituted = None
         if not self.dir.is_dir():
+            self.substituted = LATEST_VERSION
             self.dir = DATA / LATEST_VERSION
         self.graph = Graph()
         # Per-instance, not @functools.lru_cache on the method: that keys the

@@ -43,6 +43,7 @@ class Context:
     version: str
     variant: str
     declared_version: Optional[str] = None      # None when the package omits it
+    requested_version: Optional[str] = None     # set when the caller overrode it
     parse_errors: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
     #: One graph per metadata file, kept alongside the merged `graph` so a rule
@@ -214,6 +215,7 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         version=effective,
         variant=variant,
         declared_version=declared,
+        requested_version=version,
         parse_errors=errors,
         sources=sources,
         per_source=per_source,

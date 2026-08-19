@@ -12,7 +12,7 @@ in one place.
 """
 from __future__ import annotations
 
-from ..model import Violation
+from ..model import VARIANTS, VERSIONS, Violation
 from ..registry import rule
 
 #: Every kind of run, so a container that cannot be read is reported whether
@@ -54,3 +54,37 @@ def s3_rule_raised(ctx):
     any fixture produces one.
     """
     return ()
+
+
+@rule("S4", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      title="iirds:iiRDSVersion must name a published version of the standard")
+def s4_declared_version_exists(ctx):
+    """A package that says it is iiRDS 9.9 cannot be validated as anything.
+
+    Nothing in the catalogue constrains the value — M4 only counts how many
+    times the property appears — so a package could declare a version that
+    does not exist, be quietly checked against the newest one, and pass. The
+    fallback is the right behaviour; doing it in silence is not.
+    """
+    if ctx.declared_version is None or ctx.declared_version in VERSIONS:
+        return
+    yield Violation("declared iiRDS version is not one this standard has published",
+                    subject=ctx.declared_version,
+                    detail="published versions: %s" % ", ".join(VERSIONS))
+
+
+@rule("S5", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      title="iirds:formatRestriction must name a published profile")
+def s5_declared_variant_exists(ctx):
+    """An unrecognised profile silently switches off rules in both directions.
+
+    Rules are filtered by variant, so a package declaring a profile that does
+    not exist matches neither the unrestricted rules nor the handover ones: it
+    skips both sets and reports clean. That is a one-line way to dodge
+    validation entirely, and unlike the version case it produced no note at all.
+    """
+    if ctx.variant in VARIANTS:
+        return
+    yield Violation("declared iiRDS profile is not one this standard defines",
+                    subject=ctx.variant,
+                    detail="defined profiles: A, H, or no iirds:formatRestriction at all")

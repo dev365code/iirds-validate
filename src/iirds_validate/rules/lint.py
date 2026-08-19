@@ -311,3 +311,42 @@ def l9_serialisations_disagree(ctx):
 
     yield Violation("the two metadata serialisations describe different graphs",
                     subject="META-INF", detail=" | ".join(detail))
+
+
+#: iiRDS classes the ontology itself marks as groupings. Read out of the
+#: bundled ontology rather than listed, so the set stays right as the standard
+#: adds classes.
+_ABSTRACT_MARKER = "not int"
+
+
+@_lint("L10", "abstract iiRDS classes should not be used to type an instance directly")
+def l10_abstract_class_used_directly(ctx):
+    """Our reading of "Not intended to be used directly. Use the subclasses instead."
+
+    This is a lint rule and not M78-M93 on purpose. The catalogue files those
+    ids under that wording, but the reference tool implements all sixteen as a
+    check that the element carries an rdf:about — so a package can be typed
+    entirely against abstract classes and still pass every conformance rule
+    that exists. The wording says otherwise and the ontology repeats it in each
+    class's own description, so the observation is worth making; making it as a
+    MUST would mean failing tekom's sample packages on an interpretation
+    nothing else shares.
+
+    It is genuinely useful: an instance typed `iirds:Qualification` rather than
+    `iirds:Role` tells a consumer only that some qualification is involved. The
+    standard subclasses are what carry meaning.
+    """
+    abstract = set()
+    for cls, description in ctx.ontology.graph.subject_objects(T.IIRDS_DESCRIPTION):
+        if _ABSTRACT_MARKER in str(description).lower():
+            abstract.add(cls)
+
+    for cls in sorted(abstract, key=str):
+        for subject in ctx.graph.subjects(RDF.type, cls):
+            subclasses = sorted(str(s).split("#")[-1]
+                                for s in ctx.ontology.graph.subjects(RDFS.subClassOf, cls))
+            yield Violation("%s is a grouping class; type the instance as one of its "
+                            "subclasses" % str(cls).split("#")[-1],
+                            subject=str(subject),
+                            detail=("standard subclasses: %s" % ", ".join(subclasses[:6]))
+                                   if subclasses else "define a proprietary subclass")

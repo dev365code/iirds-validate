@@ -43,11 +43,22 @@ OUT = ROOT / "src/iirds_validate/rules/schema_tables.py"
 NAMESPACES = (("IIRDS", IIRDS), ("MACH", MACH), ("SW", SW), ("HOV", HOV))
 
 #: Catalogue `category` values, normalised, and the table each maps to.
+#: The catalogue's `category` for M78 to M93 reads "Not intended to be used
+#: directly", but the reference tool's assertion for all sixteen is
+#:
+#:     els.filter(el => !el.hasAttribute("rdf:about")).length === 0
+#:
+#: which is a must-have-IRI check, not a must-not-be-typed-directly check. Only
+#: M1, M12 and M94 in that category actually test for direct use, and those are
+#: written by hand. Following the label rather than the implementation made
+#: this project report findings on tekom's own sample packages that no other
+#: tool reports — so the catalogued ids follow the reference, and the stricter
+#: reading of the wording lives in L10, where it is labelled as ours.
 FAMILIES = {
     "must have iri": "MUST_HAVE_IRI",
-    "absolute iri": "MUST_HAVE_IRI",      # same requirement, different wording upstream
-    "not intended to be used directly.": "NOT_USED_DIRECTLY",
-    "not intented to be used directly.": "NOT_USED_DIRECTLY",
+    "absolute iri": "MUST_HAVE_IRI",
+    "not intended to be used directly.": "MUST_HAVE_IRI",
+    "not intented to be used directly.": "MUST_HAVE_IRI",
 }
 
 HEADER = '''"""Rules that differ only by which class they are about.
@@ -82,7 +93,12 @@ def _must_have_iri(prefix: str, class_name: str):
     cls = NAMESPACES[prefix][class_name]
 
     def check(ctx):
-        for subject in ctx.instances_of(cls):
+        # Direct typing only. Expanding to subclasses would make a rule about a
+        # grouping class fire on every descendant — iirdsDomainEntity sits above
+        # nearly everything, so its rule would report every blank-node Rendition
+        # in a perfectly good package. Each class's own rule covers its own
+        # instances, and M2.1 covers information units generally.
+        for subject in ctx.typed_exactly(cls):
             if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=str(subject))

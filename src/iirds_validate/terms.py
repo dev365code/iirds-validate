@@ -139,6 +139,9 @@ PROPERTIES = {name: value for name, value in TERMS.items() if name[0].islower()}
 #: namespace filter above excludes them by IRI rather than by position.
 RDF_TYPE = RDF.type
 
+#: The ontology annotates its own grouping classes with this.
+IIRDS_DESCRIPTION = IIRDS["description"]
+
 #: Terms the ontology files do not declare even though the specification uses
 #: them. Tracked explicitly so the guard test stays meaningful.
 NOT_IN_ONTOLOGY = {

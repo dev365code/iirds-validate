@@ -11,8 +11,14 @@ import re
 import zipfile
 from collections import Counter
 
-from ..model import (META_DIR, METADATA_JSONLD, METADATA_RDF, MIMETYPE_FILE,
-                     MIMETYPE_VALUE, Violation)
+from ..model import (
+    META_DIR,
+    METADATA_JSONLD,
+    METADATA_RDF,
+    MIMETYPE_FILE,
+    MIMETYPE_VALUE,
+    Violation,
+)
 from ..registry import rule
 
 #: Spec §5: all Unicode is allowed in names except  / , " * : < >  backslash,

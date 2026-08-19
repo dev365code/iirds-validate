@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Monday morning: check whether plusmeta has changed the rule catalogue.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.16.3
+      - run: ruff check .
+
+  test:
+    name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.9" }
+          - { os: ubuntu-latest, python: "3.10" }
+          - { os: ubuntu-latest, python: "3.11" }
+          - { os: ubuntu-latest, python: "3.12" }
+          - { os: ubuntu-latest, python: "3.13" }
+          # pyproject declares rdflib>=6.0, so 6.x has to be exercised or the
+          # floor is a guess.
+          - { os: ubuntu-latest, python: "3.11", rdflib: "rdflib>=6.0,<7", label: "rdflib6" }
+          # Windows is where an unclosed ZIP handle keeps files locked and where
+          # the .gitattributes eol=lf setting gets tested.
+          - { os: windows-latest, python: "3.11" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+      - if: matrix.rdflib
+        run: pip install "${{ matrix.rdflib }}"
+      - run: python -c "import rdflib, sys; print('rdflib', rdflib.__version__, 'on', sys.version)"
+      - run: pytest -q
+
+  wheel:
+    # The failure this job exists for: a wheel that builds and installs but is
+    # missing data/ontologies/, so the tool works from a checkout and dies on a
+    # user's machine. Nothing in the test suite would notice.
+    name: installed wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install build
+      - run: python -m build --wheel --outdir dist/
+
+      - name: the wheel must carry the ontologies and the catalogue
+        run: |
+          python - <<'PY'
+          import glob, sys, zipfile
+          names = set(zipfile.ZipFile(glob.glob("dist/*.whl")[0]).namelist())
+          required = [
+              "iirds_validate/data/rule-catalog.json",
+              "iirds_validate/data/ontologies/sha256sums.txt",
+              "iirds_validate/data/ontologies/1.3/iirds-core.rdf",
+              "iirds_validate/data/ontologies/1.3/iirds-handover.rdf",
+              "iirds_validate/data/ontologies/1.3/iirds-machinery.rdf",
+              "iirds_validate/data/ontologies/1.3/iirds-software.rdf",
+          ]
+          missing = [n for n in required if n not in names]
+          if missing:
+              sys.exit("missing from the wheel: %s" % missing)
+          print("all %d required data files present" % len(required))
+          PY
+
+      - name: install into a clean environment
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --quiet dist/*.whl
+          /tmp/v/bin/iirdsv --version
+          /tmp/v/bin/iirds-validate --version
+
+      - name: the vendored ontologies must be intact after install
+        run: /tmp/v/bin/python -m iirds_validate.ontology --verify
+
+      - name: build fixture containers
+        run: |
+          python tools/make_fixture_package.py fixtures/good.iirds
+          python tools/make_fixture_package.py fixtures/bad.iirds --broken missing-format
+          python tools/make_fixture_package.py fixtures/desc.iirds --broken description-style
+
+      - name: validate them with the installed console script
+        run: |
+          /tmp/v/bin/iirdsv check fixtures/good.iirds
+          /tmp/v/bin/iirdsv check fixtures/desc.iirds   # rdf:Description style must also pass
+          /tmp/v/bin/iirdsv check fixtures/good.iirds --format json | python -m json.tool > /dev/null
+
+      - name: exit codes must mean what the README says
+        run: |
+          set +e
+          /tmp/v/bin/iirdsv check fixtures/good.iirds -q; test $? -eq 0 || exit 1
+          /tmp/v/bin/iirdsv check fixtures/bad.iirds  -q; test $? -eq 1 || exit 1
+          /tmp/v/bin/iirdsv check /no/such/file.iirds -q 2>/dev/null; test $? -eq 2 || exit 1
+          echo "0 clean / 1 findings / 2 could not run"
+
+      - name: the central claim, on a real container
+        # Same graph written four ways must produce the same findings. This is
+        # the project's whole argument and was previously only ever run by hand.
+        run: /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/good.iirds
+
+      - name: no network access during validation
+        run: |
+          /tmp/v/bin/python - <<'PY'
+          from iirds_validate import runner          # import first, then cut the network
+          import socket
+          def refuse(*a, **k):
+              raise AssertionError("the validator attempted a network connection")
+          socket.socket = refuse
+          socket.create_connection = refuse
+          report = runner.run("fixtures/good.iirds", runner.ALL_KINDS)
+          assert report.checked > 40, report.checked
+          print("%d rules ran with the network disabled" % report.checked)
+          PY
+
+  upstream-catalogue:
+    # Advisory. plusmeta actively maintains their rule set; this says so out
+    # loud instead of letting the pinned catalogue quietly go stale.
+    name: upstream rule catalogue
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: has plusmeta changed the rules since the pinned commit?
+        run: python tools/extract_catalog.py --ref master --check

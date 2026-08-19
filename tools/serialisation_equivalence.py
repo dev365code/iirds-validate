@@ -20,11 +20,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from rdflib import Graph                                            # noqa: E402
+from rdflib import Graph  # noqa: E402
 
-from iirds_validate import runner                                   # noqa: E402
-from iirds_validate.model import METADATA_JSONLD, METADATA_RDF      # noqa: E402
-from iirds_validate.package import Package                          # noqa: E402
+from iirds_validate import runner  # noqa: E402
+from iirds_validate.model import METADATA_JSONLD, METADATA_RDF  # noqa: E402
+from iirds_validate.package import Package  # noqa: E402
 
 #: "xml" leans on rdf:Description + rdf:type; "pretty-xml" prefers typed
 #: elements. Both are conformant RDF/XML and describe the same graph.

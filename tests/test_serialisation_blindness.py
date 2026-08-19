@@ -7,7 +7,6 @@ behaviour it exists to replace.
 from __future__ import annotations
 
 from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
-
 from iirds_validate import runner
 
 

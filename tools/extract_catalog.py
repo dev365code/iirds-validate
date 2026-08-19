@@ -20,7 +20,12 @@ import re
 import sys
 import urllib.request
 
-RAW = "https://raw.githubusercontent.com/plusmeta/iirds-validation-tool/master/src/config/validation/{}.js"
+#: Pinned so the catalogue is reproducible. NOTICE and THIRD_PARTY.md rest on
+#: provenance, and regenerating against a moved `master` would silently produce
+#: a different file. Pass --ref master to see what upstream has changed.
+DEFAULT_REF = "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d"
+RAW = ("https://raw.githubusercontent.com/plusmeta/iirds-validation-tool/"
+       "{ref}/src/config/validation/{name}.js")
 FILES = ("container-rules", "schema-rules", "system-rules")
 OUT = pathlib.Path(__file__).resolve().parents[1] / "src/iirds_validate/data/rule-catalog.json"
 
@@ -32,10 +37,10 @@ VARIANT_MAP = {
 }
 
 
-def fetch(name: str, offline: str | None) -> str:
+def fetch(name: str, offline, ref: str) -> str:
     if offline:
         return (pathlib.Path(offline) / "src/config/validation" / f"{name}.js").read_text("utf-8")
-    with urllib.request.urlopen(RAW.format(name), timeout=30) as fh:
+    with urllib.request.urlopen(RAW.format(ref=ref, name=name), timeout=30) as fh:
         return fh.read().decode("utf-8")
 
 
@@ -86,12 +91,16 @@ def localized(block: str, lang: str):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--offline", help="path to a local clone of the plusmeta repo")
+    ap.add_argument("--ref", default=DEFAULT_REF,
+                    help="git ref to extract from (default: the pinned commit)")
+    ap.add_argument("--check", action="store_true",
+                    help="do not write; exit 1 if the result differs from the committed file")
     args = ap.parse_args()
 
     rules, seen = [], set()
     for name in FILES:
         kind = name.split("-")[0]
-        src = fetch(name, args.offline)
+        src = fetch(name, args.offline, args.ref)
         # system-rules.js exports an object map, the others export arrays;
         # peel the outer braces so the values are seen as top-level objects.
         body = src.split("export default", 1)[-1].lstrip()
@@ -120,13 +129,26 @@ def main() -> int:
     for r in rules:
         r["versions"] = [v[1:] if v.startswith("V") else v for v in r["versions"]]
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({
+    payload = json.dumps({
         "_source": "https://github.com/plusmeta/iirds-validation-tool",
+        "_commit": args.ref,
+        "_retrieved": "2026-08-17",
         "_licence": "MIT, Copyright 2020 plusmeta GmbH — metadata only, see THIRD_PARTY.md",
         "_generated_by": "tools/extract_catalog.py",
         "rules": rules,
-    }, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    }, ensure_ascii=False, indent=2) + "\n"
+
+    if args.check:
+        current = OUT.read_text("utf-8") if OUT.exists() else ""
+        if current == payload:
+            print("catalogue is up to date with %s" % args.ref[:12])
+            return 0
+        print("catalogue differs from %s — upstream rules have changed" % args.ref[:12],
+              file=sys.stderr)
+        return 1
+
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(payload, "utf-8")
 
     from collections import Counter
     print(f"{len(rules)} rules -> {OUT}")

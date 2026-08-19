@@ -1,5 +1,7 @@
 {
   "_source": "https://github.com/plusmeta/iirds-validation-tool",
+  "_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
+  "_retrieved": "2026-08-17",
   "_licence": "MIT, Copyright 2020 plusmeta GmbH — metadata only, see THIRD_PARTY.md",
   "_generated_by": "tools/extract_catalog.py",
   "rules": [

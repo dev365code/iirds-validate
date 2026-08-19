@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+
 from iirds_validate import terms as T
 from iirds_validate.model import IIRDS
 from iirds_validate.ontology import load

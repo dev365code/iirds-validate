@@ -30,7 +30,7 @@ from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
 from . import terms as T
-from .model import LATEST_VERSION, METADATA_JSONLD, METADATA_RDF, VERSIONS
+from .model import LATEST_VERSION, METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE, VERSIONS
 from .package import Package
 
 
@@ -142,7 +142,7 @@ def build_graph(package: Package):
 
         try:
             single = Graph()
-            single.parse(data=raw, format=fmt, publicID="urn:iirds:package:")
+            single.parse(data=raw, format=fmt, publicID=PACKAGE_BASE)
         except Exception as exc:
             errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
             continue

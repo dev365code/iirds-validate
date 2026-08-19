@@ -83,6 +83,23 @@ def array(block: str, name: str):
            [x.strip().strip('"') for x in m.group(1).split(",") if x.strip()]
 
 
+def test_files(block: str):
+    """The rule's own pass/fail fixtures.
+
+    Authoritative, unlike the file names: several fixtures are named after a
+    different rule than the one whose list they appear in.
+    """
+    m = re.search(r"testFiles:\s*\{(.*?)\n\s*\}", block, re.S)
+    if not m:
+        return {}
+    out = {}
+    for key in ("true", "false"):
+        km = re.search(r'"%s":\s*\[(.*?)\]' % key, m.group(1), re.S)
+        if km:
+            out[key] = [f.rsplit("/", 1)[-1] for f in re.findall(r'"([^"]+)"', km.group(1))]
+    return out
+
+
 def localized(block: str, lang: str):
     m = re.search(rf'"{lang}":\s*"((?:[^"\\]|\\.)*)"', block)
     return json.loads(f'"{m.group(1)}"') if m else None
@@ -122,6 +139,7 @@ def main() -> int:
                 "variants": [VARIANT_MAP.get(v.split(".")[-1], v) for v in variants] if variants else [],
                 "spec": field(block, "spec"),
                 "path": field(block, "path"),
+                "testFiles": test_files(block),
                 "en": localized(block, "en"),
                 "de": localized(block, "de"),
             })

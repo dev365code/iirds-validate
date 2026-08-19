@@ -7,11 +7,11 @@ from the two tools can be compared directly.
 """
 from __future__ import annotations
 
-from rdflib import BNode, URIRef
-from rdflib.namespace import RDF
+from rdflib import URIRef
+from rdflib.namespace import RDF, RDFS
 
 from .. import terms as T
-from ..model import DCTERMS, Violation, is_absolute_iri
+from ..model import DCTERMS, PACKAGE_BASE, Violation, is_absolute_iri, is_named
 from ..registry import rule
 
 
@@ -39,9 +39,9 @@ def m1_no_direct_information_unit(ctx):
 @rule("M2.1")
 def m2_1_information_unit_iri(ctx):
     for subj in ctx.information_units():
-        if isinstance(subj, BNode):
+        if not is_named(subj):
             yield Violation("instance of an iirds:InformationUnit subclass must have an IRI, "
-                            "not be a blank node",
+                            "not be a blank node or an empty rdf:about",
                             subject=str(subj))
 
 
@@ -111,7 +111,7 @@ def m4_package_version(ctx):
 @rule("M5")
 def m5_absolute_iris(ctx):
     for subj in ctx.iirds_subjects():
-        if isinstance(subj, URIRef) and not is_absolute_iri(subj):
+        if isinstance(subj, URIRef) and not is_absolute_iri(subj) or str(subj) == PACKAGE_BASE:
             yield Violation("relative IRI in rdf:about; absolute IRIs are recommended",
                             subject=str(subj))
 
@@ -124,13 +124,6 @@ def m6_one_information_object(ctx):
             yield Violation("information unit relates to more than one information object "
                             "via iirds:is-version-of",
                             subject=str(unit), detail="%d objects" % len(objs))
-
-
-@rule("M7.1")
-def m7_1_information_object_iri(ctx):
-    for obj in ctx.instances_of(T.InformationObject):
-        if isinstance(obj, BNode) or not is_absolute_iri(obj):
-            yield Violation("iirds:InformationObject must have an absolute IRI", subject=str(obj))
 
 
 @rule("M8")
@@ -252,13 +245,6 @@ def m19_2_identity_value(ctx):
         if not values:
             yield Violation("iirds:Identity must carry a non-empty iirds:identifier",
                             subject=str(ident))
-
-
-@rule("M20.1")
-def m20_1_identity_domain_iri(ctx):
-    for dom in ctx.instances_of(T.IdentityDomain):
-        if isinstance(dom, BNode) or not is_absolute_iri(dom):
-            yield Violation("iirds:IdentityDomain must have an absolute IRI", subject=str(dom))
 
 
 @rule("M21.2")
@@ -402,58 +388,215 @@ def m35_identity_identifier(ctx):
 
 
 # --------------------------------------------------------------------------
-# iiRDS/H — handover, new in 1.3
+# Extensions: what a package may add to the standard vocabulary
 # --------------------------------------------------------------------------
 
-@rule("M15.2")
-def m15_2_hov_document_category(ctx):
-    for doc in ctx.instances_of(T.Document):
-        if len(ctx.values(doc, T.hov_has_document_category)) != 1:
-            yield Violation("iiRDS/H: iirds:Document must have exactly one "
-                            "iirdsHov:has-document-category",
-                            subject=str(doc))
+@rule("M16.3")
+def m16_3_event_extension_is_a_class(ctx):
+    """A proprietary event type has to be declared, not merely referenced.
+
+    Section 7 lets a package add its own subclasses. A subclass that is never
+    declared as a class is a dangling name: a consumer sees the relationship
+    and has nothing to resolve it to.
+    """
+    for subject in ctx.graph.subjects(RDFS.subClassOf, T.Event):
+        if ctx.ontology.is_iirds_term(subject):
+            continue
+        if RDFS.Class not in ctx.values(subject, T.RDF_TYPE):
+            yield Violation("an extension of iirds:Event must be defined as a class",
+                            subject=str(subject),
+                            detail="add rdf:type rdfs:Class")
 
 
-@rule("M15.3")
-def m15_3_hov_language(ctx):
-    for doc in ctx.instances_of(T.Document):
-        if not ctx.has(doc, T.language):
-            yield Violation("iiRDS/H: iirds:Document must have iirds:language", subject=str(doc))
+def _referenced_but_not_typed(ctx, prop, cls):
+    typed = set(ctx.instances_of(cls))
+    seen = set()
+    for _subject, obj in ctx.graph.subject_objects(prop):
+        if obj in typed or obj in seen:
+            continue
+        seen.add(obj)
+        yield obj
 
 
-@rule("M15.4")
-def m15_4_hov_title(ctx):
-    for doc in ctx.instances_of(T.Document):
-        if not ctx.has(doc, T.title):
-            yield Violation("iiRDS/H: iirds:Document must have iirds:title", subject=str(doc))
+def _relies_solely_on_an_external_vocabulary(ctx, prop, cls):
+    """The package points outward and declares nothing of its own.
+
+    Deliberately narrower than "every referenced IRI must be declared". The
+    specification says the package "MUST also contain metadata labels as
+    instances of iirds:Component" — labels, not a label per reference — and
+    tekom's own sample package for external product ontologies references more
+    components than it declares. Reading the rule strictly would fail the
+    standard's own example, which is a strong signal that the strict reading is
+    not the intended one. Individual unresolvable references are still
+    reported, as L1 and L8, where they belong.
+    """
+    referenced = {o for _s, o in ctx.graph.subject_objects(prop)}
+    if not referenced:
+        return False
+    return not ctx.instances_of(cls)
 
 
-@rule("M15.6")
-def m15_6_hov_rendition(ctx):
-    for doc in ctx.instances_of(T.Document):
-        if not ctx.has(doc, T.has_rendition):
-            yield Violation("iiRDS/H: iirds:Document must have iirds:has-rendition",
-                            subject=str(doc))
+@rule("M17")
+def m17_external_product_ontology_is_mapped(ctx):
+    """Referencing an external product ontology is allowed; relying on it is not."""
+    if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_component, T.Component):
+        yield Violation("the package relates to components but declares no iirds:Component "
+                        "of its own, so a consumer without the external ontology has nothing "
+                        "to resolve them against",
+                        subject="iirds:relates-to-component")
 
 
-@rule("M15.11a")
-def m15_11a_hov_documents_only(ctx):
-    for cls in (T.Topic, T.Fragment):
-        for unit in ctx.typed_exactly(cls):
-            yield Violation("iiRDS/H packages must contain only iirds:Document and "
-                            "iirds:Package information units",
-                            subject=str(unit), detail=str(cls).split("#")[-1])
+@rule("M18")
+def m18_product_variants_are_declared(ctx):
+    """Product variants are a proprietary extension, so they travel in the package."""
+    if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_product_variant,
+                                                T.ProductVariant):
+        yield Violation("the package relates to product variants but declares no "
+                        "iirds:ProductVariant of its own",
+                        subject="iirds:relates-to-product-variant")
 
 
-@rule("M15.11b")
-def m15_11b_hov_no_directory_node(ctx):
-    for node in ctx.instances_of(T.DirectoryNode):
-        yield Violation("iiRDS/H packages must not contain iirds:DirectoryNode instances",
-                        subject=str(node))
+@rule("M30")
+def m30_no_schema_in_metadata(ctx):
+    """metadata.rdf carries a package's metadata, not a copy of the standard.
+
+    Declaring proprietary subclasses of iiRDS classes is fine and expected —
+    what is forbidden is restating the iiRDS schema itself, which bloats every
+    package and lets a stale copy contradict the real one.
+    """
+    schema_predicates = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
+    for subject in sorted(ctx.iirds_subjects() | {s for s in ctx.graph.subjects()
+                                                  if ctx.ontology.is_iirds_term(s)}, key=str):
+        if not ctx.ontology.is_iirds_term(subject):
+            continue
+        types = ctx.values(subject, T.RDF_TYPE)
+        if RDFS.Class in types or RDF.Property in types:
+            yield Violation("metadata.rdf must not redeclare the iiRDS schema",
+                            subject=str(subject), detail="declared as a class or property here")
+            continue
+        for predicate in schema_predicates:
+            if ctx.has(subject, predicate):
+                yield Violation("metadata.rdf must not redeclare the iiRDS schema",
+                                subject=str(subject),
+                                detail="states %s" % str(predicate).split("#")[-1])
+                break
 
 
-@rule("M15.11c")
-def m15_11c_hov_no_selector(ctx):
-    for sel in ctx.instances_of(T.Selector):
-        yield Violation("iiRDS/H packages must not contain iirds:Selector instances",
-                        subject=str(sel))
+@rule("M94")
+def m94_administrative_metadata_relation_not_direct(ctx):
+    """The generic relation is a grouping, like the classes M78 to M93 cover."""
+    for subject, _obj in ctx.graph.subject_objects(T.relates_to_administrative_metadata):
+        yield Violation("iirds:relates-to-administrative-metadata is not intended to be used "
+                        "directly; use one of its subproperties",
+                        subject=str(subject))
+
+
+# --------------------------------------------------------------------------
+# Identities and classifications
+# --------------------------------------------------------------------------
+
+@rule("M19.4")
+def m19_4_identity_domain_is_typed(ctx):
+    for identity, domain in ctx.graph.subject_objects(T.has_identity_domain):
+        if T.IdentityDomain not in ctx.values(domain, T.RDF_TYPE):
+            yield Violation("the object of iirds:has-identity-domain must be an instance of "
+                            "iirds:IdentityDomain",
+                            subject=str(identity), detail=str(domain))
+
+
+@rule("M36")
+def m36_identity_has_a_domain(ctx):
+    """M19.1 requires exactly one; this requires at least one. Both are in the
+    catalogue and both are reported by the reference tool, so both are here."""
+    for identity in ctx.instances_of(T.Identity):
+        if not ctx.has(identity, T.has_identity_domain):
+            yield Violation("iirds:Identity must have iirds:has-identity-domain",
+                            subject=str(identity))
+
+
+@rule("M21.1")
+def m21_1_lifecycle_status_value(ctx):
+    for status in ctx.instances_of(T.ContentLifeCycleStatus):
+        if not ctx.has(status, T.has_content_lifecycle_status_value):
+            yield Violation("iirds:ContentLifeCycleStatus must have "
+                            "iirds:has-content-lifecycle-status-value", subject=str(status))
+
+
+@rule("M23")
+def m23_party_has_a_vcard(ctx):
+    """A role without a description is not something anyone can act on."""
+    for party in ctx.instances_of(T.Party):
+        if not ctx.has(party, T.relates_to_vcard):
+            yield Violation("iirds:Party must describe itself via iirds:relates-to-vcard",
+                            subject=str(party))
+
+
+@rule("M95")
+def m95_component_party(ctx):
+    yield from _at_most_one(ctx, T.Component, T.relates_to_party, "iirds:relates-to-party")
+
+
+@rule("M96.1")
+def m96_1_classification_domain(ctx):
+    for classification in ctx.instances_of(T.ExternalClassification):
+        domains = ctx.values(classification, T.has_classification_domain)
+        if len(domains) != 1:
+            yield Violation("iirds:ExternalClassification must point to exactly one "
+                            "classification domain",
+                            subject=str(classification), detail="%d found" % len(domains))
+
+
+@rule("M96.2")
+def m96_2_classification_identifier_count(ctx):
+    for classification in ctx.instances_of(T.ExternalClassification):
+        identifiers = ctx.values(classification, T.classificationIdentifier)
+        if len(identifiers) != 1:
+            yield Violation("iirds:ExternalClassification must have exactly one "
+                            "iirds:classificationIdentifier",
+                            subject=str(classification), detail="%d found" % len(identifiers))
+
+
+@rule("M96.3")
+def m96_3_classification_identifier_non_empty(ctx):
+    for classification in ctx.instances_of(T.ExternalClassification):
+        for value in ctx.values(classification, T.classificationIdentifier):
+            if not str(value).strip():
+                yield Violation("iirds:classificationIdentifier must be a non-empty string",
+                                subject=str(classification))
+
+
+@rule("M96.4")
+def m96_4_external_classification_is_optional(ctx):
+    """A MAY, so there is nothing to violate.
+
+    Registered rather than skipped so that `iirdsv rules` lists the whole
+    catalogue and coverage counts what is genuinely covered — the permission
+    is honoured by M96.1 to M96.3 checking the shape when it is used, and by
+    nothing complaining when it is not.
+    """
+    return ()
+
+
+# --------------------------------------------------------------------------
+# Aliases
+# --------------------------------------------------------------------------
+#
+# The catalogue carries three rules whose wording is character-for-character
+# identical to a rule already above. They are not mistakes to be collapsed: the
+# reference tool reports both identifiers, and this project's claim that its
+# results can be diffed against that tool rule by rule only holds if both
+# appear. Registering the same function twice is the honest way to say "these
+# are the same check", and costs nothing — `rule()` returns the function
+# unchanged, so the decorators stack.
+
+#: "An identity MUST point to exactly one domain by the
+#: iirds:has-identity-domain property." — identical to M19.1.
+rule("M19.3")(m19_1_identity_domain)
+
+#: "iirds:ContentLifeCycleStatus MUST NOT have more than one property
+#: iirds:purpose." M21.4 states it in prose; M21.5 is the cardinality table row
+#: for the same property.
+rule("M21.5")(m21_4)
+
+#: "An iirds:Party MUST have a related iirds:PartyRole..." — identical to M22.1.
+rule("M22.2")(m22_1_party_role)

@@ -45,6 +45,7 @@ NAMESPACES = (("IIRDS", IIRDS), ("MACH", MACH), ("SW", SW), ("HOV", HOV))
 #: Catalogue `category` values, normalised, and the table each maps to.
 FAMILIES = {
     "must have iri": "MUST_HAVE_IRI",
+    "absolute iri": "MUST_HAVE_IRI",      # same requirement, different wording upstream
     "not intended to be used directly.": "NOT_USED_DIRECTLY",
     "not intented to be used directly.": "NOT_USED_DIRECTLY",
 }
@@ -67,7 +68,7 @@ from __future__ import annotations
 from rdflib import BNode
 from rdflib.namespace import RDF
 
-from ..model import HOV, IIRDS, MACH, SW, Violation, is_absolute_iri
+from ..model import HOV, IIRDS, MACH, SW, Violation, is_named
 from ..registry import rule
 
 NAMESPACES = {"IIRDS": IIRDS, "MACH": MACH, "SW": SW, "HOV": HOV}
@@ -82,7 +83,7 @@ def _must_have_iri(prefix: str, class_name: str):
 
     def check(ctx):
         for subject in ctx.instances_of(cls):
-            if isinstance(subject, BNode) or not is_absolute_iri(subject):
+            if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=str(subject))
     return check

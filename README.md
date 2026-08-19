@@ -65,8 +65,8 @@ if not report.ok:
 ## Why not the existing tool
 
 The [iiRDS Validation Tool](https://github.com/plusmeta/iirds-validation-tool)
-by plusmeta is good, actively maintained, and covers all 157 rules — more than
-this project does. Use it for interactive checking. Its rule catalogue is the
+by plusmeta is good and actively maintained. Use it for interactive checking —
+it is the right tool for looking at one package by hand. Its rule catalogue is the
 foundation this project is built on, and the rule identifiers here are
 deliberately the same so results can be compared.
 
@@ -112,14 +112,17 @@ Honest numbers, printed by `iirdsv rules`:
 | kind | implemented |
 |---|---|
 | container (C\*) | 19 / 19 |
-| schema (M\*) | 109 / 135 |
+| schema (M\*) | 135 / 135 |
 | system (S\*) | 3 / 3 |
-| **catalogue total** | **131 / 157** |
+| **catalogue total** | **157 / 157** |
 | interoperability (L\*) | 9 — this project only |
 
-Not yet implemented means not yet implemented: a clean `check` is evidence about
-those 131 rules, not a certificate. Contributions are welcome and the shape of a
-rule is small — see [CONTRIBUTING.md](CONTRIBUTING.md).
+All 157 catalogued rules are implemented. That is coverage of the catalogue,
+not a certificate: three of them are aliases of rules with identical wording,
+one is a MAY with nothing to violate, and two are conditions the runner reports
+rather than rules it evaluates. `iirdsv rules` lists every one, and
+`tools/serialisation_equivalence.py` is the check that matters more than the
+count — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Interoperability rules
 

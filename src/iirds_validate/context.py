@@ -21,15 +21,16 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Set
+from typing import List, Optional, Set
 
-from rdflib import BNode, Graph, Literal, URIRef
+from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
 from . import terms as T
-from .model import (IIRDS, LATEST_VERSION, METADATA_JSONLD, METADATA_RDF,
+from .model import (LATEST_VERSION, METADATA_JSONLD, METADATA_RDF,
                     VERSIONS, Violation)
 from .package import Package
 
@@ -104,6 +105,12 @@ def _detect(graph: Graph):
     return declared, (variant or "unrestricted")
 
 
+#: An .iirds package arrives from a supplier, so its metadata is untrusted
+#: input. Two cheap guards, applied before the parser sees anything.
+MAX_METADATA_BYTES = 64 * 1024 * 1024
+_ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
+
+
 def build_graph(package: Package):
     """Parse every metadata serialisation in the container into one graph."""
     graph = Graph()
@@ -113,11 +120,27 @@ def build_graph(package: Package):
     for name, fmt in ((METADATA_RDF, "xml"), (METADATA_JSONLD, "json-ld")):
         if not package.has(name):
             continue
+
+        info = package.info(name)
+        if info is not None and info.file_size > MAX_METADATA_BYTES:
+            errors.append("%s: refused: %d bytes uncompressed, above the %d byte limit"
+                          % (name, info.file_size, MAX_METADATA_BYTES))
+            continue
+
+        raw = package.read(name)
+
+        # Nested internal entities expand geometrically: a few hundred bytes of
+        # declarations can occupy the parser indefinitely. iiRDS metadata has no
+        # legitimate use for them, so refuse rather than try to bound the damage.
+        if fmt == "xml" and _ENTITY_DECL.search(raw):
+            errors.append("%s: refused: the document declares XML entities" % name)
+            continue
+
         try:
-            graph.parse(data=package.read(name), format=fmt, publicID="urn:iirds:package:")
+            graph.parse(data=raw, format=fmt, publicID="urn:iirds:package:")
             sources.append(name)
         except Exception as exc:
-            errors.append(f"{name}: {type(exc).__name__}: {exc}")
+            errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
 
     return graph, errors, sources
 

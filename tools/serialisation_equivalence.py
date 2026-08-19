@@ -54,9 +54,14 @@ def rewrite(source: Path, out: Path, fmt, target: str) -> Path:
     return out
 
 
+#: Rules about *which metadata files exist* must differ — rewriting the package
+#: as JSON-LD deliberately removes metadata.rdf. Everything else must not.
+ABOUT_WHICH_FILES_EXIST = {"C8", "C16.1", "C16.2"}
+
+
 def fingerprint(report):
     return sorted((f.rule.id, f.violation.message, f.violation.subject or "")
-                  for f in report.findings)
+                  for f in report.findings if f.rule.id not in ABOUT_WHICH_FILES_EXIST)
 
 
 def main() -> int:

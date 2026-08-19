@@ -150,7 +150,12 @@ def c16_1_rdf_parses(ctx):
                             subject=METADATA_RDF, detail=err.split(": ", 1)[-1])
 
 
-@rule("C16.2")
+# The catalogue gates C16.2 to iiRDS/H because that is the profile where
+# metadata.jsonld is *mandatory*. But the file is *permitted* in any 1.3
+# package, and gating the whole rule meant a corrupt metadata.jsonld in an
+# ordinary package was parsed, failed, and silently discarded. The rule runs
+# everywhere; the mandatory-file branch checks the variant itself.
+@rule("C16.2", variants=())
 def c16_2_jsonld(ctx):
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):
         yield Violation("iiRDS/H packages must contain META-INF/metadata.jsonld")

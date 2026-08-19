@@ -35,3 +35,4 @@ iirds_validate = ["data/*.json", "data/ontologies/*.txt", "data/ontologies/*.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src", "tests"]

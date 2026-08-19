@@ -12,20 +12,23 @@ going to work.
 """
 from __future__ import annotations
 
+import posixpath
 from urllib.parse import unquote, urlparse
 
-from rdflib import BNode, Literal, URIRef
+from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
-from ..model import Violation
+from ..model import DCTERMS, OWL, VCARD, VERSIONS, Violation
 from ..registry import rule
 
-ALL_VERSIONS = ("1.0", "1.0.1", "1.1", "1.2", "1.3")
+#: Interoperability rules are not version-specific. Take the list from model
+#: rather than restating it: a private copy means that the day 1.4 is added,
+#: every L rule stops applying to 1.4 packages and lint quietly reports clean.
+ALL_VERSIONS = VERSIONS
 
-VCARD_FN = URIRef("http://www.w3.org/2006/vcard/ns#fn")
-DCTERMS_TITLE = URIRef("http://purl.org/dc/terms/title")
-LABEL_PROPERTIES = (RDFS.label, SKOS.prefLabel, SKOS.altLabel, T.title, VCARD_FN, DCTERMS_TITLE)
+LABEL_PROPERTIES = (RDFS.label, SKOS.prefLabel, SKOS.altLabel, T.title,
+                    VCARD["fn"], DCTERMS.title)
 
 #: Vocabularies the specification itself tells you to use. Not "proprietary".
 WELL_KNOWN = (
@@ -60,6 +63,19 @@ def _labelled(ctx, node) -> bool:
 def _lint(rule_id, title, prio="RECOMMENDED"):
     return rule(rule_id, kind="lint", prio=prio, title=title,
                 versions=ALL_VERSIONS, variants=(), spec=None)
+
+
+#: Sentinel pushed onto the traversal stack to mark "finished with this node".
+_CLOSE = object()
+
+
+def _children(ctx, node):
+    """The two edges that make up an iiRDS navigation structure.
+
+    `has-first-child` descends a level, `has-next-sibling` continues the linked
+    list on the current one. Both L3 and L4 walk exactly these.
+    """
+    return list(ctx.values(node, T.has_first_child)) + list(ctx.values(node, T.has_next_sibling))
 
 
 def _described(ctx, node) -> bool:
@@ -128,7 +144,13 @@ def l2_missing_content_files(ctx):
             path = unquote(urlparse(raw).path)
             if not path or "://" in raw:
                 continue      # absolute URL: out of scope for this check
-            candidate = path.lstrip("./").lstrip("/")
+            # `lstrip` takes a character set, not a prefix: ".config/a.xhtml"
+            # would become "config/a.xhtml" and be reported as missing.
+            candidate = posixpath.normpath(path.lstrip("/"))
+            if candidate.startswith(".."):
+                yield Violation("iirds:source escapes the package root",
+                                subject=str(rend), detail=raw)
+                continue
             if candidate not in present:
                 yield Violation("iirds:source does not resolve to a file in the container",
                                 subject=str(rend), detail=raw)
@@ -147,8 +169,7 @@ def l3_orphan_directory_nodes(ctx):
         if node in reachable:
             continue
         reachable.add(node)
-        for prop in (T.has_first_child, T.has_next_sibling):
-            stack.extend(ctx.values(node, prop))
+        stack.extend(_children(ctx, node))
     for node in sorted(nodes - reachable, key=str):
         yield Violation("directory node is not reachable from any root node",
                         subject=str(node), detail=ctx.label_of(node))
@@ -156,27 +177,40 @@ def l3_orphan_directory_nodes(ctx):
 
 @_lint("L4", "the directory structure should not contain cycles", prio="MUST")
 def l4_directory_cycles(ctx):
-    """A consumer walking the table of contents would loop forever."""
-    colour = {}
+    """A consumer walking the table of contents would loop forever.
 
-    def walk(node, trail):
-        state = colour.get(node)
-        if state == "done":
-            return
-        if state == "open":
-            loop = trail[trail.index(node):] + [node]
-            yield Violation("cycle in the directory structure",
-                            subject=str(node),
-                            detail=" -> ".join(str(n).split("/")[-1] for n in loop))
-            return
-        colour[node] = "open"
-        for prop in (T.has_first_child, T.has_next_sibling):
-            for child in ctx.values(node, prop):
-                yield from walk(child, trail + [node])
-        colour[node] = "done"
+    Iterative on purpose. `has-next-sibling` is a linked list, so a flat table
+    of contents of N entries is N deep — a thousand-entry manual is ordinary,
+    and a recursive walk blows the stack and reports a valid package as broken.
+    """
+    state = {}                       # node -> "open" while on the current path
+    reported = set()
 
     for start in ctx.instances_of(T.DirectoryNode):
-        yield from walk(start, [])
+        if state.get(start) == "done":
+            continue
+        # (node, trail) with an explicit close marker, so the trail unwinds
+        # exactly as it would on return from a recursive call.
+        stack = [(start, [])]
+        while stack:
+            node, trail = stack.pop()
+            if node is _CLOSE:
+                state[trail] = "done"
+                continue
+            if state.get(node) == "done":
+                continue
+            if state.get(node) == "open":
+                if node not in reported:
+                    reported.add(node)
+                    loop = trail[trail.index(node):] + [node] if node in trail else [node]
+                    yield Violation("cycle in the directory structure",
+                                    subject=str(node),
+                                    detail=" -> ".join(str(n).split("/")[-1] for n in loop))
+                continue
+            state[node] = "open"
+            stack.append((_CLOSE, node))
+            for child in _children(ctx, node):
+                stack.append((child, trail + [node]))
 
 
 @_lint("L5", "proprietary classes should be linked to the iiRDS vocabulary")
@@ -193,7 +227,7 @@ def l5_unmapped_custom_classes(ctx):
         if cls in (RDFS.Class, RDF.Property) or str(cls).startswith(WELL_KNOWN):
             continue
         parents = list(ctx.graph.objects(cls, RDFS.subClassOf))
-        equivalents = list(ctx.graph.objects(cls, URIRef("http://www.w3.org/2002/07/owl#equivalentClass")))
+        equivalents = list(ctx.graph.objects(cls, OWL.equivalentClass))
         if any(ctx.ontology.is_iirds_term(p) for p in parents + equivalents):
             continue
         reported.add(cls)
@@ -234,7 +268,9 @@ def l6_unlabelled_concepts(ctx):
 def l7_untitled_information_units(ctx):
     """Valid without one, unusable without one."""
     for unit in ctx.information_units():
-        if ctx.has(unit, T.Package) or T.Package in ctx.values(unit, RDF.type):
+        # iirds:Package is itself a subclass of iirds:InformationUnit, but a
+        # package is not a thing with a title in the same sense.
+        if T.Package in ctx.values(unit, RDF.type):
             continue
         if not ctx.has(unit, T.title):
             types = [str(t).split("#")[-1] for t in ctx.values(unit, RDF.type)]

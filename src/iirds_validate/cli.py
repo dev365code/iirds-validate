@@ -15,6 +15,7 @@ import os
 import sys
 
 from . import __version__, runner
+from .banner import banner
 from .model import VERSIONS, Severity
 from .registry import CATALOG, all_rules, coverage
 from .report import render
@@ -100,7 +101,7 @@ def main(argv=None) -> int:
         prog="iirds-validate",
         description="Offline validator and interoperability linter for iiRDS packages.")
     parser.add_argument("--version", action="version", version="iirds-validate %s" % __version__)
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
 
     p_check = sub.add_parser("check", help="conformance: container structure and metadata graph")
     _add_target(p_check)
@@ -116,6 +117,15 @@ def main(argv=None) -> int:
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
 
     args = parser.parse_args(argv)
+
+    if args.command is None:
+        # Bare `iirdsv`. argparse would exit 2 with a usage error, which is a
+        # poor answer to someone who has just installed the thing.
+        cov = coverage()
+        catalogued = sum(v["implemented"] for k, v in cov.items() if k != "lint")
+        print(banner("%d of %d catalogued rules, plus %d of its own. no network access."
+                     % (catalogued, len(CATALOG), cov["lint"]["total"])))
+        return EXIT_OK
 
     try:
         if args.command == "check":

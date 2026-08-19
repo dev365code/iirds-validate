@@ -86,3 +86,16 @@ The prose of a rule is not the name of a property. plusmeta's text for M16 reads
 ontology defines `iirds:has-event-code`. `tests/test_terms.py` asserts every
 term in `terms.py` is really defined in the bundled ontology, which turns a
 guess into a failing test.
+
+
+## The banner
+
+`iirdsv` with no arguments prints a logo, the version and how to start. Nothing
+else does — `check`, `lint` and `all` write into a build log or a pipe, and
+`--format json` writes a document another program parses. A banner in front of
+that is not noise, it is corruption, so `tests/test_cli.py` asserts it never
+appears there.
+
+It is plain ASCII rather than block-drawing characters. Those look better in a
+modern terminal and turn into rubbish in a Windows console or over a serial
+link, and the machines this tool exists for are the ones with the old fonts.

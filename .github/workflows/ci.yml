@@ -27,6 +27,12 @@ jobs:
       - run: pip install ruff==0.16.3
       - run: ruff check .
 
+      # The generated rule tables must match what the generator produces from
+      # the pinned catalogue. A hand-edit to schema_tables.py would otherwise
+      # survive until someone reran the generator and silently lost it.
+      - run: pip install -e .
+      - run: python tools/propose_class_rules.py --check
+
   test:
     name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

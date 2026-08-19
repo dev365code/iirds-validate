@@ -11,15 +11,8 @@ from rdflib import BNode, URIRef
 from rdflib.namespace import RDF
 
 from .. import terms as T
-from ..model import DCTERMS, Violation
+from ..model import DCTERMS, Violation, is_absolute_iri
 from ..registry import rule
-
-_SCHEME = __import__("re").compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-
-
-def _is_absolute(iri) -> bool:
-    """An absolute IRI has a scheme. urn:uuid:... counts; #frag-only does not."""
-    return isinstance(iri, URIRef) and bool(_SCHEME.match(str(iri)))
 
 
 def _at_most_one(ctx, cls, prop, label):
@@ -118,7 +111,7 @@ def m4_package_version(ctx):
 @rule("M5")
 def m5_absolute_iris(ctx):
     for subj in ctx.iirds_subjects():
-        if isinstance(subj, URIRef) and not _is_absolute(subj):
+        if isinstance(subj, URIRef) and not is_absolute_iri(subj):
             yield Violation("relative IRI in rdf:about; absolute IRIs are recommended",
                             subject=str(subj))
 
@@ -136,7 +129,7 @@ def m6_one_information_object(ctx):
 @rule("M7.1")
 def m7_1_information_object_iri(ctx):
     for obj in ctx.instances_of(T.InformationObject):
-        if isinstance(obj, BNode) or not _is_absolute(obj):
+        if isinstance(obj, BNode) or not is_absolute_iri(obj):
             yield Violation("iirds:InformationObject must have an absolute IRI", subject=str(obj))
 
 
@@ -264,7 +257,7 @@ def m19_2_identity_value(ctx):
 @rule("M20.1")
 def m20_1_identity_domain_iri(ctx):
     for dom in ctx.instances_of(T.IdentityDomain):
-        if isinstance(dom, BNode) or not _is_absolute(dom):
+        if isinstance(dom, BNode) or not is_absolute_iri(dom):
             yield Violation("iirds:IdentityDomain must have an absolute IRI", subject=str(dom))
 
 

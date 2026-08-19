@@ -27,7 +27,7 @@ class Package:
         self.names: List[str] = [i.filename for i in self.infos]
 
     # -- context manager ----------------------------------------------------
-    def __enter__(self) -> "Package":
+    def __enter__(self) -> Package:
         return self
 
     def __exit__(self, *exc) -> None:

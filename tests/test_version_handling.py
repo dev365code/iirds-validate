@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from conftest import MINIMAL_RDF
-
 from iirds_validate import runner
 
 NO_VERSION = MINIMAL_RDF.replace("    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n", "")

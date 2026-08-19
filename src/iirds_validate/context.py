@@ -30,8 +30,7 @@ from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
 from . import terms as T
-from .model import (LATEST_VERSION, METADATA_JSONLD, METADATA_RDF,
-                    VERSIONS, Violation)
+from .model import LATEST_VERSION, METADATA_JSONLD, METADATA_RDF, VERSIONS
 from .package import Package
 
 
@@ -39,7 +38,7 @@ from .package import Package
 class Context:
     package: Package
     graph: Graph
-    ontology: "ontology_mod.Ontology"
+    ontology: ontology_mod.Ontology
     version: str
     variant: str
     declared_version: Optional[str] = None      # None when the package omits it

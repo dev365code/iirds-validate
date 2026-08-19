@@ -12,7 +12,6 @@ import multiprocessing
 import pytest
 
 from conftest import MINIMAL_RDF
-
 from iirds_validate import runner
 from iirds_validate.model import Severity
 

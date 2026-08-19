@@ -14,7 +14,6 @@ from .. import terms as T
 from ..model import DCTERMS, Violation
 from ..registry import rule
 
-
 _SCHEME = __import__("re").compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
@@ -190,9 +189,7 @@ def m12_no_direct_selector(ctx):
 @rule("M13.1")
 def m13_1_selector_value(ctx):
     for sel in ctx.instances_of(T.Selector):
-        if isinstance(sel, BNode) and not ctx.values(sel, RDF.value):
-            yield Violation("iirds:Selector must have rdf:value", subject=str(sel))
-        elif not isinstance(sel, BNode) and not ctx.values(sel, RDF.value):
+        if not ctx.values(sel, RDF.value):
             yield Violation("iirds:Selector must have rdf:value", subject=str(sel))
 
 

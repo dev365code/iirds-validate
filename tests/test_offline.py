@@ -24,8 +24,9 @@ def test_validation_runs_with_the_network_disabled(make_package, no_network):
 
 def test_vendored_ontology_is_intact():
     import hashlib
-    from iirds_validate.ontology import DATA
+
     from iirds_validate.model import LATEST_VERSION
+    from iirds_validate.ontology import DATA
 
     for line in (DATA / "sha256sums.txt").read_text().splitlines():
         if not line.strip():

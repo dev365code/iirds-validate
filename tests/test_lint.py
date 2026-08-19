@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from conftest import MINIMAL_RDF
-
 from iirds_validate import runner
 
 DANGLING = MINIMAL_RDF.replace(

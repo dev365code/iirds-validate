@@ -31,24 +31,35 @@ class Ontology:
         if not self.dir.is_dir():
             self.dir = DATA / LATEST_VERSION
         self.graph = Graph()
+        # Per-instance, not @functools.lru_cache on the method: that keys the
+        # cache on `self` at class level, so every Ontology ever built — 2262
+        # triples each — is retained for the life of the process.
+        self._subclasses = {}
+        self._subproperties = {}
+        self._defined = None
         for name in files:
             path = self.dir / name
             if path.exists():
                 self.graph.parse(path.as_posix(), format="xml")
 
     # -- hierarchy ----------------------------------------------------------
-    @functools.lru_cache(maxsize=None)
     def subclasses_of(self, cls: URIRef) -> frozenset:
         """`cls` plus every class transitively below it."""
-        return frozenset({cls} | set(self.graph.transitive_subjects(RDFS.subClassOf, cls)))
+        if cls not in self._subclasses:
+            self._subclasses[cls] = frozenset(
+                {cls} | set(self.graph.transitive_subjects(RDFS.subClassOf, cls)))
+        return self._subclasses[cls]
 
-    @functools.lru_cache(maxsize=None)
     def subproperties_of(self, prop: URIRef) -> frozenset:
-        return frozenset({prop} | set(self.graph.transitive_subjects(RDFS.subPropertyOf, prop)))
+        if prop not in self._subproperties:
+            self._subproperties[prop] = frozenset(
+                {prop} | set(self.graph.transitive_subjects(RDFS.subPropertyOf, prop)))
+        return self._subproperties[prop]
 
-    @functools.lru_cache(maxsize=None)
     def defined_terms(self) -> frozenset:
-        return frozenset(s for s in self.graph.subjects() if isinstance(s, URIRef))
+        if self._defined is None:
+            self._defined = frozenset(s for s in self.graph.subjects() if isinstance(s, URIRef))
+        return self._defined
 
     def is_iirds_term(self, iri) -> bool:
         return isinstance(iri, URIRef) and str(iri).startswith(IIRDS_NAMESPACES)

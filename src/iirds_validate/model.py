@@ -78,9 +78,7 @@ class Rule:
     def applies_to(self, version: str, variant: str) -> bool:
         if self.versions and version not in self.versions:
             return False
-        if self.variants and variant not in self.variants:
-            return False
-        return True
+        return not (self.variants and variant not in self.variants)
 
 
 @dataclass(frozen=True)

@@ -5,8 +5,7 @@ from typing import Optional, Sequence
 
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
-from .model import (METADATA_JSONLD, METADATA_RDF, Finding, Report, Rule,
-                    Severity, Violation)
+from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
 from .package import Package, PackageError
 from .registry import CATALOG, all_rules
 

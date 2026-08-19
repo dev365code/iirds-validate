@@ -36,3 +36,20 @@ iirds_validate = ["data/*.json", "data/ontologies/*.txt", "data/ontologies/*.md"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "UP006", "UP007", "UP035", "UP045",  # py39 target: keep typing.List / Optional
+    "UP031",                    # %-formatting is fine; rewriting 58 sites is churn
+    "B905",                     # zip(strict=) is 3.10+
+    "E501",                     # line length is checked by the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/conftest.py" = ["E402"]   # sys.path must be set before the tools import

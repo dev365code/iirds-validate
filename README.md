@@ -1,3 +1,11 @@
+```
+    _ _ ____  ____  _____
+   (_|_) __ \/ __ \/ ___/
+  / / / /_/ / / / /\__ \
+ / / / _, _/ /_/ /___/ /
+/_/_/_/ |_/_____//____/    validate
+```
+
 # iirds-validate
 
 Validate [iiRDS](https://iirds.org) packages from the command line, on a machine

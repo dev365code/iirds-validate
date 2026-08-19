@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import posixpath
 import re
+import xml.etree.ElementTree as ElementTree
 import zipfile
 from collections import Counter
 
@@ -31,6 +32,30 @@ FORBIDDEN = re.compile(
 )
 MAX_PATH = 260
 MAX_NAME = 255
+
+#: What the specification means by "content": the file types a delivery is made
+#: of. Taken from plusmeta's set so a package run through both tools produces
+#: the same C11.1 / C12 findings — with one deliberate addition. Their pattern
+#: matches .html and .htm but not .xhtml, and Appendix B of the specification
+#: defines iiRDS XHTML5 as the content format; every content file in tekom's
+#: own sample packages is .xhtml. Omitting it would mean the most common kind
+#: of content file could sit in the root unnoticed.
+CONTENT_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".gif", ".png", ".html", ".htm",
+                    ".xhtml", ".css", ".iirds", ".js")
+CONTENT_LIST = "index.html"
+RDF_ROOT = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF"
+
+
+def _is_content_file(name: str) -> bool:
+    return name.lower().endswith(CONTENT_SUFFIXES)
+
+
+def _root_content_files(package, exempt=()):
+    for name in package.files:
+        if "/" in name or name in exempt:
+            continue
+        if _is_content_file(name):
+            yield name
 
 
 @rule("C1")
@@ -111,15 +136,60 @@ def c10_forbidden_chars(ctx):
                 break
 
 
+@rule("C9")
+def c9_metadata_is_rdf(ctx):
+    """C8 asks whether metadata.rdf is present; this asks whether it is RDF.
+
+    Checked by namespace rather than by looking for the literal string
+    "<rdf:RDF", so a document that binds the RDF namespace to a different
+    prefix is not rejected for it.
+    """
+    if not ctx.package.has(METADATA_RDF) or any(
+            e.startswith(METADATA_RDF) for e in ctx.parse_errors):
+        return                      # C8 and C16.1 own those cases
+    try:
+        root = ElementTree.fromstring(ctx.package.read(METADATA_RDF))
+    except ElementTree.ParseError:
+        return
+    if root.tag != RDF_ROOT:
+        yield Violation("metadata.rdf must be an RDF document",
+                        subject=METADATA_RDF, detail="root element is %s" % root.tag)
+
+
+@rule("C11.1")
+def c11_1_content_in_root(ctx):
+    for name in _root_content_files(ctx.package):
+        yield Violation("content files must be stored in subdirectories, not in the root",
+                        subject=name)
+
+
+@rule("C11.1H")
+def c11_1h_content_in_root_handover(ctx):
+    """Same rule for iiRDS/H, minus the one file the profile puts there itself."""
+    for name in _root_content_files(ctx.package, exempt=(CONTENT_LIST,)):
+        yield Violation("content files must be stored in subdirectories, not in the root",
+                        subject=name)
+
+
+@rule("C11.2")
+def c11_2_handover_content_list(ctx):
+    if not ctx.package.has(CONTENT_LIST):
+        yield Violation("an iiRDS/H package must contain a content list named index.html "
+                        "in the root directory")
+        return
+    body = ctx.package.text(CONTENT_LIST)
+    if "<html" not in body.lower():
+        yield Violation("the content list index.html must be an HTML document",
+                        subject=CONTENT_LIST)
+
+
 @rule("C12")
-def c12_content_placement(ctx):
+def c12_content_in_meta_inf(ctx):
     for name in ctx.package.files:
-        if name == MIMETYPE_FILE:
-            continue
         head, _tail = posixpath.split(name)
-        if head == "":
-            yield Violation("content files must not sit in the root directory", subject=name)
-        elif head == META_DIR and name not in (METADATA_RDF, METADATA_JSONLD):
+        if head != META_DIR or name in (METADATA_RDF, METADATA_JSONLD):
+            continue
+        if _is_content_file(name):
             yield Violation("content files must not sit in META-INF", subject=name)
 
 

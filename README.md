@@ -111,14 +111,14 @@ Honest numbers, printed by `iirdsv rules`:
 
 | kind | implemented |
 |---|---|
-| container (C\*) | 15 / 19 |
-| schema (M\*) | 104 / 135 |
-| system (S\*) | 0 / 3 |
-| **catalogue total** | **119 / 157** |
-| interoperability (L\*) | 8 — this project only |
+| container (C\*) | 19 / 19 |
+| schema (M\*) | 109 / 135 |
+| system (S\*) | 3 / 3 |
+| **catalogue total** | **131 / 157** |
+| interoperability (L\*) | 9 — this project only |
 
 Not yet implemented means not yet implemented: a clean `check` is evidence about
-those 119 rules, not a certificate. Contributions are welcome and the shape of a
+those 131 rules, not a certificate. Contributions are welcome and the shape of a
 rule is small — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Interoperability rules
@@ -136,6 +136,7 @@ packages still fail in practice.
 | L6 | a metadata value with no label a consumer could display or match |
 | L7 | an information unit with no title |
 | L8 | references out to vocabularies an offline consumer cannot resolve |
+| L9 | the RDF/XML and JSON-LD metadata describe different graphs |
 
 L1 is the one that started this. RDF lets the same fact be written inline or as
 a reference; both are conformant; a reader that handles only one of them loses

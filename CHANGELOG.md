@@ -8,8 +8,12 @@ First working version.
   CI-friendly exit codes.
 - Graph-based validation: RDF/XML and JSON-LD parse into the same graph, so
   results do not depend on how the metadata was serialised.
-- 119 of the 157 catalogued rules implemented — 15/19 container, 104/135 schema.
-- 8 interoperability rules with no counterpart in the specification.
+- 131 of the 157 catalogued rules implemented — 19/19 container, 109/135 schema,
+  3/3 system.
+- 9 interoperability rules with no counterpart in the specification, including
+  L9: the RDF/XML and JSON-LD metadata must describe the same graph. Every
+  other rule reads the two merged, which is right, and which is exactly what
+  hides a disagreement between them.
 - Fully offline: iiRDS 1.3 ontologies bundled verbatim, hash-verified, no
   network access at any point.
 - A missing `iirds:iiRDSVersion` falls back to the newest version and is

@@ -276,3 +276,38 @@ def l7_untitled_information_units(ctx):
             types = [str(t).split("#")[-1] for t in ctx.values(unit, RDF.type)]
             yield Violation("information unit has no iirds:title",
                             subject=str(unit), detail=", ".join(types) or None)
+
+
+@_lint("L9", "the RDF/XML and JSON-LD metadata should describe the same graph", prio="MUST")
+def l9_serialisations_disagree(ctx):
+    """iiRDS 1.3 lets a package state its metadata twice.
+
+    Nothing obliges a consumer to read both, so if the two disagree, two
+    conformant readers get different data from the same package and neither
+    has any way to notice. Every other rule here works on the merged graph,
+    which is correct — and which is precisely what makes this invisible.
+    """
+    from rdflib.compare import graph_diff, to_isomorphic
+
+    if len(ctx.per_source) < 2:
+        return
+
+    (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
+    iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
+    if iso_a == iso_b:
+        return
+
+    _both, only_a, only_b = graph_diff(iso_a, iso_b)
+
+    def sample(graph, limit=2):
+        return "; ".join("%s %s %s" % tuple(str(term).split("#")[-1][:38] for term in triple)
+                         for triple in sorted(graph, key=str)[:limit])
+
+    detail = []
+    if len(only_a):
+        detail.append("%d statement(s) only in %s (%s)" % (len(only_a), name_a, sample(only_a)))
+    if len(only_b):
+        detail.append("%d statement(s) only in %s (%s)" % (len(only_b), name_b, sample(only_b)))
+
+    yield Violation("the two metadata serialisations describe different graphs",
+                    subject="META-INF", detail=" | ".join(detail))

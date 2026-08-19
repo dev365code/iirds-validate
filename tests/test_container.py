@@ -35,8 +35,10 @@ def test_missing_metadata(make_package):
 
 
 def test_content_in_root_is_rejected(make_package):
+    """C11.1 owns the root; C12 owns META-INF. .xhtml counts as content even
+    though the reference tool's pattern misses it — see container.py."""
     report = runner.check(make_package(content=("stray.xhtml",)))
-    assert "C12" in ids(report)
+    assert "C11.1" in ids(report)
 
 
 def test_broken_xml_is_reported_not_crashed(make_package):

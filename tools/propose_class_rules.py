@@ -76,7 +76,6 @@ Two shapes, {count} rules:
 """
 from __future__ import annotations
 
-from rdflib import BNode
 from rdflib.namespace import RDF
 
 from ..model import HOV, IIRDS, MACH, SW, Violation, is_named

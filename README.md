@@ -237,6 +237,11 @@ with `sha256` rather than taken on trust.
 
 ## Trusting the answer
 
+[docs/scope.md](docs/scope.md) is the map: what this is, what it deliberately is
+not, where each thing lives, the four ways a validator can be wrong and which
+instrument here finds which — and the list of what is still unresolved.
+
+
 A validator's whole product is its verdict, and a wrong verdict is invisible
 from the inside: it prints `PASS` and you learn nothing. So the evidence lives in
 the repository.

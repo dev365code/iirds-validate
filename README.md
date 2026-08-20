@@ -248,6 +248,10 @@ with `sha256` rather than taken on trust.
 
 ## Trusting the answer
 
+the defect register is the register of every defect this
+project has found in itself, and which instrument found it. It is the argument
+for why there is twice as much test and tool code here as validator.
+
 [docs/scope.md](docs/scope.md) is the map: what this is, what it deliberately is
 not, where each thing lives, the four ways a validator can be wrong and which
 instrument here finds which — and the list of what is still unresolved.

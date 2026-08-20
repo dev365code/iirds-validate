@@ -102,11 +102,13 @@ gone wrong.
 3. **Three Appendix B rules rest on readings the specification does not
    settle**, also recorded there. They are the questions to put to tekom.
 4. **The catalogue couples this project to plusmeta.** Rule ids, priorities,
-   version arrays and spec links all come from their file, and none of the
-   version arrays has ever been checked. `THIRD_PARTY.md` records the policy;
-   the requirement map is the way out.
-5. **iiRDS 1.0 and 1.0.1 have never met a real package.** Self-made fixtures
-   are circular.
+   version arrays and spec links all come from their file. The version arrays
+   are now checked against the vocabulary each release actually carried, which
+   found five wrong; the rest of the coupling stands. `THIRD_PARTY.md` records
+   the policy; the requirement map is the way out.
+5. **iiRDS 1.0 and 1.0.1 have never met a real package**, and have no tagged
+   ontology either, so the version check above cannot reach them. Self-made
+   fixtures are circular.
 
 ## Checking any of this yourself
 

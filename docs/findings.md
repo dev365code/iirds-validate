@@ -111,6 +111,17 @@ it has no requirement id to cite. How much else is stated that way is not
 known. The denominator is therefore a floor rather than a total, which is the
 right direction for it to be wrong in but is worth saying out loud.
 
+### The first outside evidence
+
+The Consortium's own sample packages — the only complete .iirds files the
+standard's authors have published — were run on 2026-08-20. Both fail their own
+specification, and every error survived verification against the 1.0 text the
+packages declare: a Party with no role (M22.1), product variants referenced but
+never declared (M18). Details and the golden pin are in
+[divergences.md](divergences.md). Until then, every row above was this project
+finding defects in itself; this is the first time the instruments pointed
+outward and held.
+
 ## What this does not say
 
 Not one of these was found by a user, because there are none yet. The list is

@@ -120,6 +120,40 @@ one figure in `docs/agreement.json`. Cross-validation against another
 implementation could not have found it. The specification's own examples could,
 and did, on the first run.
 
+## The Consortium's own sample packages, run for real
+
+The iiRDS Sample Content (2019-10-31, behind free registration at iirds.org)
+contains the only two complete packages the standard's authors have published:
+`iirds-sample-1.iirds` and `iirds-sample-2.iirds`, both declaring iiRDS 1.0,
+variant A. The first genuine 1.0 material this project has seen — 159 rules
+ran, 26 correctly stood down for the version and profile.
+
+Every error was verified against the 1.0 specification text (2018-04-18)
+before being called a defect:
+
+| finding | verdict | the sentence, from the edition the package declares |
+|---|---|---|
+| sample 1, **M22.1** (error) | **defect in the official sample** | "An iirds:Party MUST have a related iirds:Role that is assigned by the property iirds:has-party-role" — the reviewer Party carries only a vcard |
+| sample 2, **M18** (error) | **defect in the official sample** | "As product variants are a proprietary iiRDS extension, they MUST be present in the metadata.rdf of the iiRDS package" — verbatim in 1.0 and 1.3; the package relates to `pifan#X5-DH2` and declares no ProductVariant |
+| sample 1, L10 (warning) | correct observation | the package types `mch:EnvironmentalProtectionInstruction` directly as `iirds:InformationSubject`; tekom's own 1.3 machinery vocabulary types that term as an instance of `iirds:Safety` — the warning's advice is the vocabulary's current position |
+| sample 2, L1 (warning) | correct observation | `relates-to-party` names a UUID described only in sample 1; a consumer holding sample 2 alone cannot resolve it |
+| sample 2, L8 ×5 (info) | as designed | references into the external `pifan` vocabulary, which an offline consumer cannot fetch |
+
+Sample 1 passes M17/M18 because it declares its externally-identified
+components inline; sample 2 references without declaring. The pair lands
+exactly on the line those rules draw, which is unplanned and reassuring.
+
+`tests/test_official_samples.py` pins all of this, finding for finding; it
+skips unless `IIRDS_SAMPLE_CONTENT` points at the directory, because the
+packages are registration-gated and are not redistributed here.
+
+One caveat this exercise surfaced rather than settled: the 1.0 text names the
+Event properties `iirds:eventCode` and `iirds:eventType`, where later editions
+say `has-event-code` and `has-event-type`. M16.1/M16.2 check the later names,
+so a genuine 1.0 package using 1.0's own spelling would be mis-reported. The
+samples contain no Events, no 1.0 ontology is published to check against, and
+the exposure is correspondingly small — recorded here rather than guessed at.
+
 ## Version scoping the reference got wrong
 
 Every `versions` array in the catalogue came from the reference tool, and none
@@ -145,8 +179,7 @@ and the movement is this project getting the answer right rather than wrong.
 The reference's own fixtures for those rules — `M96-1_false.rdf` and its
 siblings — declare `iiRDSVersion 1.1` while using `iirds:ExternalClassification`,
 vocabulary that release did not have. Their unit tests call `validateSingleRule`
-directly and bypass the version filter their product applies, so nothing on
-their side would ever have noticed. This project honours the declared version,
+directly and bypass the version filter their product applies. This project honours the declared version,
 so it now stands down where the fixture claims a release its own contents
 contradict.
 
@@ -300,7 +333,7 @@ zero-byte files, which nothing can test. Of the remaining **103 pairs, across
 |---:|---|---|
 | **42** | the expected rule fires here | |
 | 34 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
-| 9 | silent — the fixture is malformed XML upstream | no comparison is possible; not repaired, see below |
+| 9 | silent — the fixture does not parse | 9 pairs, whose fixtures are among the corpus's 11 malformed files; no comparison is possible, and none is repaired — see below |
 | 11 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
 | 2 | silent — mismatched | the defect is reported, under a different rule id |

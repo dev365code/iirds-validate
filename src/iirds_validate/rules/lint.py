@@ -264,8 +264,23 @@ def l6_unlabelled_concepts(ctx):
     referenced = {obj for pred, obj in ctx.graph.predicate_objects(None)
                   if isinstance(obj, URIRef) and ctx.ontology.is_iirds_term(pred)}
 
+    # Structural nodes are exempt: their human face lives somewhere else, so a
+    # label on the node itself is dead weight, and asking for one buried every
+    # correct packed package under identical warnings — thirty on a thirty-
+    # topic package, one per identified Rendition. A Rendition is shown as its
+    # file, a Party as its vcard (M23 insists there is one), a Selector as the
+    # place it points into, a ContentLifeCycleStatus as its value, a
+    # DirectoryNode as the title of the unit it references, an Identity as its
+    # identifier string. What stays warned is what a consumer genuinely
+    # renders or matches by label: identity domains, events, classifications,
+    # proprietary subjects and the like.
+    structural = set()
+    for cls in (T.Rendition, T.Selector, T.Party, T.ContentLifeCycleStatus,
+                T.DirectoryNode, T.Identity):
+        structural.update(ctx.instances_of(cls))
+
     for subj in sorted(ctx.iirds_subjects(), key=str):
-        if isinstance(subj, BNode) or subj in units:
+        if isinstance(subj, BNode) or subj in units or subj in structural:
             continue
         if ctx.ontology.is_iirds_term(subj) or str(subj).startswith(WELL_KNOWN):
             continue

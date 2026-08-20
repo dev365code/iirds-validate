@@ -24,6 +24,17 @@ class PackageError(Exception):
     """The path is neither a readable archive nor a package directory."""
 
 
+class UnreadablePath(PackageError):
+    """Nothing could be read from the path at all: absent, or not permitted.
+
+    Separate from a corrupt archive because the two are different problems for
+    whoever is holding the package. A missing file is a mistake in the command;
+    a corrupt one arrived that way, and the person who sent it needs to know.
+    The catalogue has an identifier for each — S1 and C1 — and collapsing them
+    into one meant S1 could never fire.
+    """
+
+
 class Package:
     """An .iirds archive."""
 
@@ -32,11 +43,13 @@ class Package:
     def __init__(self, path):
         self.path = Path(path)
         if not self.path.exists():
-            raise PackageError("no such file: %s" % self.path)
+            raise UnreadablePath("no such file: %s" % self.path)
         try:
             self._zip = zipfile.ZipFile(self.path)
-        except (zipfile.BadZipFile, OSError) as exc:
+        except zipfile.BadZipFile as exc:
             raise PackageError(str(exc)) from exc
+        except OSError as exc:
+            raise UnreadablePath(str(exc)) from exc
         self.infos: List[zipfile.ZipInfo] = self._zip.infolist()
         self.names: List[str] = [i.filename for i in self.infos]
 

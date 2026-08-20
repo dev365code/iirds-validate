@@ -491,6 +491,19 @@ def m30_no_schema_in_metadata(ctx):
     Declaring proprietary subclasses of iiRDS classes is fine and expected —
     what is forbidden is restating the iiRDS schema itself, which bloats every
     package and lets a stale copy contradict the real one.
+
+    Which turns on what the statement *says*, not on whose term is the subject.
+    `iirds:Component rdfs:subClassOf iirds:InformationObject` is a copy of the
+    ontology. `iirds:Component rdfs:subClassOf myCompany:ProductPart` is not: it
+    is the standard's own way of declaring a proprietary class equivalent to an
+    iiRDS one, since RDFS has no owl:equivalentClass and mutual subclassing is
+    how equivalence is written.
+
+    This rule used to fire on the subject alone, and so reported the
+    specification's Example 43 — titled "Adding a proprietary class as an
+    equivalent class" — as a violation. It also contradicted L5, which asks for
+    exactly that link. Found by running the standard's own examples through
+    this validator; see tests/test_spec_examples.py.
     """
     schema_predicates = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
     for subject in sorted(ctx.iirds_subjects() | {s for s in ctx.graph.subjects()
@@ -503,10 +516,15 @@ def m30_no_schema_in_metadata(ctx):
                             subject=ctx.ref(subject), detail="declared as a class or property here")
             continue
         for predicate in schema_predicates:
-            if ctx.has(subject, predicate):
+            for obj in ctx.values(subject, predicate):
+                # Only when both ends are the standard's. One end proprietary is
+                # an extension, which iiRDS sanctions and L5 recommends.
+                if not ctx.ontology.is_iirds_term(obj):
+                    continue
                 yield Violation("metadata.rdf must not redeclare the iiRDS schema",
                                 subject=ctx.ref(subject),
-                                detail="states %s" % str(predicate).split("#")[-1])
+                                detail="states %s %s" % (str(predicate).split("#")[-1],
+                                                         str(obj).split("#")[-1]))
                 break
 
 

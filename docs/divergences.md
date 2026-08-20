@@ -99,6 +99,27 @@ the fixture's declared version or profile — M8 is 1.1+ and the fixture declare
 1.0. The reference's product applies the same filters; only its unit test does
 not.
 
+## Found by the standard's own examples
+
+### M30 was forbidding the extension mechanism it should permit
+
+M30 keeps a package's metadata from restating the iiRDS schema. It decided that
+on the subject alone, so any statement *about* an iiRDS term counted — including
+`iirds:Component rdfs:subClassOf myCompany:ProductPart`, which is how the
+standard writes equivalence to a proprietary class, RDFS having no
+`owl:equivalentClass`. Example 43 is titled "Adding a proprietary class as an
+equivalent class" and was reported as a violation of it.
+
+It also contradicted **L5**, which asks authors to link proprietary classes to
+the iiRDS vocabulary. One rule forbade what another recommended.
+
+Now it fires only when both ends of the statement are the standard's own terms,
+which is what "restating the schema" means. Worth recording where this came
+from: no fixture in the reference corpus exercises it, and fixing it moved not
+one figure in `docs/agreement.json`. Cross-validation against another
+implementation could not have found it. The specification's own examples could,
+and did, on the first run.
+
 ## Where the reference cannot settle it
 
 Three rules whose disposition no amount of cross-validation will decide,

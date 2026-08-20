@@ -22,9 +22,11 @@ adds an id.
 """
 from __future__ import annotations
 
+import posixpath
+
 from rdflib import URIRef
 
-from ..model import Violation, is_named
+from ..model import METADATA_RDF, MIMETYPE_FILE, Violation, is_named
 from ..registry import rule
 
 #: Obligations the standard states that no validator can check on a package,
@@ -80,3 +82,49 @@ for _id, _cls, _name, _requirement, _versions in NEEDS_AN_IRI:
          spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
               "20251103-1.3-release/index.html#a-1-1-class-definitions",
          covers=(_requirement,), fix=FIX % {"name": _name})(_fn)
+
+
+@rule("R3", kind="container", prio="MUST", versions=(), variants=(),
+      title="the container must be at the root of the archive, not inside a folder in it",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#dfn-iirds-container",
+      covers=("dfn-iirds-container#1",),
+      fix="Rebuild the archive from inside the package directory rather than from its "
+          "parent, so that mimetype and META-INF are at the top level of the ZIP. With "
+          "the zip command that is `cd mypackage && zip -X0 ../out.iirds mimetype && "
+          "zip -Xr ../out.iirds .`; `iirdsv pack mypackage` does it correctly.")
+def r3_container_is_at_the_archive_root(ctx):
+    """"An iiRDS container MUST have a single root directory." (section 5.1)
+
+    Which for a ZIP means the archive root itself, since section 5.2 puts
+    mimetype and META-INF there. The way that requirement gets broken is
+    zipping the package *folder* instead of its contents -- far and away the
+    most common packaging mistake, and one every archive tool invites.
+
+    Without this the report is four errors telling the author to add a mimetype
+    file, create a META-INF directory and add a metadata.rdf, all of which they
+    already have, one level down. Nothing says what happened. Nothing is wrong
+    with the package at all except where it sits.
+    """
+    if not ctx.package.is_archive:
+        return
+
+    names = [n for n in ctx.package.names if n.strip("/")]
+    if any("/" not in n.strip("/") for n in names):
+        return                      # something is at the root; not this defect
+
+    roots = {n.strip("/").split("/")[0] for n in names}
+    if len(roots) != 1:
+        return                      # several top-level folders is a different mess
+
+    folder = roots.pop()
+    inside = {posixpath.relpath(n, folder) for n in names}
+    if not ({MIMETYPE_FILE, METADATA_RDF} & inside):
+        return                      # the folder holds no container either
+
+    yield Violation("the whole package sits inside a directory in the archive, so nothing "
+                    "a consumer looks for is where it looks",
+                    subject=folder + "/",
+                    detail="found %s -- the other container findings all follow from this one"
+                           % ", ".join(sorted("%s/%s" % (folder, n) for n in
+                                              sorted({MIMETYPE_FILE, METADATA_RDF} & inside))))

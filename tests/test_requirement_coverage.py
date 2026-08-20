@@ -72,7 +72,7 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 18
+    assert len(COVERED) == 19
     assert len(ABSOLUTE) == 314
 
 
@@ -135,9 +135,10 @@ def test_nothing_is_both_covered_and_excused():
 
 def test_chapter_five_is_mapped_apart_from_its_three_gaps():
     """The first section taken end to end. 21 obligations: 16 have a rule, two
-    are addressed to consumers, and three are things this validator does not
-    check and could -- a single root directory, and the two prohibitions on
-    what a nested package may say about its neighbours.
+    are addressed to consumers, and the rest are things this validator does not
+    check and could. The single-root requirement became R3; what remains are
+    the two prohibitions on what a nested package may say about its
+    neighbours.
 
     Pinned so the gaps cannot be closed by accident or reopened by one.
     """
@@ -149,6 +150,5 @@ def test_chapter_five_is_mapped_apart_from_its_three_gaps():
 
     gaps = sorted(r["id"] for r in chapter
                   if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE)
-    assert gaps == ["dfn-iirds-container#1",
-                    "dfn-iirds-zip-archive#10",
-                    "dfn-iirds-zip-archive#11"]
+    assert gaps == ["dfn-iirds-zip-archive#10", "dfn-iirds-zip-archive#11"], \
+        "the single-root requirement is R3; the two nested-package prohibitions remain"

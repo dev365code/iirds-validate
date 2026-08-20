@@ -127,3 +127,35 @@ def test_an_undescribed_reference_is_reported_once_not_five_times(make_package):
     conformance = ids(runner.check(package))
     assert not {"M15.8", "M15.9", "M15.10"} & conformance
     assert "L1" in ids(runner.lint(package))
+
+
+def test_the_second_half_of_the_party_sentence_is_checked_by_something(make_package):
+    """M22.1 and M22.2 come from one sentence and ask two things: that a Party
+    has `has-party-role`, and that what it points at is a PartyRole. The
+    reference implements both as the same check, and its only fixture for the
+    pair carries a Party with no `has-party-role` at all -- so the second
+    question is exercised by nothing in its corpus.
+
+    Cross-validation therefore cannot tell a working M22.2 from a dead one, and
+    that distinction is the whole value of the rule. This test is the substitute
+    oracle: the three cases, and which id each produces.
+    """
+    missing = runner.check(pkg(make_package, '  <iirds:Party rdf:about="urn:test:p1"/>\n',
+                               name="missing.iirds"))
+    assert "M22.1" in ids(missing) and "M22.2" not in ids(missing)
+
+    wrong = runner.check(pkg(make_package, '''
+  <iirds:Party rdf:about="urn:test:p2">
+    <iirds:has-party-role rdf:resource="urn:test:not-a-role"/>
+  </iirds:Party>
+  <vcard:Organization xmlns:vcard="http://www.w3.org/2006/vcard/ns#"
+                      rdf:about="urn:test:not-a-role"/>
+''', name="wrong.iirds"))
+    assert "M22.2" in ids(wrong) and "M22.1" not in ids(wrong)
+
+    right = runner.check(pkg(make_package, '''
+  <iirds:Party rdf:about="urn:test:p3">
+    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>
+  </iirds:Party>
+''', name="right.iirds"))
+    assert not {"M22.1", "M22.2"} & ids(right)

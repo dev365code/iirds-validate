@@ -11,9 +11,9 @@ from .registry import CATALOG, all_rules
 
 #: "system" is in every set: a container that could not be read has to be
 #: reported whichever question the caller asked.
-CONFORMANCE_KINDS = ("container", "schema", "system")
+CONFORMANCE_KINDS = ("container", "schema", "content", "system")
 LINT_KINDS = ("lint", "system")
-ALL_KINDS = ("container", "schema", "lint", "system")
+ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
 def load(path, version: Optional[str] = None) -> Context:

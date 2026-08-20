@@ -25,10 +25,10 @@ def test_no_rule_id_is_missing_from_the_catalogue():
     #: has no rule for — that the declared version and profile exist, that no
     #: archive entry escapes the container, and the two requirements section
     #: 5.2.2 states about the archive itself.
-    ours = {r.id for r in rules_of_kind("lint")} | {"S4", "S5", "S6", "S7", "S8"}
+    ours = {r.id for r in rules_of_kind("lint")} | {"S4", "S5", "S6", "S7", "S8"} | {r.id for r in rules_of_kind("content")}
     assert uncatalogued == ours, \
         "uncatalogued ids are a typo unless they are ours: %s" % sorted(uncatalogued - ours)
-    assert all(rid[0] in "LS" and rid[1:].isdigit() for rid in ours), sorted(ours)
+    assert all(rid[0] in "LSB" and rid[1:].isdigit() for rid in ours), sorted(ours)
 
 
 def test_every_rule_kind_matches_the_catalogue():

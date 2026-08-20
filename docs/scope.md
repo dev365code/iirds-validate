@@ -49,7 +49,8 @@ Written down because each of these was, at some point, about to be built.
 
 | | |
 |---|---|
-| `src/iirds_validate/rules/` | the 180 rules — `container.py` C\*, `schema.py` M\*, `system.py` S\*, `content.py` B\*, `lint.py` L\*, `schema_tables.py` generated |
+| `src/iirds_validate/rules/` | the rules — `container.py` C\*, `schema.py` M\*, `system.py` S\*, `content.py` B\*, `lint.py` L\*, `requirements.py` R\*, `schema_tables.py` generated |
+| `docs/requirements.json` | what the standard requires, enumerated from the specification |
 | `src/iirds_validate/context.py` | parses metadata into **one graph**; every rule reads this and nothing else |
 | `src/iirds_validate/terms.py` | every iiRDS term, in one place, checked against the ontology by a test |
 | `src/iirds_validate/data/` | what ships: the rule catalogue and the vendored ontologies |
@@ -94,11 +95,15 @@ Publishing a reading is the only way a single author can make it refutable.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is unmeasured.** 157 of 157 catalogued rules is
-   coverage of plusmeta's catalogue, not of iiRDS. The denominator now exists —
-   314 absolute obligations, derived in `docs/requirements.json` — but nothing
-   maps them to rules yet, so the numerator does not. Until it does, "no
-   findings" must never be presented as "conformant".
+1. **Coverage of the standard is 2 of 314.** The denominator is derived in
+   `docs/requirements.json`; the numerator is the union of the `covers=`
+   declarations on the rules, printed by `tools/requirement_coverage.py`. The
+   figure is small because the mapping has barely started, not because the
+   rules check almost nothing — 157 catalogued rules do a great deal that is
+   simply not yet mapped to a requirement id. Which is the point of measuring
+   it while it is embarrassing: a number that starts honest can be watched.
+   "157 of 157" was never embarrassing and was never coverage of the standard.
+   Until this rises, "no findings" must never be presented as "conformant".
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Three Appendix B rules rest on readings the specification does not

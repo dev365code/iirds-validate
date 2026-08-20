@@ -62,6 +62,7 @@ versions:
 # showed the scope was wrong.
 requirements:
 	$(PYTHON) tools/extract_requirements.py
+	$(PYTHON) tools/requirement_coverage.py
 
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check

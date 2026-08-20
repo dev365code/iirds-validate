@@ -118,6 +118,15 @@ class Rule:
     #: exactly one iirds:format" -> "add an iirds:format" says nothing the
     #: message did not. Say where it goes, and what a correct value looks like.
     fix: Optional[str] = None
+    #: Ids from `docs/requirements.json`: which of the specification's 314
+    #: absolute obligations this rule implements.
+    #:
+    #: The map from standard to rules, kept in the rules rather than in a
+    #: document beside them, because a document beside them drifts. Empty on
+    #: most rules today -- the enumeration exists and the mapping has barely
+    #: started -- and the number that can honestly be published is the size of
+    #: the union of these, which is why they live somewhere a test can count.
+    covers: Tuple[str, ...] = ()
     #: True when a rule of ours implements a sentence the specification states
     #: as a MUST. Those have to run under `check`, whatever bucket they were
     #: written in — an advisory that the standard makes mandatory is not an

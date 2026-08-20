@@ -1,2 +1,11 @@
 """Rule implementations. Importing this package registers every rule."""
-from . import container, content, handover, lint, schema, schema_tables, system  # noqa: F401
+from . import (  # noqa: F401
+    container,
+    content,
+    handover,
+    lint,
+    requirements,
+    schema,
+    schema_tables,
+    system,
+)

@@ -36,7 +36,8 @@ CATALOG, PROVENANCE = _load_catalog()
 def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
          title: Optional[str] = None, versions: Optional[Tuple[str, ...]] = None,
          variants: Optional[Tuple[str, ...]] = None, spec: Optional[str] = None,
-         conformance: bool = False, fix: Optional[str] = None) -> Callable:
+         conformance: bool = False, fix: Optional[str] = None,
+         covers: Tuple[str, ...] = ()) -> Callable:
     """Register a rule, inheriting anything not given from the catalogue."""
     meta = CATALOG.get(rule_id, {})
 
@@ -54,6 +55,7 @@ def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
             fn=fn,
             conformance=conformance,
             fix=fix,
+            covers=tuple(covers),
         )
         return fn
 

@@ -40,7 +40,9 @@ jobs:
         run: python tools/version_inventory.py
 
       - name: the specification index is internally consistent
-        run: python tools/extract_requirements.py
+        run: |
+          python tools/extract_requirements.py
+          python tools/requirement_coverage.py
 
   test:
     name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}

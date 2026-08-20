@@ -42,6 +42,9 @@ SCOPED = {
     "M96.3": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
     "M97.1": (("1.2", "1.3"), "iirds:ClassificationDomain arrives in 1.2"),
     "M97.2": (("1.2", "1.3"), "iirds:ClassificationDomain arrives in 1.2"),
+    "R1":    (("1.2", "1.3"), "iirds:ClassificationType arrives in 1.2 with the rest of "
+                              "the external classification vocabulary"),
+    "R2":    (("1.3",), "iirdsHov:DocumentCategory is part of iiRDS/H, which arrives in 1.3"),
 }
 
 #: iiRDS/H arrived with 1.3, so its rules cannot apply to anything earlier.
@@ -57,9 +60,12 @@ def test_the_only_version_scoped_rules_are_the_ones_accounted_for():
     assert scoped == set(SCOPED) | HANDOVER
 
 
-def test_every_handover_rule_is_1_3_only_and_they_are_all_m15():
+def test_every_1_3_only_rule_belongs_to_the_handover_profile():
+    """iiRDS/H arrived with 1.3, so its rules cannot apply earlier. R2 is here
+    for the same reason without an M15 identifier: it implements a
+    specification requirement the catalogue has no id for."""
     assert HANDOVER, "iiRDS/H rules must exist"
-    assert all(r.startswith("M15.") for r in HANDOVER), sorted(HANDOVER)
+    assert all(r.startswith("M15.") or r in SCOPED for r in HANDOVER), sorted(HANDOVER)
 
 
 @pytest.mark.parametrize("rule_id", sorted(SCOPED), ids=sorted(SCOPED))

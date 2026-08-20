@@ -174,18 +174,18 @@ a request that passes review at a manufacturer.
 ```console
 $ iirdsv rules
 container  19/19    the ZIP and its layout
-schema     135/135  the metadata graph
+schema     135/135  the metadata graph  +2 of its own
 system     3/3      the run itself  +5 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +8 of its own
 lint       -        will a consumer be able to use it  +12 of its own
 ```
 
-157 of 157 catalogued rules, plus 25 of this project's own.
+157 of 157 catalogued rules, plus 27 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | — |
-| schema (M\*) | 135 / 135 | — |
+| schema (M\*) | 135 / 135 | 2 |
 | system (S\*) | 3 / 3 | 5 |
 | content (B\*) | — | 8 |
 | interoperability (L\*) | — | 12 |
@@ -268,13 +268,13 @@ the repository.
   The full table, and why "65 of 66 fixtures produce some finding" is the
   flattering way to say this rather than the honest one, are in
   [docs/divergences.md](docs/divergences.md).
-- **Every finding says what to do about it.** All 182 rules carry one imperative
+- **Every finding says what to do about it.** All 184 rules carry one imperative
   sentence naming the change, and `tests/test_remediation.py` refuses a rule
   that does not. A validator that names a defect and not the remedy has told
   you that something is wrong and left you the specification to search, which
   is most of the work and all of the expertise.
 - **Every rule has been watched fire.** The suite records which rule ids
-  actually produce a finding, and 181 of the 182 have — the remaining one is a
+  actually produce a finding, and 183 of the 184 have — the remaining one is a
   `MAY` with nothing to violate. It began at 63. A rule that fires nowhere is
   not known to work: S8 spent months exactly backwards, able to fire only on
   archives that were correct, and no test would have caught it because no test

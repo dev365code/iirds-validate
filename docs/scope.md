@@ -40,7 +40,9 @@ Written down because each of these was, at some point, about to be built.
   requirements cannot be assessed on an unpacked directory, and for no other
   reason. It is subordinate to checking, not a second product.
 - **Not a fixer.** No `--fix`. Deciding what a package was meant to say is the
-  author's job; this reports what it does say.
+  author's job; this reports what it does say — and says, for every rule, what
+  change would settle it. Naming the remedy is part of reporting. Applying it
+  is not.
 - **Not a CCMS integration.** Not now.
 
 ## Where things live

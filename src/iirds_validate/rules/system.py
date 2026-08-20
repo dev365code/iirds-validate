@@ -22,7 +22,8 @@ from ..registry import rule
 ALWAYS = ()
 
 
-@rule("S1", versions=ALWAYS, variants=ALWAYS)
+@rule("S1", versions=ALWAYS, variants=ALWAYS,
+       fix="Check the path, and that the file is a readable ZIP. An .iirds container is an ordinary ZIP archive; `unzip -l` on it should list mimetype first.")
 def s1_unreadable_container(ctx):
     """Emitted by `runner.run` when the file cannot be opened as a ZIP.
 
@@ -32,7 +33,8 @@ def s1_unreadable_container(ctx):
     return ()
 
 
-@rule("S2", versions=ALWAYS, variants=ALWAYS)
+@rule("S2", versions=ALWAYS, variants=ALWAYS,
+       fix="Fix the container problems reported alongside this. No graph rule can run until the metadata is found and parsed, so this is a consequence rather than a defect of its own.")
 def s2_no_usable_metadata(ctx):
     """Nothing in META-INF parsed, so no graph rule could have run.
 
@@ -47,7 +49,8 @@ def s2_no_usable_metadata(ctx):
                     subject="META-INF", detail=detail)
 
 
-@rule("S3", versions=ALWAYS, variants=ALWAYS)
+@rule("S3", versions=ALWAYS, variants=ALWAYS,
+       fix="Fix the metadata parse error reported alongside this. The graph could not be built, so every rule that reads it stood down rather than reporting a clean package.")
 def s3_rule_raised(ctx):
     """Emitted by `runner.run` when a rule raises.
 
@@ -59,7 +62,8 @@ def s3_rule_raised(ctx):
 
 
 @rule("S4", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
-      title="iirds:iiRDSVersion must name a published version of the standard")
+      title="iirds:iiRDSVersion must name a published version of the standard",
+       fix="Set iirds:iiRDSVersion to a version the standard has published: 1.0, 1.0.1, 1.1, 1.2 or 1.3. A version nobody published cannot be validated against, and rounding it up would silently check the wrong rules.")
 def s4_declared_version_exists(ctx):
     """A package that says it is iiRDS 9.9 cannot be validated as anything.
 
@@ -76,7 +80,8 @@ def s4_declared_version_exists(ctx):
 
 
 @rule("S5", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
-      title="iirds:formatRestriction must name a published profile")
+      title="iirds:formatRestriction must name a published profile",
+       fix="Set iirds:formatRestriction to a published profile, or remove the property to mean the unrestricted one. A value matching no profile would otherwise switch off both rule sets at once.")
 def s5_declared_variant_exists(ctx):
     """An unrecognised profile silently switches off rules in both directions.
 
@@ -93,7 +98,8 @@ def s5_declared_variant_exists(ctx):
 
 
 @rule("S6", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
-      title="every entry in the container must stay inside it")
+      title="every entry in the container must stay inside it",
+       fix="Rewrite the entry with a path inside the container. A name containing .. or beginning with / escapes the extraction directory, so unpacking this archive would write outside it.")
 def s6_entries_stay_inside_the_container(ctx):
     """An archive entry named `../../../etc/passwd` or `/tmp/x`.
 
@@ -141,7 +147,8 @@ def _has_zip64_record(path) -> bool:
 
 
 @rule("S7", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
-      title="the iiRDS ZIP archive must not be encrypted")
+      title="the iiRDS ZIP archive must not be encrypted",
+       fix="Rewrite the archive without encryption. A consumer holding only the package has no key, which is every consumer.")
 def s7_archive_is_not_encrypted(ctx):
     """"The iiRDS ZIP archive MUST NOT be encrypted." (section 5.2.2)
 
@@ -156,7 +163,8 @@ def s7_archive_is_not_encrypted(ctx):
 
 
 @rule("S8", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
-      title="large archives must use the ZIP64 extension")
+      title="large archives must use the ZIP64 extension",
+       fix="Rebuild the archive with ZIP64 enabled. Past 65536 entries or 4 GB the ZIP32 offsets wrap and the archive is unreadable beyond the limit, however carefully it was assembled.")
 def s8_zip64_where_required(ctx):
     """"The ZIP archive MUST use the ZIP64 extension if the file size is bigger
     than 4 GB or the package has more than 65536 file entries." (section 5.2.2)

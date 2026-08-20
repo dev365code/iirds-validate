@@ -16,6 +16,24 @@ _BOLD = "\033[1m"
 _MARK = {Severity.ERROR: "ERROR", Severity.WARNING: "WARN ", Severity.INFO: "INFO "}
 
 
+def _wrap(text: str, width: int):
+    """Fold to `width`, because a remedy that runs off the terminal is not one.
+
+    Deliberately not textwrap: this keeps the dependency surface at zero and
+    the behaviour obvious, and the strings involved are one sentence long.
+    """
+    words, line, out = text.split(), "", []
+    for word in words:
+        if line and len(line) + 1 + len(word) > width:
+            out.append(line)
+            line = word
+        else:
+            line = "%s %s" % (line, word) if line else word
+    if line:
+        out.append(line)
+    return out
+
+
 def _use_colour(stream: TextIO) -> bool:
     if os.environ.get("NO_COLOR") is not None:
         return False
@@ -50,6 +68,11 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             print(paint("                      %s" % finding.violation.subject, _DIM), file=stream)
         if finding.violation.detail:
             print(paint("                      %s" % finding.violation.detail, _DIM), file=stream)
+        # Shown by default, not behind -v. A report you cannot act on is a
+        # report that has told you only that you are in trouble.
+        if finding.fix:
+            for line in _wrap(finding.fix, 74):
+                print(paint("                    → %s" % line, _DIM), file=stream)
         if verbose and finding.rule.spec:
             print(paint("                      spec: %s" % finding.rule.spec, _DIM), file=stream)
 

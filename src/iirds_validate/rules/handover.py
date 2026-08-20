@@ -70,7 +70,8 @@ def _needs_named_party(ctx, cls, role, what):
 # What a handover document must carry
 # --------------------------------------------------------------------------
 
-@rule("M15.2")
+@rule("M15.2",
+       fix="Add exactly one iirdsHov:has-document-type to the Document, naming one of the handover document types. In iiRDS/H a receiving plant sorts incoming documents by this before anything reads them.")
 def m15_2_document_category(ctx):
     for doc in ctx.instances_of(T.Document):
         if len(ctx.values(doc, T.hov_has_document_category)) != 1:
@@ -78,21 +79,24 @@ def m15_2_document_category(ctx):
                             "iirdsHov:has-document-category", subject=ctx.ref(doc))
 
 
-@rule("M15.3")
+@rule("M15.3",
+       fix="Add iirds:language to the Document, as a BCP 47 tag such as en or de-DE. A handover package crosses organisations, and the receiving side cannot infer which language a file is in.")
 def m15_3_language(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.language):
             yield Violation("iiRDS/H: iirds:Document must have iirds:language", subject=ctx.ref(doc))
 
 
-@rule("M15.4")
+@rule("M15.4",
+       fix="Add iirds:title to the Document. It is what appears in the receiving system's document list, and a handover document without one arrives unnamed among hundreds.")
 def m15_4_title(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.title):
             yield Violation("iiRDS/H: iirds:Document must have iirds:title", subject=ctx.ref(doc))
 
 
-@rule("M15.5")
+@rule("M15.5",
+       fix="Add one iirds:is-version-of relating the Document to an iirds:InformationObject. That link is how a plant recognises a later delivery as a revision of a document it already holds instead of as a new one.")
 def m15_5_information_object(ctx):
     """Without it there is nothing to hang later revisions of the document off."""
     objects = None
@@ -105,7 +109,8 @@ def m15_5_information_object(ctx):
                             subject=ctx.ref(doc), detail="%d found" % len(objects))
 
 
-@rule("M15.6")
+@rule("M15.6",
+       fix="Add iirds:has-rendition to the Document, pointing at a Rendition whose iirds:source names a file in this container. Without it the metadata describes a document the package does not actually deliver.")
 def m15_6_rendition(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.has_rendition):
@@ -125,7 +130,8 @@ def _identities_of_type(ctx, variant, wanted):
                 yield identity, domain
 
 
-@rule("M15.7a")
+@rule("M15.7a",
+       fix="Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible.")
 def m15_7a_product_variant_instance_identity(ctx):
     """The document has to say which machine, not merely which model."""
     for doc in ctx.instances_of(T.Document):
@@ -141,7 +147,8 @@ def m15_7a_product_variant_instance_identity(ctx):
                             subject=ctx.ref(doc))
 
 
-@rule("M15.7b")
+@rule("M15.7b",
+       fix="Give the instance Identity an iirds:IdentityDomain that names one of ObjectInstanceURI, ObjectTypeURI or SerialNumber. The domain says which identifier scheme the value belongs to; without it a serial number and an asset URI are indistinguishable strings.")
 def m15_7b_instance_identity_manufacturer(ctx):
     for variant in ctx.instances_of(T.ProductVariant):
         for _identity, domain in _identities_of_type(ctx, variant, T.INSTANCE_IDENTITY_TYPES):
@@ -154,7 +161,8 @@ def m15_7b_instance_identity_manufacturer(ctx):
                                 subject=ctx.ref(domain), detail=ctx.label_of(variant))
 
 
-@rule("M15.7c")
+@rule("M15.7c",
+       fix="Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type.")
 def m15_7c_product_type_identity(ctx):
     for variant in ctx.instances_of(T.ProductVariant):
         if not any(_identities_of_type(ctx, variant, (T.ProductType,))):
@@ -163,7 +171,8 @@ def m15_7c_product_type_identity(ctx):
                             subject=ctx.ref(variant), detail=ctx.label_of(variant))
 
 
-@rule("M15.7d")
+@rule("M15.7d",
+       fix="Relate the ProductType IdentityDomain to an iirds:Party with iirds:has-party-role. Identifier schemes are only unique within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7d_product_type_manufacturer(ctx):
     for variant in ctx.instances_of(T.ProductVariant):
         for _identity, domain in _identities_of_type(ctx, variant, (T.ProductType,)):
@@ -180,17 +189,20 @@ def m15_7d_product_type_manufacturer(ctx):
 # Who is answerable for what
 # --------------------------------------------------------------------------
 
-@rule("M15.8")
+@rule("M15.8",
+       fix="Add iirds:relates-to-Party on the Document, relating it to a Party with a role. A handover document with no responsible organisation leaves the receiving plant with nobody to ask about it.")
 def m15_8_document_author(ctx):
     yield from _needs_named_party(ctx, T.Document, T.Author, "iirds:Document")
 
 
-@rule("M15.9")
+@rule("M15.9",
+       fix="Add iirds:relates-to-Party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it.")
 def m15_9_package_creator(ctx):
     yield from _needs_named_party(ctx, T.Package, T.Creator, "iirds:Package")
 
 
-@rule("M15.10")
+@rule("M15.10",
+       fix="Add iirds:relates-to-Party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both.")
 def m15_10_information_object_creator(ctx):
     yield from _needs_named_party(ctx, T.InformationObject, T.Creator, "iirds:InformationObject")
 
@@ -199,7 +211,8 @@ def m15_10_information_object_creator(ctx):
 # What a handover package may not contain
 # --------------------------------------------------------------------------
 
-@rule("M15.11a")
+@rule("M15.11a",
+       fix="Retype the information unit as iirds:Document or iirds:Package, or take it out of the handover package. iiRDS/H deliberately restricts the shapes a receiving system has to understand, and that restriction is the profile's whole value.")
 def m15_11a_documents_only(ctx):
     for cls in (T.Topic, T.Fragment):
         for unit in ctx.typed_exactly(cls):
@@ -208,14 +221,16 @@ def m15_11a_documents_only(ctx):
                             subject=ctx.ref(unit), detail=ctx.ref(cls).split("#")[-1])
 
 
-@rule("M15.11b")
+@rule("M15.11b",
+       fix="Remove the iirds:DirectoryNode instances. iiRDS/H carries documents, not a navigation tree; a handover package is filed by the receiving system rather than browsed as authored.")
 def m15_11b_no_directory_node(ctx):
     for node in ctx.instances_of(T.DirectoryNode):
         yield Violation("iiRDS/H packages must not contain iirds:DirectoryNode instances",
                         subject=ctx.ref(node))
 
 
-@rule("M15.11c")
+@rule("M15.11c",
+       fix="Remove the iirds:Selector instances. iiRDS/H delivers whole documents, so addressing a fragment inside one has no meaning on the receiving side.")
 def m15_11c_no_selector(ctx):
     for selector in ctx.instances_of(T.Selector):
         yield Violation("iiRDS/H packages must not contain iirds:Selector instances",

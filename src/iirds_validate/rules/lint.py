@@ -122,7 +122,7 @@ def l1_dangling_references(ctx):
         if str(obj).startswith(("http://", "https://")):
             continue
         yield Violation("relation points at an IRI that is never described in this package",
-                        subject=str(obj),
+                        subject=ctx.ref(obj),
                         detail="referenced by %s via %s" % (ctx.label_of(subj), pred.split("#")[-1]))
 
 
@@ -137,7 +137,7 @@ def l8_external_references(ctx):
         if not str(obj).startswith(("http://", "https://")):
             continue
         yield Violation("reference to an external vocabulary, not described in this package",
-                        subject=str(obj),
+                        subject=ctx.ref(obj),
                         detail="referenced by %s via %s" % (ctx.label_of(subj), pred.split("#")[-1]))
 
 
@@ -157,11 +157,11 @@ def l2_missing_content_files(ctx):
             candidate = posixpath.normpath(path.lstrip("/"))
             if candidate.startswith(".."):
                 yield Violation("iirds:source escapes the package root",
-                                subject=str(rend), detail=raw)
+                                subject=ctx.ref(rend), detail=raw)
                 continue
             if candidate not in present:
                 yield Violation("iirds:source does not resolve to a file in the container",
-                                subject=str(rend), detail=raw)
+                                subject=ctx.ref(rend), detail=raw)
 
 
 @_lint("L3", "every iirds:DirectoryNode should be reachable from a root node")
@@ -180,7 +180,7 @@ def l3_orphan_directory_nodes(ctx):
         stack.extend(_children(ctx, node))
     for node in sorted(nodes - reachable, key=str):
         yield Violation("directory node is not reachable from any root node",
-                        subject=str(node), detail=ctx.label_of(node))
+                        subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
 @_lint("L4", "the directory structure should not contain cycles", prio="MUST")
@@ -212,7 +212,7 @@ def l4_directory_cycles(ctx):
                     reported.add(node)
                     loop = trail[trail.index(node):] + [node] if node in trail else [node]
                     yield Violation("cycle in the directory structure",
-                                    subject=str(node),
+                                    subject=ctx.ref(node),
                                     detail=" -> ".join(str(n).split("/")[-1] for n in loop))
                 continue
             state[node] = "open"
@@ -240,7 +240,7 @@ def l5_unmapped_custom_classes(ctx):
             continue
         reported.add(cls)
         yield Violation("proprietary class is not linked to any iiRDS class",
-                        subject=str(cls),
+                        subject=ctx.ref(cls),
                         detail="add rdfs:subClassOf or owl:equivalentClass pointing into iiRDS")
 
 
@@ -268,7 +268,7 @@ def l6_unlabelled_concepts(ctx):
             continue
         types = [str(ty).split("#")[-1] for ty in ctx.values(subj, RDF.type)]
         yield Violation("metadata value has no label a consumer could display",
-                        subject=str(subj),
+                        subject=ctx.ref(subj),
                         detail=("typed as %s" % ", ".join(types)) if types else None)
 
 
@@ -283,7 +283,7 @@ def l7_untitled_information_units(ctx):
         if not ctx.has(unit, T.title):
             types = [str(t).split("#")[-1] for t in ctx.values(unit, RDF.type)]
             yield Violation("information unit has no iirds:title",
-                            subject=str(unit), detail=", ".join(types) or None)
+                            subject=ctx.ref(unit), detail=", ".join(types) or None)
 
 
 @_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
@@ -356,6 +356,6 @@ def l10_abstract_class_used_directly(ctx):
                                 for s in ctx.ontology.graph.subjects(RDFS.subClassOf, cls))
             yield Violation("%s is a grouping class; type the instance as one of its "
                             "subclasses" % str(cls).split("#")[-1],
-                            subject=str(subject),
+                            subject=ctx.ref(subject),
                             detail=("standard subclasses: %s" % ", ".join(subclasses[:6]))
                                    if subclasses else "define a proprietary subclass")

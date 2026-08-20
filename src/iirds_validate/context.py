@@ -21,12 +21,13 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
-from rdflib import Graph, URIRef
+from rdflib import BNode, Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
@@ -88,6 +89,32 @@ class Context:
             if self.ontology.is_iirds_term(o):
                 out.add(s)
         return out
+
+    def ref(self, node) -> str:
+        """A name for a node that is the same on every run.
+
+        rdflib mints a fresh identifier for every blank node on every parse, so
+        a finding that reported `str(node)` gave `N8892b8d9…` one run and
+        `N39e7e968…` the next. Two effects, both bad: a JSON report could not be
+        diffed between runs, and the same package written as RDF/XML and as
+        JSON-LD produced different findings — which is the one property this
+        project claims above all others.
+
+        A blank node is named by how you reach it instead: the nearest named
+        subject and the property that points at it, which is also far more use
+        to somebody reading the report than an opaque identifier. Where that
+        fails, a hash of the statements about the node, which is stable because
+        the statements are.
+        """
+        if not isinstance(node, BNode):
+            return str(node)
+        for subject, predicate in sorted(self.graph.subject_predicates(node), key=str):
+            if not isinstance(subject, BNode):
+                return "%s %s" % (subject, str(predicate).split("#")[-1].split("/")[-1])
+        digest = hashlib.sha256()
+        for predicate, obj in sorted(self.graph.predicate_objects(node), key=str):
+            digest.update(("%s %s\n" % (predicate, obj)).encode("utf-8"))
+        return "_:%s" % digest.hexdigest()[:12]
 
     def label_of(self, node) -> str:
         for p in (RDFS.label, T.title):

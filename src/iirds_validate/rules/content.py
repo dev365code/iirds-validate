@@ -26,6 +26,14 @@ from ..model import Violation
 from ..registry import rule
 
 XHTML_FORMAT = "application/xhtml+xml"
+
+#: Content arrives from a supplier just as metadata does, and the guard that
+#: refuses entity declarations was only ever applied to metadata. A few hundred
+#: bytes of nested entities in a content file expanded to gigabytes and the
+#: report came back clean — a silent pass, which is the failure this project
+#: exists to remove.
+MAX_CONTENT_BYTES = 64 * 1024 * 1024
+_ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
 XHTML_NS = "{http://www.w3.org/1999/xhtml}"
 
 #: B.5.1 to B.5.9. The complete set, transcribed from the specification rather
@@ -74,12 +82,21 @@ DATA_ROLE_ELEMENTS = {
 _EVENT_ATTRIBUTE = re.compile(r"^on[a-z]+$", re.I)
 
 
+def _media_type(value) -> str:
+    """The media type without its parameters.
+
+    `application/xhtml+xml; charset=utf-8` is the same media type as
+    `application/xhtml+xml`, and comparing the whole literal meant one legal
+    parameter switched off every rule in this file.
+    """
+    return str(value).split(";")[0].strip().lower()
+
+
 def _xhtml_renditions(ctx):
     """Files the package itself declares to be iiRDS XHTML5."""
     seen = set()
     for rendition in ctx.instances_of(T.Rendition):
-        formats = [str(f).strip().lower() for f in ctx.values(rendition, T.fmt)]
-        if XHTML_FORMAT not in formats:
+        if XHTML_FORMAT not in [_media_type(f) for f in ctx.values(rendition, T.fmt)]:
             continue
         for source in ctx.values(rendition, T.source):
             name = posixpath.normpath(str(source).lstrip("/"))
@@ -88,9 +105,22 @@ def _xhtml_renditions(ctx):
                 yield name
 
 
+def _refusal(ctx, name):
+    """Why this file will not be parsed, or None."""
+    info = ctx.package.info(name)
+    if info is not None and info.file_size > MAX_CONTENT_BYTES:
+        return "%d bytes uncompressed, above the %d byte limit" % (
+            info.file_size, MAX_CONTENT_BYTES)
+    if _ENTITY_DECL.search(ctx.package.read(name)):
+        return "the document declares XML entities"
+    return None
+
+
 def _walk(ctx):
     """Every declared XHTML file, parsed. Unparsable ones are B1's business."""
     for name in sorted(_xhtml_renditions(ctx)):
+        if _refusal(ctx, name):
+            continue
         try:
             root = ElementTree.fromstring(ctx.package.read(name))
         except ElementTree.ParseError:
@@ -111,6 +141,11 @@ def b1_well_formed(ctx):
     file that does not parse is a delivery a consumer cannot open at all.
     """
     for name in sorted(_xhtml_renditions(ctx)):
+        refused = _refusal(ctx, name)
+        if refused:
+            yield Violation("content declared as iiRDS XHTML5 was refused rather than parsed",
+                            subject=name, detail=refused)
+            continue
         try:
             ElementTree.fromstring(ctx.package.read(name))
         except ElementTree.ParseError as exc:
@@ -170,7 +205,10 @@ def b5_link_rel(ctx):
     """B.5.2. Every other relation "MUST be expressed by means of RDF in
     iiRDS", so a `<link rel="next">` is metadata smuggled past the metadata."""
     for name, root in _walk(ctx):
-        for element in root.iter(XHTML_NS + "link"):
+        # By local name, like every other rule here. Matching the namespaced
+        # tag meant a document missing its xmlns declaration got B2, B3, B4, B7
+        # and B8 and silently lost B5.
+        for element in (e for e in root.iter() if _local(e.tag) == "link"):
             rel = (element.get("rel") or "").strip().lower()   # ASCII case-insensitive
             if rel != "stylesheet":
                 yield Violation("<link> must be used only with rel=\"stylesheet\"",
@@ -219,6 +257,7 @@ def b8_safety_alert_symbol(ctx):
         parents = {child: parent for parent in root.iter() for child in parent}
         symbols = [e for e in root.iter() if (e.get("data-role") or "").strip()
                    == "safety-alert-symbol"]
+        per_panel = {}
         for symbol in symbols:
             parent = parents.get(symbol)
             role = (parent.get("data-role") or "").strip() if parent is not None else ""
@@ -227,6 +266,14 @@ def b8_safety_alert_symbol(ctx):
                                 "panel", subject=name,
                                 detail="parent is <%s data-role=%r>"
                                        % (_local(parent.tag) if parent is not None else "?", role))
-        if len(symbols) > 1:
-            yield Violation("only one safety alert symbol may be included",
-                            subject=name, detail="%d found" % len(symbols))
+            else:
+                per_panel[id(parent)] = per_panel.get(id(parent), 0) + 1
+
+        # Per hazard statement, not per file. "Only one safety alert symbol
+        # MUST be included" sits inside the table describing one hazard
+        # statement, and a topic carrying a Warning and a Danger notice, each
+        # correctly formed, is ordinary safety documentation.
+        for count in per_panel.values():
+            if count > 1:
+                yield Violation("a hazard statement may include only one safety alert symbol",
+                                subject=name, detail="%d in one signal word panel" % count)

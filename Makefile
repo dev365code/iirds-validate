@@ -44,6 +44,7 @@ generated:
 # only evidence for as long as it is upstream's bytes. Verified offline.
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check
+	$(PYTHON) tools/crossvalidate.py --check
 
 tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify

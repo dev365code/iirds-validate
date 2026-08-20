@@ -1,9 +1,10 @@
 """Lock in what was learned from the reference tool's corpus.
 
-`tools/crossvalidate.py` needs the network, so it cannot run here. These tests
-pin the conclusions it produced, using fixtures rebuilt from the shapes that
-mattered. If a future change re-breaks one of these, the failure names the
-divergence rather than a number.
+`tools/crossvalidate.py` no longer needs the network — the corpus is vendored —
+and `docs/agreement.json` now pins its verdict for every rule/fixture pair. But
+a moved baseline says only that a number changed. These tests say *what* was
+learned, using fixtures rebuilt from the shapes that mattered, so a regression
+names the divergence rather than a count.
 
 docs/divergences.md is the prose version and should be updated with any change
 that moves one of these.

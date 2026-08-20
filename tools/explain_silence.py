@@ -37,12 +37,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 from rdflib import Graph  # noqa: E402
 from rdflib.compare import graph_diff, to_isomorphic  # noqa: E402
 
-from crossvalidate import fetch_fixtures  # noqa: E402
+from crossvalidate import load_fixtures  # noqa: E402
 from iirds_validate import runner  # noqa: E402
 from iirds_validate.model import PACKAGE_BASE  # noqa: E402
 from iirds_validate.registry import CATALOG, implemented_ids  # noqa: E402
-
-CACHE = ROOT / ".crossvalidate-cache"
 
 RDF_ABOUT = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about"
 RDF_RESOURCE = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource"
@@ -124,7 +122,7 @@ def main() -> int:
     ap.add_argument("--quiet", action="store_true", help="counts only")
     args = ap.parse_args()
 
-    fixtures = fetch_fixtures(CACHE)
+    fixtures = load_fixtures()
     implemented = implemented_ids()
     tmp = Path(tempfile.mkdtemp(prefix="iirds-explain-"))
     fired_cache = {}

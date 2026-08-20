@@ -1,12 +1,12 @@
-<div align="center">
-
-<pre>
+```text
     _ _ ____  ____  _____
    (_|_) __ \/ __ \/ ___/                 ___    __     __
   / / / /_/ / / / /\__ \       _  _____ _/ (_)__/ /__ _/ /____
  / / / _, _/ /_/ /___/ /      | |/ / _ `/ / / _  / _ `/ __/ -_)
 /_/_/_/ |_/_____//____/       |___/\_,_/_/_/\_,_/\_,_/\__/\__/
-</pre>
+```
+
+<div align="center">
 
 *conformance and interoperability checking for iiRDS packages — offline*
 

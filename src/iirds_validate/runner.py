@@ -132,17 +132,9 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             for violation in rule.fn(ctx) or ():
                 if rule.severity is Severity.INFO and not include_info:
                     continue
-                # Content findings demote to warnings outside iiRDS/A. The
-                # B rules quote MUSTs, but the decision that a given file is
-                # "iiRDS XHTML5 content" — the entry condition — is this
-                # project's reading, and an unrestricted package may carry
-                # any content it likes. Under A the profile itself makes the
-                # restriction, so the errors stand. docs/divergences.md
-                # carries the reasoning.
-                demoted = (Severity.WARNING
-                           if rule.kind == "content" and ctx.variant != "A"
-                           and rule.severity is Severity.ERROR else None)
-                report.findings.append(Finding(rule, violation, demoted_to=demoted))
+                report.findings.append(
+                    Finding(rule, violation,
+                            demoted_to=severity_override(rule, ctx.variant)))
         except Exception as exc:                      # a broken rule must not hide the rest
             report.findings.append(Finding(
                 _emitted("S3"),
@@ -161,6 +153,24 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
     # a second, partial sort at this point used to shadow it and made the
     # output look stably ordered when the stability was an accident.
 
+
+def severity_override(rule, variant: str):
+    """The one place run-time severity policy lives.
+
+    Content findings demote to warnings outside iiRDS/A: the B rules quote
+    MUSTs, but the decision that a given file is "iiRDS XHTML5 content" — the
+    entry condition — is this project's reading, and an unrestricted package
+    may carry any content it likes. Under A the profile itself makes the
+    restriction, so the errors stand. docs/divergences.md carries the
+    reasoning.
+
+    Extracted from the collection loop so the policy has a name: the SHACL
+    shapes mirror rule severities and their README points here for the one
+    divergence between a rule's own severity and what a run reports.
+    """
+    if rule.kind == "content" and variant != "A" and rule.severity is Severity.ERROR:
+        return Severity.WARNING
+    return None
 
 def check(path, version: Optional[str] = None) -> Report:
     """Conformance only: container structure plus the metadata graph."""

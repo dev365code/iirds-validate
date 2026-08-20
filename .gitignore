@@ -11,3 +11,4 @@ dist/
 /out/
 fixtures/
 .crossvalidate-cache/
+.rule-coverage.json

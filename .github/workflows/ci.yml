@@ -62,6 +62,12 @@ jobs:
       - run: python -c "import rdflib, sys; print('rdflib', rdflib.__version__, 'on', sys.version)"
       - run: pytest -q
 
+      - name: no rule has quietly stopped firing
+        # pytest records which rules produced a finding; this compares that
+        # against docs/rule-coverage.json. A rule that fires nowhere is not
+        # known to work, and the count must not grow without somebody saying so.
+        run: python tools/rule_coverage.py --check
+
   wheel:
     # The failure this job exists for: a wheel that builds and installs but is
     # missing data/ontologies/, so the tool works from a checkout and dies on a

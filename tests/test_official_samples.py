@@ -34,7 +34,6 @@ from pathlib import Path
 import pytest
 
 from iirds_validate import runner
-from iirds_validate.model import Severity
 
 DIRECTORY = os.environ.get("IIRDS_SAMPLE_CONTENT", "")
 pytestmark = pytest.mark.skipif(

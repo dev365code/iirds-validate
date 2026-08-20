@@ -133,6 +133,7 @@ can still be undeliverable:
 | L8 | references out to vocabularies an offline consumer cannot resolve |
 | L9 | the RDF/XML and JSON-LD metadata describe different graphs |
 | L10 | an abstract iiRDS class used to type an instance directly |
+| L11 | content named `.xhtml` but declared as another media type, so nothing checked it |
 
 **It checks the content.** Appendix B states 25 absolute requirements about
 iiRDS XHTML5 — no scripting, no forms, no `<svg>`, a fixed element list, a
@@ -175,10 +176,10 @@ container  19/19    the ZIP and its layout
 schema     135/135  the metadata graph
 system     3/3      the run itself  +5 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +8 of its own
-lint       -        will a consumer be able to use it  +10 of its own
+lint       -        will a consumer be able to use it  +11 of its own
 ```
 
-157 of 157 catalogued rules, plus 23 of this project's own.
+157 of 157 catalogued rules, plus 24 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
@@ -186,7 +187,7 @@ lint       -        will a consumer be able to use it  +10 of its own
 | schema (M\*) | 135 / 135 | — |
 | system (S\*) | 3 / 3 | 5 |
 | content (B\*) | — | 8 |
-| interoperability (L\*) | — | 10 |
+| interoperability (L\*) | — | 11 |
 
 Coverage of the catalogue is not coverage of the standard. The specification
 states 254 absolute requirements; one rule can cover several sentences and

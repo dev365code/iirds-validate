@@ -39,6 +39,9 @@ jobs:
         # reports clean, so the error is in the claim rather than the output.
         run: python tools/version_inventory.py
 
+      - name: the specification index is internally consistent
+        run: python tools/extract_requirements.py
+
   test:
     name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

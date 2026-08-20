@@ -191,9 +191,19 @@ lint       -        will a consumer be able to use it  +12 of its own
 | interoperability (L\*) | — | 12 |
 
 Coverage of the catalogue is not coverage of the standard. The specification
-states 254 absolute requirements; one rule can cover several sentences and
-several rules one sentence, and some requirements are not machine-checkable at
-all. `iirdsv rules -v` prints the specification link behind each one. Three of
+states **314 absolute obligations**, counted by
+[`tools/extract_requirements.py`](tools/extract_requirements.py) and listed in
+[docs/requirements.json](docs/requirements.json) — 254 marked with an RFC 2119
+keyword and 60 more stated as `0..1` in the property tables, which carry no
+keyword at all and are obligations regardless. This README said 254 for months
+with nothing behind it; the figure was right about what it counted and counted
+the wrong thing.
+
+That is the denominator, not a score. One rule can cover several statements and
+several rules one statement, and some requirements are not machine-checkable at
+all. Mapping the 314 to rules is not done, so **this tool cannot tell you what
+share of the standard it checks**, and "no findings" must not be read as
+"conformant". `iirdsv rules -v` prints the specification link behind each rule. Three of
 the 157 are aliases of rules with identical wording, one is a `MAY` with nothing
 to violate, and two are conditions the runner reports rather than rules it
 evaluates.

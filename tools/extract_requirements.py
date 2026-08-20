@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every normative statement in the specification, enumerated from the source.
 
-The README has said for months that iiRDS states "254 absolute requirements".
+The README asserted from its first day that iiRDS states "254 absolute requirements".
 `grep -rn 254` returned exactly one hit: that sentence. No script, no data, no
 way for anybody to arrive at the number again -- which is the same species of
 problem this project objects to in validators, one level up. A document whose

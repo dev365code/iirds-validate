@@ -2,54 +2,47 @@
 
 ## 0.1.0 — unreleased
 
-First working version.
+First version. Everything below describes the state at the first public tag.
 
-- `check` (conformance) and `lint` (interoperability) commands, JSON output,
-  CI-friendly exit codes.
-- Graph-based validation: RDF/XML and JSON-LD parse into the same graph, so
-  results do not depend on how the metadata was serialised.
-- 131 of the 157 catalogued rules implemented — 19/19 container, 109/135 schema,
-  3/3 system.
-- 9 interoperability rules with no counterpart in the specification, including
-  L9: the RDF/XML and JSON-LD metadata must describe the same graph. Every
-  other rule reads the two merged, which is right, and which is exactly what
-  hides a disagreement between them.
-- Fully offline: iiRDS 1.3 ontologies bundled verbatim, hash-verified, no
-  network access at any point.
-- A missing `iirds:iiRDSVersion` falls back to the newest version and is
-  reported, instead of silently disabling every rule.
+### What it does
 
-### Fixed before release
+- `check` (conformance), `lint` (interoperability), `all`, `pack`, `rules`;
+  JSON output; CI-friendly exit codes (`0` clean, warnings alone stay `0`
+  unless `-W`; `1` errors; `2` could not run).
+- **185 rules**: all 157 of the reference catalogue, plus 28 of this project's
+  own — 8 content rules for iiRDS XHTML5 (Appendix B, checked by no other
+  tool), 12 interoperability rules, 5 system guards, and 3 rules (R1–R3) for
+  specification requirements the catalogue has no identifier for.
+- Graph-based: RDF/XML and JSON-LD parse into one graph, so results do not
+  depend on how the metadata was serialised. Deterministic output, ordered
+  for a reader: causes first, consequences last.
+- Every finding carries a remedy — what to change, where it goes, and what a
+  consumer loses without it.
+- Fully offline: iiRDS 1.0–1.3 term inventories and the 1.3 ontologies
+  bundled verbatim and hash-verified; remote JSON-LD contexts refused; XML
+  entity declarations refused; hostile archives (zip-slip, oversized
+  metadata) rejected. Ships as a reproducible single-file `.pyz`.
+- iiRDS 1.0, 1.0.1, 1.1, 1.2, 1.3; unrestricted, A and H profiles. An
+  undeclared version falls back to the newest *and says so*; an unpublished
+  version or profile is a finding, not a silent default.
 
-Three ways this tool did the thing it criticises the alternative for —
-reporting a clean package when its rules had not run — found in review and
-each now pinned by a test in `tests/test_silent_pass.py`:
+### What was found while building it
 
-- A corrupt `META-INF/metadata.jsonld` in an ordinary 1.3 package was parsed,
-  failed, and discarded: `C16.2` was gated to the handover profile, where the
-  file is *mandatory*, but the file is *permitted* anywhere from 1.3.
-- `iirds lint` on a package whose metadata did not parse reported no findings
-  and exited 0. Container rules do not run under `lint`, so nothing was left to
-  notice the graph was empty; the report said so in a note, and notes do not
-  affect the exit status.
-- A 600-byte `metadata.rdf` of nested XML entities occupied the parser
-  indefinitely. Metadata declaring entities is now refused, and metadata above
-  64 MiB uncompressed is rejected before it is read.
+The evidence lives in the repository rather than in this file:
+the defect register is the register of every defect the
+apparatus caught in its own rules — including a rule that was backwards from
+the day it was written and one no input could reach — and
+[docs/divergences.md](docs/divergences.md) records every disagreement with the
+reference implementation, with the specification text beside each. Seven of
+the catalogue's version arrays were corrected against the Consortium's own
+published schemas. Both of the Consortium's official sample packages fail
+their own specification; every error this tool reports on them survived
+verification against the 1.0 text they declare.
 
-And three defects that produced wrong answers:
+### Known limits
 
-- `L4` walked the navigation structure recursively. `iirds:has-next-sibling` is
-  a linked list, so a 1000-entry table of contents — an ordinary manual —
-  exhausted the stack and was reported as a MUST violation naming a Python
-  exception. Now iterative, sharing edge traversal with `L3`.
-- `L2` used `str.lstrip("./")`, which strips a character set rather than a
-  prefix, so any path whose first segment began with a dot was reported as a
-  missing content file.
-- The `L*` rules carried a private copy of the version list, so adding a future
-  iiRDS version to `model.VERSIONS` would have stopped all of them applying to
-  it, silently.
-
-Also: the ZIP handle is now closed, `terms.py` takes one type-filtered snapshot
-instead of two positional ones (a term added below the first was never checked
-by its own guard test), a missing file exits 2 rather than 1, and the JSON
-report carries `schemaVersion` and `validatedAgainst`.
+Coverage of the standard itself is measured and small: the specification
+states 314 absolute obligations, and the mapping from those to rules has only
+begun (`tools/requirement_coverage.py` prints the honest number). "No
+findings" is not "certified conformant" — nothing can certify that, and this
+tool says so rather than implying otherwise.

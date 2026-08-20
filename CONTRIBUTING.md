@@ -44,6 +44,12 @@ available: run a package through both and compare. A disagreement is worth
 understanding before either side is called wrong — the answer has so far been
 interesting every time.
 
+## Read this first
+
+[docs/scope.md](docs/scope.md). One page. It says what belongs here and what
+does not, which saves proposing something that will be turned down for reasons
+nobody had written anywhere.
+
 ## Running the tests
 
 ```sh

@@ -128,7 +128,15 @@ jobs:
       - name: the central claim, on a real container
         # Same graph written four ways must produce the same findings. This is
         # the project's whole argument and was previously only ever run by hand.
-        run: /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/good.iirds
+        #
+        # On the defective container above all, and not only the clean one: four
+        # identical empty reports agree with each other no matter how badly the
+        # tool is broken. The run against good.iirds says the rewriting itself
+        # introduces no defect; the run against bad.iirds is the one that says
+        # the findings survive a change of syntax.
+        run: |
+          /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/bad.iirds
+          /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/good.iirds --allow-clean
 
       - name: the single-file form must work with nothing installed
         # `python -S` skips site-packages, so anything that runs came out of

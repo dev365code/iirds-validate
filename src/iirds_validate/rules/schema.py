@@ -27,7 +27,7 @@ def _exactly_one(ctx, cls, prop, label):
         if len(values) != 1:
             yield Violation("%s must have exactly one %s" % (
                                 str(cls).split("#")[-1], label),
-                            subject=str(subj),
+                            subject=ctx.ref(subj),
                             detail="%d found" % len(values))
 
 
@@ -37,7 +37,7 @@ def _at_most_one(ctx, cls, prop, label):
         values = ctx.values(subj, prop)
         if len(values) > 1:
             yield Violation("more than one %s" % label,
-                            subject=str(subj),
+                            subject=ctx.ref(subj),
                             detail="%d values: %s" % (len(values), ", ".join(str(v)[:40] for v in values[:4])))
 
 
@@ -49,7 +49,7 @@ def _at_most_one(ctx, cls, prop, label):
 def m1_no_direct_information_unit(ctx):
     for subj in ctx.typed_exactly(T.InformationUnit):
         yield Violation("iirds:InformationUnit used directly; use one of its subclasses",
-                        subject=str(subj))
+                        subject=ctx.ref(subj))
 
 
 @rule("M2.1")
@@ -58,7 +58,7 @@ def m2_1_information_unit_iri(ctx):
         if not is_named(subj):
             yield Violation("instance of an iirds:InformationUnit subclass must have an IRI, "
                             "not be a blank node or an empty rdf:about",
-                            subject=str(subj))
+                            subject=ctx.ref(subj))
 
 
 @rule("M2.3")
@@ -125,7 +125,7 @@ def m5_absolute_iris(ctx):
     for subj in ctx.iirds_subjects():
         if isinstance(subj, URIRef) and not is_absolute_iri(subj) or str(subj) == PACKAGE_BASE:
             yield Violation("relative IRI in rdf:about; absolute IRIs are recommended",
-                            subject=str(subj))
+                            subject=ctx.ref(subj))
 
 
 @rule("M6")
@@ -135,7 +135,7 @@ def m6_one_information_object(ctx):
         if len(objs) > 1:
             yield Violation("information unit relates to more than one information object "
                             "via iirds:is-version-of",
-                            subject=str(unit), detail="%d objects" % len(objs))
+                            subject=ctx.ref(unit), detail="%d objects" % len(objs))
 
 
 @rule("M8")
@@ -146,7 +146,7 @@ def m8_package_no_rendition(ctx):
         if ctx.has(pkg, T.has_rendition):
             yield Violation("the iirds:Package representing this container must not be the "
                             "subject of iirds:has-rendition",
-                            subject=str(pkg))
+                            subject=ctx.ref(pkg))
 
 
 # --------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def m9_relative_source(ctx):
             value = str(src)
             if "://" in value or value.startswith("/"):
                 yield Violation("iirds:source must be relative to the package root",
-                                subject=str(rend), detail=value)
+                                subject=ctx.ref(rend), detail=value)
 
 
 @rule("M10")
@@ -177,7 +177,7 @@ def m11_rendition_format(ctx):
 def m12_no_direct_selector(ctx):
     for subj in ctx.typed_exactly(T.Selector):
         yield Violation("iirds:Selector used directly; use one of its subclasses",
-                        subject=str(subj))
+                        subject=ctx.ref(subj))
 
 
 def _value_selectors(ctx):
@@ -196,7 +196,7 @@ def m13_1_selector_value(ctx):
     for sel in _value_selectors(ctx):
         if len(ctx.values(sel, RDF.value)) != 1:
             yield Violation("a selector that addresses content by value must have exactly "
-                            "one rdf:value", subject=str(sel))
+                            "one rdf:value", subject=ctx.ref(sel))
 
 
 @rule("M13.2")
@@ -204,7 +204,7 @@ def m13_2_selector_conforms_to(ctx):
     for sel in _value_selectors(ctx):
         if len(ctx.values(sel, DCTERMS.conformsTo)) != 1:
             yield Violation("a selector that addresses content by value must have exactly "
-                            "one dcterms:conformsTo", subject=str(sel))
+                            "one dcterms:conformsTo", subject=ctx.ref(sel))
 
 
 @rule("M14.1")
@@ -227,7 +227,7 @@ def m15_1_document_type(ctx):
         if not (ctx.has(doc, T.has_document_type)
                 or ctx.has(doc, T.is_applicable_for_document_type)):
             yield Violation("iirds:Document must relate to a standardised iirds:DocumentType",
-                            subject=str(doc))
+                            subject=ctx.ref(doc))
 
 
 @rule("M16.1")
@@ -252,7 +252,7 @@ def m19_1_identity_identifier(ctx):
         values = ctx.values(ident, T.identifier)
         if len(values) != 1:
             yield Violation("iirds:Identity must have exactly one iirds:identifier",
-                            subject=str(ident), detail="%d found" % len(values))
+                            subject=ctx.ref(ident), detail="%d found" % len(values))
 
 
 @rule("M19.3")
@@ -261,7 +261,7 @@ def m19_3_identity_domain(ctx):
         domains = ctx.values(ident, T.has_identity_domain)
         if len(domains) != 1:
             yield Violation("iirds:Identity must point to exactly one iirds:IdentityDomain",
-                            subject=str(ident), detail="%d domains" % len(domains))
+                            subject=ctx.ref(ident), detail="%d domains" % len(domains))
 
 
 @rule("M19.2")
@@ -270,7 +270,7 @@ def m19_2_identity_value(ctx):
         values = [v for v in ctx.values(ident, T.identifier) if str(v).strip()]
         if not values:
             yield Violation("iirds:Identity must carry a non-empty iirds:identifier",
-                            subject=str(ident))
+                            subject=ctx.ref(ident))
 
 
 @rule("M21.2")
@@ -372,7 +372,7 @@ def m24_5_only_root_has_structure_type(ctx):
         if node in linked and ctx.has(node, T.has_directory_structure_type):
             yield Violation("only the root node of a directory structure may have "
                             "iirds:has-directory-structure-type",
-                            subject=str(node), detail=ctx.label_of(node))
+                            subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
 @rule("M25")
@@ -386,7 +386,7 @@ def m25_lists_are_closed(ctx):
         if not ctx.has(node, T.has_next_sibling):
             yield Violation("the last node in a list level must have iirds:has-next-sibling "
                             "relating to iirds:nil",
-                            subject=str(node), detail=ctx.label_of(node))
+                            subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
 @rule("M26")
@@ -396,7 +396,7 @@ def m26_first_child_is_a_directory_node(ctx):
         if child == T.nil or child in nodes:
             continue
         yield Violation("iirds:has-first-child must reference an iirds:DirectoryNode",
-                        subject=str(parent), detail=str(child))
+                        subject=ctx.ref(parent), detail=ctx.ref(child))
 
 
 @rule("M27")
@@ -409,7 +409,7 @@ def m27_first_child_starts_a_new_list(ctx):
         if child in siblings:
             yield Violation("iirds:has-first-child must reference the first item of a list, "
                             "but this node is also a iirds:has-next-sibling of another",
-                            subject=str(parent), detail=str(child))
+                            subject=ctx.ref(parent), detail=ctx.ref(child))
 
 
 
@@ -432,7 +432,7 @@ def m16_3_event_extension_is_a_class(ctx):
             continue
         if RDFS.Class not in ctx.values(subject, T.RDF_TYPE):
             yield Violation("an extension of iirds:Event must be defined as a class",
-                            subject=str(subject),
+                            subject=ctx.ref(subject),
                             detail="add rdf:type rdfs:Class")
 
 
@@ -500,12 +500,12 @@ def m30_no_schema_in_metadata(ctx):
         types = ctx.values(subject, T.RDF_TYPE)
         if RDFS.Class in types or RDF.Property in types:
             yield Violation("metadata.rdf must not redeclare the iiRDS schema",
-                            subject=str(subject), detail="declared as a class or property here")
+                            subject=ctx.ref(subject), detail="declared as a class or property here")
             continue
         for predicate in schema_predicates:
             if ctx.has(subject, predicate):
                 yield Violation("metadata.rdf must not redeclare the iiRDS schema",
-                                subject=str(subject),
+                                subject=ctx.ref(subject),
                                 detail="states %s" % str(predicate).split("#")[-1])
                 break
 
@@ -516,7 +516,7 @@ def m94_administrative_metadata_relation_not_direct(ctx):
     for subject, _obj in ctx.graph.subject_objects(T.relates_to_administrative_metadata):
         yield Violation("iirds:relates-to-administrative-metadata is not intended to be used "
                         "directly; use one of its subproperties",
-                        subject=str(subject))
+                        subject=ctx.ref(subject))
 
 
 # --------------------------------------------------------------------------
@@ -531,7 +531,7 @@ def m19_4_identity_domain_is_typed(ctx):
         if T.IdentityDomain not in ctx.values(domain, T.RDF_TYPE):
             yield Violation("the object of iirds:has-identity-domain must be an instance of "
                             "iirds:IdentityDomain",
-                            subject=str(identity), detail=str(domain))
+                            subject=ctx.ref(identity), detail=ctx.ref(domain))
 
 
 
@@ -555,7 +555,7 @@ def m22_2_role_is_a_party_role(ctx):
         if (role, None, None) not in ctx.graph:
             continue          # undescribed reference: L1's business
         yield Violation("iirds:has-party-role must point to an iirds:PartyRole",
-                        subject=str(party), detail=str(role))
+                        subject=ctx.ref(party), detail=ctx.ref(role))
 
 
 @rule("M23")
@@ -576,7 +576,7 @@ def m96_1_classification_domain(ctx):
         if len(domains) != 1:
             yield Violation("iirds:ExternalClassification must point to exactly one "
                             "classification domain",
-                            subject=str(classification), detail="%d found" % len(domains))
+                            subject=ctx.ref(classification), detail="%d found" % len(domains))
 
 
 @rule("M96.2")
@@ -586,7 +586,7 @@ def m96_2_classification_identifier_count(ctx):
         if len(identifiers) != 1:
             yield Violation("iirds:ExternalClassification must have exactly one "
                             "iirds:classificationIdentifier",
-                            subject=str(classification), detail="%d found" % len(identifiers))
+                            subject=ctx.ref(classification), detail="%d found" % len(identifiers))
 
 
 @rule("M96.3")
@@ -595,7 +595,7 @@ def m96_3_classification_identifier_non_empty(ctx):
         for value in ctx.values(classification, T.classificationIdentifier):
             if not str(value).strip():
                 yield Violation("iirds:classificationIdentifier must be a non-empty string",
-                                subject=str(classification))
+                                subject=ctx.ref(classification))
 
 
 @rule("M96.4")

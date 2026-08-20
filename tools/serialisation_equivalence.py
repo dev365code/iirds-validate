@@ -68,6 +68,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("package")
     ap.add_argument("-k", "--kinds", default="all", choices=("all", "check", "lint"))
+    ap.add_argument("--allow-clean", action="store_true",
+                    help="accept a package with no findings (see below)")
     args = ap.parse_args()
 
     kinds = {"all": runner.ALL_KINDS, "check": runner.CONFORMANCE_KINDS,
@@ -110,6 +112,15 @@ def main() -> int:
         shutil.rmtree(tmp, ignore_errors=True)
 
     print()
+    if not baseline and not args.allow_clean:
+        # Four empty lists are equal to each other, and prove nothing: a tool
+        # that reported nothing at all for any input would pass this check
+        # perfectly. The claim is that the same *findings* come back, so there
+        # have to be findings. Run it against a package with a known defect.
+        print("  every serialisation agreed on an empty report, which proves nothing;\n"
+              "  run this against a package with a known defect, or pass --allow-clean")
+        return 1
+
     print("  every serialisation agrees" if not failures
           else "  %d serialisation(s) disagreed" % failures)
     return 1 if failures else 0

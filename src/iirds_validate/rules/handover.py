@@ -63,7 +63,7 @@ def _needs_named_party(ctx, cls, role, what):
             yield Violation(
                 "iiRDS/H: %s must relate to an iirds:Party with iirds:has-party-role %s "
                 "that names a vcard:Organization" % (what, str(role).split("#")[-1]),
-                subject=str(subject), detail=ctx.label_of(subject))
+                subject=ctx.ref(subject), detail=ctx.label_of(subject))
 
 
 # --------------------------------------------------------------------------
@@ -75,21 +75,21 @@ def m15_2_document_category(ctx):
     for doc in ctx.instances_of(T.Document):
         if len(ctx.values(doc, T.hov_has_document_category)) != 1:
             yield Violation("iiRDS/H: iirds:Document must have exactly one "
-                            "iirdsHov:has-document-category", subject=str(doc))
+                            "iirdsHov:has-document-category", subject=ctx.ref(doc))
 
 
 @rule("M15.3")
 def m15_3_language(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.language):
-            yield Violation("iiRDS/H: iirds:Document must have iirds:language", subject=str(doc))
+            yield Violation("iiRDS/H: iirds:Document must have iirds:language", subject=ctx.ref(doc))
 
 
 @rule("M15.4")
 def m15_4_title(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.title):
-            yield Violation("iiRDS/H: iirds:Document must have iirds:title", subject=str(doc))
+            yield Violation("iiRDS/H: iirds:Document must have iirds:title", subject=ctx.ref(doc))
 
 
 @rule("M15.5")
@@ -102,7 +102,7 @@ def m15_5_information_object(ctx):
         if len(objects) != 1:
             yield Violation("iiRDS/H: iirds:Document must have exactly one iirds:is-version-of "
                             "relating to an iirds:InformationObject",
-                            subject=str(doc), detail="%d found" % len(objects))
+                            subject=ctx.ref(doc), detail="%d found" % len(objects))
 
 
 @rule("M15.6")
@@ -110,7 +110,7 @@ def m15_6_rendition(ctx):
     for doc in ctx.instances_of(T.Document):
         if not ctx.has(doc, T.has_rendition):
             yield Violation("iiRDS/H: iirds:Document must have iirds:has-rendition",
-                            subject=str(doc))
+                            subject=ctx.ref(doc))
 
 
 # --------------------------------------------------------------------------
@@ -132,13 +132,13 @@ def m15_7a_product_variant_instance_identity(ctx):
         variants = ctx.values(doc, T.relates_to_product_variant)
         if not variants:
             yield Violation("iiRDS/H: iirds:Document must relate to at least one "
-                            "iirds:ProductVariant", subject=str(doc))
+                            "iirds:ProductVariant", subject=ctx.ref(doc))
             continue
         if not any(any(_identities_of_type(ctx, v, T.INSTANCE_IDENTITY_TYPES)) for v in variants):
             yield Violation("iiRDS/H: the related iirds:ProductVariant must carry an identity "
                             "whose domain has an identity type of ObjectInstanceURI, "
                             "ObjectTypeURI or SerialNumber",
-                            subject=str(doc))
+                            subject=ctx.ref(doc))
 
 
 @rule("M15.7b")
@@ -151,7 +151,7 @@ def m15_7b_instance_identity_manufacturer(ctx):
                 yield Violation("iiRDS/H: the identity domain of an instance identity must "
                                 "relate to an iirds:Party with role Manufacturer that names a "
                                 "vcard:Organization",
-                                subject=str(domain), detail=ctx.label_of(variant))
+                                subject=ctx.ref(domain), detail=ctx.label_of(variant))
 
 
 @rule("M15.7c")
@@ -160,7 +160,7 @@ def m15_7c_product_type_identity(ctx):
         if not any(_identities_of_type(ctx, variant, (T.ProductType,))):
             yield Violation("iiRDS/H: iirds:ProductVariant must also carry an identity whose "
                             "domain has an identity type of iirds:ProductType",
-                            subject=str(variant), detail=ctx.label_of(variant))
+                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
 
 
 @rule("M15.7d")
@@ -173,7 +173,7 @@ def m15_7d_product_type_manufacturer(ctx):
                 yield Violation("iiRDS/H: the identity domain of a ProductType identity must "
                                 "relate to an iirds:Party with role Manufacturer that names a "
                                 "vcard:Organization",
-                                subject=str(domain), detail=ctx.label_of(variant))
+                                subject=ctx.ref(domain), detail=ctx.label_of(variant))
 
 
 # --------------------------------------------------------------------------
@@ -205,18 +205,18 @@ def m15_11a_documents_only(ctx):
         for unit in ctx.typed_exactly(cls):
             yield Violation("iiRDS/H packages must contain only iirds:Document and "
                             "iirds:Package information units",
-                            subject=str(unit), detail=str(cls).split("#")[-1])
+                            subject=ctx.ref(unit), detail=ctx.ref(cls).split("#")[-1])
 
 
 @rule("M15.11b")
 def m15_11b_no_directory_node(ctx):
     for node in ctx.instances_of(T.DirectoryNode):
         yield Violation("iiRDS/H packages must not contain iirds:DirectoryNode instances",
-                        subject=str(node))
+                        subject=ctx.ref(node))
 
 
 @rule("M15.11c")
 def m15_11c_no_selector(ctx):
     for selector in ctx.instances_of(T.Selector):
         yield Violation("iiRDS/H packages must not contain iirds:Selector instances",
-                        subject=str(selector))
+                        subject=ctx.ref(selector))

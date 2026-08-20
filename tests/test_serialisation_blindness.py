@@ -6,7 +6,8 @@ behaviour it exists to replace.
 """
 from __future__ import annotations
 
-from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
+from conftest import (ATTRIBUTE_STYLE_RDF, DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD,
+                      MINIMAL_RDF)
 from iirds_validate import runner
 
 
@@ -14,19 +15,46 @@ def _summary(report):
     return sorted((f.rule.id, f.violation.message) for f in report.findings)
 
 
-def test_element_style_and_description_style_agree(make_package):
-    """<iirds:Topic> and <rdf:Description><rdf:type> are the same graph.
+def test_the_same_graph_written_two_ways_gives_the_same_report(make_package):
+    """MINIMAL_RDF and ATTRIBUTE_STYLE_RDF are the same nine triples.
 
-    They are also where a DOM-based validator quietly stops working: a CSS
-    selector for `Topic` cannot match an rdf:Description element, so every rule
-    about information units silently checks nothing.
+    They share almost no XML structure: one nests a typed element, the other
+    uses rdf:Description with an explicit rdf:type, literals as attributes and
+    rdf:parseType="Resource". A DOM-based validator has to be written three
+    times to read both, and is written once.
+
+    Both packages are *defective* — the rendition has no iirds:format. Comparing
+    two clean packages compares two empty lists, which is what this test used to
+    do: it would have passed had the tool reported nothing for either file, or
+    for any file. A comparison only says something when there is something to
+    compare.
     """
-    a = runner.check(make_package(name="a.iirds", metadata=MINIMAL_RDF))
-    b = runner.check(make_package(name="b.iirds", metadata=DESCRIPTION_STYLE_RDF))
+    drop = "        <iirds:format>application/xhtml+xml</iirds:format>\n"
+    a = runner.check(make_package(name="a.iirds", metadata=MINIMAL_RDF.replace(drop, "")))
+    b = runner.check(make_package(name="b.iirds", metadata=ATTRIBUTE_STYLE_RDF.replace(
+        "      <x:format>application/xhtml+xml</x:format>\n", "")))
 
+    assert _summary(a), "the fixture must actually be defective, or this proves nothing"
     assert _summary(a) == _summary(b)
     assert a.checked == b.checked
     assert a.checked > 40, "rules must actually have run"
+
+
+def test_description_style_is_read_as_the_topic_it_describes(make_package):
+    """<rdf:Description><rdf:type> is where a DOM-based validator quietly stops
+    working: a CSS selector for `Topic` cannot match an rdf:Description element,
+    so every rule about information units silently checks nothing.
+
+    Not the same graph as MINIMAL_RDF — this fixture gives the rendition an IRI
+    where the other leaves it anonymous, a difference `test_dual_serialisation`
+    relies on. What must carry across is that the rules still see a Topic, and
+    still object when its rendition has no format.
+    """
+    report = runner.check(make_package(name="d.iirds", metadata=DESCRIPTION_STYLE_RDF.replace(
+        "    <ii:format>application/xhtml+xml</ii:format>\n", "")))
+
+    assert [f.rule.id for f in report.findings] == ["M11"]
+    assert report.checked > 40
 
 
 def test_prefix_does_not_matter(make_package):

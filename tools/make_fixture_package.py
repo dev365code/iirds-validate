@@ -39,9 +39,12 @@ MINIMAL_RDF = """<?xml version="1.0" encoding="utf-8"?>
 </rdf:RDF>
 """
 
-#: The same graph, written the other legal way round: types via rdf:Description
-#: plus rdf:type, references instead of nesting, and a different prefix. A
-#: validator that walks the XML tree sees nothing here.
+#: The same *information*, written the other legal way round: types via
+#: rdf:Description plus rdf:type, a reference instead of nesting, and a
+#: different prefix. Not the same graph — giving the rendition an identifier
+#: replaces a blank node with a URI, so this pair tests that the two shapes are
+#: understood, not that they are indistinguishable. `ATTRIBUTE_STYLE_RDF` below
+#: is the pair for that.
 DESCRIPTION_STYLE_RDF = """<?xml version="1.0" encoding="utf-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
          xmlns:ii="http://iirds.tekom.de/iirds#">
@@ -59,6 +62,36 @@ DESCRIPTION_STYLE_RDF = """<?xml version="1.0" encoding="utf-8"?>
     <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Rendition"/>
     <ii:format>application/xhtml+xml</ii:format>
     <ii:source>content/topic1.xhtml</ii:source>
+  </rdf:Description>
+</rdf:RDF>
+"""
+
+#: The same graph as MINIMAL_RDF — genuinely the same, blank node and all,
+#: which `rdflib.compare.isomorphic` confirms and `tests/test_determinism.py`
+#: asserts. Three syntactic devices RDF/XML offers and no other encoding does:
+#: literals as XML attributes, rdf:parseType="Resource" for an inline anonymous
+#: node, and rdf:Description with an explicit rdf:type instead of a typed
+#: element. Every one of them moves where in the tree the information lives; not
+#: one of them changes a single triple.
+#:
+#: This is the fixture behind the project's central claim. A validator that
+#: walks the XML tree has to be written three times to read this file and
+#: MINIMAL_RDF alike, and in practice is written once — which is how a package
+#: can satisfy every rule and still be rejected.
+ATTRIBUTE_STYLE_RDF = """<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:x="http://iirds.tekom.de/iirds#">
+  <rdf:Description rdf:about="urn:test:package"
+                   x:iiRDSVersion="1.3" x:title="Test package">
+    <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Package"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:topic1" x:title="A topic">
+    <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+    <x:has-rendition rdf:parseType="Resource">
+      <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Rendition"/>
+      <x:format>application/xhtml+xml</x:format>
+      <x:source>content/topic1.xhtml</x:source>
+    </x:has-rendition>
   </rdf:Description>
 </rdf:RDF>
 """
@@ -123,6 +156,7 @@ BREAKAGE = {
         "        <iirds:format>application/xhtml+xml</iirds:format>\n", "")},
     "missing-content": {"content": ()},
     "description-style": {"metadata": DESCRIPTION_STYLE_RDF},
+    "attribute-style": {"metadata": ATTRIBUTE_STYLE_RDF},
     "jsonld-only": {"metadata": None, "jsonld": MINIMAL_JSONLD},
 }
 

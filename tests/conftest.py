@@ -14,6 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from make_fixture_package import (  # noqa: E402
+    ATTRIBUTE_STYLE_RDF,
     DESCRIPTION_STYLE_RDF,
     MIMETYPE,
     MINIMAL_JSONLD,
@@ -21,7 +22,7 @@ from make_fixture_package import (  # noqa: E402
     build_package,
 )
 
-__all__ = ["DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_JSONLD", "MINIMAL_RDF",
+__all__ = ["ATTRIBUTE_STYLE_RDF", "DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_JSONLD", "MINIMAL_RDF",
            "build_package", "make_package"]
 
 

@@ -38,7 +38,7 @@ def s1_unreadable_container(ctx):
     return ()
 
 
-@rule("S2", versions=ALWAYS, variants=ALWAYS,
+@rule("S2", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",
        fix="Fix the container problems reported alongside this. No graph rule can run until the metadata is found and parsed, so this is a consequence rather than a defect of its own.")
 def s2_no_usable_metadata(ctx):
     """Nothing in META-INF parsed, so no graph rule could have run.
@@ -54,7 +54,7 @@ def s2_no_usable_metadata(ctx):
                     subject="META-INF", detail=detail)
 
 
-@rule("S3", versions=ALWAYS, variants=ALWAYS,
+@rule("S3", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",
        fix="Fix the metadata parse error reported alongside this. The graph could not be built, so every rule that reads it stood down rather than reporting a clean package.")
 def s3_rule_raised(ctx):
     """Emitted by `runner.run` when a rule raises.

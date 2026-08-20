@@ -272,6 +272,11 @@ the repository.
   The full table, and why "65 of 66 fixtures produce some finding" is the
   flattering way to say this rather than the honest one, are in
   [docs/divergences.md](docs/divergences.md).
+- **Reports are ordered for a reader.** What caused the rest comes first, what
+  merely follows from it comes last, severity in between. An archive zipped one
+  directory too high used to open with three findings telling you to add files
+  you already had; it now opens with the one saying your package is fine and
+  merely misplaced.
 - **Every finding says what to do about it.** All 185 rules carry one imperative
   sentence naming the change, and `tests/test_remediation.py` refuses a rule
   that does not. A validator that names a defect and not the remedy has told

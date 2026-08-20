@@ -79,6 +79,10 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
 
     with package:
         _run_against(package, report, kinds, version, include_info)
+    # Ordered for a reader rather than for the registry: what caused the rest
+    # first, what only follows from it last. Rule-id order put the finding that
+    # explains a report behind three that mislead.
+    report.findings.sort(key=lambda f: f.reading_order)
     return report
 
 

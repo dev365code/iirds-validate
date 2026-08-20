@@ -118,6 +118,14 @@ class Rule:
     #: exactly one iirds:format" -> "add an iirds:format" says nothing the
     #: message did not. Say where it goes, and what a correct value looks like.
     fix: Optional[str] = None
+    #: Where this finding belongs in a report somebody has to act on.
+    #:
+    #: "cause" for a rule that explains other findings, "consequence" for one
+    #: that only exists because something else went wrong, empty for the rest.
+    #: Reports are ordered by it, because rule-id order buried R3 -- the finding
+    #: that says the package is fine and merely misplaced -- fourth behind three
+    #: telling the author to add files they already had.
+    diagnosis: str = ""
     #: Ids from `docs/requirements.json`: which of the specification's 314
     #: absolute obligations this rule implements.
     #:
@@ -158,6 +166,19 @@ class Finding:
     def severity(self) -> Severity:
         return self.rule.severity
 
+    #: Causes first, then error before warning before note, then consequences.
+    #: Rule id last so the order is total and two runs cannot differ.
+    ORDER = {"cause": 0, "": 1, "consequence": 2}
+    SEVERITY_ORDER = {Severity.ERROR: 0, Severity.WARNING: 1, Severity.INFO: 2}
+
+    @property
+    def reading_order(self):
+        """Sort key for a person reading top to bottom."""
+        rank = Finding.ORDER.get(self.rule.diagnosis, 1)
+        return (rank,
+                Finding.SEVERITY_ORDER[self.severity] if rank == 1 else 0,
+                self.rule.id)
+
     @property
     def fix(self) -> Optional[str]:
         """What to do about it: the violation's own advice, or the rule's."""
@@ -186,6 +207,7 @@ class Finding:
             "subject": self.violation.subject,
             "detail": self.violation.detail,
             "fix": self.fix,
+            "diagnosis": self.rule.diagnosis or None,
             "title": self.rule.title,
             "spec": self.rule.spec,
         }

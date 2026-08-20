@@ -29,9 +29,9 @@ def test_entity_expansion_is_refused_rather_than_expanded(tmp_path):
 
     The billion-laughs shape. Nothing about it is invalid iiRDS, so no rule was
     ever going to reject it on its merits — the parser had to die first, and it
-    died holding the whole run. Refusing to parse it is both the safe answer and
-    the correct one: a document whose text nobody can compute is not a document
-    a reader can read, which is exactly what the B rules are about.
+    died holding the whole run. Refusing to parse it is the safe answer; what
+    severity the refusal carries depends on the profile, and this test pins
+    both sides of that line.
     """
     entities = "".join('<!ENTITY e%d "%s">' % (i, ("&e%d;" % (i - 1)) * 10 if i else "x" * 64)
                        for i in range(9))
@@ -44,8 +44,25 @@ def test_entity_expansion_is_refused_rather_than_expanded(tmp_path):
     elapsed = time.monotonic() - start
 
     assert elapsed < 5, "took %.1fs; the expansion was attempted" % elapsed
-    assert "B1" in {f.rule.id for f in report.findings}
-    assert not report.ok, "a document that cannot be read must not pass"
+    b1 = next(f for f in report.findings if f.rule.id == "B1")
+
+    # Calibrated, not absolute. An unrestricted package may carry any content,
+    # so a file this validator refuses to read is a warning there — the
+    # refusal itself is this tool's safety guard, not a conformance fact — and
+    # `-W` exists for gates that want it fatal. Under iiRDS/A the profile
+    # restricts content to iiRDS XHTML5, so the same finding is an error.
+    assert str(b1.severity) == "warning"
+    assert report.ok
+
+    restricted = MINIMAL_RDF.replace(
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>"
+        "<iirds:formatRestriction>A</iirds:formatRestriction>")
+    package_a = build_package(tmp_path, "bomb-a.iirds", metadata=restricted, content=(),
+                              extra=(("content/topic1.xhtml", bomb),))
+    report_a = runner.check(package_a)
+    assert not report_a.ok, "under iiRDS/A the same document fails the build"
+    assert str(next(f for f in report_a.findings if f.rule.id == "B1").severity) == "error"
 
 
 def test_media_type_parameters_do_not_disable_the_content_rules(tmp_path):

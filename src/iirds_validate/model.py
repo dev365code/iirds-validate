@@ -157,6 +157,13 @@ class Finding:
 
     rule: Rule
     violation: Violation
+    #: Severity the runner assigned for THIS run, where it differs from the
+    #: rule's own. The Appendix B content rules are literal MUSTs, but which
+    #: files they examine is this project's reading — so under iiRDS/A, whose
+    #: whole point is restricting content to iiRDS XHTML5, they stay errors,
+    #: and everywhere else they demote to warnings. The rule cannot know the
+    #: profile; the runner can.
+    demoted_to: Optional[Severity] = None
 
     @property
     def id(self) -> str:
@@ -164,7 +171,7 @@ class Finding:
 
     @property
     def severity(self) -> Severity:
-        return self.rule.severity
+        return self.demoted_to or self.rule.severity
 
     #: Causes first, then error before warning before note, then consequences.
     #: Rule id last so the order is total and two runs cannot differ.

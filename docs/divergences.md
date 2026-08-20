@@ -285,12 +285,13 @@ checkable rather than aspirational:
   a cyclic structure terminates, and a defect that hangs the reader did not
   seem to belong at warning level. If tekom's answer to the open questions
   below settles it otherwise, it moves.
-- **The Appendix B entry condition.** B1–B8 are literal MUSTs of the standard,
-  but *which files they examine* — renditions declared `application/xhtml+xml`
-  — is this project's reading, and under it an unrestricted package (where any
-  content format is permitted) can fail `check` on content findings. The
-  planned correction is: errors under iiRDS/A, warnings under the unrestricted
-  profile.
+- ~~The Appendix B entry condition~~ **Corrected**: content findings now
+  report as errors under iiRDS/A — whose whole point is restricting content to
+  iiRDS XHTML5 — and demote to warnings under every other profile, where the
+  standard permits any content and the entry condition is this project's
+  reading. The rule keeps its MUST priority (the sentences are MUSTs); the
+  *runner* assigns the severity, because only it knows the profile. So the
+  list above is one item long: L4.
 
 ## Content rules: three readings the specification does not settle
 

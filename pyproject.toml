@@ -35,7 +35,7 @@ Issues = "https://github.com/dev365code/iirds-validate/issues"
 Changelog = "https://github.com/dev365code/iirds-validate/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "ruff==0.16.3"]
 
 [project.scripts]
 iirds-validate = "iirds_validate.cli:main"

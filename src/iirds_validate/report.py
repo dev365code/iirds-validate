@@ -109,25 +109,7 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             for finding in group:
                 show(finding)
             continue
-
-        first = group[0]
-        mark = paint(_MARK[first.severity], _COLOURS[first.severity])
-        messages = {g.violation.message for g in group}
-        headline = first.violation.message if len(messages) == 1 else first.rule.title
-        print("  %s %-9s %s   ×%d" % (mark, first.rule.id, headline, len(group)), file=stream)
-
-        ordered = sorted(group, key=lambda g: _natural(g.violation.subject or ""))
-        for finding in ordered[:GROUP_SHOWN]:
-            line = finding.violation.subject or finding.violation.message
-            if finding.violation.detail:
-                line += "  (%s)" % finding.violation.detail
-            print(paint("                      %s" % line[:100], _DIM), file=stream)
-        if len(group) > GROUP_SHOWN:
-            print(paint("                      … and %d more; every one is in --format json"
-                        % (len(group) - GROUP_SHOWN), _DIM), file=stream)
-        if first.fix:
-            for line in _wrap(first.fix, 74):
-                print(paint("                    → %s" % line, _DIM), file=stream)
+        _show_group(group, paint, stream)
 
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
@@ -143,6 +125,28 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
         tail += ", %d catalogued but not yet implemented" % report.unimplemented
     print(paint(tail, _DIM), file=stream)
 
+
+def _show_group(group, paint, stream) -> None:
+    """A run of one rule, told once: headline with the count, the first few
+    subjects natural-sorted, the remedy a single time."""
+    first = group[0]
+    mark = paint(_MARK[first.severity], _COLOURS[first.severity])
+    messages = {finding.violation.message for finding in group}
+    headline = first.violation.message if len(messages) == 1 else first.rule.title
+    print("  %s %-9s %s   ×%d" % (mark, first.rule.id, headline, len(group)), file=stream)
+
+    ordered = sorted(group, key=lambda g: _natural(g.violation.subject or ""))
+    for finding in ordered[:GROUP_SHOWN]:
+        line = finding.violation.subject or finding.violation.message
+        if finding.violation.detail:
+            line += "  (%s)" % finding.violation.detail
+        print(paint("                      %s" % line[:100], _DIM), file=stream)
+    if len(group) > GROUP_SHOWN:
+        print(paint("                      … and %d more; every one is in --format json"
+                    % (len(group) - GROUP_SHOWN), _DIM), file=stream)
+    if first.fix:
+        for line in _wrap(first.fix, 74):
+            print(paint("                    → %s" % line, _DIM), file=stream)
 
 def render_json(report: Report, stream: Optional[TextIO] = None) -> None:
     stream = sys.stdout if stream is None else stream

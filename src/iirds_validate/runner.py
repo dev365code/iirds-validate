@@ -106,8 +106,9 @@ def _run_against(package: Package, report: Report, kinds, version, include_info)
     if not ctx.sources:
         report.notes.append("no parsable metadata found; graph rules could not run")
 
+    conformance_run = "schema" in kinds
     for rule in all_rules():
-        if rule.kind not in kinds:
+        if rule.kind not in kinds and not (conformance_run and rule.conformance):
             continue
         if not rule.applies_to(ctx.version, ctx.variant):
             report.skipped += 1

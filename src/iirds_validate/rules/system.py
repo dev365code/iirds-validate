@@ -115,3 +115,44 @@ def s6_entries_stay_inside_the_container(ctx):
             yield Violation("container entry escapes the package root",
                             subject=name,
                             detail="resolves to %s" % posixpath.normpath(name))
+
+
+#: Section 5.2.2 states two requirements about the archive itself that no
+#: catalogued rule covers. They are cheap to check and both are the kind of
+#: thing a consumer discovers only when unpacking fails.
+ZIP64_ENTRY_LIMIT = 65535
+ZIP64_SIZE_LIMIT = 4 * 1024 ** 3
+
+
+@rule("S7", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      title="the iiRDS ZIP archive must not be encrypted")
+def s7_archive_is_not_encrypted(ctx):
+    """"The iiRDS ZIP archive MUST NOT be encrypted." (section 5.2.2)
+
+    Bit 0 of the general purpose flag. An encrypted entry cannot be read by a
+    consumer that has only the package, which is every consumer.
+    """
+    for info in ctx.package.infos:
+        if info.flag_bits & 0x1:
+            yield Violation("archive entry is encrypted", subject=info.filename)
+
+
+@rule("S8", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      title="large archives must use the ZIP64 extension")
+def s8_zip64_where_required(ctx):
+    """"The ZIP archive MUST use the ZIP64 extension if the file size is bigger
+    than 4 GB or the package has more than 65536 file entries." (section 5.2.2)
+
+    Without it the offsets wrap and the archive is unreadable past the limit —
+    the classic way a large handover package arrives corrupt.
+    """
+    entries = len(ctx.package.infos)
+    biggest = max((i.file_size for i in ctx.package.infos), default=0)
+    if entries <= ZIP64_ENTRY_LIMIT and biggest <= ZIP64_SIZE_LIMIT:
+        return
+    # zipfile records the extension per entry; any entry needing it is enough.
+    uses_zip64 = any(i.header_offset > 0xFFFFFFFF or i.file_size > 0xFFFFFFFF
+                     or i.compress_size > 0xFFFFFFFF for i in ctx.package.infos)
+    if not uses_zip64:
+        yield Violation("archive exceeds the ZIP32 limits but does not use ZIP64",
+                        detail="%d entries, largest file %d bytes" % (entries, biggest))

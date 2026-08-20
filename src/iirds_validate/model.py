@@ -102,6 +102,11 @@ class Rule:
     variants: Tuple[str, ...]       # empty tuple == applies to every variant
     spec: Optional[str]
     fn: Callable[..., Iterable[Violation]]
+    #: True when a rule of ours implements a sentence the specification states
+    #: as a MUST. Those have to run under `check`, whatever bucket they were
+    #: written in — an advisory that the standard makes mandatory is not an
+    #: advisory.
+    conformance: bool = False
 
     @property
     def severity(self) -> Severity:

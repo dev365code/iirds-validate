@@ -50,8 +50,17 @@ def test_a_remote_jsonld_context_is_refused_not_fetched(make_package, no_network
 
 
 def test_an_inline_context_still_works(make_package, no_network):
+    """The guard is about where a context comes from, not what it says.
+
+    Asserting the whole report is clean would be asserting something else: this
+    fixture's JSON-LD describes only the package node, so L9 correctly reports
+    that the two serialisations disagree. That is a different rule doing its
+    job, and conflating the two would let a regression in either hide behind
+    the other.
+    """
     report = runner.check(make_package(jsonld=INLINE_CONTEXT))
-    assert report.ok, [f.violation.message for f in report.findings]
+    assert "C16.2" not in {f.rule.id for f in report.findings}
+    assert not any("inline" in (f.violation.detail or "") for f in report.findings)
 
 
 def test_vendored_ontology_is_intact():

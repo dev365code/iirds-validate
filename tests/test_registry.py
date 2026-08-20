@@ -21,10 +21,11 @@ from iirds_validate.registry import (
 def test_no_rule_id_is_missing_from_the_catalogue():
     """A typo registers as kind="lint" and is then never run by `check`."""
     uncatalogued = implemented_ids() - set(CATALOG)
-    #: Ours: the interoperability rules, plus three system checks the
-    #: catalogue has no rule for — that the declared version and profile
-    #: actually exist, and that no archive entry escapes the container.
-    ours = {r.id for r in rules_of_kind("lint")} | {"S4", "S5", "S6"}
+    #: Ours: the interoperability rules, plus five system checks the catalogue
+    #: has no rule for — that the declared version and profile exist, that no
+    #: archive entry escapes the container, and the two requirements section
+    #: 5.2.2 states about the archive itself.
+    ours = {r.id for r in rules_of_kind("lint")} | {"S4", "S5", "S6", "S7", "S8"}
     assert uncatalogued == ours, \
         "uncatalogued ids are a typo unless they are ours: %s" % sorted(uncatalogued - ours)
     assert all(rid[0] in "LS" and rid[1:].isdigit() for rid in ours), sorted(ours)

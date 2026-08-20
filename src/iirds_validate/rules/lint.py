@@ -60,9 +60,16 @@ def _labelled(ctx, node) -> bool:
     return False
 
 
-def _lint(rule_id, title, prio="RECOMMENDED"):
+def _lint(rule_id, title, prio="RECOMMENDED", conformance=False):
+    """Register an interoperability rule.
+
+    `conformance=True` marks the ones that implement a sentence the
+    specification states as a MUST. Those also run under `check`: the catalogue
+    happens to have no id for them, which is a fact about the catalogue rather
+    than about whether the standard requires it.
+    """
     return rule(rule_id, kind="lint", prio=prio, title=title,
-                versions=ALL_VERSIONS, variants=(), spec=None)
+                versions=ALL_VERSIONS, variants=(), spec=None, conformance=conformance)
 
 
 #: Sentinel pushed onto the traversal stack to mark "finished with this node".
@@ -134,7 +141,8 @@ def l8_external_references(ctx):
                         detail="referenced by %s via %s" % (ctx.label_of(subj), pred.split("#")[-1]))
 
 
-@_lint("L2", "every iirds:source should resolve to a file inside the container", prio="MUST")
+@_lint("L2", "every iirds:source must resolve to a file inside the container",
+       prio="MUST", conformance=True)
 def l2_missing_content_files(ctx):
     """A rendition that points at a file nobody packed."""
     present = set(ctx.package.files)
@@ -278,7 +286,8 @@ def l7_untitled_information_units(ctx):
                             subject=str(unit), detail=", ".join(types) or None)
 
 
-@_lint("L9", "the RDF/XML and JSON-LD metadata should describe the same graph", prio="MUST")
+@_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
+       prio="MUST", conformance=True)
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 

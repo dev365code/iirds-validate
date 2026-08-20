@@ -6,8 +6,7 @@ behaviour it exists to replace.
 """
 from __future__ import annotations
 
-from conftest import (ATTRIBUTE_STYLE_RDF, DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD,
-                      MINIMAL_RDF)
+from conftest import ATTRIBUTE_STYLE_RDF, DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
 from iirds_validate import runner
 
 

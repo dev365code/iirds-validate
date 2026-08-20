@@ -65,7 +65,7 @@ more than two of them. This is the whole reason the apparatus is large.
 
 | | **1** a requirement with no rule | **2** a rule that misreads its sentence | **3** fires on a conformant package | **4** correct but never fires |
 |---|---|---|---|---|
-| The requirement map *(not built yet)* | **only method** | review aid | — | — |
+| The requirement map *(half built: `docs/requirements.json` enumerates, nothing maps yet)* | **only method** | review aid | — | — |
 | Mutation testing *(partial: the generated table, the cardinality family, iiRDS/H)* | — | **cannot, by construction** | strong | **only method** |
 | The reference corpus | — | partial | strong | partial |
 | tekom's own samples and examples *(`tests/test_spec_examples.py`)* | — | one direction only | **strong** | — |
@@ -95,8 +95,10 @@ Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
 1. **Coverage of the standard is unmeasured.** 157 of 157 catalogued rules is
-   coverage of plusmeta's catalogue, not of iiRDS. Until a requirement map
-   exists, "no findings" must never be presented as "conformant".
+   coverage of plusmeta's catalogue, not of iiRDS. The denominator now exists —
+   314 absolute obligations, derived in `docs/requirements.json` — but nothing
+   maps them to rules yet, so the numerator does not. Until it does, "no
+   findings" must never be presented as "conformant".
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Three Appendix B rules rest on readings the specification does not

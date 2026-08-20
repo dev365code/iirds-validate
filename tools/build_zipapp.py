@@ -21,13 +21,14 @@ Requires network access once, to fetch the dependencies being bundled.
 from __future__ import annotations
 
 import argparse
-import compileall  # noqa: F401  (documents the deliberate choice not to use it)
 import hashlib
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
-import zipapp
+import time
 import zipfile
 from pathlib import Path
 
@@ -41,6 +42,41 @@ from iirds_validate.cli import main
 
 sys.exit(main())
 """
+
+SHEBANG = b"#!/usr/bin/env python3\n"
+
+#: Every entry gets the same timestamp so two people building the same commit
+#: get the same file. `zipapp.create_archive` uses each file's modification
+#: time, and git does not preserve those — so the archive was reproducible on
+#: one machine and nowhere else, which is the half that does not matter. For a
+#: shop that has to approve a file before it crosses the air gap, "the hash on
+#: the release page is the hash of the file I carried in" is the whole trust
+#: story. Override with SOURCE_DATE_EPOCH.
+FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+
+
+def _timestamp():
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    if not epoch:
+        return FIXED_TIMESTAMP
+    try:
+        return time.gmtime(int(epoch))[:6]
+    except (ValueError, OSError):
+        return FIXED_TIMESTAMP
+
+
+def create_archive(source: Path, target: Path) -> None:
+    """zipapp.create_archive, with the timestamps and order pinned."""
+    stamp = _timestamp()
+    with open(target, "wb") as handle:
+        handle.write(SHEBANG)
+        with zipfile.ZipFile(handle, "w", zipfile.ZIP_DEFLATED) as archive:
+            for path in sorted(p for p in source.rglob("*") if p.is_file()):
+                info = zipfile.ZipInfo(path.relative_to(source).as_posix(), date_time=stamp)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                archive.writestr(info, path.read_bytes())
+    target.chmod(target.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def stage(target: Path) -> None:
@@ -102,8 +138,7 @@ def main() -> int:
     staging = Path(tempfile.mkdtemp(prefix="iirds-zipapp-"))
     try:
         stage(staging)
-        zipapp.create_archive(staging, target=str(output),
-                              interpreter="/usr/bin/env python3", compressed=True)
+        create_archive(staging, output)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 

@@ -1,172 +1,127 @@
 ```
     _ _ ____  ____  _____
-   (_|_) __ \/ __ \/ ___/
-  / / / /_/ / / / /\__ \
- / / / _, _/ /_/ /___/ /
-/_/_/_/ |_/_____//____/    validate
+   (_|_) __ \/ __ \/ ___/                 ___    __     __
+  / / / /_/ / / / /\__ \       _  _____ _/ (_)__/ /__ _/ /____
+ / / / _, _/ /_/ /___/ /      | |/ / _ `/ / / _  / _ `/ __/ -_)
+/_/_/_/ |_/_____//____/       |___/\_,_/_/_/\_,_/\_,_/\__/\__/
 ```
 
-# iirds-validate
-
-Validate [iiRDS](https://iirds.org) packages from the command line, on a machine
-with no internet connection, as a step in a build.
+**A package can satisfy every rule in the [iiRDS](https://iirds.org)
+specification and still be unreadable to whoever receives it.** This checks for
+both, from the command line, on a machine with no internet connection, as a step
+in a build.
 
 ```console
-$ iirdsv check build/manual.iirds
+$ iirdsv dist/manual.iirds
 manual.iirds   iiRDS 1.3
-  ERROR M11       iirds:Rendition must have iirds:format
+  ERROR M11       Rendition must have exactly one iirds:format
                       urn:example:rendition/7
-  PASS  1 error(s), 0 warning(s), 0 note(s)
+  WARN  L1        relation points at an IRI that is never described in this package
+                      urn:example:event/al-204
+  FAIL  1 error(s), 1 warning(s)
 $ echo $?
 1
 ```
 
-Two commands, because there are two different questions:
+The error is a specification violation. The warning is not — nothing in the
+standard forbids pointing at an IRI you never describe, and a consumer reading
+that package silently loses the data. It happens in one of tekom's own sample
+packages.
 
-| | asks |
-|---|---|
-| `iirdsv check` | **is this package conformant?** container structure and the metadata graph, against the rules in the specification |
-| `iirdsv lint` | **can anyone else read it?** dangling references, missing content files, orphaned navigation, values with no label |
+---
 
-A package can pass `check` and fail `lint`. That combination is not a
-contradiction — it is the most common way an iiRDS handover goes wrong, and it
-is why the second command exists.
+## Start here
 
-## Point it at something
-
-```sh
-iirdsv build/manual.iirds     # a package
-iirdsv build/manual/          # the same package before it was zipped
-iirdsv dist/                  # every package under a directory
-```
-
-No subcommand needed — a path means "check it". Use `check` or `lint` when you
-want only one of the two questions.
-
-## Install
-
-Nothing needs installing. Copy one file in and run it:
+**Nothing to install.** Copy one file in and run it:
 
 ```sh
 python iirds-validate.pyz dist/
 ```
 
-That file is 850 KB, contains `rdflib` and the iiRDS ontologies, compiles
-nothing, and runs the same on Linux, macOS and Windows. It is an ordinary zip,
-so anyone who has to approve it before it enters the network can open it and
-read every line — which is usually the hard part, not the running. Build it
-with `python tools/build_zipapp.py`, or take it from a release.
+850 KB, contains `rdflib` and the iiRDS ontologies, compiles nothing, so the
+same file runs on Linux, macOS and Windows. It is an ordinary zip: whoever has
+to approve software entering the network can open it and read every line, which
+is usually the hard part. Build it with `python tools/build_zipapp.py`.
 
-If you would rather have it on the path:
+**Or on the path:** `pip install iirds-validate`. One runtime dependency. For an
+air-gapped install see [docs/offline-install.md](docs/offline-install.md).
+
+**Then point it at something:**
 
 ```sh
-pip install iirds-validate
+iirdsv dist/manual.iirds      # a package
+iirdsv build/manual/          # the same package before it was zipped
+iirdsv dist/                  # every package under a directory
 ```
 
-Offline, one runtime dependency (`rdflib`), and the ontologies are bundled, so
-nothing is fetched at validation time — see
-[docs/offline-install.md](docs/offline-install.md).
+A path means "check it". No subcommand needed.
 
-## Use it in a build
+---
+
+## The commands
+
+| | |
+|---|---|
+| `iirdsv <path>` | check **and** lint — what you want most of the time |
+| `iirdsv check <path>` | **does it conform?** container, metadata graph, content |
+| `iirdsv lint <path>` | **will anyone else be able to read it?** |
+| `iirdsv pack <dir>` | write a directory as a conformant `.iirds`, then check that |
+| `iirdsv rules` | every rule, its priority, its versions, its source |
+
+### In a build
 
 ```sh
-iirdsv check dist/*.iirds || exit 1                 # fail the build
-iirdsv all pkg.iirds --format json > report.json    # machine-readable
-iirdsv check pkg.iirds -W                           # warnings are errors too
+iirdsv check dist/ || exit 1            # fail the build on any error
+iirdsv dist/ --format json > report.json
+iirdsv check dist/ -W                   # warnings fail it too
+iirdsv check dist/ -q                   # exit code only
 ```
 
 Exit codes: `0` clean, `1` findings, `2` could not run.
 
-Three checks have no counterpart in the catalogue and run whatever you ask for,
-because each is a way a package could otherwise slip past everything: **S4** an
-`iirds:iiRDSVersion` the standard never published, **S5** an
-`iirds:formatRestriction` that matches no profile and so switches off the
-unrestricted rules and the handover rules at once, and **S6** an archive entry
-that escapes the container — harmless to this tool, which never extracts
-anything, and not harmless to whatever unpacks the package next.
+### From Python
 
 ```python
 from iirds_validate import check, lint
 
 report = check("manual.iirds")
-if not report.ok:
-    for finding in report.findings:
-        print(finding.id, finding.violation.message)
+for finding in report.findings:
+    print(finding.id, finding.severity, finding.violation.message)
 ```
 
-## Why not the existing tool
+`report.as_dict()` is what `--format json` prints. Every finding carries
+`source`, which is `catalogue` or `iirds-validate`, so a stored report stays
+unambiguous even if the catalogue later mints an identifier this project
+already uses.
+
+### Flags
+
+| | |
+|---|---|
+| `--format json` | machine-readable; the banner never appears in it |
+| `--iirds-version 1.2` | validate against a version other than the declared one |
+| `-W` | warnings fail the run |
+| `-q` | exit code only |
+| `-v` | print the specification link behind each finding |
+
+---
+
+## What makes it different
 
 The [iiRDS Validation Tool](https://github.com/plusmeta/iirds-validation-tool)
-by plusmeta is good and actively maintained. Use it for interactive checking —
-it is the right tool for looking at one package by hand. Its rule catalogue is the
-foundation this project is built on, and the rule identifiers here are
-deliberately the same so results can be compared.
+by plusmeta is good and actively maintained, and its rule catalogue is the
+foundation this project is built on — the rule identifiers here are deliberately
+the same so results can be compared rule by rule. Use it to look at one package
+by hand; that is what it is for. Everywhere the two disagree is written down,
+with evidence, in [docs/divergences.md](docs/divergences.md).
 
-It is a browser application, and that has consequences this project addresses:
+Four things here are different.
 
-**It cannot be a build step.** Someone has to open a page and drop a file on it.
-There is no exit code, no JSON, no library. You can build the app and carry the
-static files into a closed network, but a human still has to click.
+**It asks whether the package will work, not only whether it conforms.** Ten
+rules with no counterpart in the specification, because a conformant package
+can still be undeliverable:
 
-**It reads the XML tree, not the graph.** Its assertions run
-`document.querySelectorAll("Document, Topic, Fragment, Package")` over
-`META-INF/metadata.rdf`. RDF/XML has several legal ways to say the same thing,
-and a CSS selector only sees one of them:
-
-```xml
-<iirds:Document rdf:about="urn:d1"/>                       <!-- matched -->
-
-<rdf:Description rdf:about="urn:d1">                       <!-- not matched -->
-  <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Document"/>
-</rdf:Description>
-```
-
-Both are conformant iiRDS. A package written the second way passes with no
-information-unit rule having run at all. `tests/test_serialisation_blindness.py`
-pins the behaviour this project guarantees instead: the same package written
-three ways — element style, description style, JSON-LD — produces byte-identical
-results.
-
-**JSON-LD is barely checked.** iiRDS 1.3 accepts `META-INF/metadata.jsonld`. The
-existing tool confirms the file parses and stops; all 135 schema rules read
-`metadata.rdf` and skip a JSON-LD package entirely. Here both serialisations
-parse into the same graph and get the same rules.
-
-Every place the two tools disagree is recorded, with evidence, in
-[docs/divergences.md](docs/divergences.md) — including the places where the
-reference tool's implementation does not match its own rule text, and the
-places where this project was wrong until its corpus said so.
-
-**A missing version declaration passes silently.** Rules are filtered by the
-declared `iirds:iiRDSVersion`; when it is absent the filter matches nothing, no
-rules run, and the report is clean. This tool falls back to the newest version,
-records the assumption in the report, and reports the omission as a finding.
-
-## Coverage
-
-Honest numbers, printed by `iirdsv rules`:
-
-| kind | implemented |
-|---|---|
-| container (C\*) | 19 / 19 |
-| schema (M\*) | 135 / 135 |
-| system (S\*) | 3 / 3 |
-| **catalogue total** | **157 / 157** |
-| interoperability (L\*) | 13 — this project only |
-
-All 157 catalogued rules are implemented. That is coverage of the catalogue,
-not a certificate: three of them are aliases of rules with identical wording,
-one is a MAY with nothing to violate, and two are conditions the runner reports
-rather than rules it evaluates. `iirdsv rules` lists every one, and
-`tools/serialisation_equivalence.py` is the check that matters more than the
-count — see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Interoperability rules
-
-These have no counterpart in the specification. They exist because valid
-packages still fail in practice.
-
-| id | what it catches |
+| | |
 |---|---|
 | L1 | a relation points at an IRI the package never describes |
 | L2 | `iirds:source` names a file that was not packed |
@@ -179,27 +134,157 @@ packages still fail in practice.
 | L9 | the RDF/XML and JSON-LD metadata describe different graphs |
 | L10 | an abstract iiRDS class used to type an instance directly |
 
-L1 is the one that started this. RDF lets the same fact be written inline or as
-a reference; both are conformant; a reader that handles only one of them loses
-data without any error. No conformance checker will ever report it, because no
-rule is broken.
+**It checks the content.** Appendix B states 25 absolute requirements about
+iiRDS XHTML5 — no scripting, no forms, no `<svg>`, a fixed element list, a
+hazard-statement vocabulary — and no tool checked any of them. Every rule in the
+reference catalogue reads `META-INF/metadata.rdf` and never opens a content
+file, so a package can pass every conformance check that exists while its
+documents cannot be rendered.
 
-## Versions and profiles
+**It reads the graph, not the document.** iiRDS metadata is RDF, and RDF/XML is
+not a canonical way of writing it down. These are the same statement:
 
-iiRDS 1.0, 1.0.1, 1.1, 1.2 and 1.3 are supported, and the version and profile
-axes are independent — a rule can be 1.3-only, iiRDS/H-only, or both. Everything
-1.3 added to the rule set belongs to the handover profile (iiRDS/H), so on an
-unrestricted package 1.2 and 1.3 check identically. Override detection with
-`--iirds-version 1.2`; an unpublished version is rejected rather than ignored.
+```xml
+<iirds:Document rdf:about="urn:d1"/>
 
-Every version and profile combination is exercised by the suite. Until it was,
-four of the five versions were supported only in the sense that nobody had run
-them — and a package could declare `iirds:formatRestriction` of `Z` and skip
-both the unrestricted rules and the handover ones without a word. That is now
-S5, and an unpublished `iirds:iiRDSVersion` is S4.
+<rdf:Description rdf:about="urn:d1">
+  <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Document"/>
+</rdf:Description>
+```
 
+A validator that walks the XML tree sees the shape its own generator emits and
+silently reports a clean package for the others.
+`tools/serialisation_equivalence.py` takes a real package, rewrites its metadata
+four ways and checks the findings are identical. The same property is what makes
+`META-INF/metadata.jsonld` work at all.
+
+**It runs where the packages are.** Unattended, in CI, behind an air gap, from a
+single file that needs no installation. Exit codes, JSON, a library API. That
+the alternative validates client-side is true and is not the same as never
+loading the page: a hosted application is fetched fresh every visit, and "open a
+browser tab to an external domain and feed it engineering documentation" is not
+a request that passes review at a manufacturer.
+
+---
+
+## What it checks
+
+```console
+$ iirdsv rules
+container  19/19    the ZIP and its layout
+schema     135/135  the metadata graph
+system     3/3      the run itself  +5 of its own
+content    -        iiRDS XHTML5 (Appendix B)  +8 of its own
+lint       -        will a consumer be able to use it  +10 of its own
+```
+
+157 of 157 catalogued rules, plus 23 of this project's own.
+
+| kind | catalogued | this project |
+|---|---|---|
+| container (C\*) | 19 / 19 | — |
+| schema (M\*) | 135 / 135 | — |
+| system (S\*) | 3 / 3 | 5 |
+| content (B\*) | — | 8 |
+| interoperability (L\*) | — | 10 |
+
+Coverage of the catalogue is not coverage of the standard. The specification
+states 254 absolute requirements; one rule can cover several sentences and
+several rules one sentence, and some requirements are not machine-checkable at
+all. `iirdsv rules -v` prints the specification link behind each one. Three of
+the 157 are aliases of rules with identical wording, one is a `MAY` with nothing
+to violate, and two are conditions the runner reports rather than rules it
+evaluates.
+
+### Versions and profiles
+
+iiRDS 1.0, 1.0.1, 1.1, 1.2 and 1.3, and the unrestricted, `A` and `H` profiles.
+The axes are independent — a rule can be 1.3-only, iiRDS/H-only, or both — and
+every combination is exercised by the suite.
+
+An `iirds:iiRDSVersion` the standard never published is a finding, not something
+quietly rounded to the newest version, and an `iirds:formatRestriction` matching
+no profile is a finding rather than a way to switch both rule sets off at once.
 Only the 1.3 ontology is bundled, so validating against an earlier version
-borrows its class hierarchy. The report says so when it happens.
+borrows its class hierarchy; the report says so when it happens.
+
+---
+
+## Directories, and packing one
+
+A package spends most of its life as a directory, and checking it there finds a
+defect in the thing you just made rather than in the artefact.
+
+Five requirements are about the archive rather than the package — the `.iirds`
+extension, `mimetype` first and stored uncompressed, no encryption, ZIP64 past
+the limits — and cannot be assessed before there is one. The report says which,
+rather than passing them in silence. `iirdsv pack` closes that:
+
+```sh
+iirdsv pack build/manual/ -o dist/manual.iirds
+```
+
+It writes the archive the way the specification requires, then validates what it
+wrote. "First entry, stored uncompressed" is the requirement people get wrong
+most often, and not through carelessness: `zip` manages it only with two
+invocations and the right flags, most graphical tools cannot express it, and
+`shutil.make_archive` gets it wrong every time. Packing the same directory twice
+produces the same bytes, so "this archive came from that directory" is checkable
+with `sha256` rather than taken on trust.
+
+---
+
+## Trusting the answer
+
+A validator's whole product is its verdict, and a wrong verdict is invisible
+from the inside: it prints `PASS` and you learn nothing. So the evidence lives in
+the repository.
+
+- **Cross-validation.** `tools/crossvalidate.py` runs the reference tool's own
+  fixture corpus through this one; 64 of the 66 fixtures it says must fail are
+  failed here. `tools/explain_silence.py` classifies every remaining silence by
+  computing the graph diff behind it. The breakdown is in
+  [docs/divergences.md](docs/divergences.md).
+- **Deterministic output**, byte-identical across `PYTHONHASHSEED` values, so two
+  runs can be diffed.
+- **No network, tested rather than asserted.** A JSON-LD `@context` may be a URL
+  and the parser will dereference it, so remote contexts are refused — inside a
+  plant network that is not only a broken promise but a supplier choosing which
+  host a machine behind the firewall connects to.
+- **Integrity.** The bundled ontologies are checked against recorded SHA-256
+  digests; `python -m iirds_validate.ontology --verify` does it from the
+  installed copy.
+- **CI.** Python 3.9 to 3.13, Windows, rdflib 6 and 7, the wheel installed into
+  a clean environment, and the single-file form run with `python -S` so anything
+  that works came out of the archive.
+
+**What is not established.** The 23 rules this project invented have no second
+implementation anywhere to be compared against. They have tests in both
+directions, and those tests were checked by breaking each rule in turn, which is
+weaker evidence than the catalogued rules have.
+[docs/divergences.md](docs/divergences.md) records where this project is
+deliberately stricter than the reference and why. Anything derived from this
+project's own reading rather than a literal `MUST` is a warning, never an error.
+
+If it reports an error on a package you believe is conformant, that is the most
+valuable bug report this project can receive. Please open an issue with the
+package or a reduced case.
+
+---
+
+## Contributing
+
+A rule is its implementation and two tests; the metadata comes from the
+catalogue. See [CONTRIBUTING.md](CONTRIBUTING.md). Four rules of the road, each
+of which exists because it was broken once:
+
+1. Never spell an iiRDS term inline. Add it to `terms.py`, where a test confirms
+   it exists in the ontology.
+2. Ask the graph, not the document. A rule that behaves differently on JSON-LD
+   is wrong.
+3. Every rule needs a package that violates it and one that does not.
+4. Do not edit `data/ontologies/`. Verbatim redistribution is a licence
+   condition and the hashes are checked.
 
 ## Licence
 
@@ -208,11 +293,11 @@ Apache-2.0 — see [LICENSE](LICENSE).
 The bundled iiRDS ontologies are © tekom Deutschland e.V. / iiRDS Consortium
 under **CC BY-ND 4.0** and are redistributed verbatim; the rule catalogue is
 derived from plusmeta's MIT-licensed tool. CC BY-ND is not an OSI-approved
-licence, so this distribution is not wholly open source even though the code
-is — [docs/licensing.md](docs/licensing.md) explains what that means for you
-and what would fix it. Provenance in [NOTICE](NOTICE) and
+licence, so this distribution is not wholly open source even though the code is
+— [docs/licensing.md](docs/licensing.md) explains what that means for you and
+what would fix it. Provenance in [NOTICE](NOTICE) and
 [THIRD_PARTY.md](THIRD_PARTY.md).
 
-Not affiliated with, endorsed by, or certified by the iiRDS Consortium, tekom,
-plusmeta GmbH or Quanos Solutions GmbH. "iiRDS" is used descriptively to name
-the standard this tool validates against.
+Not affiliated with, endorsed by, or certified by the iiRDS Consortium, tekom
+Deutschland e.V., plusmeta GmbH or Quanos Solutions GmbH. "iiRDS" is used
+descriptively to name the standard this tool validates against.

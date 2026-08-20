@@ -101,26 +101,81 @@ not.
 
 ## Current agreement
 
-> **These figures predate the pin and have not yet been recomputed.**
-> `tools/crossvalidate.py` fetched the fixture corpus from `master` while the
-> rule catalogue was pinned to commit `0bcf19dd`, so the rules and the fixtures
-> validating them could already have come from different revisions. The script
-> now takes its revision from the catalogue's own `_commit`, which means the
-> numbers below were measured against an input this repository can no longer
-> reproduce. They are left here rather than deleted because they are what was
-> claimed; they will be replaced once the corpus is vendored at the pinned
-> revision, and any that move will be called out.
->
-> The **0 unexplained** in particular should be read as weaker than it looks:
-> the classifier behind it in `tools/explain_silence.py` decides `ours` against
-> `mismatched` by substring-matching the first word of a free-text field, which
-> will match spuriously on a short or common value.
+Measured by `tools/crossvalidate.py` and `tools/explain_silence.py` over the
+vendored corpus at `0bcf19dd` — the same revision the rule catalogue came from.
+Both read `tests/corpus/plusmeta/`, so anyone can reproduce these offline:
 
-Measured by `tools/crossvalidate.py` over the reference's own corpus:
+```sh
+make corpus            # the fixtures are still upstream's bytes
+python tools/crossvalidate.py
+python tools/explain_silence.py
+```
 
-- 64 of 66 fixtures it says must fail are failed here
-- of the remaining silences: 32 where the reference's own assertion also
-  passes, 9 malformed, 6 gated by version or variant, 3 invisible in RDF,
-  2 mismatched, **0 unexplained**
-- of the findings on fixtures it says pass: all trace to a row in this
-  document, and none is an error-level finding this project cannot justify
+The reference marks 113 rule/fixture pairs as "this fixture must fail this
+rule". Ten of those name one of the two fixtures upstream committed as
+zero-byte files, which nothing can test. Of the remaining **103 pairs, across
+66 distinct fixtures**:
+
+| | pairs | |
+|---:|---|---|
+| **46** | the expected rule fires here | |
+| 35 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
+| 9 | silent — the fixture is malformed XML upstream | no comparison is possible; not repaired, see below |
+| 6 | silent — gated by version or variant here | |
+| 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
+| 2 | silent — mismatched | the defect is reported, under a different rule id |
+| 1 | silent — **ours** | reported here and not there; M22.2, below |
+| 1 | silent — **unclassified** | M25, whose only fixture is one of the nine malformed |
+
+Two findings fire on fixtures the reference says should pass, both M15.10, both
+traceable to a row in this document.
+
+### Three numbers, and why only one of them is the honest headline
+
+The same measurement produces very different figures depending on what is
+counted, and this document previously published the flattering one:
+
+| | |
+|---|---|
+| 46 of 103 pairs (45%) | the expected rule fires |
+| 44 of 66 fixtures (67%) | the expected rule fires somewhere on the fixture |
+| 65 of 66 fixtures (98%) | **some** finding is produced on the fixture |
+
+The last was published here as "64 of 66 fixtures it says must fail are failed
+here". It is true, and it reads as a hit rate, and it is not one — producing
+*a* finding on a file known to be defective is a much weaker thing than
+producing the *right* one. It is the same error as reporting 157 of 157
+catalogued rules as though it were coverage of the standard, and it was made
+here for the same reason: the number that was easy to compute was allowed to
+stand in for the number that mattered.
+
+### Half the silence is one fixture
+
+`metadata_iirds_sample_pass-M49_false.rdf` is listed upstream as the must-fail
+fixture for **29 different rules** — M40, M43 through M76, and more. Its name
+says M49, and M49 is the rule it actually violates. The other 28 pairs are a
+file listed against rules it does not breach, which is why the reference's own
+assertion passes on almost all of them.
+
+That single fixture accounts for **51% of the 57 silent pairs**. Add the five
+against `metadata_iirds_sample-M15_false.rdf` and the figure is decided, more
+than anything else, by how loosely upstream filled in one metadata field. A
+pair-level percentage computed over that distribution is not measuring this
+validator, and quoting one without saying so would be the third version of the
+same mistake this document already records twice.
+
+The 45% is misleading in the other direction, because most of the silence is
+accounted for: 35 pairs are cases where the reference does not report either,
+and 9 are fixtures nobody can parse. Read the table above rather than any single
+figure. What is actually unresolved is **four pairs** — the 2 mismatched, the 1
+ours and the 1 unclassified.
+
+### What the classifier behind that table cannot support
+
+`tools/explain_silence.py` separates `ours` from `mismatched` by substring-
+matching the first word of the catalogue's free-text `path` field. A short or
+common value will match spuriously, and an absent one collapses the distinction
+entirely. Earlier revisions of this document set **0 unexplained** in bold; the
+classifier does not carry bold. Treat the last three rows as "needs a human",
+which is what the divergence rows above are for.
+

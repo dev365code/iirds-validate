@@ -26,8 +26,6 @@ import io
 import json
 import sys
 import tempfile
-import urllib.parse
-import urllib.request
 import zipfile
 from collections import defaultdict
 from pathlib import Path
@@ -49,6 +47,9 @@ FIXTURE_DIR = "tests/files/util/iirds-validation"
 #: a commit means the corpus and the catalogue can drift apart with nothing
 #: saying so, and every figure in docs/divergences.md was computed that way.
 REF = PROVENANCE["_commit"]
+CORPUS = ROOT / "tests" / "corpus" / "plusmeta"
+FIXTURES = CORPUS / "files"
+MANIFEST = CORPUS / "MANIFEST.json"
 API = "https://api.github.com/repos/%s/git/trees/%s?recursive=1" % (REPO, REF)
 RAW = "https://raw.githubusercontent.com/%s/%s/%%s" % (REPO, REF)
 
@@ -78,58 +79,114 @@ def wrap(rdf_bytes: bytes, out: Path) -> Path:
     return out
 
 
-def fetch_fixtures(cache: Path) -> dict:
-    """Download the corpus, and insist that what arrived is usable.
+def load_fixtures() -> dict:
+    """Read the vendored corpus. No network, no cache, no branch.
 
-    Several fixture names contain spaces. An unescaped request for those
-    silently returns an empty body rather than an error, and a directory of
-    zero-byte files reads as "this validator misses everything" — which is how
-    an earlier run of this script produced a badly wrong number.
+    This used to download from `master` on every run, which meant two things
+    that only look like one. Cross-validation needed the internet, so nobody on
+    a locked-down machine could reproduce a single number this project
+    published — a poor look for a tool whose entire argument is that validation
+    should not require a network. And the corpus could move underneath the
+    pinned catalogue, so the figures were computed against an input that no
+    longer existed by the time anyone read them.
+
+    `tools/vendor_corpus.py` brings the fixtures in at the catalogue's own
+    revision and records a SHA-256 for each; `tests/test_corpus_integrity.py`
+    checks them on every test run, on every platform. By the time this function
+    is reached the bytes have been vouched for, so it does the cheap
+    consistency check and gets out of the way.
     """
-    cache.mkdir(parents=True, exist_ok=True)
+    if not MANIFEST.exists():
+        raise SystemExit("no vendored corpus; run tools/vendor_corpus.py")
+    manifest = json.loads(MANIFEST.read_text("utf-8"))
 
-    with urllib.request.urlopen(API, timeout=60) as fh:
-        tree = json.load(fh)["tree"]
-    entries = [e for e in tree
-               if e["path"].startswith(FIXTURE_DIR) and e["path"].endswith(".rdf")]
+    if manifest["_commit"] != REF:
+        raise SystemExit("corpus is at %s, the catalogue is at %s — re-run "
+                         "tools/vendor_corpus.py" % (manifest["_commit"][:12], REF[:12]))
 
-    #: Some fixtures are committed upstream as zero-byte files. That is a gap in
+    #: Two fixtures are committed upstream as zero-byte files. That is a gap in
     #: their corpus, not a download failure, and conflating the two is how this
-    #: script first reported a badly wrong number.
+    #: script once reported a badly wrong number. They are on disk, empty, and
+    #: excluded here so that "no fixture" and "an empty fixture" stay distinct.
     global EMPTY_UPSTREAM
-    EMPTY_UPSTREAM = sorted(Path(e["path"]).name for e in entries if e.get("size") == 0)
-    paths = [e["path"] for e in entries if e.get("size", 1) > 0]
+    EMPTY_UPSTREAM = list(manifest["zero_byte"])
 
-    fetched = 0
-    for path in paths:
-        target = cache / Path(path).name
-        if target.exists() and target.stat().st_size > 0:
-            continue
-        url = RAW % urllib.parse.quote(path)
-        with urllib.request.urlopen(url, timeout=60) as fh:
-            body = fh.read()
-        if not body.strip():
-            raise SystemExit("empty response for %s" % url)
-        target.write_bytes(body)
-        fetched += 1
-    if fetched:
-        print("downloaded %d fixture(s)" % fetched, file=sys.stderr)
+    fixtures = {name: FIXTURES / name for name in manifest["files"]
+                if name not in manifest["zero_byte"]}
+    missing = sorted(name for name, path in fixtures.items() if not path.exists())
+    if missing:
+        raise SystemExit("corpus incomplete: %s" % missing[:5])
+    return fixtures
 
-    empty = [p.name for p in cache.glob("*.rdf") if p.stat().st_size == 0]
-    if empty:
-        raise SystemExit("zero-byte fixtures after download: %s" % empty[:5])
-    return {p.name: p for p in cache.glob("*.rdf")}
+
+BASELINE = ROOT / "docs" / "agreement.json"
+
+
+def write_baseline(verdicts: dict) -> int:
+    """Record what the agreement is, so that CI can notice it changing.
+
+    Not a target, and not a score. Every figure quoted in docs/divergences.md
+    is derived from this file, and the only thing asserted about it is that it
+    does not move without somebody saying so — which is the difference between
+    a number in a document and a number anybody is accountable for.
+    """
+    counts = {}
+    for verdict in verdicts.values():
+        counts[verdict] = counts.get(verdict, 0) + 1
+    BASELINE.parent.mkdir(parents=True, exist_ok=True)
+    BASELINE.write_text(json.dumps({
+        "_commit": REF,
+        "_generated_by": "tools/crossvalidate.py --write-baseline",
+        "_note": ("Per-pair agreement with the reference tool over the vendored "
+                  "corpus. Regenerate deliberately, never to make CI green: a "
+                  "pair moving from agree to silent is a regression, and a pair "
+                  "moving the other way still wants a look at why."),
+        "counts": dict(sorted(counts.items())),
+        "verdicts": dict(sorted(verdicts.items())),
+    }, indent=1, ensure_ascii=False) + "\n", "utf-8")
+    print("recorded %d pairs: %s" % (len(verdicts), dict(sorted(counts.items()))))
+    return 0
+
+
+def compare_to_baseline(verdicts: dict) -> int:
+    if not BASELINE.exists():
+        print("no baseline; run --write-baseline", file=sys.stderr)
+        return 2
+    recorded = json.loads(BASELINE.read_text("utf-8"))["verdicts"]
+
+    changed = sorted(k for k in set(recorded) & set(verdicts) if recorded[k] != verdicts[k])
+    gone = sorted(set(recorded) - set(verdicts))
+    new = sorted(set(verdicts) - set(recorded))
+
+    for key in changed:
+        print("  %-64s %s -> %s" % (key[:64], recorded[key], verdicts[key]))
+    for key in gone:
+        print("  %-64s %s -> pair no longer exists" % (key[:64], recorded[key]))
+    for key in new:
+        print("  %-64s new pair, %s" % (key[:64], verdicts[key]))
+
+    if changed or gone or new:
+        print("\nagreement has moved from the baseline. If the change is intended, "
+              "rerun with --write-baseline and say why in docs/divergences.md.",
+              file=sys.stderr)
+        return 1
+    print("agreement unchanged: %d pairs" % len(verdicts))
+    return 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--cache", default=str(ROOT / ".crossvalidate-cache"))
+
     ap.add_argument("--rule", help="only fixtures for this rule id")
+    ap.add_argument("--write-baseline", action="store_true",
+                    help="record the current agreement in docs/agreement.json")
+    ap.add_argument("--check", action="store_true",
+                    help="fail if the agreement has moved from the recorded baseline")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
-    fixtures = fetch_fixtures(cache_dir(args.cache))
+    fixtures = load_fixtures()
     if not fixtures:
         print("no fixtures", file=sys.stderr)
         return 2
@@ -207,7 +264,26 @@ def main() -> int:
         for rule_id, n in sorted(clean_noise.items(), key=lambda kv: -kv[1])[:15]:
             print("  %-9s %d fixture(s)" % (rule_id, n))
 
-    return 1 if results["missed"] or results["extra"] else 0
+    verdicts = {}
+    for rule_id, name in results["agree"]:
+        verdicts["%s|%s" % (rule_id, name)] = "agree"
+    for rule_id, name, _why in results["missed"]:
+        verdicts["%s|%s" % (rule_id, name)] = "silent"
+    for rule_id, name in results["extra"]:
+        verdicts["%s|%s" % (rule_id, name)] = "extra"
+    for rule_id, name in results["absent"]:
+        verdicts["%s|%s" % (rule_id, name)] = "untestable"
+
+    if args.write_baseline:
+        return write_baseline(verdicts)
+    if args.check:
+        return compare_to_baseline(verdicts)
+
+    # Plain runs report; they do not judge. "Silent on a pair the reference
+    # reports" was an exit code 1, which made the whole exercise unusable in
+    # CI — most of that silence is explained, and a tool that always fails is
+    # a tool nobody wires up. What CI gates on is movement, via --check.
+    return 0
 
 
 if __name__ == "__main__":

@@ -136,6 +136,22 @@ jobs:
           /tmp/v/bin/iirdsv check /no/such/file.iirds -q 2>/dev/null; test $? -eq 2 || exit 1
           echo "0 clean / 1 findings / 2 could not run"
 
+      - name: agreement with the reference tool's own corpus
+        # Offline now, because the corpus is vendored at the catalogue's own
+        # revision. This used to be a scheduled job piped through `|| true`, so
+        # nothing would ever have noticed the agreement figures decaying.
+        #
+        # --check compares every rule/fixture pair against docs/agreement.json
+        # and fails on any movement in either direction. Not a target and not a
+        # score: a pair going from agree to silent is a regression, and one
+        # going the other way still wants somebody to say why. explain_silence
+        # is informational — its classifier is not strong enough to gate on,
+        # which docs/divergences.md says in as many words.
+        run: |
+          /tmp/v/bin/python tools/vendor_corpus.py --check
+          /tmp/v/bin/python tools/crossvalidate.py --check
+          /tmp/v/bin/python tools/explain_silence.py --quiet
+
       - name: the central claim, on a real container
         # Same graph written four ways must produce the same findings. This is
         # the project's whole argument and was previously only ever run by hand.
@@ -193,11 +209,12 @@ jobs:
 
       - run: pip install -e .
 
-      - name: agreement with the reference tool's own corpus
-        # Needs the network to fetch the fixtures, so it cannot live in the
-        # main suite. tests/test_reference_agreement.py pins the conclusions;
-        # this is what notices when the corpus itself moves.
-        run: python tools/crossvalidate.py || true
-
-      - name: every silence still has an explanation
-        run: python tools/explain_silence.py --quiet
+      - name: has the fixture corpus moved since the pinned commit?
+        # The only thing left here that genuinely needs the network. Both the
+        # catalogue and the corpus are pinned and vendored, so the question is
+        # no longer "what do we score" — the main pipeline answers that
+        # offline, on every push — but "has upstream changed underneath the
+        # pin", which is a decision for a person, not a build failure.
+        run: |
+          python tools/vendor_corpus.py --retrieved "$(date -u +%Y-%m-%d)"
+          git diff --stat -- tests/corpus/plusmeta || true

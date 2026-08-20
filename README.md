@@ -241,10 +241,15 @@ A validator's whole product is its verdict, and a wrong verdict is invisible
 from the inside: it prints `PASS` and you learn nothing. So the evidence lives in
 the repository.
 
-- **Cross-validation.** `tools/crossvalidate.py` runs the reference tool's own
-  fixture corpus through this one; 64 of the 66 fixtures it says must fail are
-  failed here. `tools/explain_silence.py` classifies every remaining silence by
-  computing the graph diff behind it. The breakdown is in
+- **Cross-validation, against a corpus that is in the repository.** The
+  reference tool's own fixtures are vendored at the revision its rule catalogue
+  came from, with a SHA-256 for each, so `tools/crossvalidate.py` and
+  `tools/explain_silence.py` run offline and anyone can re-derive what is
+  claimed below. Of the 103 rule/fixture pairs it says must fail, the expected
+  rule fires here on 46; 35 more are cases where the reference does not report
+  either, 9 are fixtures nobody can parse, and **4 are genuinely unresolved**.
+  The full table, and why "65 of 66 fixtures produce some finding" is the
+  flattering way to say this rather than the honest one, are in
   [docs/divergences.md](docs/divergences.md).
 - **Deterministic output**, byte-identical across `PYTHONHASHSEED` values, so two
   runs can be diffed.

@@ -81,8 +81,9 @@ same file runs on Linux, macOS and Windows. It is an ordinary zip: whoever has
 to approve software entering the network can open it and read every line, which
 is usually the hard part. Build it with `python tools/build_zipapp.py`.
 
-**Or on the path:** `pip install .` from a checkout (PyPI publication lands
-with v0.1.0). One runtime dependency. For an
+**Or on the path:** `pip install iirds-validate` once v0.1.0 is tagged — the
+release workflow publishes to PyPI via trusted publishing; until then,
+`pip install .` from a checkout. One runtime dependency. For an
 air-gapped install see [docs/offline-install.md](docs/offline-install.md).
 
 **Then point it at something:**
@@ -312,7 +313,10 @@ with `sha256` rather than taken on trust.
 ## Trusting the answer
 
 the defect register is the register of every defect this
-project has found in itself, and which instrument found it. It is the argument
+project has found in itself, and which instrument found it. The repository was
+developed privately and published with its full history, deliberately: the
+commits that register points at are real and checkable, which is part of the
+point. It is the argument
 for why there is twice as much test and tool code here as validator.
 
 [docs/scope.md](docs/scope.md) is the map: what this is, what it deliberately is

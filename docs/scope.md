@@ -66,7 +66,7 @@ more than two of them. This is the whole reason the apparatus is large.
 | The requirement map *(not built yet)* | **only method** | review aid | — | — |
 | Mutation testing *(not built yet)* | — | **cannot, by construction** | strong | **only method** |
 | The reference corpus | — | partial | strong | partial |
-| tekom's own samples and examples | — | one direction only | strong | — |
+| tekom's own samples and examples *(`tests/test_spec_examples.py`)* | — | one direction only | **strong** | — |
 
 Two things about that table are worth internalising.
 
@@ -75,6 +75,13 @@ our own reading, so the mutant and the rule are two encodings of one belief;
 their agreement carries no information about whether the belief is right. Its
 value is in the other assertions — that the unmutated package comes back clean,
 and that no unexpected rule fires.
+
+The specification's examples are the sharpest of these and cost the least: they
+are conformant material written by the people who wrote the requirements, so a
+finding on one means a rule is too broad. That has now happened four times —
+B4, M17/M18, M78–M93, and M30, which contradicted L5 outright and which the
+reference corpus could not have found, because fixing it moved no agreement
+figure at all.
 
 **Failure mode 2 is the least covered, and cannot be closed by one reader.**
 That is not a gap in the plan; it is why `docs/divergences.md` exists.

@@ -60,6 +60,8 @@ def _root_content_files(package, exempt=()):
 
 @rule("C1")
 def c1_readable(ctx):
+    if not ctx.package.is_archive:
+        return
     broken = ctx.package.testzip()
     if broken:
         yield Violation("ZIP archive is corrupt", subject=broken)
@@ -73,6 +75,8 @@ def c2_not_empty(ctx):
 
 @rule("C3")
 def c3_extension(ctx):
+    if not ctx.package.is_archive:
+        return
     if ctx.package.path.suffix.lower() != ".iirds":
         yield Violation("container file name must end in .iirds",
                         subject=ctx.package.path.name,
@@ -98,6 +102,8 @@ def c5_mimetype_content(ctx):
 
 @rule("C6")
 def c6_mimetype_stored_first(ctx):
+    if not ctx.package.is_archive:
+        return
     info = ctx.package.info(MIMETYPE_FILE)
     if info is None:
         return

@@ -12,7 +12,27 @@ data never has to move.
 - `tests/test_offline.py` disables `socket` entirely and runs a full validation,
   so a regression here fails the suite rather than surprising you on site.
 
-## Getting it in
+## The shortest path in: one file
+
+```sh
+python tools/build_zipapp.py          # on a machine with a network
+# copy dist/iirds-validate.pyz across by whatever means the site allows
+python iirds-validate.pyz dist/       # on the machine without one
+```
+
+No pip, no index, no virtual environment, no rights to create one. Everything
+is inside the archive, including `rdflib` and the ontologies, and nothing in it
+is compiled — the same file runs on Linux, macOS and Windows.
+
+It is deliberately not a compiled binary. An unsigned executable is harder to
+get past endpoint protection and impossible to read; a `.pyz` is a zip of
+Python source that a reviewer can unpack and audit line by line. In an
+environment where approval is the obstacle rather than installation, that is
+the feature.
+
+`python -m iirds_validate.ontology --verify` works from inside the archive too.
+
+## Getting it in as a package
 
 On a machine with a network:
 

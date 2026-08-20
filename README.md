@@ -32,24 +32,40 @@ A package can pass `check` and fail `lint`. That combination is not a
 contradiction — it is the most common way an iiRDS handover goes wrong, and it
 is why the second command exists.
 
+## Point it at something
+
+```sh
+iirdsv build/manual.iirds     # a package
+iirdsv build/manual/          # the same package before it was zipped
+iirdsv dist/                  # every package under a directory
+```
+
+No subcommand needed — a path means "check it". Use `check` or `lint` when you
+want only one of the two questions.
+
 ## Install
+
+Nothing needs installing. Copy one file in and run it:
+
+```sh
+python iirds-validate.pyz dist/
+```
+
+That file is 850 KB, contains `rdflib` and the iiRDS ontologies, compiles
+nothing, and runs the same on Linux, macOS and Windows. It is an ordinary zip,
+so anyone who has to approve it before it enters the network can open it and
+read every line — which is usually the hard part, not the running. Build it
+with `python tools/build_zipapp.py`, or take it from a release.
+
+If you would rather have it on the path:
 
 ```sh
 pip install iirds-validate
 ```
 
-Offline, which is the case this tool is built for:
-
-```sh
-# on a machine with a network
-pip download iirds-validate -d wheels/
-
-# on the machine without one
-pip install --no-index --find-links wheels/ iirds-validate
-```
-
-One runtime dependency (`rdflib`). The iiRDS ontologies are bundled, so nothing
-is fetched at validation time — see [docs/offline-install.md](docs/offline-install.md).
+Offline, one runtime dependency (`rdflib`), and the ontologies are bundled, so
+nothing is fetched at validation time — see
+[docs/offline-install.md](docs/offline-install.md).
 
 ## Use it in a build
 

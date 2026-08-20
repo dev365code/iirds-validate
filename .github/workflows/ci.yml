@@ -130,6 +130,12 @@ jobs:
         # the project's whole argument and was previously only ever run by hand.
         run: /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/good.iirds
 
+      - name: the single-file form must work with nothing installed
+        run: |
+          python tools/build_zipapp.py --check
+          python -S dist/iirds-validate.pyz fixtures/good.iirds
+          python -S dist/iirds-validate.pyz fixtures/  # a directory of packages
+
       - name: no network access during validation
         run: |
           /tmp/v/bin/python - <<'PY'

@@ -9,18 +9,16 @@ over the same package and diffed rule by rule.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+from . import resources
 from .model import Rule
-
-CATALOG_PATH = Path(__file__).parent / "data" / "rule-catalog.json"
 
 _registry: Dict[str, Rule] = {}
 
 
 def _load_catalog() -> Dict[str, dict]:
-    raw = json.loads(CATALOG_PATH.read_text("utf-8"))
+    raw = json.loads(resources.read_text("rule-catalog.json"))
     return {r["id"]: r for r in raw["rules"]}
 
 

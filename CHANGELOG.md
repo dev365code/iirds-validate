@@ -22,6 +22,9 @@ First version. Everything below describes the state at the first public tag.
   bundled verbatim and hash-verified; remote JSON-LD contexts refused; XML
   entity declarations refused; hostile archives (zip-slip, oversized
   metadata) rejected. Ships as a reproducible single-file `.pyz`.
+- Profile-aware severity: the Appendix B content rules are errors under
+  iiRDS/A and warnings elsewhere, because outside A the standard permits any
+  content and "which files count as iiRDS XHTML5" is this project's reading.
 - iiRDS 1.0, 1.0.1, 1.1, 1.2, 1.3; unrestricted, A and H profiles. An
   undeclared version falls back to the newest *and says so*; an unpublished
   version or profile is a finding, not a silent default.

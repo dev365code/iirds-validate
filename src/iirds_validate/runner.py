@@ -132,7 +132,17 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             for violation in rule.fn(ctx) or ():
                 if rule.severity is Severity.INFO and not include_info:
                     continue
-                report.findings.append(Finding(rule, violation))
+                # Content findings demote to warnings outside iiRDS/A. The
+                # B rules quote MUSTs, but the decision that a given file is
+                # "iiRDS XHTML5 content" — the entry condition — is this
+                # project's reading, and an unrestricted package may carry
+                # any content it likes. Under A the profile itself makes the
+                # restriction, so the errors stand. docs/divergences.md
+                # carries the reasoning.
+                demoted = (Severity.WARNING
+                           if rule.kind == "content" and ctx.variant != "A"
+                           and rule.severity is Severity.ERROR else None)
+                report.findings.append(Finding(rule, violation, demoted_to=demoted))
         except Exception as exc:                      # a broken rule must not hide the rest
             report.findings.append(Finding(
                 _emitted("S3"),

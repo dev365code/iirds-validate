@@ -1,24 +1,10 @@
 {
  "_generated_by": "tools/rule_coverage.py --write-baseline",
- "_note": "Rules no test in the suite has been seen to make fire. Not a target: the list should shrink, and it must not grow without somebody saying why. A rule here is not known to be broken -- it is not known to work.",
+ "_note": "`never_fires` lists rules no test has been seen to make fire. Not a target: the list should shrink, and it must not grow without somebody saying why. A rule there is not known to be broken -- it is not known to work. `cannot_fire_by_design` is the separate, closed case.",
  "rules": 182,
- "exercised": 166,
- "never_fires": [
-  "M10",
-  "M12",
-  "M13.1",
-  "M14.1",
-  "M14.2",
-  "M16.1",
-  "M16.2",
-  "M16.3",
-  "M17",
-  "M18",
-  "M19.4",
-  "M8",
-  "M9",
-  "M94",
-  "M96.3",
-  "M96.4"
- ]
+ "exercised": 181,
+ "cannot_fire_by_design": {
+  "M96.4": "a MAY with nothing to violate; the permission is honoured by M96.1 to M96.3 checking the shape when it is used, and by nothing complaining when it is not. Registered so `iirdsv rules` lists the whole catalogue."
+ },
+ "never_fires": []
 }

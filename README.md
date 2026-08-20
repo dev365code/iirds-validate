@@ -262,6 +262,13 @@ the repository.
   that does not. A validator that names a defect and not the remedy has told
   you that something is wrong and left you the specification to search, which
   is most of the work and all of the expertise.
+- **Every rule has been watched fire.** The suite records which rule ids
+  actually produce a finding, and 181 of the 182 have — the remaining one is a
+  `MAY` with nothing to violate. It began at 63. A rule that fires nowhere is
+  not known to work: S8 spent months exactly backwards, able to fire only on
+  archives that were correct, and no test would have caught it because no test
+  made it fire. Line coverage would not have helped; its body ran and returned
+  the wrong answer.
 - **Deterministic output**, byte-identical across `PYTHONHASHSEED` values, so two
   runs can be diffed.
 - **No network, tested rather than asserted.** A JSON-LD `@context` may be a URL

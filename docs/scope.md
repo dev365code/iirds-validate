@@ -66,7 +66,7 @@ more than two of them. This is the whole reason the apparatus is large.
 | | **1** a requirement with no rule | **2** a rule that misreads its sentence | **3** fires on a conformant package | **4** correct but never fires |
 |---|---|---|---|---|
 | The requirement map *(not built yet)* | **only method** | review aid | — | — |
-| Mutation testing *(not built yet)* | — | **cannot, by construction** | strong | **only method** |
+| Mutation testing *(partial: the generated table, the cardinality family, iiRDS/H)* | — | **cannot, by construction** | strong | **only method** |
 | The reference corpus | — | partial | strong | partial |
 | tekom's own samples and examples *(`tests/test_spec_examples.py`)* | — | one direction only | **strong** | — |
 

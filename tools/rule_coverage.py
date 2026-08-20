@@ -32,6 +32,15 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate.registry import all_rules  # noqa: E402
 
+#: Rules that cannot fire, and are right not to. Kept apart from the
+#: unexercised list because the two are different states and merging them
+#: would leave a closed question looking like an open one for ever.
+CANNOT_FIRE = {
+    "M96.4": "a MAY with nothing to violate; the permission is honoured by M96.1 to "
+             "M96.3 checking the shape when it is used, and by nothing complaining "
+             "when it is not. Registered so `iirdsv rules` lists the whole catalogue.",
+}
+
 OBSERVED = ROOT / ".rule-coverage.json"
 BASELINE = ROOT / "docs" / "rule-coverage.json"
 
@@ -41,7 +50,8 @@ def _state():
         raise SystemExit("no observations; run pytest first")
     fired = set(json.loads(OBSERVED.read_text("utf-8")))
     rules = {r.id: r for r in all_rules()}
-    return rules, sorted(set(rules) - fired), sorted(fired & set(rules))
+    never = sorted(set(rules) - fired - set(CANNOT_FIRE))
+    return rules, never, sorted(fired & set(rules))
 
 
 def write_baseline() -> int:
@@ -49,15 +59,17 @@ def write_baseline() -> int:
     BASELINE.parent.mkdir(parents=True, exist_ok=True)
     BASELINE.write_text(json.dumps({
         "_generated_by": "tools/rule_coverage.py --write-baseline",
-        "_note": ("Rules no test in the suite has been seen to make fire. Not a target: "
-                  "the list should shrink, and it must not grow without somebody saying "
-                  "why. A rule here is not known to be broken -- it is not known to work."),
+        "_note": ("`never_fires` lists rules no test has been seen to make fire. Not a "
+                  "target: the list should shrink, and it must not grow without somebody "
+                  "saying why. A rule there is not known to be broken -- it is not known "
+                  "to work. `cannot_fire_by_design` is the separate, closed case."),
         "rules": len(rules),
         "exercised": len(fired),
+        "cannot_fire_by_design": dict(sorted(CANNOT_FIRE.items())),
         "never_fires": never,
     }, indent=1) + "\n", "utf-8")
-    print("%d of %d rules exercised; %d recorded as unexercised"
-          % (len(fired), len(rules), len(never)))
+    print("%d of %d rules exercised; %d unexercised, %d cannot fire by design"
+          % (len(fired), len(rules), len(never), len(CANNOT_FIRE)))
     return 0
 
 
@@ -84,8 +96,8 @@ def check() -> int:
         print("\nbaseline is stale: %d rule(s) are now exercised." % len(newly_covered),
               file=sys.stderr)
         return 1
-    print("%d of %d rules exercised; the %d unexercised are the ones recorded"
-          % (len(fired), len(rules), len(never)))
+    print("%d of %d rules exercised; %d unexercised, %d cannot fire by design"
+          % (len(fired), len(rules), len(never), len(CANNOT_FIRE)))
     return 0
 
 

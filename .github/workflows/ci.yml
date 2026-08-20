@@ -131,10 +131,17 @@ jobs:
         run: /tmp/v/bin/python tools/serialisation_equivalence.py fixtures/good.iirds
 
       - name: the single-file form must work with nothing installed
+        # `python -S` skips site-packages, so anything that runs came out of
+        # the archive. The directory holds a deliberately broken package, so
+        # exit 1 there is the correct answer and not a failure of this step.
         run: |
-          python tools/build_zipapp.py --check
-          python -S dist/iirds-validate.pyz fixtures/good.iirds
-          python -S dist/iirds-validate.pyz fixtures/  # a directory of packages
+          set +e
+          python tools/build_zipapp.py --check || exit 1
+          python -S dist/iirds-validate.pyz fixtures/good.iirds -q
+          test $? -eq 0 || { echo "a good package should exit 0"; exit 1; }
+          python -S dist/iirds-validate.pyz fixtures/ -q
+          test $? -eq 1 || { echo "a directory with a broken package should exit 1"; exit 1; }
+          echo "single-file form: one good package 0, a directory with a bad one 1"
 
       - name: no network access during validation
         run: |

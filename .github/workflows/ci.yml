@@ -33,6 +33,12 @@ jobs:
       - run: pip install -e .
       - run: python tools/propose_class_rules.py --check
 
+      - name: no rule claims a version whose vocabulary it predates
+        # Every `versions` array came from the reference tool. A rule applicable
+        # to a release whose ontology lacked its class runs, matches nothing and
+        # reports clean, so the error is in the claim rather than the output.
+        run: python tools/version_inventory.py
+
   test:
     name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

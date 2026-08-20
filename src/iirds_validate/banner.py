@@ -23,9 +23,10 @@ LOGO = r"""    _ _ ____  ____  _____
 TAGLINE = "conformance and interoperability checking for iiRDS packages, offline"
 
 COMMANDS = (
-    ("check <package.iirds>", "does it conform to the specification?"),
-    ("lint  <package.iirds>", "will anyone else be able to read it?"),
-    ("all   <package.iirds>", "both"),
+    ("<path>", "check and lint it — a package, a directory, either"),
+    ("check <path>", "does it conform to the specification?"),
+    ("lint  <path>", "will anyone else be able to read it?"),
+    ("pack  <directory>", "write it as a conformant .iirds, then check that"),
     ("rules", "every rule this tool checks, and its source"),
 )
 
@@ -36,7 +37,7 @@ def banner(coverage=None) -> str:
     lines[-1] = "%-26s validate %s" % (lines[-1], __version__)
     out = ["", "\n".join(lines), "", "  " + TAGLINE, ""]
     for command, purpose in COMMANDS:
-        out.append("  iirdsv %-24s %s" % (command, purpose))
+        out.append("  iirdsv %-18s %s" % (command, purpose))
     out.append("")
     if coverage:
         out.append("  " + coverage)

@@ -18,6 +18,7 @@ from . import __version__, runner
 from .banner import banner
 from .model import VERSIONS, Severity
 from .package import discover
+from .packer import PackError, pack
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -94,6 +95,26 @@ def _run(args, kinds) -> int:
     return EXIT_FINDINGS if failed else EXIT_OK
 
 
+def _cmd_pack(args) -> int:
+    """Write the archive, then validate the archive.
+
+    Validating what was just written rather than the directory is the point:
+    the five requirements about the ZIP that a directory cannot answer are now
+    answerable, and answered against the file that will actually be delivered.
+    """
+    try:
+        output = pack(args.directory, args.output, overwrite=args.overwrite)
+    except PackError as exc:
+        print("iirds-validate: %s" % exc, file=sys.stderr)
+        return EXIT_ERROR
+
+    if not args.quiet and args.format == "text":
+        print("wrote %s (%.0f KB)\n" % (output, output.stat().st_size / 1024))
+
+    args.package = [str(output)]
+    return _run(args, runner.ALL_KINDS)
+
+
 def _cmd_rules(args) -> int:
     rules = all_rules()
     if args.kind:
@@ -113,16 +134,22 @@ def _cmd_rules(args) -> int:
 
     print()
     cov = coverage()
-    for kind in ("container", "schema", "system", "lint"):
-        if kind not in cov:
+    labels = {"container": "the ZIP and its layout",
+              "schema": "the metadata graph",
+              "system": "the run itself",
+              "content": "iiRDS XHTML5 (Appendix B)",
+              "lint": "will a consumer be able to use it"}
+    for kind in ("container", "schema", "system", "content", "lint"):
+        c = cov.get(kind)
+        if not c or not (c["total"] or c["ours"]):
             continue
-        c = cov[kind]
-        if kind == "lint":
-            print("lint       %d rules (this project only — not in the plusmeta catalogue)" % c["total"])
-        else:
-            print("%-10s %d/%d implemented" % (kind, c["implemented"], c["total"]))
-    total_impl = sum(c["implemented"] for k, c in cov.items() if k != "lint")
-    print("%-10s %d/%d of the catalogue" % ("total", total_impl, len(CATALOG)))
+        catalogued = "%d/%d" % (c["implemented"], c["total"]) if c["total"] else "-"
+        ours = ("  +%d of its own" % c["ours"]) if c["ours"] else ""
+        print("%-10s %-8s %s%s" % (kind, catalogued, labels[kind], ours))
+    print()
+    print("%d of %d catalogued rules, plus %d of this project's own" % (
+        sum(c["implemented"] for c in cov.values()), len(CATALOG),
+        sum(c["ours"] for c in cov.values())))
     return EXIT_OK
 
 
@@ -142,6 +169,18 @@ def main(argv=None) -> int:
     p_all = sub.add_parser("all", help="check and lint together")
     _add_target(p_all)
 
+    p_pack = sub.add_parser(
+        "pack", help="write a directory as a conformant .iirds and check it")
+    p_pack.add_argument("directory")
+    p_pack.add_argument("-o", "--output", default=None,
+                        help="where to write it (default: alongside the directory)")
+    p_pack.add_argument("--overwrite", action="store_true")
+    p_pack.add_argument("-f", "--format", choices=("text", "json"), default="text")
+    p_pack.add_argument("--iirds-version", dest="version", default=None, choices=VERSIONS)
+    p_pack.add_argument("-v", "--verbose", action="store_true")
+    p_pack.add_argument("-q", "--quiet", action="store_true")
+    p_pack.add_argument("-W", "--warnings-as-errors", action="store_true")
+
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
     p_rules.add_argument("--kind", choices=("container", "schema", "lint", "system"))
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
@@ -149,7 +188,7 @@ def main(argv=None) -> int:
     # `iirdsv some/path` with no subcommand means `all`. Typing the verb is
     # friction, and "check it" is what anybody pointing at a package wants.
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"check", "lint", "all", "rules", "-h", "--help", "--version"}
+    known = {"check", "lint", "all", "pack", "rules", "-h", "--help", "--version"}
     if argv and argv[0] not in known and not argv[0].startswith("-"):
         argv.insert(0, "all")
 
@@ -159,9 +198,9 @@ def main(argv=None) -> int:
         # Bare `iirdsv`. argparse would exit 2 with a usage error, which is a
         # poor answer to someone who has just installed the thing.
         cov = coverage()
-        catalogued = sum(v["implemented"] for k, v in cov.items() if k != "lint")
         print(banner("%d of %d catalogued rules, plus %d of its own. no network access."
-                     % (catalogued, len(CATALOG), cov["lint"]["total"])))
+                     % (sum(v["implemented"] for v in cov.values()), len(CATALOG),
+                        sum(v["ours"] for v in cov.values()))))
         return EXIT_OK
 
     try:
@@ -171,6 +210,8 @@ def main(argv=None) -> int:
             return _run(args, runner.LINT_KINDS)
         if args.command == "all":
             return _run(args, runner.ALL_KINDS)
+        if args.command == "pack":
+            return _cmd_pack(args)
         if args.command == "rules":
             return _cmd_rules(args)
     except KeyboardInterrupt:

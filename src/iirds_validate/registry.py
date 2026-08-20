@@ -68,12 +68,22 @@ def implemented_ids() -> set:
 
 
 def coverage() -> dict:
-    """How much of the catalogue is actually implemented, per kind."""
+    """Implemented against catalogued, per kind, plus this project's own.
+
+    The earlier version put every uncatalogued rule in the `lint` bucket, so
+    the content rules and the extra system rules were counted as
+    interoperability rules and `system` reported 3 when there were 8. The
+    README took its numbers from here, and a reviewer comparing the table to
+    the command would have found the discrepancy in five minutes.
+    """
     out: Dict[str, dict] = {}
+    for kind in ("container", "schema", "system", "content", "lint"):
+        out[kind] = {"total": 0, "implemented": 0, "ours": 0}
     for rid, meta in CATALOG.items():
-        bucket = out.setdefault(meta["kind"], {"total": 0, "implemented": 0})
+        bucket = out.setdefault(meta["kind"], {"total": 0, "implemented": 0, "ours": 0})
         bucket["total"] += 1
         bucket["implemented"] += rid in _registry
-    extra = sorted(rid for rid in _registry if rid not in CATALOG)
-    out["lint"] = {"total": len(extra), "implemented": len(extra)}
+    for rule in _registry.values():
+        if rule.id not in CATALOG:
+            out.setdefault(rule.kind, {"total": 0, "implemented": 0, "ours": 0})["ours"] += 1
     return out

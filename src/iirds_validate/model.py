@@ -133,9 +133,22 @@ class Finding:
     def severity(self) -> Severity:
         return self.rule.severity
 
+    @property
+    def source(self) -> str:
+        """Whose rule this is.
+
+        `B*`, `L*` and `S4`-`S8` share an identifier namespace with the
+        catalogue. If the catalogue ever mints a real `B1`, a stored report
+        would become ambiguous and could not be repaired after the fact, so
+        every finding says where its rule came from.
+        """
+        from .registry import CATALOG
+        return "catalogue" if self.rule.id in CATALOG else "iirds-validate"
+
     def as_dict(self) -> dict:
         return {
             "rule": self.rule.id,
+            "source": self.source,
             "kind": self.rule.kind,
             "severity": str(self.severity),
             "priority": self.rule.prio,

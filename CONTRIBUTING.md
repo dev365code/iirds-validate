@@ -50,3 +50,20 @@ interesting every time.
 pip install -e ".[dev]"
 pytest
 ```
+
+`pytest` is not everything CI runs, and the difference has turned a good commit
+red twice — over import order, which the test suite cannot see. `make check`
+runs the lot: ruff at the version CI pins, the tests, the ontology hashes, and
+the serialisation equivalence proof against a container with a known defect.
+
+```sh
+make dev      # ruff and pytest
+make check    # everything CI runs
+make fix      # the formatting ruff can correct itself
+```
+
+One thing that check will not let you do is prove the equivalence claim against
+a clean package. Four identical empty reports agree with each other however
+badly the tool is broken, so `serialisation_equivalence.py` treats a package
+with no findings as a failed run unless you pass `--allow-clean`. The same
+reasoning applies to any test you add here: compare reports that say something.

@@ -16,8 +16,13 @@ from __future__ import annotations
 import json
 import re
 
-from conftest import (ATTRIBUTE_STYLE_RDF, DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD,
-                      MINIMAL_RDF, build_package)
+from conftest import (
+    ATTRIBUTE_STYLE_RDF,
+    DESCRIPTION_STYLE_RDF,
+    MINIMAL_JSONLD,
+    MINIMAL_RDF,
+    build_package,
+)
 from iirds_validate import runner
 
 #: Renditions are the usual blank nodes in a real package, and dropping the

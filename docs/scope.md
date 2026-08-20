@@ -90,6 +90,10 @@ figure at all.
 That is not a gap in the plan; it is why `docs/divergences.md` exists.
 Publishing a reading is the only way a single author can make it refutable.
 
+Whether that apparatus earns its size is answered in
+[findings.md](findings.md), which lists every defect it has caught and by
+which instrument.
+
 ## The unresolved list
 
 Kept short and kept honest. If one of these is quietly dropped, something has

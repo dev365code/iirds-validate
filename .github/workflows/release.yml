@@ -51,3 +51,24 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
             --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds-validate.pyz your-package.iirds\`."
+
+  # Publishes to PyPI via Trusted Publishing (OIDC): no API tokens anywhere.
+  # One-time setup on pypi.org first — Account → Publishing → add a "pending
+  # publisher" for repository dev365code/iirds-validate, workflow release.yml,
+  # environment pypi. Until that is done this job fails visibly, on purpose,
+  # without touching the GitHub Release above.
+  pypi:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install build
+          python -m build --outdir dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

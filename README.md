@@ -243,6 +243,29 @@ borrows its class hierarchy; the report says so when it happens.
 
 ---
 
+## Limits, measured
+
+"Can it handle large packages?" is three questions, because validation grows
+along three independent axes — and only one of them costs anything:
+
+| axis | scale tested | time | peak memory |
+|---|---|---|---|
+| **graph** — information units in the metadata | 50,000 topics (≈450k triples) | 15.6 s | ≈1 GB |
+| | 20,000 topics | 5.8 s | ≈420 MB |
+| **entries** — files in the archive | 70,000 entries | 0.7 s | — |
+| **batch** — packages per invocation | 200 packages | 1.3 s | — |
+
+Time is linear in graph size. Memory lives in the metadata graph alone —
+roughly a hundred times the size of `metadata.rdf`, because rdflib holds it
+in memory; content files are streamed one at a time and never held. Metadata
+above 64 MiB is refused before parsing, which also caps memory at a few GB
+for the largest metadata the guard admits. Numbers from a laptop; re-derive
+them on yours:
+
+```sh
+python tools/benchmark.py --full
+```
+
 ## Directories, and packing one
 
 A package spends most of its life as a directory, and checking it there finds a

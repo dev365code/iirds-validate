@@ -117,9 +117,11 @@ gone wrong.
    are now checked against the vocabulary each release actually carried, which
    found five wrong; the rest of the coupling stands. `THIRD_PARTY.md` records
    the policy; the requirement map is the way out.
-5. **iiRDS 1.0 and 1.0.1 have never met a real package**, and have no tagged
-   ontology either, so the version check above cannot reach them. Self-made
-   fixtures are circular.
+5. ~~iiRDS 1.0 and 1.0.1 have never met a real package~~ **Closed**: the
+   Consortium's own sample packages declare 1.0 and were validated on
+   2026-08-20 — both fail their own specification, every error verified
+   against the 1.0 text ([divergences.md](divergences.md)). Their schemas now
+   feed the version inventory too, so no edition is unchecked.
 
 ## Checking any of this yourself
 

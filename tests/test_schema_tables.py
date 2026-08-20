@@ -20,6 +20,19 @@ ALL_ROWS = [("MUST_HAVE_IRI", *row) for row in MUST_HAVE_IRI] + \
            [("NOT_USED_DIRECTLY", *row) for row in NOT_USED_DIRECTLY]
 
 
+def disagreements_with_the_catalogue(rows):
+    """Rows whose class is not the class the catalogue names for that rule.
+
+    Written as a function so the guard below can be pointed at a deliberately
+    corrupted table and shown to bite. An assertion nobody has watched fail is
+    an assertion nobody knows the shape of.
+    """
+    return [(rule_id, CATALOG[rule_id]["path"].strip(), class_name)
+            for _table, rule_id, _prefix, class_name in rows
+            if rule_id in CATALOG
+            and CATALOG[rule_id]["path"].strip() != class_name]
+
+
 @pytest.mark.parametrize("table,rule_id,prefix,class_name",
                          ALL_ROWS, ids=[r[1] for r in ALL_ROWS])
 def test_every_row_names_a_real_ontology_class(table, rule_id, prefix, class_name):
@@ -34,6 +47,49 @@ def test_every_row_names_a_real_ontology_class(table, rule_id, prefix, class_nam
 def test_every_row_is_a_catalogued_schema_rule(table, rule_id, prefix, class_name):
     assert rule_id in CATALOG, "%s is not in the catalogue — a typo would register it as lint" % rule_id
     assert CATALOG[rule_id]["kind"] == "schema", rule_id
+
+
+def test_every_row_names_the_class_the_catalogue_names():
+    """The check the other two do not make.
+
+    `test_every_row_names_a_real_ontology_class` asks whether the class exists;
+    `test_every_row_is_a_catalogued_schema_rule` asks whether the rule exists.
+    Neither asks whether *this* class belongs to *that* rule, so swapping
+    Document for Component across two rows broke nothing — and 61 of the 157
+    rules are generated from exactly this mapping.
+
+    `propose_class_rules.py --check` does not cover it either, for a reason
+    worth stating: it regenerates the table and compares it against the
+    committed one, so it compares the generator's output with the generator's
+    output. A generator that resolves the wrong class agrees with itself
+    perfectly. The catalogue's `path` field is the external datum — plusmeta's
+    reading of the same specification — and it was sitting unused.
+    """
+    assert disagreements_with_the_catalogue(ALL_ROWS) == []
+
+
+def test_the_guard_above_actually_detects_a_swap():
+    """Proof that the assertion is not vacuous.
+
+    Corrupt a copy of the table the way a careless regeneration would — two
+    rows exchanging classes, both still real, both still catalogued schema
+    rules, so every other test in this file still passes — and require the
+    guard to name both.
+    """
+    rows = list(ALL_ROWS)
+    # Two rows whose classes actually differ, or the swap is a no-op and this
+    # test would fail for a reason that has nothing to do with the guard.
+    pair = next(((i, j) for i in range(len(rows)) for j in range(i + 1, len(rows))
+                 if rows[i][3] != rows[j][3]), None)
+    assert pair is not None, "the table has only one distinct class name"
+    i, j = pair
+    (t1, id1, p1, c1), (t2, id2, p2, c2) = rows[i], rows[j]
+    swapped = list(rows)
+    swapped[i], swapped[j] = (t1, id1, p1, c2), (t2, id2, p2, c1)
+
+    caught = {rule_id for rule_id, _expected, _found in
+              disagreements_with_the_catalogue(swapped)}
+    assert caught == {id1, id2}, caught
 
 
 def test_no_rule_id_appears_in_two_tables():

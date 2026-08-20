@@ -1,0 +1,53 @@
+# Runs when a version tag is pushed. Builds the two artefacts, proves the
+# .pyz reproducible by building it twice and comparing hashes, and attaches
+# everything to a GitHub Release with the checksums beside it — because for
+# the air-gapped audience, "the hash on the release page is the hash of the
+# file I carried in" is the entire trust story.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: everything must be green first
+        run: |
+          pip install -e ".[dev]"
+          make check
+
+      - name: build the wheel and sdist
+        run: |
+          pip install build
+          python -m build --outdir dist/
+
+      - name: build the .pyz twice; the hashes must match
+        run: |
+          python tools/build_zipapp.py -o dist/iirds-validate.pyz --check
+          python tools/build_zipapp.py -o /tmp/again.pyz
+          cmp dist/iirds-validate.pyz /tmp/again.pyz
+          echo "reproducible: yes"
+
+      - name: checksums
+        run: |
+          cd dist
+          shasum -a 256 * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds-validate.pyz your-package.iirds\`."

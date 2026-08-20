@@ -256,6 +256,11 @@ the repository.
   The full table, and why "65 of 66 fixtures produce some finding" is the
   flattering way to say this rather than the honest one, are in
   [docs/divergences.md](docs/divergences.md).
+- **Every finding says what to do about it.** All 181 rules carry one imperative
+  sentence naming the change, and `tests/test_remediation.py` refuses a rule
+  that does not. A validator that names a defect and not the remedy has told
+  you that something is wrong and left you the specification to search, which
+  is most of the work and all of the expertise.
 - **Deterministic output**, byte-identical across `PYTHONHASHSEED` values, so two
   runs can be diffed.
 - **No network, tested rather than asserted.** A JSON-LD `@context` may be a URL

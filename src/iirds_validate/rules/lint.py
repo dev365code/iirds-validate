@@ -60,7 +60,7 @@ def _labelled(ctx, node) -> bool:
     return False
 
 
-def _lint(rule_id, title, prio="RECOMMENDED", conformance=False):
+def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None):
     """Register an interoperability rule.
 
     `conformance=True` marks the ones that implement a sentence the
@@ -68,8 +68,8 @@ def _lint(rule_id, title, prio="RECOMMENDED", conformance=False):
     happens to have no id for them, which is a fact about the catalogue rather
     than about whether the standard requires it.
     """
-    return rule(rule_id, kind="lint", prio=prio, title=title,
-                versions=ALL_VERSIONS, variants=(), spec=None, conformance=conformance)
+    return rule(rule_id, kind="lint", prio=prio, title=title, versions=ALL_VERSIONS,
+                variants=(), spec=None, conformance=conformance, fix=fix)
 
 
 #: Sentinel pushed onto the traversal stack to mark "finished with this node".
@@ -106,7 +106,8 @@ def _undescribed_references(ctx):
         yield subj, pred, obj
 
 
-@_lint("L1", "an iiRDS relation should not point at an IRI the package never describes")
+@_lint("L1", "an iiRDS relation should not point at an IRI the package never describes",
+       fix="Either describe the target in this package, or drop the reference. A relation pointing at an IRI nothing here mentions gives a consumer a name and no way to resolve it.")
 def l1_dangling_references(ctx):
     """The failure behind 'I built a valid package and my reader lost the data'.
 
@@ -126,7 +127,8 @@ def l1_dangling_references(ctx):
                         detail="referenced by %s via %s" % (ctx.label_of(subj), pred.split("#")[-1]))
 
 
-@_lint("L8", "external references cannot be resolved by an offline consumer", prio="MAY")
+@_lint("L8", "external references cannot be resolved by an offline consumer", prio="MAY",
+       fix="Bundle the vocabulary in the package, or accept that consumers behind a firewall will not resolve it. This is a note rather than a defect: it says what an offline reader loses.")
 def l8_external_references(ctx):
     """Links out to another vocabulary — fine, but worth knowing they are there.
 
@@ -142,7 +144,8 @@ def l8_external_references(ctx):
 
 
 @_lint("L2", "every iirds:source must resolve to a file inside the container",
-       prio="MUST", conformance=True)
+       prio="MUST", conformance=True,
+       fix="Add the file to the container at exactly the path iirds:source names, or correct the path. Paths are relative to the container root, case-sensitive, and use forward slashes.")
 def l2_missing_content_files(ctx):
     """A rendition that points at a file nobody packed."""
     present = set(ctx.package.files)
@@ -164,7 +167,8 @@ def l2_missing_content_files(ctx):
                                 subject=ctx.ref(rend), detail=raw)
 
 
-@_lint("L3", "every iirds:DirectoryNode should be reachable from a root node")
+@_lint("L3", "every iirds:DirectoryNode should be reachable from a root node",
+       fix="Link the node in with iirds:has-first-child or iirds:has-next-sibling from a node that is itself reachable, or remove it. A node no root reaches is invisible in every viewer, whatever it contains.")
 def l3_orphan_directory_nodes(ctx):
     """Nodes hanging off nothing: they exist, but no consumer will ever show them."""
     nodes = set(ctx.instances_of(T.DirectoryNode))
@@ -183,7 +187,8 @@ def l3_orphan_directory_nodes(ctx):
                         subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
-@_lint("L4", "the directory structure should not contain cycles", prio="MUST")
+@_lint("L4", "the directory structure should not contain cycles", prio="MUST",
+       fix="Break the loop: follow the reported nodes and remove the has-first-child or has-next-sibling that points back to an ancestor. A consumer walking this structure does not terminate.")
 def l4_directory_cycles(ctx):
     """A consumer walking the table of contents would loop forever.
 
@@ -221,7 +226,8 @@ def l4_directory_cycles(ctx):
                 stack.append((child, trail + [node]))
 
 
-@_lint("L5", "proprietary classes should be linked to the iiRDS vocabulary")
+@_lint("L5", "proprietary classes should be linked to the iiRDS vocabulary",
+       fix="Add rdfs:subClassOf from the proprietary class to the nearest iiRDS class. Without it a consumer sees a class it has no rules for and can only ignore the instances; with it they degrade to the iiRDS meaning.")
 def l5_unmapped_custom_classes(ctx):
     """Spec section 7: extensions are understood only if they hang off iiRDS.
 
@@ -244,7 +250,8 @@ def l5_unmapped_custom_classes(ctx):
                         detail="add rdfs:subClassOf or owl:equivalentClass pointing into iiRDS")
 
 
-@_lint("L6", "proprietary metadata values should carry a human-readable label")
+@_lint("L6", "proprietary metadata values should carry a human-readable label",
+       fix="Add an rdfs:label with an xml:lang. A consumer cannot show a bare IRI to a technician, and cannot match it against anything either.")
 def l6_unlabelled_concepts(ctx):
     """Labels travel inside the package, so a consumer has something to show.
 
@@ -272,7 +279,8 @@ def l6_unlabelled_concepts(ctx):
                         detail=("typed as %s" % ", ".join(types)) if types else None)
 
 
-@_lint("L7", "every information unit should have a title")
+@_lint("L7", "every information unit should have a title",
+       fix="Add an iirds:title. It is what appears in a table of contents and in search results, and an information unit without one arrives unnamed.")
 def l7_untitled_information_units(ctx):
     """Valid without one, unusable without one."""
     for unit in ctx.information_units():
@@ -287,7 +295,8 @@ def l7_untitled_information_units(ctx):
 
 
 @_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
-       prio="MUST", conformance=True)
+       prio="MUST", conformance=True,
+       fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.")
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 
@@ -328,7 +337,8 @@ def l9_serialisations_disagree(ctx):
 _ABSTRACT_MARKER = "not int"
 
 
-@_lint("L10", "abstract iiRDS classes should not be used to type an instance directly")
+@_lint("L10", "abstract iiRDS classes should not be used to type an instance directly",
+       fix="Retype the instance as one of the subclasses. The grouping class says only that something of that family is involved, which leaves a consumer nothing to act on.")
 def l10_abstract_class_used_directly(ctx):
     """Our reading of "Not intended to be used directly. Use the subclasses instead."
 
@@ -361,7 +371,8 @@ def l10_abstract_class_used_directly(ctx):
                                    if subclasses else "define a proprietary subclass")
 
 
-@_lint("L11", "content named .xhtml but declared as another media type is never checked")
+@_lint("L11", "content named .xhtml but declared as another media type is never checked",
+       fix="Either declare the rendition as application/xhtml+xml, or rename the file so it does not claim to be iiRDS XHTML5. Until the two agree, none of the content rules examine it.")
 def l11_content_hidden_from_the_content_rules(ctx):
     """The B rules examine only what the package declares to be iiRDS XHTML5,
     which is right — running XHTML5 checks over a PDF would be nonsense. But

@@ -90,6 +90,11 @@ class Violation:
     message: str
     subject: Optional[str] = None   # offending IRI, or path inside the container
     detail: Optional[str] = None    # extra context, e.g. the value we saw
+    #: What to do about it, when this instance needs something more specific
+    #: than the rule's standing advice. Most do not; the rule's `fix` covers
+    #: the ordinary case and this overrides it where the remedy depends on
+    #: what was actually found.
+    fix: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +107,17 @@ class Rule:
     variants: Tuple[str, ...]       # empty tuple == applies to every variant
     spec: Optional[str]
     fn: Callable[..., Iterable[Violation]]
+    #: One imperative sentence: what to change so this stops being reported.
+    #:
+    #: A validator that names a defect without naming the remedy has told you
+    #: that something is wrong and left you to find the specification, which is
+    #: most of the work and all of the expertise. Every rule carries this, and
+    #: `tests/test_remediation.py` refuses a rule that does not.
+    #:
+    #: Not the requirement restated in the imperative. "Rendition must have
+    #: exactly one iirds:format" -> "add an iirds:format" says nothing the
+    #: message did not. Say where it goes, and what a correct value looks like.
+    fix: Optional[str] = None
     #: True when a rule of ours implements a sentence the specification states
     #: as a MUST. Those have to run under `check`, whatever bucket they were
     #: written in — an advisory that the standard makes mandatory is not an
@@ -134,6 +150,11 @@ class Finding:
         return self.rule.severity
 
     @property
+    def fix(self) -> Optional[str]:
+        """What to do about it: the violation's own advice, or the rule's."""
+        return self.violation.fix or self.rule.fix
+
+    @property
     def source(self) -> str:
         """Whose rule this is.
 
@@ -155,6 +176,7 @@ class Finding:
             "message": self.violation.message,
             "subject": self.violation.subject,
             "detail": self.violation.detail,
+            "fix": self.fix,
             "title": self.rule.title,
             "spec": self.rule.spec,
         }

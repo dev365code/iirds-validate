@@ -116,16 +116,30 @@ def _not_used_directly(prefix: str, class_name: str):
     return check
 
 
+#: The remedy is the same shape for all sixty-one, because the defect is: the
+#: element was written without an identifier, so nothing else in the package —
+#: or in the package that references this one — can point at it.
+NAMED_FIX = ('Give the <iirds:%(cls)s> element an rdf:about with an IRI, for example '
+             'rdf:about="urn:uuid:..." or a URL under a domain you control. Without '
+             'one the element is anonymous, so no other statement can refer to it '
+             'and a consumer merging this package with another cannot tell two of '
+             'them apart.')
+
+ABSTRACT_FIX = ('Retype the instance as one of the subclasses of iirds:%(cls)s. The '
+                'grouping class says only that something of that family is involved, '
+                'which leaves a consumer nothing to act on.')
+
+
 def _register() -> None:
     for rule_id, prefix, class_name in MUST_HAVE_IRI:
         fn = _must_have_iri(prefix, class_name)
         fn.__name__ = "%s_%s_must_have_iri" % (rule_id.replace(".", "_").lower(), class_name.lower())
-        rule(rule_id)(fn)
+        rule(rule_id, fix=NAMED_FIX % {"cls": class_name})(fn)
 
     for rule_id, prefix, class_name in NOT_USED_DIRECTLY:
         fn = _not_used_directly(prefix, class_name)
         fn.__name__ = "%s_%s_not_direct" % (rule_id.replace(".", "_").lower(), class_name.lower())
-        rule(rule_id)(fn)
+        rule(rule_id, fix=ABSTRACT_FIX % {"cls": class_name})(fn)
 
 
 _register()

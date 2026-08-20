@@ -45,14 +45,16 @@ def _at_most_one(ctx, cls, prop, label):
 # Information units
 # --------------------------------------------------------------------------
 
-@rule("M1")
+@rule("M1",
+       fix="Retype the instance as one of the InformationUnit subclasses: Topic, Fragment, Document or Package. The parent class says only that something informational is here, which a consumer cannot route, index or display.")
 def m1_no_direct_information_unit(ctx):
     for subj in ctx.typed_exactly(T.InformationUnit):
         yield Violation("iirds:InformationUnit used directly; use one of its subclasses",
                         subject=ctx.ref(subj))
 
 
-@rule("M2.1")
+@rule("M2.1",
+       fix="Give the element an rdf:about with an IRI. Anonymous information units cannot be referenced from a table of contents, from another package, or from a later revision of this one.")
 def m2_1_information_unit_iri(ctx):
     for subj in ctx.information_units():
         if not is_named(subj):
@@ -61,39 +63,46 @@ def m2_1_information_unit_iri(ctx):
                             subject=ctx.ref(subj))
 
 
-@rule("M2.3")
+@rule("M2.3",
+       fix="Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first.")
 def m2_3(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.dateOfCreation, "iirds:dateOfCreation")
 
 
-@rule("M2.4")
+@rule("M2.4",
+       fix="Keep one iirds:dateOfLastModification and remove the rest. Consumers use it to decide whether a redelivery is newer, so an ambiguous value defeats the comparison.")
 def m2_4(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.dateOfLastModification,
                             "iirds:dateOfLastModification")
 
 
-@rule("M2.5")
+@rule("M2.5",
+       fix="Keep one iirds:revision and remove the rest. It is the identifier a reader quotes when reporting a problem, and two of them make that useless.")
 def m2_5(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.revision, "iirds:revision")
 
 
-@rule("M2.6")
+@rule("M2.6",
+       fix="Keep one iirds:title and remove the rest. For a title in several languages, use one property per language with xml:lang rather than several bare ones.")
 def m2_6(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.title, "iirds:title")
 
 
-@rule("M2.7")
+@rule("M2.7",
+       fix="Keep one iirds:has-abstract and remove the rest. An abstract is what a search result shows, and there is room for one.")
 def m2_7(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.has_abstract, "iirds:has-abstract")
 
 
-@rule("M2.8")
+@rule("M2.8",
+       fix="Keep one iirds:is-replacement-of and remove the rest. If this unit genuinely supersedes several, model that on the units it replaces instead.")
 def m2_8(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.is_replacement_of,
                             "iirds:is-replacement-of")
 
 
-@rule("M2.9")
+@rule("M2.9",
+       fix="Keep one iirds:is-version-of and remove the rest. A version belongs to exactly one information object; two would make the revision history a graph nobody can walk.")
 def m2_9(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.is_version_of, "iirds:is-version-of")
 
@@ -102,7 +111,8 @@ def m2_9(ctx):
 # Package
 # --------------------------------------------------------------------------
 
-@rule("M3")
+@rule("M3",
+       fix="Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous.")
 def m3_exactly_one_package(ctx):
     packages = ctx.instances_of(T.Package)
     # A nested child package is referenced by iirds:is-part-of-package; only the
@@ -115,12 +125,14 @@ def m3_exactly_one_package(ctx):
                         detail=", ".join(str(p) for p in own[:5]))
 
 
-@rule("M4")
+@rule("M4",
+       fix="Add iirds:iiRDSVersion to the iirds:Package instance, with a published version such as 1.3. A consumer needs it to decide which rules apply before reading anything else.")
 def m4_package_version(ctx):
     yield from _exactly_one(ctx, T.Package, T.iiRDSVersion, "iirds:iiRDSVersion")
 
 
-@rule("M5")
+@rule("M5",
+       fix="Use an absolute IRI in rdf:about, such as a urn:uuid: or a URL under a domain you control. Relative IRIs resolve against a base that changes when the package is merged into a larger set, so identifiers silently collide. RECOMMENDED, not required.")
 def m5_absolute_iris(ctx):
     for subj in ctx.iirds_subjects():
         if isinstance(subj, URIRef) and not is_absolute_iri(subj) or str(subj) == PACKAGE_BASE:
@@ -128,7 +140,8 @@ def m5_absolute_iris(ctx):
                             subject=ctx.ref(subj))
 
 
-@rule("M6")
+@rule("M6",
+       fix="Relate the information unit to exactly one information object with iirds:is-version-of. Two would make it a version of two different things at once, and a consumer merging revisions cannot resolve that.")
 def m6_one_information_object(ctx):
     for unit in ctx.information_units():
         objs = ctx.values(unit, T.is_version_of)
@@ -138,7 +151,8 @@ def m6_one_information_object(ctx):
                             subject=ctx.ref(unit), detail="%d objects" % len(objs))
 
 
-@rule("M8")
+@rule("M8",
+       fix="Remove the relations whose subject is the Package element for this container. The package cannot be a part of itself, and a consumer following those relations walks in a circle.")
 def m8_package_no_rendition(ctx):
     for pkg in ctx.instances_of(T.Package):
         if ctx.has(pkg, T.is_part_of_package):
@@ -153,7 +167,8 @@ def m8_package_no_rendition(ctx):
 # Renditions and selectors
 # --------------------------------------------------------------------------
 
-@rule("M9")
+@rule("M9",
+       fix="Make the URL relative to the container root, such as content/topic1.xhtml. An absolute path or a file: URL points outside the package, where a consumer has nothing.")
 def m9_relative_source(ctx):
     for rend in ctx.instances_of(T.Rendition):
         for src in ctx.values(rend, T.source):
@@ -163,17 +178,20 @@ def m9_relative_source(ctx):
                                 subject=ctx.ref(rend), detail=value)
 
 
-@rule("M10")
+@rule("M10",
+       fix="Add iirds:source to the Rendition, naming the file inside the container it renders. A Rendition without one describes a form of the content that the package does not carry.")
 def m10_rendition_source(ctx):
     yield from _exactly_one(ctx, T.Rendition, T.source, "iirds:source")
 
 
-@rule("M11")
+@rule("M11",
+       fix="Give the Rendition exactly one iirds:format, holding the media type of the file it points at, for example application/xhtml+xml or application/pdf. Add one if there is none; remove the extras if there are several.")
 def m11_rendition_format(ctx):
     yield from _exactly_one(ctx, T.Rendition, T.fmt, "iirds:format")
 
 
-@rule("M12")
+@rule("M12",
+       fix="Use one of the Selector subclasses instead: FragmentSelector, RangeSelector or one of the others. The base class does not say how to address the part, so a consumer cannot resolve it.")
 def m12_no_direct_selector(ctx):
     for subj in ctx.typed_exactly(T.Selector):
         yield Violation("iirds:Selector used directly; use one of its subclasses",
@@ -191,7 +209,8 @@ def _value_selectors(ctx):
     return [s for s in ctx.instances_of(T.Selector) if s not in ranges]
 
 
-@rule("M13.1")
+@rule("M13.1",
+       fix="Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate.")
 def m13_1_selector_value(ctx):
     for sel in _value_selectors(ctx):
         if len(ctx.values(sel, RDF.value)) != 1:
@@ -199,7 +218,8 @@ def m13_1_selector_value(ctx):
                             "one rdf:value", subject=ctx.ref(sel))
 
 
-@rule("M13.2")
+@rule("M13.2",
+       fix="Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression.")
 def m13_2_selector_conforms_to(ctx):
     for sel in _value_selectors(ctx):
         if len(ctx.values(sel, DCTERMS.conformsTo)) != 1:
@@ -207,12 +227,14 @@ def m13_2_selector_conforms_to(ctx):
                             "one dcterms:conformsTo", subject=ctx.ref(sel))
 
 
-@rule("M14.1")
+@rule("M14.1",
+       fix="Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable.")
 def m14_1_range_start(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_start_selector, "iirds:has-start-selector")
 
 
-@rule("M14.2")
+@rule("M14.2",
+       fix="Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular.")
 def m14_2_range_end(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_end_selector, "iirds:has-end-selector")
 
@@ -221,7 +243,8 @@ def m14_2_range_end(ctx):
 # Documents, events, identities, parties
 # --------------------------------------------------------------------------
 
-@rule("M15.1")
+@rule("M15.1",
+       fix="Relate the Document to one of the standardised iiRDS document types. It is what a consumer uses to route a document — installation, maintenance, spare parts — before anyone opens it.")
 def m15_1_document_type(ctx):
     for doc in ctx.instances_of(T.Document):
         if not (ctx.has(doc, T.has_document_type)
@@ -230,17 +253,20 @@ def m15_1_document_type(ctx):
                             subject=ctx.ref(doc))
 
 
-@rule("M16.1")
+@rule("M16.1",
+       fix="Add iirds:has-event-code to the Event, holding the code as the machine emits it. It is the string a technician reads off the panel, and it is what makes an event findable.")
 def m16_1_event_code(ctx):
     yield from _exactly_one(ctx, T.Event, T.has_event_code, "iirds:has-event-code")
 
 
-@rule("M16.2")
+@rule("M16.2",
+       fix="Relate the Event to an event type with iirds:has-event-type. The code identifies the specific event; the type says what kind of thing it is, and a consumer needs both.")
 def m16_2_event_type(ctx):
     yield from _exactly_one(ctx, T.Event, T.has_event_type, "iirds:has-event-type")
 
 
-@rule("M19.1")
+@rule("M19.1",
+       fix="Give the Identity exactly one iirds:has-identity-domain. The domain says which scheme the identifier belongs to, and an identifier without a scheme is a string that may collide with anything.")
 def m19_1_identity_identifier(ctx):
     """The catalogue's wording for M19.1 is about the domain, but the reference
     tool checks the identifier here and checks the domain under M19.3. Both
@@ -255,7 +281,8 @@ def m19_1_identity_identifier(ctx):
                             subject=ctx.ref(ident), detail="%d found" % len(values))
 
 
-@rule("M19.3")
+@rule("M19.3",
+       fix="Relate the Identity to exactly one domain with iirds:has-identity-domain, removing the extras. Two domains would make one value mean two different things at once.")
 def m19_3_identity_domain(ctx):
     for ident in ctx.instances_of(T.Identity):
         domains = ctx.values(ident, T.has_identity_domain)
@@ -264,7 +291,8 @@ def m19_3_identity_domain(ctx):
                             subject=ctx.ref(ident), detail="%d domains" % len(domains))
 
 
-@rule("M19.2")
+@rule("M19.2",
+       fix="Add iirds:identifier to the Identity, holding the value itself. The domain says what kind of identifier it is; this is the identifier.")
 def m19_2_identity_value(ctx):
     for ident in ctx.instances_of(T.Identity):
         values = [v for v in ctx.values(ident, T.identifier) if str(v).strip()]
@@ -273,19 +301,22 @@ def m19_2_identity_value(ctx):
                             subject=ctx.ref(ident))
 
 
-@rule("M21.2")
+@rule("M21.2",
+       fix="Keep one iirds:dateOfEffect and remove the rest. It is the date a consumer uses to decide whether this status applies today.")
 def m21_2(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfEffect,
                             "iirds:dateOfEffect")
 
 
-@rule("M21.3")
+@rule("M21.3",
+       fix="Keep one iirds:dateOfExpiry and remove the rest. Two expiry dates give no answer to the only question the property is asked.")
 def m21_3(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfExpiry,
                             "iirds:dateOfExpiry")
 
 
-@rule("M21.4")
+@rule("M21.4",
+       fix="Keep one iirds:dateOfStatus and remove the rest. It records when the status was set, which is what distinguishes a current status from a stale one.")
 def m21_4(ctx):
     """The wording says iirds:purpose; the reference tool checks dateOfStatus
     here and purpose under M21.5. Following the wording for both would leave
@@ -293,18 +324,21 @@ def m21_4(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfStatus, "iirds:dateOfStatus")
 
 
-@rule("M21.5")
+@rule("M21.5",
+       fix="Keep one iirds:purpose and remove the rest. It says why the status exists, and a consumer displays it as a single line.")
 def m21_5(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.purpose, "iirds:purpose")
 
 
-@rule("M21.6")
+@rule("M21.6",
+       fix="Keep one iirds:relates-to-party and remove the rest. It names who set the status; several would leave responsibility unassigned rather than shared.")
 def m21_6(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.relates_to_party,
                             "iirds:relates-to-party")
 
 
-@rule("M22.1")
+@rule("M22.1",
+       fix="Add iirds:has-party-role to the Party, relating it to a PartyRole such as iirds:Author or iirds:Manufacturer. A party with no role tells a consumer that an organisation is involved and not how.")
 def m22_1_party_role(ctx):
     yield from _exactly_one(ctx, T.Party, T.has_party_role, "iirds:has-party-role")
 
@@ -313,31 +347,36 @@ def m22_1_party_role(ctx):
 # Directory structure (table of contents)
 # --------------------------------------------------------------------------
 
-@rule("M24.1")
+@rule("M24.1",
+       fix="Keep one iirds:has-next-sibling and remove the rest. A node has one successor in its level; two would make the table of contents a graph rather than a list.")
 def m24_1(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_next_sibling,
                             "iirds:has-next-sibling")
 
 
-@rule("M24.2")
+@rule("M24.2",
+       fix="Keep one iirds:has-directory-structure-type and remove the rest. It says what kind of structure this is, and one node cannot be the root of two kinds at once.")
 def m24_2(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_directory_structure_type,
                             "iirds:has-directory-structure-type")
 
 
-@rule("M24.3")
+@rule("M24.3",
+       fix="Keep one iirds:has-first-child and remove the rest. A level begins at one node, and the rest of it is reached by following siblings from there.")
 def m24_3(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_first_child,
                             "iirds:has-first-child")
 
 
-@rule("M24.4")
+@rule("M24.4",
+       fix="Keep one iirds:relates-to-information-unit and remove the rest. A directory node stands for one entry in the table of contents.")
 def m24_4(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.relates_to_information_unit,
                             "iirds:relates-to-information-unit")
 
 
-@rule("M24.6")
+@rule("M24.6",
+       fix="Give the package at least one root node carrying iirds:has-directory-structure-type together with its first child. Without a root there is no entry point, and the whole structure is unreachable.")
 def m24_6_root_node(ctx):
     nodes = ctx.instances_of(T.DirectoryNode)
     if not nodes:
@@ -363,7 +402,8 @@ def _linked_nodes(ctx):
     return linked
 
 
-@rule("M24.5")
+@rule("M24.5",
+       fix="Add iirds:has-directory-structure-type to the root node. It is what tells a consumer whether this structure is a table of contents, a parts list, or something else, and only the root carries it.")
 def m24_5_only_root_has_structure_type(ctx):
     """The structure type names the whole structure, so only its root carries
     it. A node reachable from another node is not a root."""
@@ -375,7 +415,8 @@ def m24_5_only_root_has_structure_type(ctx):
                             subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
-@rule("M25")
+@rule("M25",
+       fix="Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit.")
 def m25_lists_are_closed(ctx):
     """Every level is a closed list: the last node points at iirds:nil.
 
@@ -389,7 +430,8 @@ def m25_lists_are_closed(ctx):
                             subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
-@rule("M26")
+@rule("M26",
+       fix="Point iirds:has-first-child at an iirds:DirectoryNode. A lower level starts with a node like any other, and pointing at something else breaks the walk.")
 def m26_first_child_is_a_directory_node(ctx):
     nodes = set(ctx.instances_of(T.DirectoryNode))
     for parent, child in ctx.graph.subject_objects(T.has_first_child):
@@ -399,7 +441,8 @@ def m26_first_child_is_a_directory_node(ctx):
                         subject=ctx.ref(parent), detail=ctx.ref(child))
 
 
-@rule("M27")
+@rule("M27",
+       fix="Make the first child of the lower level the head of its own sibling chain. Each level is a linked list, and the child link enters it at the first item.")
 def m27_first_child_starts_a_new_list(ctx):
     """The node on the next level down heads its own chain. If something else
     already points at it as a sibling, the same nodes are reachable twice and
@@ -419,7 +462,8 @@ def m27_first_child_starts_a_new_list(ctx):
 # Extensions: what a package may add to the standard vocabulary
 # --------------------------------------------------------------------------
 
-@rule("M16.3")
+@rule("M16.3",
+       fix="Declare the extension as a class with rdfs:subClassOf pointing at iirds:Event. Adding an instance of an undeclared type gives a consumer nothing to fall back on.")
 def m16_3_event_extension_is_a_class(ctx):
     """A proprietary event type has to be declared, not merely referenced.
 
@@ -464,7 +508,8 @@ def _relies_solely_on_an_external_vocabulary(ctx, prop, cls):
     return not ctx.instances_of(cls)
 
 
-@rule("M17")
+@rule("M17",
+       fix="Relate your product entities to iirds:ProductVariant rather than typing them with an external product ontology alone. iiRDS consumers know the iiRDS classes; the external vocabulary can stay alongside as an equivalence.")
 def m17_external_product_ontology_is_mapped(ctx):
     """Referencing an external product ontology is allowed; relying on it is not."""
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_component, T.Component):
@@ -474,7 +519,8 @@ def m17_external_product_ontology_is_mapped(ctx):
                         subject="iirds:relates-to-component")
 
 
-@rule("M18")
+@rule("M18",
+       fix="Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants.")
 def m18_product_variants_are_declared(ctx):
     """Product variants are a proprietary extension, so they travel in the package."""
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_product_variant,
@@ -484,7 +530,8 @@ def m18_product_variants_are_declared(ctx):
                         subject="iirds:relates-to-product-variant")
 
 
-@rule("M30")
+@rule("M30",
+       fix="Remove the statement. It restates a relationship the iiRDS ontology already defines, which bloats every package and lets a stale copy contradict the real one. Linking your own class to an iiRDS class is a different thing and is allowed.")
 def m30_no_schema_in_metadata(ctx):
     """metadata.rdf carries a package's metadata, not a copy of the standard.
 
@@ -528,7 +575,8 @@ def m30_no_schema_in_metadata(ctx):
                 break
 
 
-@rule("M94")
+@rule("M94",
+       fix="Use one of the subclasses of the administrative metadata relation instead. The general form says only that some administrative relation exists, which a consumer cannot act on.")
 def m94_administrative_metadata_relation_not_direct(ctx):
     """The generic relation is a grouping, like the classes M78 to M93 cover."""
     for subject, _obj in ctx.graph.subject_objects(T.relates_to_administrative_metadata):
@@ -541,7 +589,8 @@ def m94_administrative_metadata_relation_not_direct(ctx):
 # Identities and classifications
 # --------------------------------------------------------------------------
 
-@rule("M19.4")
+@rule("M19.4",
+       fix="Type the target of iirds:has-identity-domain as iirds:IdentityDomain. Pointing at something else leaves a consumer unable to tell which scheme the identifier is in.")
 def m19_4_identity_domain_is_typed(ctx):
     for identity, domain in ctx.graph.subject_objects(T.has_identity_domain):
         if (domain, None, None) not in ctx.graph:
@@ -555,12 +604,14 @@ def m19_4_identity_domain_is_typed(ctx):
 
 
 
-@rule("M21.1")
+@rule("M21.1",
+       fix="Relate the ContentLifeCycleStatus to an iirds:ContentLifeCycleStatusValue with iirds:has-content-lifecycle-status-value. Without it the status object records dates for a status nobody named.")
 def m21_1_lifecycle_status_value(ctx):
     yield from _exactly_one(ctx, T.ContentLifeCycleStatus, T.has_content_lifecycle_status_value, "iirds:has-content-lifecycle-status-value")
 
 
-@rule("M22.2")
+@rule("M22.2",
+       fix="Point iirds:has-party-role at an instance of iirds:PartyRole or one of its subclasses. Pointing at anything else — a vCard, a plain resource — leaves the role unstated even though the property is present.")
 def m22_2_role_is_a_party_role(ctx):
     """M22.1 asks whether the party has a role; this asks whether the thing it
     points at is one. They were the same function here, which double-reported
@@ -576,18 +627,21 @@ def m22_2_role_is_a_party_role(ctx):
                         subject=ctx.ref(party), detail=ctx.ref(role))
 
 
-@rule("M23")
+@rule("M23",
+       fix="Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact.")
 def m23_party_has_a_vcard(ctx):
     """A role without a description is not something anyone can act on."""
     yield from _exactly_one(ctx, T.Party, T.relates_to_vcard, "iirds:relates-to-vcard")
 
 
-@rule("M95")
+@rule("M95",
+       fix="Keep one iirds:relates-to-party on the Component and remove the rest. If several organisations are genuinely involved, model each on its own relation type rather than repeating this one.")
 def m95_component_party(ctx):
     yield from _at_most_one(ctx, T.Component, T.relates_to_party, "iirds:relates-to-party")
 
 
-@rule("M96.1")
+@rule("M96.1",
+       fix="Give the external classification exactly one iirds:has-classification-domain. The domain names the scheme — eCl@ss, ETIM, or your own — and a classification identifier means nothing without it.")
 def m96_1_classification_domain(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
         domains = ctx.values(classification, T.has_classification_domain)
@@ -597,7 +651,8 @@ def m96_1_classification_domain(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(domains))
 
 
-@rule("M96.2")
+@rule("M96.2",
+       fix="Give the external classification exactly one iirds:classificationIdentifier. Two identifiers in one classification leave a consumer unable to tell which one is meant.")
 def m96_2_classification_identifier_count(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
         identifiers = ctx.values(classification, T.classificationIdentifier)
@@ -607,7 +662,8 @@ def m96_2_classification_identifier_count(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(identifiers))
 
 
-@rule("M96.3")
+@rule("M96.3",
+       fix="Put a non-empty string in iirds:classificationIdentifier. An empty value is worse than an absent one: it looks answered and matches nothing.")
 def m96_3_classification_identifier_non_empty(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
         for value in ctx.values(classification, T.classificationIdentifier):
@@ -616,7 +672,8 @@ def m96_3_classification_identifier_non_empty(ctx):
                                 subject=ctx.ref(classification))
 
 
-@rule("M96.4")
+@rule("M96.4",
+       fix="Relate the instance to a classification with iirds:relates-to-classification, or remove the empty classification. A ProductVariant, ProductFeature, Component or InformationObject is classified or it is not.")
 def m96_4_external_classification_is_optional(ctx):
     """A MAY, so there is nothing to violate.
 
@@ -642,7 +699,11 @@ def m96_4_external_classification_is_optional(ctx):
 
 #: The reference tool gives M35 the same assertion as M19.1 and M36 the same
 #: as M19.3. Registering the same function twice says so exactly.
-rule("M35")(m19_1_identity_identifier)
-rule("M36")(m19_3_identity_domain)
+rule("M35", fix="Add iirds:identifier to the Identity, holding the value. An identity with a "
+                 "domain and no value names a scheme without saying which member of it."
+     )(m19_1_identity_identifier)
+rule("M36", fix="Relate the Identity to an iirds:IdentityDomain. Serial numbers and asset "
+                 "URIs are only unique within a scheme, so the value alone is ambiguous."
+     )(m19_3_identity_domain)
 
 

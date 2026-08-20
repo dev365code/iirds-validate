@@ -100,7 +100,7 @@ def _must_have_iri(prefix: str, class_name: str):
         for subject in ctx.typed_exactly(cls):
             if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
-                                subject=str(subject))
+                                subject=ctx.ref(subject))
     return check
 
 
@@ -112,7 +112,7 @@ def _not_used_directly(prefix: str, class_name: str):
         for subject in ctx.graph.subjects(RDF.type, cls):
             yield Violation("%s is not intended to be used directly; "
                             "use one of its subclasses" % class_name,
-                            subject=str(subject))
+                            subject=ctx.ref(subject))
     return check
 
 

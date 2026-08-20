@@ -10,17 +10,18 @@ RUFF_VERSION := 0.16.3
 PYTHON       ?= python3
 export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests
 
-.PHONY: help check test lint fix tools dev clean
+.PHONY: help check test lint fix generated tools dev clean
 
 help:
 	@echo "make check   everything CI runs: lint, tests, the equivalence proof"
 	@echo "make test    the test suite alone"
 	@echo "make lint    ruff, pinned to the version CI uses"
+	@echo "make generated  the generated rule table still matches its generator"
 	@echo "make fix     ruff --fix, for the things it can correct itself"
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
 
-check: lint test tools
+check: lint generated test tools
 
 test:
 	$(PYTHON) -m pytest -q
@@ -30,6 +31,13 @@ lint:
 
 fix:
 	$(PYTHON) -m ruff check --fix .
+
+# src/iirds_validate/rules/schema_tables.py is written by this script from the
+# bundled ontologies, and editing it by hand is how it silently stops matching
+# them. --check regenerates into memory and compares; it caught exactly that
+# within an hour of the Makefile being written.
+generated:
+	$(PYTHON) tools/propose_class_rules.py --check
 
 tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify

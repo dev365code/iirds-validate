@@ -60,7 +60,7 @@ def _labelled(ctx, node) -> bool:
     return False
 
 
-def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None):
+def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None, covers=()):
     """Register an interoperability rule.
 
     `conformance=True` marks the ones that implement a sentence the
@@ -69,7 +69,7 @@ def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None):
     than about whether the standard requires it.
     """
     return rule(rule_id, kind="lint", prio=prio, title=title, versions=ALL_VERSIONS,
-                variants=(), spec=None, conformance=conformance, fix=fix)
+                variants=(), spec=None, conformance=conformance, fix=fix, covers=covers)
 
 
 #: Sentinel pushed onto the traversal stack to mark "finished with this node".
@@ -296,7 +296,8 @@ def l7_untitled_information_units(ctx):
 
 @_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
        prio="MUST", conformance=True,
-       fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.")
+       fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.",
+       covers=("dfn-iirds-container#5",))
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 
@@ -415,7 +416,8 @@ def l11_content_hidden_from_the_content_rules(ctx):
 @_lint("L12", "two entries differing only in case will not survive extraction",
        fix="Rename one of them so the two differ by more than case. The ZIP holds both, "
            "and Windows and macOS filesystems hold one, so the package a consumer unpacks "
-           "is missing a file that validated perfectly.")
+           "is missing a file that validated perfectly.",
+       covers=("dfn-iirds-container#12",))
 def l12_case_only_collisions(ctx):
     """C15 asks whether the same path appears twice, and it is right to: within
     the archive those really are one entry claimed twice.

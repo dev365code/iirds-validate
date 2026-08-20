@@ -45,23 +45,34 @@ def test_every_claimed_requirement_is_an_obligation():
 
 @pytest.mark.parametrize("rule_id", sorted(CLAIMED), ids=sorted(CLAIMED))
 def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
-    """A weak check, and the only mechanical one available: the subject of the
-    requirement should appear in the rule's title. It cannot tell a correct
-    mapping from a plausible one -- that is the reading problem no single
-    reader can solve -- but it catches a citation pasted from the wrong row.
+    """A weak check, and the only mechanical one available: where a requirement
+    names a class or property, the rule claiming it should mention that name.
+
+    Restricted to subjects that are qualified names on purpose. Appendix A's
+    subjects are terms -- `iirds:Topic` -- and a rule about them says so. In
+    chapter 5 the nearest definition is the whole artefact, "iiRDS container",
+    which every rule there is about and none repeats: L9 is titled for the two
+    metadata files rather than for the container holding them, and that is the
+    better title. Applying the heuristic there would only teach people to
+    rename rules to satisfy it.
+
+    It cannot tell a correct mapping from a plausible one either -- that is the
+    reading problem no single reader can solve. It catches a citation pasted
+    from the wrong row.
     """
     rule = next(r for r in all_rules() if r.id == rule_id)
     for rid in sorted(CLAIMED[rule_id]):
-        subject = (BY_ID[rid].get("subject") or "").split(":")[-1]
-        if subject:
-            assert subject.lower() in rule.title.lower(), \
-                "%s claims %s, which is about %s" % (rule_id, rid, subject)
+        subject = BY_ID[rid].get("subject") or ""
+        if ":" not in subject:
+            continue
+        assert subject.split(":")[-1].lower() in rule.title.lower(), \
+            "%s claims %s, which is about %s" % (rule_id, rid, subject)
 
 
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 2
+    assert len(COVERED) == 18
     assert len(ABSOLUTE) == 314
 
 
@@ -101,3 +112,43 @@ def test_the_rules_found_by_the_index_fire_on_what_they_are_about(rule_id, iri, 
 
     assert rule_id in ids("")
     assert rule_id not in ids(' rdf:about="urn:test:named"')
+
+
+def test_requirements_excused_as_not_about_the_package_are_real_and_absolute():
+    """The excuse list is the one place a coverage figure can be quietly
+    inflated, so every entry has to name a requirement that exists, is an
+    obligation, and carries a reason."""
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE
+
+    for rid, reason in NOT_ABOUT_THE_PACKAGE.items():
+        assert rid in BY_ID, rid
+        assert rid in ABSOLUTE, rid
+        assert len(reason) > 40, rid
+
+
+def test_nothing_is_both_covered_and_excused():
+    """If a rule checks it, it is about the package, and the excuse is wrong."""
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE
+
+    assert COVERED & set(NOT_ABOUT_THE_PACKAGE) == set()
+
+
+def test_chapter_five_is_mapped_apart_from_its_three_gaps():
+    """The first section taken end to end. 21 obligations: 16 have a rule, two
+    are addressed to consumers, and three are things this validator does not
+    check and could -- a single root directory, and the two prohibitions on
+    what a nested package may say about its neighbours.
+
+    Pinned so the gaps cannot be closed by accident or reopened by one.
+    """
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE
+
+    chapter = [r for r in INDEX["requirements"]
+               if r["absolute"] and r["section"].startswith("x5")]
+    assert len(chapter) == 21
+
+    gaps = sorted(r["id"] for r in chapter
+                  if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE)
+    assert gaps == ["dfn-iirds-container#1",
+                    "dfn-iirds-zip-archive#10",
+                    "dfn-iirds-zip-archive#11"]

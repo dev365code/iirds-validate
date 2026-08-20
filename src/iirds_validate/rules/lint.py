@@ -359,3 +359,43 @@ def l10_abstract_class_used_directly(ctx):
                             subject=ctx.ref(subject),
                             detail=("standard subclasses: %s" % ", ".join(subclasses[:6]))
                                    if subclasses else "define a proprietary subclass")
+
+
+@_lint("L11", "content named .xhtml but declared as another media type is never checked")
+def l11_content_hidden_from_the_content_rules(ctx):
+    """The B rules examine only what the package declares to be iiRDS XHTML5,
+    which is right — running XHTML5 checks over a PDF would be nonsense. But
+    the consequence of a wrong declaration is *silence*, and silence is the one
+    outcome a validator must never produce for a file it did not look at.
+
+    `content/topic1.xhtml` carrying a `<script>`, declared `text/html`, comes
+    back clean. Same bytes, same defects, one word changed in a file nobody
+    reads twice. This is the failure mode the whole project exists to
+    eliminate, reappearing one level in.
+
+    B6 is the same disagreement seen from the other side: content declared as
+    iiRDS XHTML5 that does not use the `.xhtml` extension. That side produces a
+    finding, so it was noticed. This side produced nothing, so it was not.
+
+    Keyed on the extension rather than the media type alone, because "this
+    rendition is not iiRDS XHTML5" describes most renditions in most packages
+    and is not worth saying. `.xhtml` is the extension B6 requires of iiRDS
+    XHTML5 content, so a file carrying it and declaring otherwise is one of the
+    two fields being wrong — and either way nothing examined the file.
+    """
+    # Imported rather than restated: two media-type parsers that disagree would
+    # put this rule and the B rules into a gap where a file is neither checked
+    # nor reported, which is worse than the defect being fixed here.
+    from .content import XHTML_FORMAT, _media_type
+
+    for rendition in sorted(ctx.instances_of(T.Rendition), key=str):
+        declared = [_media_type(f) for f in ctx.values(rendition, T.fmt)]
+        if not declared or XHTML_FORMAT in declared:
+            continue          # no format at all is M11's finding, not a second one here
+        for source in ctx.values(rendition, T.source):
+            name = posixpath.normpath(str(source).lstrip("/"))
+            if name.lower().endswith(".xhtml") and ctx.package.has(name):
+                yield Violation("this file is named .xhtml but is not declared as iiRDS "
+                                "XHTML5, so none of the content rules examined it",
+                                subject=name,
+                                detail="declared as %s" % ", ".join(sorted(declared)))

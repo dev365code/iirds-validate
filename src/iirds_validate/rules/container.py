@@ -130,7 +130,7 @@ def c6_mimetype_stored_first(ctx):
 
 
 @rule("C7",
-       covers=("dfn-iirds-container#2",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#1",),
        fix="Create a META-INF directory in the root of the archive. It is where a consumer looks for metadata, and nowhere else is searched.")
 def c7_meta_inf(ctx):
     if not any(n.startswith(META_DIR + "/") for n in ctx.package.names):
@@ -138,7 +138,7 @@ def c7_meta_inf(ctx):
 
 
 @rule("C8",
-       covers=("dfn-iirds-container#3",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
        fix="Add META-INF/metadata.rdf. It carries everything a consumer knows about the package; without it the content files are a folder of documents with no structure or meaning.")
 def c8_metadata_rdf(ctx):
     if not ctx.package.has(METADATA_RDF):
@@ -159,7 +159,7 @@ def c10_forbidden_chars(ctx):
 
 
 @rule("C9",
-       covers=("dfn-iirds-container#3",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
        # The catalogue gives C8 and C9 identical wording, so without an
        # explicit title the two are indistinguishable in `iirdsv rules`. C8 is
        # presence; this is the file being RDF/XML at all.
@@ -188,7 +188,7 @@ def c9_metadata_is_rdf(ctx):
 
 
 @rule("C11.1",
-       covers=("dfn-iirds-container#7",),
+       covers=("x5-1-2-content-location#1",),
        fix="Move the file under a directory rather than leaving it beside mimetype and META-INF. Only those two belong in the root; everything else has to live in a subdirectory.")
 def c11_1_content_in_root(ctx):
     for name in _root_content_files(ctx.package):
@@ -219,7 +219,7 @@ def c11_2_handover_content_list(ctx):
 
 
 @rule("C12",
-       covers=("dfn-iirds-container#8",),
+       covers=("x5-1-2-content-location#2",),
        fix="Move the content file into a subdirectory. The root and META-INF are reserved, so a consumer scanning for content will not look there.")
 def c12_content_in_meta_inf(ctx):
     for name in ctx.package.files:
@@ -231,7 +231,7 @@ def c12_content_in_meta_inf(ctx):
 
 
 @rule("C13",
-       covers=("dfn-iirds-container#13",),
+       covers=("x5-1-3-names-of-files-and-directories#3",),
        fix="Shorten the path to 260 characters or fewer, counting from the container root. Longer ones fail to extract on Windows and on some archive tools, which turns a valid package into a partial one at the receiving end.")
 def c13_path_length(ctx):
     for name in ctx.package.names:
@@ -251,7 +251,7 @@ def c14_name_length(ctx):
 
 
 @rule("C15",
-       covers=("dfn-iirds-container#12",),
+       covers=("x5-1-3-names-of-files-and-directories#2",),
        fix="Remove the repeated entry. The same path appears more than once in the archive, so which of them a consumer gets depends on which its unzip implementation keeps.")
 def c15_unique_names(ctx):
     for name, n in Counter(ctx.package.names).items():
@@ -261,7 +261,7 @@ def c15_unique_names(ctx):
 
 
 @rule("C16.1",
-       covers=("dfn-iirds-container#3",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
        fix="Fix the XML syntax error reported alongside this, then confirm the file is RDF 1.1 XML rather than some other XML. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
@@ -276,7 +276,7 @@ def c16_1_rdf_parses(ctx):
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
 @rule("C16.2",
-       covers=("dfn-iirds-container#4",), variants=(),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#3",), variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):

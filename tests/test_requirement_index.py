@@ -98,3 +98,28 @@ def test_the_extractor_agrees_with_the_committed_index():
     assert rebuilt["counts"] == INDEX["counts"]
     assert rebuilt["absolute"] == INDEX["absolute"]
     assert [r["id"] for r in rebuilt["requirements"]] == [r["id"] for r in REQUIREMENTS]
+
+
+def test_a_definition_scope_never_crosses_a_section():
+    """The defect this index shipped with: the extractor carried the last
+    <dfn> forward for ever, so a third of the statements — Party rules from
+    §6.8, serialization rules from §6.12 — were filed under
+    `dfn-iirds-zip-archive#N`, ids that look like spec anchors and point at
+    the wrong definition. A heading now closes the scope, and this holds it
+    closed: every requirement filed under a definition sits in the section
+    where that definition was made.
+    """
+    section_of = {}
+    for requirement in REQUIREMENTS:
+        anchor = requirement["subject_anchor"]
+        if not anchor:
+            continue
+        section_of.setdefault(anchor, requirement["section"])
+        assert requirement["section"] == section_of[anchor], \
+            "%s is scoped to %s but sits in %s" % (
+                requirement["id"], anchor, requirement["section"])
+
+
+def test_the_index_records_the_fingerprint_of_its_source():
+    """Counts alone would let a hand-edited sentence pass the offline check."""
+    assert len(INDEX["_source_sha256"]) == 64

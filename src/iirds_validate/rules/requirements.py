@@ -38,7 +38,7 @@ from ..registry import rule
 #: needs a reason, and the reason has to be that the obligation is not about
 #: the artefact. "Hard to check" is not a reason and belongs in the gaps.
 NOT_ABOUT_THE_PACKAGE = {
-    "dfn-iirds-container#10":
+    "x5-1-2-content-location#4":
         "\"iiRDS Consumers MUST ignore these files\" — an obligation on the reading "
         "application. A package cannot satisfy or breach it.",
     "dfn-iirds-zip-archive#1":

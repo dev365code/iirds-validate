@@ -150,5 +150,5 @@ def test_chapter_five_is_mapped_apart_from_its_three_gaps():
 
     gaps = sorted(r["id"] for r in chapter
                   if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE)
-    assert gaps == ["dfn-iirds-zip-archive#10", "dfn-iirds-zip-archive#11"], \
+    assert gaps == ["x5-3-nested-iirds-packages#2", "x5-3-nested-iirds-packages#3"], \
         "the single-root requirement is R3; the two nested-package prohibitions remain"

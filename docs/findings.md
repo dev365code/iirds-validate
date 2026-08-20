@@ -90,8 +90,8 @@ to consumers rather than to packages, and three are checkable and unchecked.
 | | |
 |---|---|
 | `dfn-iirds-container#1` | "An iiRDS container MUST have a single root directory." — now **R3**. Zipping the package folder instead of its contents produced four errors telling the author to add a mimetype, a META-INF and a metadata.rdf, all of which they had one level down, and nothing saying what happened. |
-| `dfn-iirds-zip-archive#10` | "A nested iiRDS package MUST NOT contain metadata about the outer iiRDS package." |
-| `dfn-iirds-zip-archive#11` | "An iiRDS package that contains a nested iiRDS package MUST NOT contain metadata about the content of the nested iiRDS package." |
+| `x5-3-nested-iirds-packages#2` | "A nested iiRDS package MUST NOT contain metadata about the outer iiRDS package." |
+| `x5-3-nested-iirds-packages#3` | "An iiRDS package that contains a nested iiRDS package MUST NOT contain metadata about the content of the nested iiRDS package." |
 
 Two classes had the same shape earlier: Appendix A states `IRI: REQUIRED` for
 56 of them and 54 had a rule, so `iirds:ClassificationType` and

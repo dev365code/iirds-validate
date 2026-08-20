@@ -27,6 +27,7 @@ covers it", which is the half that makes coverage sayable.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -51,6 +52,7 @@ ABSOLUTE = ("MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT")
 
 BLOCKS = ("p", "td", "th", "li", "dd", "dt", "figcaption")
 _SENTENCE = re.compile(r"(?<=[.:;])\s+(?=[A-Z(])")
+_QNAME = re.compile(r"[A-Za-z][\w.-]*:[A-Za-z][\w.-]*")
 
 #: Obligations the specification states as a range instead of a word.
 #:
@@ -128,6 +130,14 @@ class Requirements(HTMLParser):
         if re.fullmatch(r"h[1-6]", tag) and self._heading is not None:
             self.section = (self._heading, _clean("".join(self._heading_text)))
             self._heading = None
+            # A heading closes any <dfn> scope. Without this the extractor
+            # carried the last definition forward for ever, and a third of the
+            # index — 145 of 439 statements — was filed under
+            # dfn-iirds-zip-archive#N, including Party rules from §6.8 and
+            # serialization rules from §6.12. Ids that look like spec anchors
+            # and point at the wrong definition are worse than opaque ones,
+            # and they re-key wholesale at the next release.
+            self.subject = ("", "")
         elif tag == self._block:
             self._flush()
         if tag in self._open:
@@ -160,19 +170,38 @@ class Requirements(HTMLParser):
         # while looking complete.
         label = _clean(" ".join(self._row)) if cell and self._row else ""
 
+        tokens = (label or "").split()
+        qnames = [tok for tok in tokens if _QNAME.fullmatch(tok)]
+        #: What this row is about, when no <dfn> governs it: the first
+        #: qualified name in the row, else the row's first token — Appendix
+        #: B's data-role table names its subjects ("safety-alert-symbol")
+        #: without a namespace.
+        row_subject = qnames[0] if qnames else (tokens[0] if tokens else None)
+
         if cell:
             for match in _CARDINALITY.finditer(text):
+                # Two table shapes state cardinalities. Appendix A.1 puts the
+                # property in the same cell ("0..1 iirds:dateOfEffect ..."),
+                # under a class <dfn> that supplies the subject. Appendix A.5
+                # is an overview: domain, property and range are earlier cells
+                # of the row, the cardinality cell says only "0..1", and there
+                # is no <dfn> — so both the subject and the property have to
+                # come from the row. The sticky-scope bug used to hide this by
+                # lending these rows whichever definition came last.
+                prop = match.group(1) or (qnames[1] if len(qnames) >= 2 else None)
+                subject = self.subject[1] or row_subject
                 self.hits.append({
                     "keyword": "0..1",
                     "absolute": True,
                     "stated_as": "cardinality",
                     "section": self.section[0],
                     "section_title": self.section[1],
-                    "subject": self.subject[1] or None,
+                    "subject": subject,
                     "subject_anchor": self.subject[0] or None,
                     "block": self._block,
                     "in_aside": "aside" in self._open,
-                    "sentence": _clean(match.group(0)) + " (at most one)",
+                    "sentence": ("0..1 %s (at most one)" % prop) if prop
+                                else _clean(match.group(0)) + " (at most one)",
                     "context": ("%s | %s" % (label, text)).strip(" |"),
                     "row_label": label or None,
                     "cites": None,
@@ -185,7 +214,7 @@ class Requirements(HTMLParser):
                 "stated_as": "rfc2119",
                 "section": self.section[0],
                 "section_title": self.section[1],
-                "subject": self.subject[1] or None,
+                "subject": self.subject[1] or (row_subject if cell else None),
                 "subject_anchor": self.subject[0] or None,
                 "block": self._block,
                 "in_aside": "aside" in self._open,
@@ -260,6 +289,7 @@ def build(html: str) -> dict:
     return {
         "_source": SPEC_URL,
         "_release": RELEASE,
+        "_source_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
         "_generated_by": "tools/extract_requirements.py --refresh",
         "_licence": "iiRDS specification text, CC BY 4.0, (c) the document editors",
         "_note": ("One entry per RFC 2119 keyword the specification marks with "

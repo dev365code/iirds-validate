@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from typing import Optional, TextIO
 
@@ -34,6 +35,19 @@ def _wrap(text: str, width: int):
     return out
 
 
+#: Past this many findings of one rule, the report stops repeating itself:
+#: the remedy is printed once and the subjects are listed, natural-sorted so
+#: file2 comes before file10. Everything is always in --format json.
+GROUP_FROM = 3
+GROUP_SHOWN = 5
+
+_NATURAL = re.compile(r"(\d+)")
+
+
+def _natural(text: str):
+    return [int(part) if part.isdigit() else part for part in _NATURAL.split(text or "")]
+
+
 def _use_colour(stream: TextIO) -> bool:
     if os.environ.get("NO_COLOR") is not None:
         return False
@@ -60,7 +74,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
 
     if report.findings:
         print(file=stream)
-    for finding in report.findings:
+
+    def show(finding):
         sev = finding.severity
         mark = paint(_MARK[sev], _COLOURS[sev])
         print("  %s %-9s %s" % (mark, finding.rule.id, finding.violation.message), file=stream)
@@ -76,13 +91,51 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
         if verbose and finding.rule.spec:
             print(paint("                      spec: %s" % finding.rule.spec, _DIM), file=stream)
 
+    # One rule, forty findings used to mean the same remedy paragraph forty
+    # times — 246 lines for "forty files are missing", and nothing saying so.
+    # Findings arrive grouped by rule (the reading order sorts them so), and a
+    # run of GROUP_FROM or more collapses: the shared message once, the
+    # subjects natural-sorted, the remedy once.
+    index = 0
+    findings = report.findings
+    while index < len(findings):
+        run = index
+        while run < len(findings) and findings[run].rule.id == findings[index].rule.id:
+            run += 1
+        group = findings[index:run]
+        index = run
+
+        if len(group) < GROUP_FROM:
+            for finding in group:
+                show(finding)
+            continue
+
+        first = group[0]
+        mark = paint(_MARK[first.severity], _COLOURS[first.severity])
+        messages = {g.violation.message for g in group}
+        headline = first.violation.message if len(messages) == 1 else first.rule.title
+        print("  %s %-9s %s   ×%d" % (mark, first.rule.id, headline, len(group)), file=stream)
+
+        ordered = sorted(group, key=lambda g: _natural(g.violation.subject or ""))
+        for finding in ordered[:GROUP_SHOWN]:
+            line = finding.violation.subject or finding.violation.message
+            if finding.violation.detail:
+                line += "  (%s)" % finding.violation.detail
+            print(paint("                      %s" % line[:100], _DIM), file=stream)
+        if len(group) > GROUP_SHOWN:
+            print(paint("                      … and %d more; every one is in --format json"
+                        % (len(group) - GROUP_SHOWN), _DIM), file=stream)
+        if first.fix:
+            for line in _wrap(first.fix, 74):
+                print(paint("                    → %s" % line, _DIM), file=stream)
+
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
     infos = report.count(Severity.INFO)
 
     print(file=stream)
     verdict = paint("PASS", "\033[32m") if report.ok else paint("FAIL", "\033[31m")
-    print("  %s  %d error(s), %d warning(s), %d note(s)" % (verdict, errors, warnings, infos),
+    print("  %s  %d error(s), %d warning(s), %d informational" % (verdict, errors, warnings, infos),
           file=stream)
     tail = "  %d rule%s checked, %d not applicable to this version/variant" % (
         report.checked, "" if report.checked == 1 else "s", report.skipped)

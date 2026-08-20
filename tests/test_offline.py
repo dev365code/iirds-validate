@@ -66,14 +66,14 @@ def test_an_inline_context_still_works(make_package, no_network):
 def test_vendored_ontology_is_intact():
     import hashlib
 
+    from iirds_validate import resources
     from iirds_validate.model import LATEST_VERSION
-    from iirds_validate.ontology import DATA
 
-    for line in (DATA / "sha256sums.txt").read_text().splitlines():
+    for line in resources.read_text("ontologies", "sha256sums.txt").splitlines():
         if not line.strip():
             continue
         digest, name = line.split(None, 1)
-        blob = (DATA / LATEST_VERSION / name.strip()).read_bytes()
+        blob = resources.read_bytes("ontologies", LATEST_VERSION, name.strip())
         assert hashlib.sha256(blob).hexdigest() == digest, \
             "%s was modified; CC BY-ND forbids redistributing an adapted ontology" % name.strip()
 

@@ -132,6 +132,8 @@ def s7_archive_is_not_encrypted(ctx):
     Bit 0 of the general purpose flag. An encrypted entry cannot be read by a
     consumer that has only the package, which is every consumer.
     """
+    if not ctx.package.is_archive:
+        return
     for info in ctx.package.infos:
         if info.flag_bits & 0x1:
             yield Violation("archive entry is encrypted", subject=info.filename)
@@ -146,6 +148,8 @@ def s8_zip64_where_required(ctx):
     Without it the offsets wrap and the archive is unreadable past the limit —
     the classic way a large handover package arrives corrupt.
     """
+    if not ctx.package.is_archive:
+        return
     entries = len(ctx.package.infos)
     biggest = max((i.file_size for i in ctx.package.infos), default=0)
     if entries <= ZIP64_ENTRY_LIMIT and biggest <= ZIP64_SIZE_LIMIT:

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import TextIO
+from typing import Optional, TextIO
 
 from .model import Report, Severity
 
@@ -22,13 +22,17 @@ def _use_colour(stream: TextIO) -> bool:
     return hasattr(stream, "isatty") and stream.isatty()
 
 
-def render_text(report: Report, stream: TextIO = sys.stdout, verbose: bool = False) -> None:
+def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool = False) -> None:
+    # Resolved here rather than as a default argument: a default is evaluated
+    # once at import, so `stream=sys.stdout` would capture the interpreter's
+    # original stdout and keep writing there no matter what a caller redirected.
+    stream = sys.stdout if stream is None else stream
     colour = _use_colour(stream)
 
     def paint(text: str, code: str) -> str:
         return "%s%s%s" % (code, text, _RESET) if colour else text
 
-    head = os.path.basename(report.path)
+    head = os.path.basename(str(report.path).rstrip("/\\")) or str(report.path)
     version = report.version or "not declared"
     variant = "" if report.variant == "unrestricted" else "  variant %s" % report.variant
     print(paint(head, _BOLD) + paint("   iiRDS %s%s" % (version, variant), _DIM), file=stream)
@@ -64,12 +68,14 @@ def render_text(report: Report, stream: TextIO = sys.stdout, verbose: bool = Fal
     print(paint(tail, _DIM), file=stream)
 
 
-def render_json(report: Report, stream: TextIO = sys.stdout) -> None:
+def render_json(report: Report, stream: Optional[TextIO] = None) -> None:
+    stream = sys.stdout if stream is None else stream
     json.dump(report.as_dict(), stream, ensure_ascii=False, indent=2)
     stream.write("\n")
 
 
-def render(report: Report, fmt: str = "text", stream: TextIO = sys.stdout, verbose: bool = False) -> None:
+def render(report: Report, fmt: str = "text", stream: Optional[TextIO] = None,
+           verbose: bool = False) -> None:
     if fmt == "json":
         render_json(report, stream)
     else:

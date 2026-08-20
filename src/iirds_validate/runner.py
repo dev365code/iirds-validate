@@ -6,7 +6,7 @@ from typing import Optional, Sequence
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
-from .package import Package, PackageError
+from .package import PackageError, open_package
 from .registry import CATALOG, all_rules
 
 #: "system" is in every set: a container that could not be read has to be
@@ -17,8 +17,8 @@ ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
 def load(path, version: Optional[str] = None) -> Context:
-    """Open a container and parse its metadata into a graph."""
-    return load_context(Package(path), version=version)
+    """Open a container — archive or directory — and parse its metadata."""
+    return load_context(open_package(path), version=version)
 
 
 def _emitted(rule_id: str, kind: str = "system") -> Rule:
@@ -63,7 +63,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     report = Report(path=str(path))
 
     try:
-        package = Package(path)
+        package = open_package(path)
     except PackageError as exc:
         report.findings.append(Finding(
             _emitted("C1", "container"),
@@ -76,7 +76,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     return report
 
 
-def _run_against(package: Package, report: Report, kinds, version, include_info) -> None:
+def _run_against(package, report: Report, kinds, version, include_info) -> None:
     ctx = load_context(package, version=version)
     report.version = ctx.declared_version
     report.effective_version = ctx.version
@@ -96,6 +96,10 @@ def _run_against(package: Package, report: Report, kinds, version, include_info)
     elif ctx.declared_version != ctx.version:
         report.notes.append("declared version %r is not one this standard has published; "
                             "validated against %s instead" % (ctx.declared_version, ctx.version))
+    if not package.is_archive:
+        report.notes.append(
+            "validated as an unpacked container; the five requirements about the ZIP "
+            "archive itself (C1, C3, C6, S7, S8) cannot be assessed until it is packed")
     if ctx.ontology.substituted:
         report.notes.append(
             "no ontology bundled for iiRDS %s; class hierarchy taken from %s, so rules that "

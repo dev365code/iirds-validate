@@ -17,6 +17,7 @@ import sys
 from . import __version__, runner
 from .banner import banner
 from .model import VERSIONS, Severity
+from .package import discover
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -24,7 +25,9 @@ EXIT_OK, EXIT_FINDINGS, EXIT_ERROR = 0, 1, 2
 
 
 def _add_target(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("package", nargs="+", help="one or more .iirds containers")
+    parser.add_argument("package", nargs="+",
+                        help="packages: a .iirds file, an unpacked container directory, "
+                             "or a directory to search")
     parser.add_argument("-f", "--format", choices=("text", "json"), default="text")
     parser.add_argument("--iirds-version", dest="version", default=None, choices=VERSIONS,
                         metavar="{%s}" % ",".join(VERSIONS),
@@ -35,17 +38,39 @@ def _add_target(parser: argparse.ArgumentParser) -> None:
                         help="fail the run on warnings too")
 
 
+def _targets(paths):
+    """Expand what the user pointed at into packages.
+
+    A path can be a package, a directory that is one unpacked, or a directory
+    with packages somewhere underneath. Pointing at a build output directory
+    should do the obvious thing rather than require a shell glob.
+    """
+    found, missing, empty = [], [], []
+    for path in paths:
+        if not os.path.exists(path):
+            missing.append(path)
+            continue
+        expanded = discover(path)
+        if expanded:
+            found.extend(expanded)
+        else:
+            empty.append(path)
+    return found, missing, empty
+
+
 def _run(args, kinds) -> int:
-    # A file that is not there is an operator error, not a validation result:
+    # A path that is not there is an operator error, not a validation result:
     # exit 2. A file that opens but is not a valid container is a finding about
     # the package, so it goes through the rules and exits 1.
-    missing = [p for p in args.package if not os.path.exists(p)]
-    if missing:
-        for path in missing:
-            print("iirds-validate: no such file: %s" % path, file=sys.stderr)
+    targets, missing, empty = _targets(args.package)
+    for path in missing:
+        print("iirds-validate: no such file or directory: %s" % path, file=sys.stderr)
+    for path in empty:
+        print("iirds-validate: no iiRDS package found under %s" % path, file=sys.stderr)
+    if missing or empty:
         return EXIT_ERROR
 
-    reports = [runner.run(path, kinds, version=args.version) for path in args.package]
+    reports = [runner.run(path, kinds, version=args.version) for path in targets]
 
     if args.format == "json":
         payload = [r.as_dict() for r in reports]
@@ -61,6 +86,11 @@ def _run(args, kinds) -> int:
     failed = any(not r.ok for r in reports)
     if args.warnings_as_errors:
         failed = failed or any(r.count(Severity.WARNING) for r in reports)
+
+    if len(reports) > 1 and args.format == "text" and not args.quiet:
+        bad = sum(1 for r in reports if not r.ok)
+        print("\n%d packages: %d passed, %d failed"
+              % (len(reports), len(reports) - bad, bad))
     return EXIT_FINDINGS if failed else EXIT_OK
 
 
@@ -115,6 +145,13 @@ def main(argv=None) -> int:
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
     p_rules.add_argument("--kind", choices=("container", "schema", "lint", "system"))
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
+
+    # `iirdsv some/path` with no subcommand means `all`. Typing the verb is
+    # friction, and "check it" is what anybody pointing at a package wants.
+    argv = list(sys.argv[1:] if argv is None else argv)
+    known = {"check", "lint", "all", "rules", "-h", "--help", "--version"}
+    if argv and argv[0] not in known and not argv[0].startswith("-"):
+        argv.insert(0, "all")
 
     args = parser.parse_args(argv)
 

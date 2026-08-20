@@ -10,15 +10,15 @@ import argparse
 import functools
 import hashlib
 import sys
-from pathlib import Path
 from typing import Iterable, Set
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
+from . import resources
 from .model import IIRDS_NAMESPACES, LATEST_VERSION
 
-DATA = Path(__file__).parent / "data" / "ontologies"
+ONTOLOGIES = "ontologies"
 #: iirds-skos.rdf restates core as SKOS concepts; loading both double-defines
 #: every term, so it stays out unless explicitly requested.
 DEFAULT_FILES = ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf", "iirds-handover.rdf")
@@ -27,15 +27,15 @@ DEFAULT_FILES = ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf", 
 class Ontology:
     def __init__(self, version: str = LATEST_VERSION, files: Iterable[str] = DEFAULT_FILES):
         self.version = version
-        self.dir = DATA / version
+        self.version_dir = version
         #: True when this version's ontology is not bundled and another was
         #: used instead. The caller reports it; validating a 1.0 package
         #: against the 1.3 class hierarchy without saying so is the same kind
         #: of silence this project exists to remove.
         self.substituted = None
-        if not self.dir.is_dir():
+        if not resources.exists(ONTOLOGIES, version):
             self.substituted = LATEST_VERSION
-            self.dir = DATA / LATEST_VERSION
+            self.version_dir = LATEST_VERSION
         self.graph = Graph()
         # Per-instance, not @functools.lru_cache on the method: that keys the
         # cache on `self` at class level, so every Ontology ever built — 2262
@@ -44,9 +44,9 @@ class Ontology:
         self._subproperties = {}
         self._defined = None
         for name in files:
-            path = self.dir / name
-            if path.exists():
-                self.graph.parse(path.as_posix(), format="xml")
+            if resources.exists(ONTOLOGIES, self.version_dir, name):
+                self.graph.parse(data=resources.read_bytes(ONTOLOGIES, self.version_dir, name),
+                                 format="xml")
 
     # -- hierarchy ----------------------------------------------------------
     def subclasses_of(self, cls: URIRef) -> frozenset:
@@ -87,17 +87,18 @@ def load(version: str = LATEST_VERSION) -> Ontology:
 
 def _verify() -> int:
     """Confirm the vendored files are byte-identical to what we shipped."""
-    sums = DATA / "sha256sums.txt"
-    if not sums.exists():
+    if not resources.exists(ONTOLOGIES, "sha256sums.txt"):
         print("sha256sums.txt missing", file=sys.stderr)
         return 2
     bad = 0
-    for line in sums.read_text().splitlines():
+    for line in resources.read_text(ONTOLOGIES, "sha256sums.txt").splitlines():
         if not line.strip():
             continue
         digest, name = line.split(None, 1)
-        path = DATA / LATEST_VERSION / name.strip()
-        actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "<missing>"
+        present = resources.exists(ONTOLOGIES, LATEST_VERSION, name.strip())
+        actual = (hashlib.sha256(resources.read_bytes(ONTOLOGIES, LATEST_VERSION,
+                                                      name.strip())).hexdigest()
+                  if present else "<missing>")
         status = "ok" if actual == digest else "FAILED"
         bad += status == "FAILED"
         print(f"{name.strip():24} {status}")

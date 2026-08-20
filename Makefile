@@ -10,7 +10,7 @@ RUFF_VERSION := 0.16.3
 PYTHON       ?= python3
 export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests
 
-.PHONY: help check test lint fix generated corpus tools dev clean
+.PHONY: help check test lint fix generated corpus exercised tools dev clean
 
 help:
 	@echo "make check   everything CI runs: lint, tests, the equivalence proof"
@@ -18,11 +18,12 @@ help:
 	@echo "make lint    ruff, pinned to the version CI uses"
 	@echo "make generated  the generated rule table still matches its generator"
 	@echo "make corpus  the vendored reference fixtures are still upstream's"
+	@echo "make exercised  no rule has quietly stopped firing anywhere"
 	@echo "make fix     ruff --fix, for the things it can correct itself"
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
 
-check: lint generated corpus test tools
+check: lint generated corpus test exercised tools
 
 test:
 	$(PYTHON) -m pytest -q
@@ -42,6 +43,12 @@ generated:
 
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.
+# Which rules the suite has ever seen produce a finding. A rule that fires
+# nowhere is not known to work -- S8 sat in that state for months while being
+# exactly backwards. Depends on `test` having run, which writes the record.
+exercised:
+	$(PYTHON) tools/rule_coverage.py --check
+
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check
 	$(PYTHON) tools/crossvalidate.py --check

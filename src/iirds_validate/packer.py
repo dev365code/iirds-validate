@@ -85,7 +85,7 @@ def pack(source, output=None, *, overwrite: bool = False) -> Path:
     if output.suffix.lower() != ".iirds":
         output = output.with_suffix(".iirds")
     if output.exists() and not overwrite:
-        raise PackError("%s exists; pass overwrite to replace it" % output)
+        raise PackError("%s exists; pass --overwrite to replace it" % output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     mimetype_content: Optional[bytes] = None

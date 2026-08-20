@@ -119,11 +119,21 @@ def _cmd_rules(args) -> int:
     rules = all_rules()
     if args.kind:
         rules = [r for r in rules if r.kind == args.kind]
+    if args.ids:
+        wanted = {rid.upper() for rid in args.ids}
+        rules = [r for r in rules if r.id.upper() in wanted]
+        missing = wanted - {r.id.upper() for r in rules}
+        if missing:
+            print("no such rule: %s" % ", ".join(sorted(missing)), file=sys.stderr)
+            return EXIT_ERROR
+        args.verbose = True          # asking for one rule means asking about it
 
     if args.format == "json":
         json.dump([{"id": r.id, "kind": r.kind, "priority": r.prio, "severity": str(r.severity),
                     "versions": list(r.versions), "variants": list(r.variants),
-                    "title": r.title, "spec": r.spec} for r in rules],
+                    "title": r.title, "spec": r.spec,
+                    "source": "catalogue" if r.id in CATALOG else "iirds-validate",
+                    "covers": list(r.covers), "fix": r.fix} for r in rules],
                   sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")
         return EXIT_OK
@@ -131,6 +141,20 @@ def _cmd_rules(args) -> int:
     for r in rules:
         variants = ("/" + ",".join(r.variants)) if r.variants else ""
         print("%-9s %-9s %-9s %s" % (r.id, r.kind, r.prio + variants, r.title[:96]))
+        if args.verbose:
+            source = "catalogue" if r.id in CATALOG else "this project"
+            print("          versions: %s   source: %s"
+                  % (", ".join(r.versions) if r.versions else "all", source))
+            if r.spec:
+                print("          spec: %s" % r.spec)
+            if r.covers:
+                print("          covers: %s" % ", ".join(r.covers))
+            if r.fix:
+                print("          fix: %s" % r.fix)
+            print()
+
+    if args.ids:
+        return EXIT_OK              # asked about specific rules; no summary tail
 
     print()
     cov = coverage()
@@ -182,7 +206,12 @@ def main(argv=None) -> int:
     p_pack.add_argument("-W", "--warnings-as-errors", action="store_true")
 
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
-    p_rules.add_argument("--kind", choices=("container", "schema", "lint", "system"))
+    p_rules.add_argument("ids", nargs="*", metavar="RULE",
+                         help="show only these rules, in full (e.g. M11 B8 R3)")
+    p_rules.add_argument("--kind",
+                         choices=("container", "schema", "system", "content", "lint"))
+    p_rules.add_argument("-v", "--verbose", action="store_true",
+                         help="also print versions, spec link, source and remedy")
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
 
     # `iirdsv some/path` with no subcommand means `all`. Typing the verb is

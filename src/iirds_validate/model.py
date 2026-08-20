@@ -173,11 +173,21 @@ class Finding:
 
     @property
     def reading_order(self):
-        """Sort key for a person reading top to bottom."""
+        """Sort key for a person reading top to bottom.
+
+        Total, down to the message: two findings of one rule must sort the
+        same way on every run, or the determinism work quietly unravels one
+        layer down — same findings, same first line, shuffled middle. The
+        subject and detail are part of the key for exactly that reason, not
+        for the reader.
+        """
         rank = Finding.ORDER.get(self.rule.diagnosis, 1)
         return (rank,
                 Finding.SEVERITY_ORDER[self.severity] if rank == 1 else 0,
-                self.rule.id)
+                self.rule.id,
+                self.violation.subject or "",
+                self.violation.detail or "",
+                self.violation.message)
 
     @property
     def fix(self) -> Optional[str]:

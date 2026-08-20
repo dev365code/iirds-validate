@@ -160,7 +160,14 @@ def c10_forbidden_chars(ctx):
 
 @rule("C9",
        covers=("dfn-iirds-container#3",),
-       fix="Add META-INF/metadata.rdf at exactly that path. Directory and file names are case-sensitive here, so META-Inf or Metadata.rdf will not be found.")
+       # The catalogue gives C8 and C9 identical wording, so without an
+       # explicit title the two are indistinguishable in `iirdsv rules`. C8 is
+       # presence; this is the file being RDF/XML at all.
+       title="metadata.rdf must be an RDF/XML document (root element rdf:RDF)",
+       fix="Make rdf:RDF the document's root element. The file is present and parses "
+           "as XML, but its root is something else, so no RDF parser will read a "
+           "single statement from it. If it was exported from another tool, export "
+           "as RDF/XML rather than as plain XML.")
 def c9_metadata_is_rdf(ctx):
     """C8 asks whether metadata.rdf is present; this asks whether it is RDF.
 

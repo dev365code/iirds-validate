@@ -84,8 +84,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
     verdict = paint("PASS", "\033[32m") if report.ok else paint("FAIL", "\033[31m")
     print("  %s  %d error(s), %d warning(s), %d note(s)" % (verdict, errors, warnings, infos),
           file=stream)
-    tail = "  %d rules checked, %d not applicable to this version/variant" % (
-        report.checked, report.skipped)
+    tail = "  %d rule%s checked, %d not applicable to this version/variant" % (
+        report.checked, "" if report.checked == 1 else "s", report.skipped)
     if report.unimplemented:
         tail += ", %d catalogued but not yet implemented" % report.unimplemented
     print(paint(tail, _DIM), file=stream)

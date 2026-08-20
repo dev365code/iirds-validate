@@ -147,9 +147,9 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
         and (not meta["versions"] or ctx.version in meta["versions"])
         and (not meta["variants"] or ctx.variant in meta["variants"]))
 
-    report.findings.sort(key=lambda f: (f.severity is not Severity.ERROR,
-                                        f.severity is not Severity.WARNING,
-                                        f.rule.kind, f.rule.id, f.violation.subject or ""))
+    # No sort here. The one ordering is reading_order, applied once in run();
+    # a second, partial sort at this point used to shadow it and made the
+    # output look stably ordered when the stability was an accident.
 
 
 def check(path, version: Optional[str] = None) -> Report:

@@ -99,6 +99,99 @@ the fixture's declared version or profile — M8 is 1.1+ and the fixture declare
 1.0. The reference's product applies the same filters; only its unit test does
 not.
 
+## Where the reference cannot settle it
+
+Three rules whose disposition no amount of cross-validation will decide,
+recorded so that "unresolved" does not quietly become "fine".
+
+### M22.1 and M22.2 — one sentence, two checks, one fixture
+
+> An `iirds:Party` MUST have a related `iirds:PartyRole` that is assigned by the
+> property `iirds:has-party-role`.
+
+The catalogue splits that into M22.1 (`path='Party'`) and M22.2
+(`path='Party has-party-role'`), which reads as two obligations: the Party has
+the property, and the thing the property points at is a PartyRole. The reference
+implements both as the same check, so its M22.2 asks nothing its M22.1 does not.
+
+Their only fixture for the pair, `Example 34 - Component with manufacturer-M33_false.rdf`,
+carries an `iirds:Party` with no `has-party-role` at all. That is the first
+obligation, and this project reports it — as M22.1. The reference lists the
+fixture under both ids, so the pair (M22.2, that fixture) shows up here as a
+silence.
+
+It is not a disagreement. The defect is caught, under the other id. What is
+true is that **the second half of the sentence is exercised by no fixture in
+the corpus**: a `has-party-role` resolving to something that is not a PartyRole
+is reported here and is not in their test material at all. So this is a gap in
+the oracle, not a divergence in the rule, and cross-validation cannot tell the
+two apart on its own.
+
+`tools/explain_silence.py` classifies this pair as `ours`. That is wrong — it is
+`mismatched` — and it is the concrete example behind the caveat further down:
+the classifier decides between those two by substring-matching the first word
+of a free-text field.
+
+### M25 — no comparison is possible
+
+> To model closed lists, the last node in a list level MUST have the property
+> `iirds:has-next-sibling` relating to `iirds:nil`.
+
+Its only fixture, `Example 38 - Table of contents-M36_false.rdf`, is one of the
+eleven that do not parse — `mismatched tag` at line 27. There is nothing to run,
+so the rule here is neither confirmed nor contradicted, and it is listed as
+`unclassified` rather than folded into one of the explained categories.
+
+Repairing the fixture would settle it by supplying our own reading of what the
+file was meant to contain, which is the one thing an oracle must not be. The
+honest disposition is "no comparison possible", and the way out is a mutation
+of a package we control, not a repair of a package we do not.
+
+## Content rules: three readings the specification does not settle
+
+Appendix B has no counterpart in the reference tool — it reads only
+`META-INF/metadata.rdf` and never opens a content file — so nothing here can be
+cross-validated. These three are interpretation, and are recorded as such
+rather than presented as findings the standard compels.
+
+### B4 — the attribute whitelist is narrowed to scripting
+
+Appendix B lists six permitted global attributes. tekom's own sample packages
+carry `type` on `<link>`, which appears neither in that list nor in any
+element-specific table. A strict whitelist therefore fails the standard's own
+examples, which is strong evidence that the list is not meant to be read as
+exhaustive.
+
+So attribute checking is limited to event-handler attributes, where the
+prohibition is not ambiguous. The cost is real: a genuinely stray attribute
+goes unreported. The alternative cost was failing conformant packages on a
+reading nobody else holds, which is worse.
+
+### B8 — "only one" is scoped to a hazard statement, not to a file
+
+> The `img` element MUST be a child of the signal word panel. Only one safety
+> alert symbol MUST be included.
+
+Both sentences sit inside the table describing **one** hazard statement, so
+"only one" is read per statement. Under the per-file reading, a topic carrying a
+correctly formed Warning and a correctly formed Danger notice would be a
+violation — the rule would get stricter as the document got more careful, which
+is the wrong direction for a safety check.
+
+The per-file reading is available from the words alone. If tekom confirms it,
+one line changes.
+
+### B8 — a missing symbol is not reported
+
+"MUST be included" is read as "at most one, where present". Absence is not
+checked, so a Warning with no safety alert symbol passes.
+
+This is a deliberate non-check rather than an oversight, and it is the least
+comfortable row in this document. ANSI Z535 requires the symbol for WARNING and
+DANGER; iiRDS does not say so in terms, and inferring a safety requirement from
+a neighbouring standard is not something a validator should do silently. It is
+recorded here instead, and it is the first of the questions to put to tekom.
+
 ## Current agreement
 
 Measured by `tools/crossvalidate.py` and `tools/explain_silence.py` over the
@@ -124,7 +217,7 @@ zero-byte files, which nothing can test. Of the remaining **103 pairs, across
 | 6 | silent — gated by version or variant here | |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
 | 2 | silent — mismatched | the defect is reported, under a different rule id |
-| 1 | silent — **ours** | reported here and not there; M22.2, below |
+| 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |
 | 1 | silent — **unclassified** | M25, whose only fixture is one of the nine malformed |
 
 Two findings fire on fixtures the reference says should pass, both M15.10, both

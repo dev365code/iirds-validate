@@ -36,12 +36,32 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate import runner  # noqa: E402
-from iirds_validate.registry import CATALOG, implemented_ids  # noqa: E402
+from iirds_validate.registry import CATALOG, PROVENANCE, implemented_ids  # noqa: E402
 
 REPO = "plusmeta/iirds-validation-tool"
 FIXTURE_DIR = "tests/files/util/iirds-validation"
-API = "https://api.github.com/repos/%s/git/trees/master?recursive=1" % REPO
-RAW = "https://raw.githubusercontent.com/%s/master/%%s" % REPO
+#: The revision the rule catalogue was extracted from, not a branch.
+#:
+#: `extract_catalog.py` pins a commit and explains why in its own docstring:
+#: regenerating against a moved `master` would silently produce a different
+#: file. The same argument applies with more force here, because this script
+#: compares the two — fetching fixtures from `master` while the rules came from
+#: a commit means the corpus and the catalogue can drift apart with nothing
+#: saying so, and every figure in docs/divergences.md was computed that way.
+REF = PROVENANCE["_commit"]
+API = "https://api.github.com/repos/%s/git/trees/%s?recursive=1" % (REPO, REF)
+RAW = "https://raw.githubusercontent.com/%s/%s/%%s" % (REPO, REF)
+
+
+def cache_dir(base, ref: str = REF) -> Path:
+    """Cached fixtures live under the revision they were fetched from.
+
+    They were previously keyed by bare filename, so changing the pin would have
+    silently reused files downloaded from the old one — the same defect as the
+    unpinned URL, one layer down, and the one that would have survived fixing
+    the URL alone.
+    """
+    return Path(base) / ref[:12]
 
 EMPTY_UPSTREAM = []
 
@@ -109,7 +129,7 @@ def main() -> int:
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
-    fixtures = fetch_fixtures(Path(args.cache))
+    fixtures = fetch_fixtures(cache_dir(args.cache))
     if not fixtures:
         print("no fixtures", file=sys.stderr)
         return 2

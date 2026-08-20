@@ -101,6 +101,21 @@ not.
 
 ## Current agreement
 
+> **These figures predate the pin and have not yet been recomputed.**
+> `tools/crossvalidate.py` fetched the fixture corpus from `master` while the
+> rule catalogue was pinned to commit `0bcf19dd`, so the rules and the fixtures
+> validating them could already have come from different revisions. The script
+> now takes its revision from the catalogue's own `_commit`, which means the
+> numbers below were measured against an input this repository can no longer
+> reproduce. They are left here rather than deleted because they are what was
+> claimed; they will be replaced once the corpus is vendored at the pinned
+> revision, and any that move will be called out.
+>
+> The **0 unexplained** in particular should be read as weaker than it looks:
+> the classifier behind it in `tools/explain_silence.py` decides `ours` against
+> `mismatched` by substring-matching the first word of a free-text field, which
+> will match spuriously on a short or common value.
+
 Measured by `tools/crossvalidate.py` over the reference's own corpus:
 
 - 64 of 66 fixtures it says must fail are failed here

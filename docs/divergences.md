@@ -120,6 +120,72 @@ one figure in `docs/agreement.json`. Cross-validation against another
 implementation could not have found it. The specification's own examples could,
 and did, on the first run.
 
+## Version scoping the reference got wrong
+
+Every `versions` array in the catalogue came from the reference tool, and none
+had ever been checked against anything. `tools/version_inventory.py` now does
+it mechanically: fetch each tagged release of the ontology once, reduce it to
+the set of term IRIs, and require that no rule declares itself applicable to a
+version whose vocabulary lacks a term the rule names.
+
+Five rules failed. **M96.1, M96.2, M96.3, M97.1 and M97.2** are dated from 1.0
+in the catalogue and name `iirds:ExternalClassification`,
+`iirds:classificationIdentifier` and `iirds:ClassificationDomain` — the whole
+external classification vocabulary, which arrives in **1.2**. Eleven terms
+appear between 1.1 and 1.2 and all of them belong to it. A rule cannot apply
+before the class it is about exists, so the five are narrowed to 1.2 and 1.3
+here.
+
+The consequence of leaving it would have been small and entirely in the claim
+rather than the output: on a 1.1 package those rules ran, matched nothing, and
+reported clean. What was wrong was `iirdsv rules` saying they applied.
+
+Four pairs in `docs/agreement.json` moved from `agree` to `silent` as a result,
+and the movement is this project getting the answer right rather than wrong.
+The reference's own fixtures for those rules — `M96-1_false.rdf` and its
+siblings — declare `iiRDSVersion 1.1` while using `iirds:ExternalClassification`,
+vocabulary that release did not have. Their unit tests call `validateSingleRule`
+directly and bypass the version filter their product applies, so nothing on
+their side would ever have noticed. This project honours the declared version,
+so it now stands down where the fixture claims a release its own contents
+contradict.
+
+That the eleven terms appearing between 1.1 and 1.2 are, without exception, the
+external classification vocabulary — `ExternalClassification`,
+`ClassificationDomain`, `ClassificationType`, `classificationIdentifier`,
+`classificationVersion`, `has-classification-domain`,
+`has-classification-type`, `has-external-classification`, `CDD`,
+`EclassCodedName`, `EclassIRDI` — is a coherent feature landing in one release
+rather than a gap in the tagged ontology.
+
+1.0 and 1.0.1 have no tagged ontology, so nothing is checked against them and
+the inventory says so by name. If a term is absent in 1.1 it was absent in 1.0
+as well — vocabularies do not get removed and reintroduced across a patch
+release — so the narrowing above is safe in that direction too.
+
+### M16.1 and M16.2, where the reference is right and its own link disagrees
+
+The other direction, and the one worth checking first, because a scoping that
+is too narrow turns a MUST off for versions people actually ship. Both rules
+are dated 1.0 to 1.1, and both name `iirds:Event` and `iirds:has-event-code`,
+which exist in every version including 1.3 — so the vocabulary check cannot
+settle it and the specification has to.
+
+iiRDS 1.3, section 6.6.1:
+
+> Instances of the `iirds:Event` class **MAY** have the following properties
+
+It was a MUST through 1.1 and is a MAY now. **The reference is right and this
+project is right to stay silent on a 1.3 package.** The first of the 157
+version arrays anybody has verified, and it held.
+
+One loose end belongs to the reference rather than to us: the `spec` link it
+gives for both rules points at the **1.3** document, where that sentence reads
+MAY. A reader following it from `iirdsv rules -v M16.1` sees this validator
+apparently contradicting the standard. It is not; the link is to a later
+edition of a sentence that changed. These are the only two rules in the
+catalogue whose spec link names an edition the rule does not apply to.
+
 ## Where the reference cannot settle it
 
 Three rules whose disposition no amount of cross-validation will decide,
@@ -232,10 +298,10 @@ zero-byte files, which nothing can test. Of the remaining **103 pairs, across
 
 | | pairs | |
 |---:|---|---|
-| **46** | the expected rule fires here | |
-| 35 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
+| **42** | the expected rule fires here | |
+| 34 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
 | 9 | silent — the fixture is malformed XML upstream | no comparison is possible; not repaired, see below |
-| 6 | silent — gated by version or variant here | |
+| 11 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
 | 2 | silent — mismatched | the defect is reported, under a different rule id |
 | 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |
@@ -251,8 +317,8 @@ counted, and this document previously published the flattering one:
 
 | | |
 |---|---|
-| 46 of 103 pairs (45%) | the expected rule fires |
-| 44 of 66 fixtures (67%) | the expected rule fires somewhere on the fixture |
+| 42 of 103 pairs (41%) | the expected rule fires |
+| 40 of 66 fixtures (61%) | the expected rule fires somewhere on the fixture |
 | 65 of 66 fixtures (98%) | **some** finding is produced on the fixture |
 
 The last was published here as "64 of 66 fixtures it says must fail are failed
@@ -271,16 +337,17 @@ says M49, and M49 is the rule it actually violates. The other 28 pairs are a
 file listed against rules it does not breach, which is why the reference's own
 assertion passes on almost all of them.
 
-That single fixture accounts for **51% of the 57 silent pairs**. Add the five
+That single fixture accounts for **48% of the 61 silent pairs**. Add the five
 against `metadata_iirds_sample-M15_false.rdf` and the figure is decided, more
 than anything else, by how loosely upstream filled in one metadata field. A
 pair-level percentage computed over that distribution is not measuring this
 validator, and quoting one without saying so would be the third version of the
 same mistake this document already records twice.
 
-The 45% is misleading in the other direction, because most of the silence is
-accounted for: 35 pairs are cases where the reference does not report either,
-and 9 are fixtures nobody can parse. Read the table above rather than any single
+The 41% is misleading in the other direction, because almost all of the silence
+is accounted for: 34 pairs are cases where the reference does not report
+either, 11 are gated by a version or variant, and 9 are fixtures nobody can
+parse. Read the table above rather than any single
 figure. What is actually unresolved is **four pairs** — the 2 mismatched, the 1
 ours and the 1 unclassified.
 

@@ -132,11 +132,25 @@ ABSTRACT_FIX = ('Retype the instance as one of the subclasses of iirds:%(cls)s. 
                 'which leaves a consumer nothing to act on.')
 
 
+#: Rules whose class the catalogue dates earlier than the vocabulary does.
+#:
+#: `tools/version_inventory.py` compares each rule's declared versions against
+#: the terms that version's ontology actually carried. These two name
+#: iirds:ClassificationDomain, which arrives in 1.2 along with the rest of the
+#: external classification vocabulary, and the catalogue declares them from
+#: 1.0. A rule cannot apply before the class it is about exists.
+NARROWED = {
+    "M97.1": ("1.2", "1.3"),
+    "M97.2": ("1.2", "1.3"),
+}
+
+
 def _register() -> None:
     for rule_id, prefix, class_name in MUST_HAVE_IRI:
         fn = _must_have_iri(prefix, class_name)
         fn.__name__ = "%s_%s_must_have_iri" % (rule_id.replace(".", "_").lower(), class_name.lower())
-        rule(rule_id, fix=NAMED_FIX % {"cls": class_name})(fn)
+        rule(rule_id, versions=NARROWED.get(rule_id),
+             fix=NAMED_FIX % {"cls": class_name})(fn)
 
     for rule_id, prefix, class_name in NOT_USED_DIRECTLY:
         fn = _not_used_directly(prefix, class_name)

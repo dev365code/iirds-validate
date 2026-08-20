@@ -10,7 +10,7 @@ RUFF_VERSION := 0.16.3
 PYTHON       ?= python3
 export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests
 
-.PHONY: help check test lint fix generated corpus exercised tools dev clean
+.PHONY: help check test lint fix generated corpus exercised versions tools dev clean
 
 help:
 	@echo "make check   everything CI runs: lint, tests, the equivalence proof"
@@ -19,11 +19,12 @@ help:
 	@echo "make generated  the generated rule table still matches its generator"
 	@echo "make corpus  the vendored reference fixtures are still upstream's"
 	@echo "make exercised  no rule has quietly stopped firing anywhere"
+	@echo "make versions  no rule claims a version whose vocabulary it predates"
 	@echo "make fix     ruff --fix, for the things it can correct itself"
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
 
-check: lint generated corpus test exercised tools
+check: lint generated corpus versions test exercised tools
 
 test:
 	$(PYTHON) -m pytest -q
@@ -48,6 +49,12 @@ generated:
 # exactly backwards. Depends on `test` having run, which writes the record.
 exercised:
 	$(PYTHON) tools/rule_coverage.py --check
+
+# Every `versions` array came from the reference tool and none had been checked.
+# A rule applicable to a version whose ontology lacked its class runs, matches
+# nothing, and reports clean -- so the error is in the claim, not the output.
+versions:
+	$(PYTHON) tools/version_inventory.py
 
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check

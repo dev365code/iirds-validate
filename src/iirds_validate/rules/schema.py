@@ -640,7 +640,7 @@ def m95_component_party(ctx):
     yield from _at_most_one(ctx, T.Component, T.relates_to_party, "iirds:relates-to-party")
 
 
-@rule("M96.1",
+@rule("M96.1", versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Give the external classification exactly one iirds:has-classification-domain. The domain names the scheme — eCl@ss, ETIM, or your own — and a classification identifier means nothing without it.")
 def m96_1_classification_domain(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
@@ -651,7 +651,7 @@ def m96_1_classification_domain(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(domains))
 
 
-@rule("M96.2",
+@rule("M96.2", versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Give the external classification exactly one iirds:classificationIdentifier. Two identifiers in one classification leave a consumer unable to tell which one is meant.")
 def m96_2_classification_identifier_count(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
@@ -662,7 +662,7 @@ def m96_2_classification_identifier_count(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(identifiers))
 
 
-@rule("M96.3",
+@rule("M96.3", versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Put a non-empty string in iirds:classificationIdentifier. An empty value is worse than an absent one: it looks answered and matches nothing.")
 def m96_3_classification_identifier_non_empty(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):

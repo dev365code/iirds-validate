@@ -64,7 +64,7 @@ the serialisation equivalence proof against a container with a known defect.
 
 ```sh
 make dev      # ruff and pytest
-make check    # everything CI runs
+make check    # every gate CI's lint and test jobs run
 make fix      # the formatting ruff can correct itself
 ```
 

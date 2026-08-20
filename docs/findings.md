@@ -1,6 +1,6 @@
 # What the apparatus has caught
 
-This repository carries twice as much test and tool code as validator, and the
+This repository carries substantially more test and tool code than validator, and the
 fair question about that is whether it earns its keep. This is the evidence:
 every defect found in this project *by* this project, and which instrument
 found it.
@@ -28,7 +28,7 @@ Each row is a defect that a passing test suite did not notice.
 
 | | what was wrong | how it surfaced |
 |---|---|---|
-| **S8** | Compared entry count against the ZIP32 limit, then inferred ZIP64 from per-entry offsets — so it failed every correctly built 70,000-entry archive and could never fire on a defective one. Backwards for months. | writing the first test that made it fire |
+| **S8** | Compared entry count against the ZIP32 limit, then inferred ZIP64 from per-entry offsets — so it failed every correctly built 70,000-entry archive and could never fire on a defective one. Backwards from the day it was written. | writing the first test that made it fire |
 | **S1** | Unreachable. Its docstring said "emitted by runner.run when the file cannot be opened as a ZIP"; the runner emitted C1 there, for both cases. | writing the first test that made it fire |
 | **M8** | The title reads "the package must not be part of itself" and the rule is the opposite: `is-part-of-package` is the *exemption*. A test written from the title would have asserted the inverse and passed. | writing the first test that made it fire |
 | **M30** | Forbade `iirds:Component rdfs:subClassOf myCompany:ProductPart` — the standard's own way of declaring equivalence to a proprietary class, and the exact link **L5 recommends**. One rule forbade what another asked for. | the specification's Example 43 |
@@ -50,7 +50,7 @@ Each row is a defect that a passing test suite did not notice.
 |---|---|---|
 | **Determinism** | "byte-identical across runs", in the README | rdflib mints fresh blank-node ids per parse, so three runs gave three reports, and RDF/XML and JSON-LD of one graph disagreed |
 | **"64 of 66 fixtures failed here"** | reads as a hit rate | counted fixtures producing *some* finding. The expected rule fires on 42 of 103 pairs |
-| **"254 absolute requirements"** | in the README for months, `grep` found one hit and no source | right about what it counted. Sixty more obligations are stated as `0..1` with no RFC 2119 keyword at all — 314 |
+| **"254 absolute requirements"** | in the README from its first day; `grep` found one hit and no source | right about what it counted. Sixty more obligations are stated as `0..1` with no RFC 2119 keyword at all — 314 |
 | **"0 unexplained"**, in bold | the silence classifier | decides two of its categories by substring-matching the first word of a free-text field |
 | **Cross-validation figures** | reproducible | the corpus was fetched from `master` while the rules were pinned to a commit |
 | **C13, C15 remediation** | written the same day | described a 255-character limit where the constant is 260, and a case collision the rule does not check. Written from the requirement's prose without reading the code |

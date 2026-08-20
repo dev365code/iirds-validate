@@ -1,4 +1,6 @@
-# Everything CI runs, runnable before you push.
+# Everything CI's lint and test gates run, runnable before you push. (CI also
+# builds the wheel and the .pyz and smoke-tests both in a clean venv; those
+# need the network once and are not part of `check`.)
 #
 # This file exists because a commit went red twice on lint alone — the code was
 # right and the import order was not, which CI can see and a local `pytest`
@@ -46,7 +48,7 @@ generated:
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.
 # Which rules the suite has ever seen produce a finding. A rule that fires
-# nowhere is not known to work -- S8 sat in that state for months while being
+# nowhere is not known to work -- S8 sat in that state from day one while being
 # exactly backwards. Depends on `test` having run, which writes the record.
 exercised:
 	$(PYTHON) tools/rule_coverage.py --check
@@ -58,7 +60,7 @@ versions:
 	$(PYTHON) tools/version_inventory.py
 
 # The denominator: what the standard actually requires, derived rather than
-# asserted. The README carried an unsourced 254 for months, and deriving it
+# asserted. The README carried an unsourced 254 from day one, and deriving it
 # showed the scope was wrong.
 requirements:
 	$(PYTHON) tools/extract_requirements.py

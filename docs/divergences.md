@@ -274,6 +274,24 @@ file was meant to contain, which is the one thing an oracle must not be. The
 honest disposition is "no comparison possible", and the way out is a mutation
 of a package we control, not a repair of a package we do not.
 
+## Where severity currently outruns the reading
+
+The README's rule is that anything resting on this project's own reading is a
+warning. Two places do not yet honour it, named here so the promise stays
+checkable rather than aspirational:
+
+- **L4** (navigation cycles) is reported as an error on this project's own
+  authority: no specification sentence names cycles, but no consumer walking
+  a cyclic structure terminates, and a defect that hangs the reader did not
+  seem to belong at warning level. If tekom's answer to the open questions
+  below settles it otherwise, it moves.
+- **The Appendix B entry condition.** B1–B8 are literal MUSTs of the standard,
+  but *which files they examine* — renditions declared `application/xhtml+xml`
+  — is this project's reading, and under it an unrestricted package (where any
+  content format is permitted) can fail `check` on content findings. The
+  planned correction is: errors under iiRDS/A, warnings under the unrestricted
+  profile.
+
 ## Content rules: three readings the specification does not settle
 
 Appendix B has no counterpart in the reference tool — it reads only

@@ -1,10 +1,10 @@
 # What this is, what it is not, and where everything lives
 
-One page, because the repository has grown a verification apparatus twice the
-size of the thing being verified, and that is easy to mistake for the project
-being complicated. It is not. The validator is 2,069 lines of code across 244
-functions with a median length of five, and no duplicated block anywhere in it.
-What is large is the evidence, and the evidence is the product.
+One page, because the repository has grown a verification apparatus larger
+than the thing being verified, and that is easy to mistake for the project
+being complicated. It is not: the validator itself is a few thousand lines of
+short functions, and the duplication scan that guided its design comes back
+empty. What is large is the evidence, and the evidence is the product.
 
 ## The purpose
 
@@ -55,7 +55,7 @@ Written down because each of these was, at some point, about to be built.
 | `src/iirds_validate/terms.py` | every iiRDS term, in one place, checked against the ontology by a test |
 | `src/iirds_validate/data/` | what ships: the rule catalogue and the vendored ontologies |
 | `tests/corpus/plusmeta/` | the reference corpus, verbatim and hashed — the only external check |
-| `tools/` | nothing a user runs. Extraction, cross-validation, vendoring, packaging |
+| `tools/` | development and release machinery: extraction, cross-validation, vendoring, and the `.pyz` build a user may run once |
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |
 | `docs/divergences.md` | every place this project and the reference differ, and why |
 

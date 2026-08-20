@@ -14,11 +14,23 @@ in a build.
 ```console
 $ iirdsv dist/manual.iirds
 manual.iirds   iiRDS 1.3
+  note: metadata read from META-INF/metadata.rdf
+
   ERROR M11       Rendition must have exactly one iirds:format
-                      urn:example:rendition/7
+                      urn:example:manual has-rendition
+                      0 found
+                    → Give the Rendition exactly one iirds:format, holding the media type of the
+                    → file it points at, for example application/xhtml+xml or application/pdf.
+                    → Add one if there is none; remove the extras if there are several.
   WARN  L1        relation points at an IRI that is never described in this package
                       urn:example:event/al-204
-  FAIL  1 error(s), 1 warning(s)
+                      referenced by urn:example:manual via relates-to-event
+                    → Either describe the target in this package, or drop the reference. A
+                    → relation pointing at an IRI nothing here mentions gives a consumer a name
+                    → and no way to resolve it.
+
+  FAIL  1 error(s), 1 warning(s), 0 note(s)
+  165 rules checked, 19 not applicable to this version/variant
 $ echo $?
 1
 ```
@@ -38,7 +50,7 @@ packages.
 python iirds-validate.pyz dist/
 ```
 
-850 KB, contains `rdflib` and the iiRDS ontologies, compiles nothing, so the
+867 KB, contains `rdflib` and the iiRDS ontologies, compiles nothing, so the
 same file runs on Linux, macOS and Windows. It is an ordinary zip: whoever has
 to approve software entering the network can open it and read every line, which
 is usually the hard part. Build it with `python tools/build_zipapp.py`.
@@ -66,7 +78,7 @@ A path means "check it". No subcommand needed.
 | `iirdsv check <path>` | **does it conform?** container, metadata graph, content |
 | `iirdsv lint <path>` | **will anyone else be able to read it?** |
 | `iirdsv pack <dir>` | write a directory as a conformant `.iirds`, then check that |
-| `iirdsv rules` | every rule, its priority, its versions, its source |
+| `iirdsv rules` | every rule, one line each; `iirdsv rules M11` or `-v` adds versions, spec link, source and remedy |
 
 ### In a build
 
@@ -77,7 +89,7 @@ iirdsv check dist/ -W                   # warnings fail it too
 iirdsv check dist/ -q                   # exit code only
 ```
 
-Exit codes: `0` clean, `1` findings, `2` could not run.
+Exit codes: `0` clean (warnings alone stay `0` unless `-W`), `1` errors, `2` could not run.
 
 ### From Python
 
@@ -117,9 +129,10 @@ with evidence, in [docs/divergences.md](docs/divergences.md).
 
 Four things here are different.
 
-**It asks whether the package will work, not only whether it conforms.** Ten
-rules with no counterpart in the specification, because a conformant package
-can still be undeliverable:
+**It asks whether the package will work, not only whether it conforms.** Twelve
+interoperability rules, most with no counterpart in the specification, because
+a conformant package can still be undeliverable (L2 and L9 do implement
+sentences the standard states, and run under `check` accordingly):
 
 | | |
 |---|---|
@@ -195,7 +208,7 @@ states **314 absolute obligations**, counted by
 [`tools/extract_requirements.py`](tools/extract_requirements.py) and listed in
 [docs/requirements.json](docs/requirements.json) — 254 marked with an RFC 2119
 keyword and 60 more stated as `0..1` in the property tables, which carry no
-keyword at all and are obligations regardless. This README said 254 for months
+keyword at all and are obligations regardless. This README carried 254 from its first day
 with nothing behind it; the figure was right about what it counted and counted
 the wrong thing.
 
@@ -268,7 +281,9 @@ the repository.
   claimed below. Of the 103 rule/fixture pairs it says must fail, the expected
   rule fires here on 42; 34 more are cases where the reference does not report
   either, 11 are gated by version or variant, 9 are fixtures nobody can parse,
-  and **4 are genuinely unresolved**.
+  3 are defects visible only in the XML tree — two serialisations of one
+  graph, so there is nothing in the graph to report — and **4 are genuinely
+  unresolved**.
   The full table, and why "65 of 66 fixtures produce some finding" is the
   flattering way to say this rather than the honest one, are in
   [docs/divergences.md](docs/divergences.md).
@@ -285,7 +300,7 @@ the repository.
 - **Every rule has been watched fire.** The suite records which rule ids
   actually produce a finding, and 184 of the 185 have — the remaining one is a
   `MAY` with nothing to violate. It began at 63. A rule that fires nowhere is
-  not known to work: S8 spent months exactly backwards, able to fire only on
+  not known to work: S8 was exactly backwards from the day it was written, able to fire only on
   archives that were correct, and no test would have caught it because no test
   made it fire. Line coverage would not have helped; its body ran and returned
   the wrong answer.
@@ -302,13 +317,15 @@ the repository.
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 
-**What is not established.** The 23 rules this project invented have no second
+**What is not established.** The 28 rules this project invented have no second
 implementation anywhere to be compared against. They have tests in both
 directions, and those tests were checked by breaking each rule in turn, which is
 weaker evidence than the catalogued rules have.
 [docs/divergences.md](docs/divergences.md) records where this project is
 deliberately stricter than the reference and why. Anything derived from this
-project's own reading rather than a literal `MUST` is a warning, never an error.
+project's own reading rather than a literal `MUST` is a warning — with the
+current exceptions named, not hidden, in that same document: L4, and the entry
+condition that decides which files the Appendix B rules examine.
 
 If it reports an error on a package you believe is conformant, that is the most
 valuable bug report this project can receive. Please open an issue with the

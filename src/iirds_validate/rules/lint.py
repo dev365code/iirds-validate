@@ -297,7 +297,7 @@ def l7_untitled_information_units(ctx):
 @_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
        prio="MUST", conformance=True,
        fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.",
-       covers=("dfn-iirds-container#5",))
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#4",))
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 
@@ -417,7 +417,7 @@ def l11_content_hidden_from_the_content_rules(ctx):
        fix="Rename one of them so the two differ by more than case. The ZIP holds both, "
            "and Windows and macOS filesystems hold one, so the package a consumer unpacks "
            "is missing a file that validated perfectly.",
-       covers=("dfn-iirds-container#12",))
+       covers=("x5-1-3-names-of-files-and-directories#2",))
 def l12_case_only_collisions(ctx):
     """C15 asks whether the same path appears twice, and it is right to: within
     the archive those really are one entry claimed twice.

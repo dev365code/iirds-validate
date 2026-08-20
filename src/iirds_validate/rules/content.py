@@ -117,15 +117,25 @@ def _refusal(ctx, name):
 
 
 def _walk(ctx):
-    """Every declared XHTML file, parsed. Unparsable ones are B1's business."""
-    for name in sorted(_xhtml_renditions(ctx)):
-        if _refusal(ctx, name):
-            continue
-        try:
-            root = ElementTree.fromstring(ctx.package.read(name))
-        except ElementTree.ParseError:
-            continue
-        yield name, root
+    """Every declared XHTML file, parsed — once per run, not once per rule.
+
+    Eight B rules each iterated the same files, so every content document was
+    read and parsed eight times; on large packages that was a third of the
+    whole run. The parse result is cached on the Context, which lives exactly
+    as long as one validation. Rules only read the tree, so sharing it is
+    safe; if one ever mutates it, that rule must copy first.
+    """
+    cache = ctx.__dict__.get("_content_trees")
+    if cache is None:
+        cache = ctx.__dict__["_content_trees"] = {}
+        for name in sorted(_xhtml_renditions(ctx)):
+            if _refusal(ctx, name):
+                continue
+            try:
+                cache[name] = ElementTree.fromstring(ctx.package.read(name))
+            except ElementTree.ParseError:
+                continue
+    yield from cache.items()
 
 
 def _local(tag) -> str:

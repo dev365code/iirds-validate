@@ -35,6 +35,14 @@ $ echo $?
 1
 ```
 
+**How to read a report.** `ERROR` is a specification violation and fails the
+build (`exit 1`); `WARN` is this project's interoperability advice and does not,
+unless you pass `-W`; the dimmed `note:` lines at the top are context about the
+run, not findings. When one rule fires many times the report shows the count,
+the first few subjects and the remedy once — `--format json` always carries
+every finding. What caused other findings is printed first; what merely follows
+from them, last.
+
 The error is a specification violation. The warning is not — nothing in the
 standard forbids pointing at an IRI you never describe, and a consumer reading
 that package silently loses the data. It happens in one of tekom's own sample

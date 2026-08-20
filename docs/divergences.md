@@ -147,12 +147,14 @@ exactly on the line those rules draw, which is unplanned and reassuring.
 skips unless `IIRDS_SAMPLE_CONTENT` points at the directory, because the
 packages are registration-gated and are not redistributed here.
 
-One caveat this exercise surfaced rather than settled: the 1.0 text names the
-Event properties `iirds:eventCode` and `iirds:eventType`, where later editions
-say `has-event-code` and `has-event-type`. M16.1/M16.2 check the later names,
-so a genuine 1.0 package using 1.0's own spelling would be mis-reported. The
-samples contain no Events, no 1.0 ontology is published to check against, and
-the exposure is correspondingly small — recorded here rather than guessed at.
+One caveat this exercise surfaced was settled the same day, by fetching the
+Consortium's own published 1.0 schema: the 1.0 *prose* names the Event
+properties `iirds:eventCode` and `iirds:eventType`, but the 1.0 *ontology*
+already says `has-event-code` and `has-event-type` — so M16.1/M16.2 check the
+right names for every edition, and the discrepancy is between the 1.0 document
+and the 1.0 schema, not in any tool. The same fetch showed the sample's L10
+warning holds against the package's own era: `mch:EnvironmentalProtectionInstruction`
+is typed `iirds:Safety` in the 1.0 machinery vocabulary too.
 
 ## Version scoping the reference got wrong
 
@@ -191,10 +193,15 @@ external classification vocabulary — `ExternalClassification`,
 `EclassCodedName`, `EclassIRDI` — is a coherent feature landing in one release
 rather than a gap in the tagged ontology.
 
-1.0 and 1.0.1 have no tagged ontology, so nothing is checked against them and
-the inventory says so by name. If a term is absent in 1.1 it was absent in 1.0
-as well — vocabularies do not get removed and reintroduced across a patch
-release — so the narrowing above is safe in that direction too.
+The inventory initially covered 1.1 onward, because the GitHub tags carry
+nothing older; the Consortium's site publishes every edition's schemas, and
+extending the inventory to 1.0 and 1.0.1 immediately found two more: **M49**
+names `iirds:IdentityType` and **M76** names `mch:ProtectiveEquipment`, both
+declared from 1.0 in the catalogue and both arriving in 1.1 — with the whole
+identity-type system (ArticleCode, SerialNumber, GTIN, EAN, ObjectInstanceURI,
+ProductType) and the protective-equipment family beside them, a coherent
+release rather than a gap in the data. Both are narrowed to 1.1 onward, making
+seven catalogue version arrays corrected in all.
 
 ### M16.1 and M16.2, where the reference is right and its own link disagrees
 

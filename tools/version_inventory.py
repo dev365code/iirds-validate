@@ -44,20 +44,32 @@ from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES  # noqa
 
 INVENTORY = ROOT / "docs" / "version-terms.json"
 NAMESPACE = "http://iirds.tekom.de/"
-REPO = "iirds-consortium/models"
-RAW = "https://raw.githubusercontent.com/%s/%%s/%%s" % REPO
 
-#: The tagged releases, and the ontology files each carries. 1.3 comes from the
-#: bundle instead, so a refresh cannot silently disagree with what ships.
-TAGGED = {
-    "1.1": ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf"),
-    "1.2": ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf", "iirds-skos.rdf"),
+#: The Consortium's own downloads, one URL set per published version. This
+#: began life against the GitHub tags of iirds-consortium/models, which carry
+#: only 1.1 and 1.2 — so 1.0 and 1.0.1 sat in an "unavailable" list and two
+#: questions about them stayed open. iirds.org publishes every edition's
+#: schema files at stable fileadmin URLs, which also settled one of those
+#: questions the day they were first fetched: the 1.0 *prose* names the Event
+#: properties `eventCode`/`eventType`, but the 1.0 *ontology* already says
+#: `has-event-code`/`has-event-type`, so M16.1/M16.2 check the right names for
+#: every edition. 1.3 still comes from the bundle, so a refresh cannot
+#: silently disagree with what ships.
+_RDFS = "https://www.iirds.org/fileadmin/downloads/documents/rdfs/%s/%s"
+_CORE3 = ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf")
+SOURCES = {
+    "1.0":   tuple(_RDFS % ("1.0", f) for f in _CORE3),
+    "1.0.1": tuple(_RDFS % ("1.0.1", f) for f in _CORE3),
+    "1.1":   tuple(_RDFS % ("1.1", f) for f in _CORE3),
+    # The 1.2 page links its skos file from a 1.2.1 directory; that is
+    # upstream's layout, not a typo here.
+    "1.2":   tuple(_RDFS % ("1.2", f) for f in _CORE3) + (_RDFS % ("1.2.1", "iirds-skos.rdf"),),
 }
 
-#: Published versions with no tagged ontology, so nothing can be checked
-#: against them. Named rather than omitted, because "not checked" and "checked
-#: and clean" must not look the same.
-UNAVAILABLE = ("1.0", "1.0.1")
+#: Every published edition now has a source. Kept so the check still refuses
+#: to conflate "not checked" with "checked and clean" if an edition is ever
+#: added faster than its schema files appear.
+UNAVAILABLE: tuple = ()
 
 
 def terms_named_by(rule) -> list:
@@ -87,22 +99,21 @@ def terms_named_by(rule) -> list:
 
 def refresh() -> int:
     inventory = {}
-    for tag, files in TAGGED.items():
+    for version, urls in SOURCES.items():
         graph = Graph()
-        for name in files:
-            url = RAW % (urllib.parse.quote(tag), urllib.parse.quote(name))
+        for url in urls:
             with urllib.request.urlopen(url, timeout=60) as handle:
                 graph.parse(data=handle.read(), format="xml")
-        inventory[tag] = sorted({str(s) for s in set(graph.subjects())
-                                 if str(s).startswith(NAMESPACE)})
+        inventory[version] = sorted({str(s) for s in set(graph.subjects())
+                                     if str(s).startswith(NAMESPACE)})
 
     inventory["1.3"] = sorted({str(s) for s in set(load().graph.subjects())
                                if str(s).startswith(NAMESPACE)})
 
     INVENTORY.parent.mkdir(parents=True, exist_ok=True)
     INVENTORY.write_text(json.dumps({
-        "_source": "https://github.com/%s, tags %s; 1.3 from the bundled ontologies"
-                   % (REPO, ", ".join(sorted(TAGGED))),
+        "_source": "iirds.org official schema downloads (%s); 1.3 from the bundled ontologies"
+                   % ", ".join(sorted(SOURCES)),
         "_generated_by": "tools/version_inventory.py --refresh",
         "_note": ("Term IRIs only. The ontology files themselves are CC BY-ND and are not "
                   "redistributed here; a list of names is a fact about the vocabulary."),
@@ -143,9 +154,9 @@ def check() -> int:
         return 1
 
     checked = sorted(inventory)
+    tail = "; %s have no schema source" % ", ".join(UNAVAILABLE) if UNAVAILABLE else ""
     print("no rule claims a version whose vocabulary lacks the terms it names "
-          "(checked against %s; %s have no tagged ontology)"
-          % (", ".join(checked), ", ".join(UNAVAILABLE)))
+          "(checked against %s%s)" % (", ".join(checked), tail))
     return 0
 
 

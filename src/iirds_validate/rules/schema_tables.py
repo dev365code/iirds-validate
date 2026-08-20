@@ -135,11 +135,14 @@ ABSTRACT_FIX = ('Retype the instance as one of the subclasses of iirds:%(cls)s. 
 #: Rules whose class the catalogue dates earlier than the vocabulary does.
 #:
 #: `tools/version_inventory.py` compares each rule's declared versions against
-#: the terms that version's ontology actually carried. These two name
-#: iirds:ClassificationDomain, which arrives in 1.2 along with the rest of the
-#: external classification vocabulary, and the catalogue declares them from
-#: 1.0. A rule cannot apply before the class it is about exists.
+#: the terms that version's ontology actually carried. M97.1/2 name
+#: iirds:ClassificationDomain, which arrives in 1.2 with the external
+#: classification vocabulary; M49 names iirds:IdentityType and M76
+#: mch:ProtectiveEquipment, both of which arrive in 1.1 — settled against the
+#: Consortium's own published schemas for every edition, 1.0 included. A rule cannot apply before the class it is about exists.
 NARROWED = {
+    "M49":   ("1.1", "1.2", "1.3"),
+    "M76":   ("1.1", "1.2", "1.3"),
     "M97.1": ("1.2", "1.3"),
     "M97.2": ("1.2", "1.3"),
 }

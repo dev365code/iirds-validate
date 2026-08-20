@@ -37,6 +37,8 @@ SCOPED = {
               "relaxed from MUST to MAY: 1.3 reads 'Instances of the iirds:Event class "
               "MAY have the following properties'"),
     "M16.2": (("1.0", "1.0.1", "1.1"), "relaxed from MUST to MAY with M16.1"),
+    "M49":   (("1.1", "1.2", "1.3"), "iirds:IdentityType arrives in 1.1 with the identity-type system"),
+    "M76":   (("1.1", "1.2", "1.3"), "mch:ProtectiveEquipment arrives in 1.1"),
     "M96.1": (("1.2", "1.3"), "iirds:ExternalClassification arrives in 1.2"),
     "M96.2": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
     "M96.3": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
@@ -142,11 +144,14 @@ def test_no_rule_claims_a_version_whose_vocabulary_it_predates():
     assert problems == []
 
 
-def test_the_versions_with_no_inventory_are_named_rather_than_ignored():
-    """1.0 and 1.0.1 have no tagged ontology, so nothing is checked against
-    them. "Not checked" and "checked and clean" must not look the same."""
+def test_every_published_edition_has_an_inventory():
+    """This began with 1.0 and 1.0.1 in an "unavailable" list, because the
+    GitHub tags carry only 1.1 and 1.2. The Consortium's own site publishes
+    every edition's schema files, so the list is now empty — and the check
+    still refuses to conflate "not checked" with "checked and clean" if an
+    edition ever appears faster than its schemas do."""
     import json
 
     data = json.loads((ROOT / "docs" / "version-terms.json").read_text("utf-8"))
-    assert data["_unavailable"] == ["1.0", "1.0.1"]
-    assert set(data["terms"]) == {"1.1", "1.2", "1.3"}
+    assert data["_unavailable"] == []
+    assert set(data["terms"]) == {"1.0", "1.0.1", "1.1", "1.2", "1.3"}

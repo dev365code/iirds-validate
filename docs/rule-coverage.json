@@ -1,15 +1,9 @@
 {
  "_generated_by": "tools/rule_coverage.py --write-baseline",
  "_note": "Rules no test in the suite has been seen to make fire. Not a target: the list should shrink, and it must not grow without somebody saying why. A rule here is not known to be broken -- it is not known to work.",
- "rules": 181,
- "exercised": 145,
+ "rules": 182,
+ "exercised": 153,
  "never_fires": [
-  "C10",
-  "C11.1H",
-  "C13",
-  "C14",
-  "C15",
-  "C2",
   "M10",
   "M12",
   "M13.1",
@@ -38,7 +32,6 @@
   "M9",
   "M94",
   "M96.3",
-  "M96.4",
-  "S1"
+  "M96.4"
  ]
 }

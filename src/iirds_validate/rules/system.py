@@ -25,10 +25,15 @@ ALWAYS = ()
 @rule("S1", versions=ALWAYS, variants=ALWAYS,
        fix="Check the path, and that the file is a readable ZIP. An .iirds container is an ordinary ZIP archive; `unzip -l` on it should list mimetype first.")
 def s1_unreadable_container(ctx):
-    """Emitted by `runner.run` when the file cannot be opened as a ZIP.
+    """Emitted by `runner.run` when nothing could be read from the path.
 
-    There is no Context at that point, so there is nothing for a rule to
-    inspect; this exists to give the finding a catalogued identity.
+    Absent, or not permitted, as distinct from C1: something was read and it is
+    not a usable ZIP. Different problems for whoever is holding the package —
+    one is a mistake in the command, the other arrived that way and the sender
+    needs telling.
+
+    There is no Context at that point, so there is nothing here to inspect;
+    the function exists to give the finding a catalogued identity.
     """
     return ()
 

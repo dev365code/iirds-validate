@@ -410,3 +410,34 @@ def l11_content_hidden_from_the_content_rules(ctx):
                                 "XHTML5, so none of the content rules examined it",
                                 subject=name,
                                 detail="declared as %s" % ", ".join(sorted(declared)))
+
+
+@_lint("L12", "two entries differing only in case will not survive extraction",
+       fix="Rename one of them so the two differ by more than case. The ZIP holds both, "
+           "and Windows and macOS filesystems hold one, so the package a consumer unpacks "
+           "is missing a file that validated perfectly.")
+def l12_case_only_collisions(ctx):
+    """C15 asks whether the same path appears twice, and it is right to: within
+    the archive those really are one entry claimed twice.
+
+    This is the other collision, and the one that actually happens. `A.xhtml`
+    and `a.xhtml` are distinct paths in a ZIP, distinct under the
+    specification's "file names are case-sensitive", and the same file on the
+    two operating systems most consumers run. The archive validates, and the
+    directory that comes out of it has one fewer file than went in — a defect
+    that exists only after the package leaves the producer, which is precisely
+    what an interoperability rule is for.
+
+    Reported per colliding group rather than per entry, because renaming one
+    member fixes the whole group.
+    """
+    groups = {}
+    for name in ctx.package.names:
+        groups.setdefault(name.lower(), []).append(name)
+
+    for _folded, names in sorted(groups.items()):
+        distinct = sorted(set(names))
+        if len(distinct) > 1:
+            yield Violation("entries differ only in case, so one is lost on a "
+                            "case-insensitive filesystem",
+                            subject=distinct[0], detail="also " + ", ".join(distinct[1:]))

@@ -214,7 +214,7 @@ def c12_content_in_meta_inf(ctx):
 
 
 @rule("C13",
-       fix="Shorten the path. Full paths over 255 characters fail to extract on Windows and on some archive tools, which turns a valid package into a partial one at the receiving end.")
+       fix="Shorten the path to 260 characters or fewer, counting from the container root. Longer ones fail to extract on Windows and on some archive tools, which turns a valid package into a partial one at the receiving end.")
 def c13_path_length(ctx):
     for name in ctx.package.names:
         if len(name) > MAX_PATH:
@@ -233,7 +233,7 @@ def c14_name_length(ctx):
 
 
 @rule("C15",
-       fix="Rename one of the colliding entries. Names differing only in case are distinct inside the ZIP and collide on Windows and macOS, so extraction silently loses one of them.")
+       fix="Remove the repeated entry. The same path appears more than once in the archive, so which of them a consumer gets depends on which its unzip implementation keeps.")
 def c15_unique_names(ctx):
     for name, n in Counter(ctx.package.names).items():
         if n > 1:

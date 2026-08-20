@@ -6,7 +6,7 @@ from typing import Optional, Sequence
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
-from .package import PackageError, open_package
+from .package import PackageError, UnreadablePath, open_package
 from .registry import CATALOG, all_rules
 
 #: "system" is in every set: a container that could not be read has to be
@@ -65,9 +65,15 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     try:
         package = open_package(path)
     except PackageError as exc:
+        # S1 is "nothing could be read from that path"; C1 is "something was
+        # read and it is not a usable ZIP". Both are catalogued, and emitting
+        # C1 for both left S1 unable to fire at all while its own docstring
+        # claimed this was where it came from.
+        unreadable = isinstance(exc, UnreadablePath)
         report.findings.append(Finding(
-            _emitted("C1", "container"),
-            Violation("cannot open container", subject=str(path), detail=str(exc))))
+            _emitted("S1", "system") if unreadable else _emitted("C1", "container"),
+            Violation("cannot read container" if unreadable else "cannot open container",
+                      subject=str(path), detail=str(exc))))
         report.checked = 1
         return report
 

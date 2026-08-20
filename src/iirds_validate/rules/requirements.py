@@ -27,6 +27,23 @@ from rdflib import URIRef
 from ..model import Violation, is_named
 from ..registry import rule
 
+#: Obligations the standard states that no validator can check on a package,
+#: because they are addressed to somebody else.
+#:
+#: Without this, they sit in the unmapped column for ever and the coverage
+#: figure never reaches its ceiling however much work is done -- which would
+#: eventually make the number meaningless in the other direction. Every entry
+#: needs a reason, and the reason has to be that the obligation is not about
+#: the artefact. "Hard to check" is not a reason and belongs in the gaps.
+NOT_ABOUT_THE_PACKAGE = {
+    "dfn-iirds-container#10":
+        "\"iiRDS Consumers MUST ignore these files\" — an obligation on the reading "
+        "application. A package cannot satisfy or breach it.",
+    "dfn-iirds-zip-archive#1":
+        "\"All processing applications MUST support this implementation\" — the same, "
+        "about tools rather than about containers.",
+}
+
 HANDOVER = "http://iirds.tekom.de/iirds/domain/handover#"
 IIRDS = "http://iirds.tekom.de/iirds#"
 

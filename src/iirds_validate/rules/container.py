@@ -59,6 +59,7 @@ def _root_content_files(package, exempt=()):
 
 
 @rule("C1",
+       covers=("dfn-iirds-package#1",),
        fix="Rebuild the archive. A ZIP whose central directory is damaged cannot be read reliably by anything, so no other check here has run against it.")
 def c1_readable(ctx):
     if not ctx.package.is_archive:
@@ -76,6 +77,7 @@ def c2_not_empty(ctx):
 
 
 @rule("C3",
+       covers=("dfn-iirds-zip-archive#2",),
        fix="Rename the file to end in .iirds. Consumers and file managers pick the handler by extension, and a .zip will be opened as a plain archive.")
 def c3_extension(ctx):
     if not ctx.package.is_archive:
@@ -87,6 +89,7 @@ def c3_extension(ctx):
 
 
 @rule("C4",
+       covers=("dfn-iirds-zip-archive#3",),
        fix="Add a file named mimetype in the root of the archive. It is how a consumer recognises the container before unpacking it, and it must be the first entry.")
 def c4_mimetype_present(ctx):
     if not ctx.package.has(MIMETYPE_FILE):
@@ -94,6 +97,7 @@ def c4_mimetype_present(ctx):
 
 
 @rule("C5",
+       covers=("dfn-iirds-zip-archive#4",),
        fix="Make the file contain exactly application/iirds+zip, ASCII, with no trailing newline and no byte order mark. Editors add both silently, so write it with a tool that does not.")
 def c5_mimetype_content(ctx):
     if not ctx.package.has(MIMETYPE_FILE):
@@ -106,6 +110,7 @@ def c5_mimetype_content(ctx):
 
 
 @rule("C6",
+       covers=("dfn-iirds-zip-archive#5", "dfn-iirds-zip-archive#6"),
        fix="Store the mimetype entry uncompressed. Most tools cannot express this: with the zip command it takes two passes, `zip -X0 out.iirds mimetype` then `zip -Xr out.iirds .` for the rest. `iirdsv pack` does it correctly.")
 def c6_mimetype_stored_first(ctx):
     if not ctx.package.is_archive:
@@ -125,6 +130,7 @@ def c6_mimetype_stored_first(ctx):
 
 
 @rule("C7",
+       covers=("dfn-iirds-container#2",),
        fix="Create a META-INF directory in the root of the archive. It is where a consumer looks for metadata, and nowhere else is searched.")
 def c7_meta_inf(ctx):
     if not any(n.startswith(META_DIR + "/") for n in ctx.package.names):
@@ -132,6 +138,7 @@ def c7_meta_inf(ctx):
 
 
 @rule("C8",
+       covers=("dfn-iirds-container#3",),
        fix="Add META-INF/metadata.rdf. It carries everything a consumer knows about the package; without it the content files are a folder of documents with no structure or meaning.")
 def c8_metadata_rdf(ctx):
     if not ctx.package.has(METADATA_RDF):
@@ -152,6 +159,7 @@ def c10_forbidden_chars(ctx):
 
 
 @rule("C9",
+       covers=("dfn-iirds-container#3",),
        fix="Add META-INF/metadata.rdf at exactly that path. Directory and file names are case-sensitive here, so META-Inf or Metadata.rdf will not be found.")
 def c9_metadata_is_rdf(ctx):
     """C8 asks whether metadata.rdf is present; this asks whether it is RDF.
@@ -173,6 +181,7 @@ def c9_metadata_is_rdf(ctx):
 
 
 @rule("C11.1",
+       covers=("dfn-iirds-container#7",),
        fix="Move the file under a directory rather than leaving it beside mimetype and META-INF. Only those two belong in the root; everything else has to live in a subdirectory.")
 def c11_1_content_in_root(ctx):
     for name in _root_content_files(ctx.package):
@@ -203,6 +212,7 @@ def c11_2_handover_content_list(ctx):
 
 
 @rule("C12",
+       covers=("dfn-iirds-container#8",),
        fix="Move the content file into a subdirectory. The root and META-INF are reserved, so a consumer scanning for content will not look there.")
 def c12_content_in_meta_inf(ctx):
     for name in ctx.package.files:
@@ -214,6 +224,7 @@ def c12_content_in_meta_inf(ctx):
 
 
 @rule("C13",
+       covers=("dfn-iirds-container#13",),
        fix="Shorten the path to 260 characters or fewer, counting from the container root. Longer ones fail to extract on Windows and on some archive tools, which turns a valid package into a partial one at the receiving end.")
 def c13_path_length(ctx):
     for name in ctx.package.names:
@@ -233,6 +244,7 @@ def c14_name_length(ctx):
 
 
 @rule("C15",
+       covers=("dfn-iirds-container#12",),
        fix="Remove the repeated entry. The same path appears more than once in the archive, so which of them a consumer gets depends on which its unzip implementation keeps.")
 def c15_unique_names(ctx):
     for name, n in Counter(ctx.package.names).items():
@@ -242,6 +254,7 @@ def c15_unique_names(ctx):
 
 
 @rule("C16.1",
+       covers=("dfn-iirds-container#3",),
        fix="Fix the XML syntax error reported alongside this, then confirm the file is RDF 1.1 XML rather than some other XML. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
@@ -255,7 +268,8 @@ def c16_1_rdf_parses(ctx):
 # package, and gating the whole rule meant a corrupt metadata.jsonld in an
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
-@rule("C16.2", variants=(),
+@rule("C16.2",
+       covers=("dfn-iirds-container#4",), variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):

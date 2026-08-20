@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate.registry import all_rules  # noqa: E402
+from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE  # noqa: E402
 
 INDEX = ROOT / "docs" / "requirements.json"
 
@@ -53,10 +54,11 @@ def main() -> int:
 
     total = sum(b[1] for b in by_section.values())
     done = sum(b[0] for b in by_section.values())
+    elsewhere = sum(1 for r in requirements if r["id"] in NOT_ABOUT_THE_PACKAGE)
 
     if args.gaps or args.section:
         for requirement in requirements:
-            if requirement["id"] in covered:
+            if requirement["id"] in covered or requirement["id"] in NOT_ABOUT_THE_PACKAGE:
                 continue
             if args.section and requirement["section"] != args.section:
                 continue
@@ -70,6 +72,9 @@ def main() -> int:
 
     print()
     print("  %d of %d absolute obligations are claimed by a rule" % (done, total))
+    if elsewhere:
+        print("  %d more are addressed to consumers rather than to packages, so no "
+              "validator can check them." % elsewhere)
     print("  The rest are not known to be uncovered -- they are known not to be mapped.")
     return 0
 

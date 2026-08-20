@@ -151,7 +151,8 @@ def _has_zip64_record(path) -> bool:
         return False
 
 
-@rule("S7", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+@rule("S7",
+       covers=("dfn-iirds-zip-archive#8",), kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
       title="the iiRDS ZIP archive must not be encrypted",
        fix="Rewrite the archive without encryption. A consumer holding only the package has no key, which is every consumer.")
 def s7_archive_is_not_encrypted(ctx):
@@ -167,7 +168,8 @@ def s7_archive_is_not_encrypted(ctx):
             yield Violation("archive entry is encrypted", subject=info.filename)
 
 
-@rule("S8", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+@rule("S8",
+       covers=("dfn-iirds-zip-archive#7",), kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
       title="large archives must use the ZIP64 extension",
        fix="Rebuild the archive with ZIP64 enabled. Past 65536 entries or 4 GB the ZIP32 offsets wrap and the archive is unreadable beyond the limit, however carefully it was assembled.")
 def s8_zip64_where_required(ctx):

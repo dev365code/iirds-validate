@@ -71,6 +71,36 @@ Each row is a defect that a passing test suite did not notice.
 | **`make check` had a hole** | Created to stop local and CI drifting; within a day two gates existed in it that CI did not run. A gate only in CI is noisy and gets fixed. A gate only in the Makefile means CI is not checking something everybody believes it checks. |
 | **A generated file edited directly** | A regex touched 59 call sites, two of them in a file written by a generator. The output was correct and no longer matched what the generator would produce. |
 
+### Requirements nothing checks
+
+Found by mapping a chapter of the specification against the rules, end to end.
+Chapter 5 has 21 absolute obligations: sixteen have a rule, two are addressed
+to consumers rather than to packages, and three are checkable and unchecked.
+
+| | |
+|---|---|
+| `dfn-iirds-container#1` | "An iiRDS container MUST have a single root directory." |
+| `dfn-iirds-zip-archive#10` | "A nested iiRDS package MUST NOT contain metadata about the outer iiRDS package." |
+| `dfn-iirds-zip-archive#11` | "An iiRDS package that contains a nested iiRDS package MUST NOT contain metadata about the content of the nested iiRDS package." |
+
+Two classes had the same shape earlier: Appendix A states `IRI: REQUIRED` for
+56 of them and 54 had a rule, so `iirds:ClassificationType` and
+`iirdsHov:DocumentCategory` became R1 and R2.
+
+None of these is remarkable on its own. What they have in common is that they
+were invisible while coverage was measured against another tool's catalogue,
+and that each cost one comparison once the standard had been enumerated
+separately.
+
+### A limitation of the index itself
+
+C14 enforces "The length of file names is limited to 255 characters", which is
+a real obligation and carries no RFC 2119 keyword and no cardinality notation.
+It is stated as plain declarative prose, so the extractor does not see it and
+it has no requirement id to cite. How much else is stated that way is not
+known. The denominator is therefore a floor rather than a total, which is the
+right direction for it to be wrong in but is worth saying out loud.
+
 ## What this does not say
 
 Not one of these was found by a user, because there are none yet. The list is

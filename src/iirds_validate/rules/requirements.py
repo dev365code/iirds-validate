@@ -88,7 +88,7 @@ for _id, _cls, _name, _requirement, _versions in NEEDS_AN_IRI:
       title="the container must be at the root of the archive, not inside a folder in it",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#dfn-iirds-container",
-      covers=("dfn-iirds-container#1",),
+      covers=("dfn-iirds-container#1",), diagnosis="cause",
       fix="Rebuild the archive from inside the package directory rather than from its "
           "parent, so that mimetype and META-INF are at the top level of the ZIP. With "
           "the zip command that is `cd mypackage && zip -X0 ../out.iirds mimetype && "

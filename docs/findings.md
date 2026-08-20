@@ -71,6 +71,16 @@ Each row is a defect that a passing test suite did not notice.
 | **`make check` had a hole** | Created to stop local and CI drifting; within a day two gates existed in it that CI did not run. A gate only in CI is noisy and gets fixed. A gate only in the Makefile means CI is not checking something everybody believes it checks. |
 | **A generated file edited directly** | A regex touched 59 call sites, two of them in a file written by a generator. The output was correct and no longer matched what the generator would produce. |
 
+### Answers that were true and useless
+
+Not defects in what the tool detects — defects in what it says about it.
+
+| | |
+|---|---|
+| **A package zipped one directory too high** | Four errors: add a mimetype, create a META-INF, add a metadata.rdf. The author had all three, one level down. Nothing said what had happened. Now **R3**. |
+| **Report order** | Registry order — kind, then rule id — is an order about the code. It put R3 fourth of six, so the reader met three misleading findings before the true one. Causes now come first and consequences last. |
+| **Findings with no remedy** | Every rule named a defect and stopped there, which is fine for somebody who already knows iiRDS and useless for everybody else. All 185 now say what to change. |
+
 ### Requirements nothing checks
 
 Found by mapping a chapter of the specification against the rules, end to end.

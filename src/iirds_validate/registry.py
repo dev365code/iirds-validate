@@ -17,12 +17,20 @@ from .model import Rule
 _registry: Dict[str, Rule] = {}
 
 
-def _load_catalog() -> Dict[str, dict]:
+def _load_catalog():
+    """The rules, and where they came from.
+
+    The provenance keys were being parsed and thrown away, which is how
+    `crossvalidate.py` came to fetch the fixture corpus from `master` while the
+    rules it validates were pinned to a commit. Whoever needs the rules
+    generally needs to know which revision produced them.
+    """
     raw = json.loads(resources.read_text("rule-catalog.json"))
-    return {r["id"]: r for r in raw["rules"]}
+    return ({r["id"]: r for r in raw["rules"]},
+            {k: v for k, v in raw.items() if k.startswith("_")})
 
 
-CATALOG = _load_catalog()
+CATALOG, PROVENANCE = _load_catalog()
 
 
 def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,

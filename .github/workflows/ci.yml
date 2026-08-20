@@ -92,7 +92,18 @@ jobs:
           missing = [n for n in required if n not in names]
           if missing:
               sys.exit("missing from the wheel: %s" % missing)
-          print("all %d required data files present" % len(required))
+
+          # And the reference corpus must NOT be here. It is 4 MB of test
+          # material that no user needs, and the whole argument for the .pyz is
+          # that what you carry across an air gap is the smallest thing that
+          # does the job.
+          strays = sorted(n for n in names
+                          if "corpus" in n
+                          or (n.endswith(".rdf")
+                              and not n.startswith("iirds_validate/data/ontologies/")))
+          if strays:
+              sys.exit("the wheel carries material it should not: %s" % strays[:5])
+          print("all %d required data files present, and no test corpus" % len(required))
           PY
 
       - name: install into a clean environment

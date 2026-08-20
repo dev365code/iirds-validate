@@ -10,6 +10,23 @@ some people who will want to use it. Here is the whole position.
 | Source code, tests, tools, docs | Apache-2.0 | yes |
 | Rule catalogue (`data/rule-catalog.json`) | MIT, © plusmeta GmbH | yes |
 | iiRDS ontologies (`data/ontologies/`) | **CC BY-ND 4.0**, © tekom Deutschland e.V. | **no** |
+| Reference corpus (`tests/corpus/plusmeta/`) | MIT, © plusmeta GmbH | yes |
+| The iiRDS specification itself (quoted, not bundled) | **CC BY 4.0**, © the document editors | yes |
+
+The last two rows are the ones people get wrong, this project included. iiRDS
+is licensed at two tiers: the **specification text is CC BY 4.0** — attribution
+only, derivatives and commercial use both permitted — while the **ontology
+files are CC BY-ND 4.0**, which forbids sharing an adapted version. So quoting
+a requirement sentence is free, and converting `iirds-core.rdf` to Turtle and
+publishing it is not.
+
+Two consequences worth stating, because both were assumed the other way here
+before anyone checked. Mapping the specification's requirements sentence by
+sentence may quote those sentences in full, with attribution; it does not need
+hashes and 60-character excerpts to stay lawful. And a secondary claim that
+iiRDS is CC BY-**NC**-ND — which appears in plusmeta's 2020 licence file —
+matches neither current source, so nothing here treats iiRDS as
+non-commercial.
 
 ## Bundling the ontologies is permitted
 

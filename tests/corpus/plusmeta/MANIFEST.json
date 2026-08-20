@@ -1,0 +1,698 @@
+{
+  "_source": "https://github.com/plusmeta/iirds-validation-tool",
+  "_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
+  "_path": "tests/files/util/iirds-validation",
+  "_retrieved": "2026-08-20",
+  "_licence": "MIT, Copyright 2020 plusmeta GmbH — see LICENSE beside this file",
+  "_generated_by": "tools/vendor_corpus.py",
+  "_note": "Verbatim. The defective fixtures below are upstream's and are recorded rather than repaired: a repaired fixture would be our reading of what they meant, and would contaminate the only external oracle this project has.",
+  "_namespace_wrapper": "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\" xmlns:iirds=\"http://iirds.tekom.de/iirds#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:skos=\"http://www.w3.org/2004/02/skos/core#\" xmlns:owl=\"http://www.w3.org/2002/07/owl#\" xmlns:vcard=\"http://www.w3.org/2006/vcard/ns#\">%s</rdf:RDF>",
+  "zero_byte": [
+    "metadata_iirds-H_M15.7c_false.rdf",
+    "metadata_iirds-H_M15.7d_false.rdf"
+  ],
+  "needs_namespace_wrapper": [
+    "Example 10 - A topic with a reference to a part of an audio file.rdf",
+    "Example 11 - A topic with a reference to a page range of a file.rdf",
+    "Example 12 - Topic that is stored as an MPEG file.rdf",
+    "Example 13 - Fragment rendered as an image in an HTML page.rdf",
+    "Example 14 - Nesting an iiRDS package.rdf",
+    "Example 18 - Topic types.rdf",
+    "Example 22 - Component tree of an espresso machine.rdf",
+    "Example 23 - External product ontology.rdf",
+    "Example 24 - Mapping ontology combining metadata labels in the package with an external ontology.rdf",
+    "Example 25 - Definition of a proprietary product variant.rdf",
+    "Example 30 - Product with an identity used for an item number.rdf",
+    "Example 43 - Adding a proprietary class as an equivalent class.rdf",
+    "Example 45 - Usage of the formatRestriction property.rdf",
+    "Example 7 - A topic with a reference to a file.rdf",
+    "Example 8 - A topic with references to two files.rdf",
+    "Example 9 - A topic with reference to a fragment of a file.rdf",
+    "example 5 - Topic and fragment with a globally unique identifier.rdf"
+  ],
+  "malformed_xml": [
+    "Example 26 - Identity type of product variant-M46_false.rdf",
+    "Example 26 - Identity type of product variant-M47_false.rdf",
+    "Example 26 - Identity type of product variant.rdf",
+    "Example 38 - Table of contents-M35.2_false.rdf",
+    "Example 38 - Table of contents-M35.3_false.rdf",
+    "Example 38 - Table of contents-M35.4_false.rdf",
+    "Example 38 - Table of contents-M37_false.rdf",
+    "Example 38 - Table of contents-M41_false.rdf",
+    "Example 38 - Table of contents.rdf",
+    "Example 42 - Adding a proprietary subclass to an iiRDS class.rdf",
+    "Example 44 - Adding a proprietary property as a subproperty of an iiRDS property.rdf"
+  ],
+  "files": {
+    "Example 10 - A topic with a reference to a part of an audio file.rdf": {
+      "sha256": "f4c780b073c81c451cca128ea74e7aeab04736d1dd2a989a18348c81a5866382",
+      "bytes": 834,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 11 - A topic with a reference to a page range of a file.rdf": {
+      "sha256": "bb46d270c0d96ab3c8303f1c49a2c84d294e15c9f11a449fddea874983089946",
+      "bytes": 1396,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 12 - Topic that is stored as an MPEG file.rdf": {
+      "sha256": "d27edf464ef556dd2b4ea243b14003390dc6f8114e01efccaaf8fc7db9dbfd4e",
+      "bytes": 532,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 13 - Fragment rendered as an image in an HTML page.rdf": {
+      "sha256": "6dbcd8e470d96dbee62fa04306dd069c7b4832bfd25b108492c1116944f94f6c",
+      "bytes": 587,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 14 - Nesting an iiRDS package.rdf": {
+      "sha256": "735782ccb3ff4927ec1ee2bb839c0e30d212d6280efc2f4687b39ce6b07bb767",
+      "bytes": 696,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 18 - Topic types.rdf": {
+      "sha256": "8c075de6dd5ec283f582602fb6d27550018b6516476d711fe80869068302ba95",
+      "bytes": 253,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 22 - Component tree of an espresso machine.rdf": {
+      "sha256": "85f4b080f38422cd0d4fdb3982d9bd4cab77af35e2657f150151fb26e9e55972",
+      "bytes": 1424,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 23 - External product ontology.rdf": {
+      "sha256": "53162540d1b69350aba53973588249dd8f61f876171f9726d746c90d0b3cb68a",
+      "bytes": 2294,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 24 - Mapping ontology combining metadata labels in the package with an external ontology.rdf": {
+      "sha256": "cc0d66eca38a6238e27a7493b89d89e46634fa13c4e1d446333df83d61dd0fc1",
+      "bytes": 1270,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 25 - Definition of a proprietary product variant.rdf": {
+      "sha256": "7db44e2f9e67f59b80847a92d46322a8e552562fd3e39ba5d6a4ec43156c26e9",
+      "bytes": 245,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 26 - Identity type of product variant-M46_false.rdf": {
+      "sha256": "b28ad6302605cecaea8b93235f5e7d59f3a7cf350362e0582c32f45b2e0321dd",
+      "bytes": 2310,
+      "parses": "malformed_xml"
+    },
+    "Example 26 - Identity type of product variant-M47_false.rdf": {
+      "sha256": "e4177ea9e74b422fb6631cc33788a45212b1e5ef67a8be9a5aaa1f15fd94d4b3",
+      "bytes": 2276,
+      "parses": "malformed_xml"
+    },
+    "Example 26 - Identity type of product variant.rdf": {
+      "sha256": "cb7a7e1c4634103297208c24b2f9de04a232628f5b3ddc9b56da2b523b1ab346",
+      "bytes": 2361,
+      "parses": "malformed_xml"
+    },
+    "Example 29 - Identities of an information object and a topic-M30.1_false.rdf": {
+      "sha256": "3b0246f50c6498c9997bcf31c099fa1671c8e9ea76add10eca631a926528d008",
+      "bytes": 1450,
+      "parses": "ok"
+    },
+    "Example 29 - Identities of an information object and a topic-M30.2_false.rdf": {
+      "sha256": "3c16495b6949ea787ec5f111eeb255fb75aa08ff61061178519db80bc0176bfc",
+      "bytes": 1604,
+      "parses": "ok"
+    },
+    "Example 29 - Identities of an information object and a topic-M31.1_false.rdf": {
+      "sha256": "ef06161130492c2641404a39cac519572085cff60f65db1c018760fbcf6109c5",
+      "bytes": 1501,
+      "parses": "ok"
+    },
+    "Example 29 - Identities of an information object and a topic.rdf": {
+      "sha256": "8eefcc5885cb6e113268f7172a111319021621d3cb7a407b051be98b3e823129",
+      "bytes": 1521,
+      "parses": "ok"
+    },
+    "Example 30 - Product with an identity used for an item number.rdf": {
+      "sha256": "64346f5e689f7582f258a73afaa1146b902e28d266f3d6e0c8f451ad9bca4782",
+      "bytes": 418,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 31 - Identity domain with party information-M66_false.rdf": {
+      "sha256": "c1c35893ae22661e906f46d4b7709a05203fe1cccadfd31159fb52c4405b20a9",
+      "bytes": 882,
+      "parses": "ok"
+    },
+    "Example 31 - Identity domain with party information.rdf": {
+      "sha256": "920edcb20614cdf2c056bfc18fd4fe5bf1e6ce679fbacd35aff140dfffb0b0e1",
+      "bytes": 846,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.1_false.rdf": {
+      "sha256": "11c6f6489d67af68ae3eb47389d591be1eb307a6461306d21b60f80b8d98a1c4",
+      "bytes": 1016,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.2_false.rdf": {
+      "sha256": "6636f4db5372350fd8e9b1e4ef98f3c8f2a523732ddc8334c50771838134d0d1",
+      "bytes": 1258,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.2_true.rdf": {
+      "sha256": "12ac716b4dfe442edebd57058e80d6b10d5927cd3bd61344b99beebab200996a",
+      "bytes": 1187,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.3_false.rdf": {
+      "sha256": "619aed3af1700f2b2fa037e2e1bae39e20c71e190187a03b185d9275dae34431",
+      "bytes": 1258,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.3_true.rdf": {
+      "sha256": "23c6047f90849ef43c0b56dbb9ecaf9f3a3dc1a57721d1d77559fd077e734a2f",
+      "bytes": 1187,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.4_false.rdf": {
+      "sha256": "41c7458850b1557fe6efc7303c3b4bcfee110fb22e2861c6da3aaeba64b2f9fa",
+      "bytes": 1187,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.5_false.rdf": {
+      "sha256": "8e96353e6ce81e5e6e760b79752998263633a51642ba634442a71ba035acc5f1",
+      "bytes": 1204,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.5_true.rdf": {
+      "sha256": "af5d15609bc8be9c17d1fbeec4022947166e7987801b88e85fa73dae41013bcb",
+      "bytes": 1159,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.6_false.rdf": {
+      "sha256": "9d9da3752372ea65b3b0c6688080643373e1327348a9d89859b4a5ab0409ac82",
+      "bytes": 1236,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata-M32.6_true.rdf": {
+      "sha256": "abc526c9ec3b0715c0d0d3c2aa3e246363dc35f866de400398bad3c715a09973",
+      "bytes": 1176,
+      "parses": "ok"
+    },
+    "Example 32 - Topic with content lifecycle metadata.rdf": {
+      "sha256": "3a111bcf59ebe6a3d37c287b32c43df1e262515fa809e4ec7d4d202e98d1e88b",
+      "bytes": 1116,
+      "parses": "ok"
+    },
+    "Example 33 - Content lifecylce status with party information.rdf": {
+      "sha256": "c2d0e627a3a12e5acee04eacc23206f3a0f3e8bd38612ce6dcf0c2c8772812b6",
+      "bytes": 1414,
+      "parses": "ok"
+    },
+    "Example 34 - Component with manufacturer-M33_false.rdf": {
+      "sha256": "c8532c358fc6f32914bbe2fe7e215c68ebb1564ed7c7f2a6bf3ca0bc22488b04",
+      "bytes": 733,
+      "parses": "ok"
+    },
+    "Example 34 - Component with manufacturer-M67_false.rdf": {
+      "sha256": "f6be424e87d58d2b009a84567c2016c1dd07fb88e14f4699ab67418631fdc472",
+      "bytes": 1211,
+      "parses": "ok"
+    },
+    "Example 34 - Component with manufacturer.rdf": {
+      "sha256": "d9ca1609635e417eb689470e4c2a70f464537e15c1617791d0ce195a6354850d",
+      "bytes": 1156,
+      "parses": "ok"
+    },
+    "Example 38 - Table of contents-M35.1_false.rdf": {
+      "sha256": "a14911b137b0390ec57ea93b61d806ff3863c99963952fb01772596604c06118",
+      "bytes": 3152,
+      "parses": "ok"
+    },
+    "Example 38 - Table of contents-M35.2_false.rdf": {
+      "sha256": "9977de248921b6063c30648f6334f96e56fa1f7b4c87ac87bb909834943d0ebc",
+      "bytes": 2804,
+      "parses": "malformed_xml"
+    },
+    "Example 38 - Table of contents-M35.3_false.rdf": {
+      "sha256": "a5b068025924bb1db6020ad5139a4b7539be4e106451d8c558ed5becfda51a3b",
+      "bytes": 3358,
+      "parses": "malformed_xml"
+    },
+    "Example 38 - Table of contents-M35.4_false.rdf": {
+      "sha256": "c948c7d6a1eb8a0e77c27d2383e3ca9cfed96941b6fa133cf08081f2534a5144",
+      "bytes": 3472,
+      "parses": "malformed_xml"
+    },
+    "Example 38 - Table of contents-M36_false.rdf": {
+      "sha256": "9d46d105b81a049f17c4c493feb305387b0b5dc27f3c76175c42579129f8e192",
+      "bytes": 2730,
+      "parses": "ok"
+    },
+    "Example 38 - Table of contents-M37_false.rdf": {
+      "sha256": "4ab49102e7018602dbf3ef4a3ad90618bee829fd81b3e371ebafdd5462ea7b60",
+      "bytes": 2632,
+      "parses": "malformed_xml"
+    },
+    "Example 38 - Table of contents-M41_false.rdf": {
+      "sha256": "962783360e9913183ee92d9dbe93a7322942acabecd5c1493ec98d61e767c06c",
+      "bytes": 2646,
+      "parses": "malformed_xml"
+    },
+    "Example 38 - Table of contents.rdf": {
+      "sha256": "c977026c92e803f3636a571cfcd614b034ccfb99ffcb62635cc013bc517eba87",
+      "bytes": 2689,
+      "parses": "malformed_xml"
+    },
+    "Example 41 - Adding a proprietary instance to iiRDS class.rdf": {
+      "sha256": "78eea2c64b4e624f8a3b7c0257c4a5580993e8d8a154fd5056490d5803c47b0c",
+      "bytes": 459,
+      "parses": "ok"
+    },
+    "Example 42 - Adding a proprietary subclass to an iiRDS class.rdf": {
+      "sha256": "3e5c5d4742032e8df0c6e3f1d05537fbc3da4c1375a27bbc67456f1c22eb578e",
+      "bytes": 777,
+      "parses": "malformed_xml"
+    },
+    "Example 43 - Adding a proprietary class as an equivalent class.rdf": {
+      "sha256": "c9691dc739198f3f26387ae0b4103347c060e578d2e447a84fb53cac16ba6363",
+      "bytes": 391,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 44 - Adding a proprietary property as a subproperty of an iiRDS property.rdf": {
+      "sha256": "2daaf0e276e818277a518c2093899272efb0a1141ddead89d4401dde5ad549f5",
+      "bytes": 589,
+      "parses": "malformed_xml"
+    },
+    "Example 45 - Usage of the formatRestriction property.rdf": {
+      "sha256": "eee1381b157e0d264d9123884fc655bb18b531f829ba5fe0fa155f735b280475",
+      "bytes": 252,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 46 - Tagging.rdf": {
+      "sha256": "0c01a5eea68a76cc958b527366ab304233d4273cff0b21247c453bfc0f025532",
+      "bytes": 360,
+      "parses": "ok"
+    },
+    "Example 6 - An Information object with two language variants-M50_false.rdf": {
+      "sha256": "57855c053616ae91360a9988774635e18f375bcd2af192478c8b312ebdb1428d",
+      "bytes": 1987,
+      "parses": "ok"
+    },
+    "Example 6 - An Information object with two language variants-M7_false.rdf": {
+      "sha256": "de5477e387cc228ea055b847dc224e5e2bc703c0645dfa8d967e50714da8c1e6",
+      "bytes": 2031,
+      "parses": "ok"
+    },
+    "Example 6 - An Information object with two language variants-M8.1_false.rdf": {
+      "sha256": "61c0dde80c1207e5e4acc7774bbb3d8b57b1ae39c5e92b2e2bcdacb5a17a7365",
+      "bytes": 2011,
+      "parses": "ok"
+    },
+    "Example 6 - An Information object with two language variants.rdf": {
+      "sha256": "22cce7cd8363ed01d39ea0865ba9e408373a540143009511c01450dfa8869ce9",
+      "bytes": 2031,
+      "parses": "ok"
+    },
+    "Example 7 - A topic with a reference to a file.rdf": {
+      "sha256": "1e3116ab0320034269fc6ac9f5a39fc49cb1903f54206c6d585ce3cf0f3c85f4",
+      "bytes": 348,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 8 - A topic with references to two files.rdf": {
+      "sha256": "19c2a4eca28c8372f0138c000639be7b714b8f3f8e3a3c51bf0260546f4cf62b",
+      "bytes": 749,
+      "parses": "needs_namespace_wrapper"
+    },
+    "Example 9 - A topic with reference to a fragment of a file.rdf": {
+      "sha256": "0a18362397b23f6b4c48f4ccdf6006c4750d7051a9634979e876a1818edd8fd4",
+      "bytes": 923,
+      "parses": "needs_namespace_wrapper"
+    },
+    "M24-6-1_false.rdf": {
+      "sha256": "72c516a996a6fcc4b90f33d43eb2fa76b5917634a42e8995f0c4e491ae595e58",
+      "bytes": 3023,
+      "parses": "ok"
+    },
+    "M24-6-2_false.rdf": {
+      "sha256": "81b2617e761653a633a0c04916af5c86fa57d52ecc3e2b880744ac63c400b008",
+      "bytes": 3031,
+      "parses": "ok"
+    },
+    "M24-6-2_true.rdf": {
+      "sha256": "77d6591ab408832ceef69ae16901265090e7ee00c0f4e5e70dcb4a9cd53ab964",
+      "bytes": 20011,
+      "parses": "ok"
+    },
+    "M96-1_false.rdf": {
+      "sha256": "3be6540d08fa63befa590ee889cc14799a8226c15b1870377291a24ea0e5cec0",
+      "bytes": 2549,
+      "parses": "ok"
+    },
+    "M96-2_false.rdf": {
+      "sha256": "79cae007cb91b28bdc98c603cdcf7de712d487356b9bed68f9ac193823e51f71",
+      "bytes": 3011,
+      "parses": "ok"
+    },
+    "M96-3_false.rdf": {
+      "sha256": "ad52cb975c09940f85493813104e8ef50165f14147376bc21bf15b290d6021c6",
+      "bytes": 2899,
+      "parses": "ok"
+    },
+    "M96-4_false.rdf": {
+      "sha256": "3099d1017cd6a4744316bd2c94842bdaf6c5ff684190934d6a140603f1cbae1c",
+      "bytes": 2889,
+      "parses": "ok"
+    },
+    "M96_true.rdf": {
+      "sha256": "ca60969f003c6861bbb21850abf4e8438d36f68a80cdffe7f6bbc989aa27bdc6",
+      "bytes": 2919,
+      "parses": "ok"
+    },
+    "M97-1_false.rdf": {
+      "sha256": "88a94f80d2069fb87b00cd23e34a4a2f6ebb5bb38c136cecf289b76fbf953b46",
+      "bytes": 2848,
+      "parses": "ok"
+    },
+    "M97-2_false.rdf": {
+      "sha256": "1ed4949632b87c44b72c32593b6153657367de71033b9505cb8390e928558d88",
+      "bytes": 2876,
+      "parses": "ok"
+    },
+    "M97_true.rdf": {
+      "sha256": "ca60969f003c6861bbb21850abf4e8438d36f68a80cdffe7f6bbc989aa27bdc6",
+      "bytes": 2919,
+      "parses": "ok"
+    },
+    "example 5 - Topic and fragment with a globally unique identifier.rdf": {
+      "sha256": "104a5f7d62ef288c756f697ff2f5199835528269d232b4664e17aad85d344ee6",
+      "bytes": 390,
+      "parses": "needs_namespace_wrapper"
+    },
+    "fail_must use selector subclass.rdf": {
+      "sha256": "94340359bbf0bb2ebcbfc328c08cf5b855304fd1c385c649e89a4eab1406b7a2",
+      "bytes": 1173,
+      "parses": "ok"
+    },
+    "metadata_iirds-H_M15.7_pass.rdf": {
+      "sha256": "2d9f7f948236666a1e4d4bc680762f72bdef8c11a6d5b6939e0f7a71d97279dc",
+      "bytes": 4966,
+      "parses": "ok"
+    },
+    "metadata_iirds-H_M15.7a_false.rdf": {
+      "sha256": "db3d51c78ae683fd1ebf3bf03cf0569c5231f1536fb486417ad0382781583f0e",
+      "bytes": 4449,
+      "parses": "ok"
+    },
+    "metadata_iirds-H_M15.7b_false.rdf": {
+      "sha256": "ca8da47b3c508f977739d3b41effe64da2004562873a239d6c06a6da50f14eb1",
+      "bytes": 5034,
+      "parses": "ok"
+    },
+    "metadata_iirds-H_M15.7c_false.rdf": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "parses": "zero_byte"
+    },
+    "metadata_iirds-H_M15.7d_false.rdf": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "parses": "zero_byte"
+    },
+    "metadata_iirds-H_pass.rdf": {
+      "sha256": "bc485c9642ba2fbb7f9d4dc7a911b6745f93df814613ece91b4ad05539e2d6cf",
+      "bytes": 5173,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M10_false.rdf": {
+      "sha256": "d3b402562d6907fa45768d47be77eb1c037e54d45b9e1953128a2ada0a5c71a5",
+      "bytes": 73324,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M11_false.rdf": {
+      "sha256": "ab1b9622ff4cb516fdf6a0edc3592108522e5b9832e4eb8fea17c64c8747bc41",
+      "bytes": 73213,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M12_false.rdf": {
+      "sha256": "c64e2f0420fb13982d8c697178068c27477e755617241b6e38b8ac5f15ad7f8f",
+      "bytes": 73269,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M15_false.rdf": {
+      "sha256": "0a9f6e4ec1f5a64af7cce209a626d7e0c335b75f6730229341e53b7ca1122ab3",
+      "bytes": 6248,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M19.1_false.rdf": {
+      "sha256": "3980a0ed7d9de2cf9f83feaa26a0b5ce46ef1f8de363be641377fb41151904c1",
+      "bytes": 72939,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M19.2_false.rdf": {
+      "sha256": "b09d4a2a1274b57787fe8e4e23c0c3b9eba1fa9c96eab28303e770b6e1cd33b1",
+      "bytes": 73327,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M1_false.rdf": {
+      "sha256": "e2cd3df087e9fedfb15216abcc21cdce375441d58de6fb27d7e1d3708513d2d4",
+      "bytes": 73317,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.1_false.rdf": {
+      "sha256": "9d9ac2160ffcf036ddf148a9a502bb0245a93029b36315c1ec63bf25e5c6e218",
+      "bytes": 73197,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.2_false.rdf": {
+      "sha256": "4568005487213693e7c9e8b8246c35c94b12750ef88e5959b1a5a2771242ca32",
+      "bytes": 73201,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.3_false.rdf": {
+      "sha256": "ce4955db4ff49ab4e3aecab0dea78e493a22179aaad354b72bb54d5e434cebd8",
+      "bytes": 73438,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.5_false.rdf": {
+      "sha256": "30ab9c4f1efa55581f41bd758365c597d83303c3ab7a0391d3c4850e41c27e80",
+      "bytes": 73377,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.5_true.rdf": {
+      "sha256": "f2193d3598003c97a599351df9d91b38914885176fa472a87458ec25f47244ac",
+      "bytes": 73340,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.6_false.rdf": {
+      "sha256": "c3528e7ff42211fd5c213d2bed7b3de92c2306c7e3bffc670a2146fe107ad8fc",
+      "bytes": 73358,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.7_false.rdf": {
+      "sha256": "ea5d2fc58c74b28c72c82bfff55d05ef6a0f2a30372fd54510f8953f33f06e67",
+      "bytes": 73391,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.7_true.rdf": {
+      "sha256": "3b32970a069cbeccd9b9460bcd212d8addd6c72913ef00e5c2a48afeef514f0e",
+      "bytes": 73347,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.8_false.rdf": {
+      "sha256": "ac0dcfd2c255e45d1b1e5a73f3965452a701fedb7afda134a4c736c9bc526d38",
+      "bytes": 73411,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.8_true.rdf": {
+      "sha256": "5ec2dc476775e293eb7e664ab64a8e353c98a091d6b526d83e04805569f1225c",
+      "bytes": 73357,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.9_false.rdf": {
+      "sha256": "073f2a3b95c55f35da732e29995fd11cc11a3361fb2a2423c70be747dffc9794",
+      "bytes": 73395,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M2.9_true.rdf": {
+      "sha256": "b90f6dd613031a78dc67250d0ad6e39d1473b77068013ba684b6b7e4d2bc5078",
+      "bytes": 73349,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M3.1_false.rdf": {
+      "sha256": "a94c3e8bf9e90221150820644b08c35a18895f1024ab41144e5f9e76a8571e85",
+      "bytes": 73482,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M3.2_false.rdf": {
+      "sha256": "78c08fa8349f6bc17fae6f7dc14458c4396e39ad1f252d509b1318d78dc6763b",
+      "bytes": 73108,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M4_false.rdf": {
+      "sha256": "e3cd66710920e7a2835935310d500bae5d71c0a88e19e97ca37ad1d603108ac4",
+      "bytes": 73256,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M5_false.rdf": {
+      "sha256": "38c82426c04bed1df37404931533972dd2867e700ecc6758bbd3fff450bce919",
+      "bytes": 73394,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M6_false.rdf": {
+      "sha256": "55d9be14d8809fe16e49aade0ffe0f49bc00bfcfd31f091264e481c84bbe05fd",
+      "bytes": 73270,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample-M9_false.rdf": {
+      "sha256": "5756b8b41b48dca93d36f870aad2ba4997edcd71f290da53c3ea03c61e5d4b29",
+      "bytes": 73540,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_M2.4_false.rdf": {
+      "sha256": "fb0dd79a984fb44adcab77b10dec5f3265fda748ba6e0addcccf555c9fbde9fd",
+      "bytes": 73605,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_M2.4_true.rdf": {
+      "sha256": "84b18889b3e88ba37a28c78b9ee66bf618121c6aae5b5f8606f7952502de8330",
+      "bytes": 73454,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_fail_IRI required.rdf": {
+      "sha256": "cc3049723d4f952082e7ebd61c0741329d037336fbd859004299c7f0f329fdb0",
+      "bytes": 73329,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_fail_informationUnit.rdf": {
+      "sha256": "e3ec457af4a2fa2a7b27bad08880641a7c0290441c50030bbb92a7acfc2d28ea",
+      "bytes": 73319,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_fail_multi.rdf": {
+      "sha256": "5b82fb7bc605ab2d92aa9392acd3091815fbe8f3023a5f39cd891d1c5d393232",
+      "bytes": 74005,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_has-selector-M13_false.rdf": {
+      "sha256": "566f9ee0b7d4d039bed7fe3bcdf5d25ea59662421caa49ef203f42b4a08c93dd",
+      "bytes": 74130,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_has-selector-M14.1_false.rdf": {
+      "sha256": "4e555bd2f861badae28fce7e40b599cebe1436afe5214357a68fee82d624c111",
+      "bytes": 74081,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_has-selector-M15.1_false.rdf": {
+      "sha256": "baa652764688deafc75f9d38f22060f2d89d9f7c583e1da15cd79bdb991a8586",
+      "bytes": 73788,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_has-selector-M15.2_false.rdf": {
+      "sha256": "087a2a244d7e07baa501f6a898d900d1fe8f4c35b472f811905104ac1fa470b8",
+      "bytes": 73792,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_has-selector.rdf": {
+      "sha256": "fec189a79fb34dbd5007df090ed25ac7c0c52d2bd1d0c04ad01b87632bb92dc9",
+      "bytes": 74140,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass copy.rdf": {
+      "sha256": "c65c948ac243f81fdc629f3c64bbe69b47741a3634cd42f978c6ae1ee5f445ec",
+      "bytes": 73303,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M37_false.rdf": {
+      "sha256": "529c95be9f03a51e9e527aa6696a2ed23b5967356485e9e45810e5813eabf8b8",
+      "bytes": 73155,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M37_false_no_attribute.rdf": {
+      "sha256": "139a87a7efce626abf96580ba124ecf752e7205d3173379e45dad77cfaf021ac",
+      "bytes": 73142,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M38_false.rdf": {
+      "sha256": "b5ba03682ab345489d9ba692ad596d864dcbba370d5dce020439062c55cfc77e",
+      "bytes": 73164,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M39_false.rdf": {
+      "sha256": "87b77c195c09b7bbaadc53c758e4c7fa4abdc43ff6f870073db5aa3cf554e969",
+      "bytes": 73261,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M40_false.rdf": {
+      "sha256": "f3f22eb34f43953ed3aac2a863244ef425648f0ce6d8437a05fa9650879a5f66",
+      "bytes": 73267,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M42_false.rdf": {
+      "sha256": "99441348d78ef5356ccbf56563dcffdd6ad315461d0937af30577b2dc48b6dbb",
+      "bytes": 73265,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M43_false.rdf": {
+      "sha256": "461f6ae4bdaf9e114d0d9aeb08b3f545b6e7827231e25b42427ef857da16e561",
+      "bytes": 73258,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M46_false.rdf": {
+      "sha256": "1c2ef19b01fac628f17024feede3ef711bdb86244f4c1c7f63eb394d2de683e8",
+      "bytes": 73400,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M46_true.rdf": {
+      "sha256": "f73e67a67c412639aa5f7110b90a459cd8239fc70a420f076a635d3f2f2d28f4",
+      "bytes": 73445,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M49_false.rdf": {
+      "sha256": "1ad830ae91cd0c145efbf8e9b7640e4a9eaedfd068e4f7ee08e4ce1077f08032",
+      "bytes": 73200,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M49_false_no_attribute.rdf": {
+      "sha256": "56b9f613fc156b413c62e7a3ea303273594496a7127dc39f361a011f23074547",
+      "bytes": 73142,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M52_false.rdf": {
+      "sha256": "ffb506e0d7e3ce27834ecf59bd6cf9bac8260306806364f0a4e8cdde6eb6142e",
+      "bytes": 73258,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M53_false.rdf": {
+      "sha256": "258b93e1048f117acf4730e5242b4cdfa878ce1620735e5da246db9b67ee6fd2",
+      "bytes": 73258,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M54_false.rdf": {
+      "sha256": "a46b67816943fc9d9539036fd2e4decff472a6516aff3029544331f540f033de",
+      "bytes": 73264,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M60_false.rdf": {
+      "sha256": "102755852d16f18196e7180859caea68d4b8870dc91ab1206179be373c7830b5",
+      "bytes": 73268,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M77_false.rdf": {
+      "sha256": "a5619ed4291a631727db35fd8d0f683ca8929a92b646a6e408986cb865873437",
+      "bytes": 73233,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass-M77_true.rdf": {
+      "sha256": "50af810818dd74b8888357b28149b02445d91e8f886806df439291408fcebcb8",
+      "bytes": 73278,
+      "parses": "ok"
+    },
+    "metadata_iirds_sample_pass.rdf": {
+      "sha256": "c65c948ac243f81fdc629f3c64bbe69b47741a3634cd42f978c6ae1ee5f445ec",
+      "bytes": 73303,
+      "parses": "ok"
+    },
+    "min_requirements.rdf": {
+      "sha256": "97311a5091f8154cde460400f316bf40633469b7d04ca8a9bcd7e74d83208d73",
+      "bytes": 521,
+      "parses": "ok"
+    }
+  }
+}

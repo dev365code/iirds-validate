@@ -7,7 +7,15 @@ Everything bundled here, where it came from, and what you may do with it.
 | Rule ids, priorities, spec links, rule wording | [plusmeta/iirds-validation-tool](https://github.com/plusmeta/iirds-validation-tool) | MIT | Reformatted to JSON; wording unchanged |
 | Rule implementations | this project | Apache-2.0 | n/a — written from scratch |
 | `iirds-core.rdf`, `iirds-machinery.rdf`, `iirds-software.rdf`, `iirds-handover.rdf`, `iirds-skos.rdf` | [iiRDS 1.3 release](https://www.iirds.org/materials/version-13) | CC BY-ND 4.0, © tekom Deutschland e.V. | **No — byte-for-byte verbatim** |
+| Reference fixture corpus (`tests/corpus/plusmeta/`) | [plusmeta/iirds-validation-tool](https://github.com/plusmeta/iirds-validation-tool) @ `0bcf19dd` | MIT | **No — byte-for-byte verbatim, SHA-256 per file** |
 | `rdflib` | [RDFLib](https://github.com/RDFLib/rdflib) | BSD-3-Clause | No (runtime dependency) |
+
+The corpus is test material. It is not in the wheel and not in the `.pyz`, so
+nothing a user installs or carries across an air gap contains it; CI asserts
+that. The specification those fixtures illustrate is published under **CC BY
+4.0** — attribution only, no non-commercial or no-derivatives condition — which
+is a more permissive licence than the ontology files carry, and the reason
+redistributing them here needs nothing beyond the notice above.
 
 ## Why the ontologies are not converted
 
@@ -24,6 +32,28 @@ published it under MIT. Reusing it — with attribution — is the licence worki
 as intended. Keeping the identifiers also means a package can be run through
 both tools and the results diffed rule by rule, which is how this project
 verifies itself.
+
+## What happens if plusmeta renumbers
+
+Worth writing down while it is hypothetical, because the coupling is real and
+currently unbounded: rule identifiers, priorities, applicable versions and
+variants, the `path` field and 151 spec links all come from their file.
+
+If upstream renumbers or re-scopes a rule, the policy is: **the pin does not
+move on its own.** `tools/extract_catalog.py` fetches a fixed commit, the
+weekly CI job reports drift without acting on it, and a rule that changes
+meaning gets a row in `docs/divergences.md` before the pin advances — because a
+stored report naming M22.2 must keep meaning what it meant when it was written.
+The `source` field on every finding says whether a rule is catalogued or this
+project's own, which distinguishes collision from redefinition but does not
+resolve it.
+
+The longer-term answer is not to manage this coupling better but to stop
+needing it: a mapping from the specification's own requirement sentences to
+rules, with plusmeta's identifiers kept as aliases for comparison rather than
+as the source of truth. Until that exists, the headline "157 of 157" measures
+coverage of *their catalogue*, not of the standard, and this file is where that
+is admitted.
 
 ## What is *not* reused
 

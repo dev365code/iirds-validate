@@ -148,3 +148,23 @@ def test_the_readme_does_not_claim_endorsement():
     assert "Not affiliated with" in readme
     for forbidden in (r"\bofficial iiRDS validator\b", r"\bcertified\b(?! by)"):
         assert not re.search(forbidden, readme, re.I), forbidden
+
+
+def test_strategy_paths_can_never_be_tracked():
+    """Planning notes and post drafts live outside the repository entirely;
+    these two directory names are the belt over that braces, and this test
+    is the alarm on the belt. If either name ever shows up tracked, someone
+    has published strategy by accident — red is the correct colour."""
+    import subprocess
+
+    ignore = (ROOT / ".gitignore").read_text("utf-8")
+    for line in ("docs/consortium/", "docs/private/"):
+        assert line in ignore, line
+
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "docs/consortium", "docs/private"],
+        capture_output=True, text=True)
+    if result.returncode != 0:
+        import pytest
+        pytest.skip("not a git checkout")
+    assert result.stdout.strip() == "", result.stdout

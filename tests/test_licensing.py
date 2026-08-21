@@ -67,10 +67,80 @@ def test_each_ontology_keeps_its_own_copyright_header():
 
 def test_no_converted_copy_of_an_ontology_is_committed():
     """CC BY-ND permits producing Adapted Material but not Sharing it. A
-    checked-in Turtle or JSON-LD rendering of the ontology would be Sharing."""
+    checked-in Turtle or JSON-LD rendering of the ontology would be Sharing.
+
+    shapes/ is exempt from the filename screen — those are this project's own
+    SHACL artefacts, which reference iiRDS term IRIs but must copy no ontology
+    content — and the exemption is not taken on trust: the test below reads
+    every shape file and rejects the two ways ontology content could leak.
+    """
     strays = [path for pattern in ("iirds-*.ttl", "iirds-*.jsonld", "iirds-*.nt")
-              for path in ROOT.rglob(pattern)]
+              for path in ROOT.rglob(pattern)
+              if "shapes" not in path.parts]
     assert not strays, [str(p.relative_to(ROOT)) for p in strays]
+
+
+def test_the_shapes_copy_no_ontology_content():
+    """The exemption above, earned rather than assumed.
+
+    Two leak vectors. Structural: ontology axioms (subClassOf/domain/range
+    about iiRDS-namespace subjects) reproduced as triples — the generator
+    bakes closures into target *lists*, never re-states the hierarchy.
+    Textual: the ontology's own label/description prose copied into shape
+    metadata — every human-readable string in the shapes is this project's
+    (titles, remedies), so tekom's sentences must not appear.
+    """
+    from rdflib import RDFS, Graph, URIRef
+
+    shape_dir = ROOT / "shapes" / "iirds-1.3"
+    assert shape_dir.exists(), (
+        "shapes/ is part of the tree now; a silent pass here would let the "
+        "boundary rot unwatched")
+    graph = Graph()
+    ttl_text = ""
+    for path in sorted(shape_dir.glob("*.ttl")):
+        graph.parse(path, format="turtle")
+        ttl_text += path.read_text("utf-8")
+
+    iirds = "http://iirds.tekom.de/"
+    for predicate in (RDFS.subClassOf, RDFS.domain, RDFS.range, RDFS.subPropertyOf):
+        offenders = [s for s, o in graph.subject_objects(predicate)
+                     if str(s).startswith(iirds) or str(o).startswith(iirds)]
+        assert offenders == [], (predicate, offenders[:3])
+
+    described = {str(s) for s in graph.subjects(URIRef(iirds + "iirds#description"), None)}
+    assert described == set(), "ontology prose predicate found in shapes"
+
+    # The textual vector, actually implemented. The round-2 adversarial pass
+    # found 35 occurrences of the ontology's description prose riding in as
+    # sh:message via the catalogue's `en` field -- while this test's own
+    # docstring promised the check. Every description/comment sentence in the
+    # bundled ontologies must be absent from the shipped Turtle, verbatim or
+    # whitespace-collapsed.
+    from urllib.parse import unquote
+
+    from iirds_validate.ontology import Ontology
+
+    # Three readings of the same bytes: raw, percent-decoded, and with
+    # Turtle string escapes undone. Round 3 proved the raw reading alone
+    # certifies a boundary it does not check -- the round-2 prose was still
+    # shipping, percent-encoded inside dcterms:source text fragments.
+    readings = (
+        " ".join(ttl_text.split()),
+        " ".join(unquote(ttl_text).split()),
+        " ".join(ttl_text.replace('\\"', '"').replace("\\n", " ")
+                 .replace("\\\\", "\\").split()),
+    )
+    leaked = []
+    ontology = Ontology("1.3")
+    for _s, pred, value in ontology.graph:
+        text = " ".join(str(value).split())
+        if len(text) < 25:
+            continue          # short labels ("Topic") legitimately recur
+        if (str(pred).endswith("#description") or str(pred).endswith("comment")) \
+                and any(text in reading for reading in readings):
+            leaked.append(text[:60])
+    assert leaked == [], sorted(set(leaked))[:5]
 
 
 def test_the_readme_does_not_claim_endorsement():

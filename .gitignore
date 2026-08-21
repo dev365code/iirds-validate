@@ -13,3 +13,5 @@ fixtures/
 .crossvalidate-cache/
 .rule-coverage.json
 .spec-cache/
+docs/consortium/
+docs/private/

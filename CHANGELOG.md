@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-08-21
 
 - **SHACL shapes** (`shapes/`): 133 shapes for iiRDS 1.3 — the
   language-neutral encoding of the rules, generated from the same sources,

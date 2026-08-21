@@ -576,6 +576,7 @@ def m30_no_schema_in_metadata(ctx):
 
 
 @rule("M94",
+      title="iirds:relates-to-administrative-metadata must not be used directly",
        fix="Use one of the subclasses of the administrative metadata relation instead. The general form says only that some administrative relation exists, which a consumer cannot act on.")
 def m94_administrative_metadata_relation_not_direct(ctx):
     """The generic relation is a grouping, like the classes M78 to M93 cover."""
@@ -616,10 +617,8 @@ def m22_2_role_is_a_party_role(ctx):
     """M22.1 asks whether the party has a role; this asks whether the thing it
     points at is one. They were the same function here, which double-reported
     one defect and left the actual check missing."""
-    standard = ctx.ontology.subclasses_of(T.PartyRole)
     for party, role in ctx.graph.subject_objects(T.has_party_role):
-        types = set(ctx.values(role, T.RDF_TYPE))
-        if types & standard or role in ctx.ontology.defined_terms():
+        if ctx.is_instance(role, T.PartyRole) or role in ctx.ontology.defined_terms():
             continue
         if (role, None, None) not in ctx.graph:
             continue          # undescribed reference: L1's business

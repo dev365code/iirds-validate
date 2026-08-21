@@ -216,3 +216,39 @@ def test_l8_is_advisory_and_l1_is_not(make_package):
     assert runner.lint(external).ok, "an external reference must not fail a run"
     report = runner.lint(dangling)
     assert "L1" in ids(report)
+
+
+def test_section_7_a_proprietary_subclass_is_its_iirds_parent(make_package):
+    """iiRDS section 7: proprietary classes MUST subclass iiRDS classes, and a
+    consumer processes them as the parent. So an instance typed only with the
+    package's own subclass of iirds:Topic *is* an information unit here, and
+    an untitled one earns L7 exactly as a plain Topic would. (SHACL agrees for
+    free: sh:targetClass follows rdfs:subClassOf in the data graph. This was
+    found as a SHACL-only firing by the differential gate.)"""
+    assert "L7" in lint(make_package, """
+  <rdf:Description rdf:about="urn:acme:SpecialTopic">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:special1">
+    <rdf:type rdf:resource="urn:acme:SpecialTopic"/>
+  </rdf:Description>
+""")
+
+
+def test_m22_2_accepts_a_proprietary_subclass_of_party_role(make_package):
+    """A role typed with a package-declared subclass of iirds:PartyRole is a
+    PartyRole (section 7). Bundled-only closure fired here; the shapes'
+    sh:class semantics did not — round-2 adversarial pass."""
+    report = runner.check(pkg(make_package, """
+  <rdf:Description rdf:about="urn:acme:ChiefRole">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#PartyRole"/>
+  </rdf:Description>
+  <iirds:Party rdf:about="urn:test:party1">
+    <iirds:has-party-role rdf:resource="urn:test:role1"/>
+    <iirds:relates-to-vcard rdf:resource="urn:test:vc1"/>
+  </iirds:Party>
+  <rdf:Description rdf:about="urn:test:role1">
+    <rdf:type rdf:resource="urn:acme:ChiefRole"/>
+  </rdf:Description>
+"""))
+    assert "M22.2" not in ids(report)

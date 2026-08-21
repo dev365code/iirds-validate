@@ -102,7 +102,7 @@ def m15_5_information_object(ctx):
     objects = None
     for doc in ctx.instances_of(T.Document):
         objects = [o for o in ctx.values(doc, T.is_version_of)
-                   if T.InformationObject in ctx.values(o, T.RDF_TYPE)]
+                   if ctx.is_instance(o, T.InformationObject)]
         if len(objects) != 1:
             yield Violation("iiRDS/H: iirds:Document must have exactly one iirds:is-version-of "
                             "relating to an iirds:InformationObject",

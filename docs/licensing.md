@@ -90,8 +90,10 @@ RDF files, currently carries **no licence file at all** — so the same bytes ar
 CC BY-ND from iirds.org and unlicensed from GitHub. That inconsistency is worth
 resolving in either direction.
 
-[`licence-request.md`](licence-request.md) is a draft of that request. It has
-not been sent.
+That request went to the Consortium's public comment address on 2026-08-20,
+alongside the Appendix B interpretation questions this project's rules hang
+on. Replies, when they arrive, land in
+[divergences.md](divergences.md) next to the readings they settle.
 
 ## Before you publish a fork
 

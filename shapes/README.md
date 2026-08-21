@@ -195,6 +195,8 @@ carries, and a test enforces that no axiom or description prose leaks in.
 Should the Consortium prefer different terms for an upstream home, the
 author will relicense these files accordingly.
 
-The `ivs:` / `ivm:` namespaces are project-hosted IRIs for now; a w3id
-permalink registration is pending. `MANIFEST.json` carries
-`_shapes_version`, which follows the main project's release tags.
+The `ivs:` / `ivm:` namespaces resolve through w3id.org permalinks
+(registered via [perma-id/w3id.org#6584](https://github.com/perma-id/w3id.org/pull/6584)),
+so the IRIs in these files survive any future change of hosting.
+`MANIFEST.json` carries `_shapes_version`, which follows the main
+project's release tags.

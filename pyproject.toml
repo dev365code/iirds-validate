@@ -36,6 +36,7 @@ Changelog = "https://github.com/dev365code/iirds-validate/blob/main/CHANGELOG.md
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff==0.16.3"]
+shacl = ["pyshacl==0.40.*"]   # differential gate only, pinned to the tested minor; runtime stays rdflib-only
 
 [project.scripts]
 iirds-validate = "iirds_validate.cli:main"

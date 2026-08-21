@@ -1,0 +1,755 @@
+"""The differential gate: SHACL and Python must fire the same rules.
+
+The shapes are a third encoding of one reading (spec → catalogue → Python →
+shapes), and two encodings by one author agreeing proves nothing about the
+reading — but their *disagreement* proves a translation error with certainty.
+That is what this file hunts, on the material the Python rules were already
+proven with: the mutation builders that made every generated rule fire, the
+cardinality pairs, the conformant iiRDS/H package broken one requirement at a
+time, and the calibration anchor.
+
+Comparison is per-(graph, rule) fire-set equality, both sides restricted to
+the shapes the emitter actually emitted — the exclusion list is the emitter's
+own bucket table, never an ad-hoc skip in a test. Measured cost: ~9 ms per
+validation, so the whole gate rides in the ordinary suite.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from rdflib import Graph, Namespace
+
+from conftest import MINIMAL_RDF, build_package
+from iirds_validate import runner
+from iirds_validate.model import PACKAGE_BASE
+
+pyshacl = pytest.importorskip("pyshacl")
+
+ROOT = Path(__file__).resolve().parents[1]
+SHAPE_DIR = ROOT / "shapes" / "iirds-1.3"
+SH = Namespace("http://www.w3.org/ns/shacl#")
+
+MANIFEST = json.loads((ROOT / "shapes" / "MANIFEST.json").read_text("utf-8"))
+EMITTED = set(MANIFEST["core_emitted"]) | set(MANIFEST["sparql_emitted"])
+
+#: Every shape id pySHACL ever reports across this whole file. The red team
+#: neutered seven shapes and the suite stayed green: set-equality per fixture
+#: cannot see a shape that fires nowhere. The final test in this file closes
+#: that hole by demanding the residue EMITTED - fired be empty.
+SH_FIRED_EVER: set = set()
+
+
+def _graph(*names):
+    graph = Graph()
+    for name in names:
+        graph.parse(SHAPE_DIR / name, format="turtle")
+    return graph
+
+
+CORE = _graph("iirds-core.ttl", "iirds-sparql.ttl")
+CORE_H = _graph("iirds-core.ttl", "iirds-sparql.ttl",
+                "iirds-handover-core.ttl", "iirds-handover-sparql.ttl")
+
+
+def shacl_fired(metadata: str, handover: bool = False, severities: dict = None):
+    data = Graph().parse(data=metadata, format="xml", publicID=PACKAGE_BASE)
+    _ok, results, _ = pyshacl.validate(data, shacl_graph=CORE_H if handover else CORE,
+                                       advanced=True, inference="none")
+    fired = set()
+    for result, _p, source in results.triples((None, SH.sourceShape, None)):
+        rid = str(source).rsplit("#", 1)[-1].split("-p")[0]
+        fired.add(rid)
+        if severities is not None:
+            sev = results.value(result, SH.resultSeverity)
+            severities.setdefault(rid, set()).add(sev)
+    SH_FIRED_EVER.update(fired)
+    return fired
+
+
+def python_fired(tmp_path, name: str, metadata: str, **kw) -> set:
+    package = build_package(tmp_path, name, metadata=metadata, **kw)
+    report = runner.run(package, runner.ALL_KINDS)
+    return {f.rule.id for f in report.findings} & EMITTED
+
+
+#: What sh:resultSeverity must say, given the rule's declared severity. The
+#: shapes mirror the rule's *base* severity: the profile-A demotion is the
+#: runner's per-package decision, out of scope for a static shapes file (the
+#: shapes README says so out loud).
+_SEV = {"error": SH.Violation, "warning": SH.Warning, "info": SH.Info}
+
+
+def assert_parity(tmp_path, name, metadata, handover=False, **kw):
+    py = python_fired(tmp_path, name, metadata, **kw)
+    severities = {}
+    sh = shacl_fired(metadata, handover=handover, severities=severities)
+    assert sh == py, "SHACL %s vs Python %s" % (sorted(sh - py), sorted(py - sh))
+    # Same rule, same severity -- a shape may fire in the right place at the
+    # wrong volume, and set-equality on ids alone would never notice.
+    wrong = {rid: sevs for rid, sevs in severities.items()
+             if sevs != {_SEV[_rule_severity(rid)]}}
+    assert wrong == {}, wrong
+    return py
+
+
+# ---------------------------------------------------------------------------
+# 1. The nodekind mutants — the material that proved the 61 generated rules.
+# ---------------------------------------------------------------------------
+
+from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES  # noqa: E402
+
+
+def _rule_severity(rid: str) -> str:
+    from iirds_validate.registry import all_rules
+    by_id = getattr(_rule_severity, "_cache", None)
+    if by_id is None:
+        by_id = _rule_severity._cache = {r.id: r.severity.value for r in all_rules()}
+    return by_id[rid]
+
+
+BLANK = '''  <rdf:Description>
+    <rdf:type rdf:resource="%s"/>
+    <rdfs:label xml:lang="en">Anonymous</rdfs:label>
+  </rdf:Description>
+'''
+NAMED = BLANK.replace("<rdf:Description>", '<rdf:Description rdf:about="urn:test:named">')
+
+NODEKIND_ROWS = ([(rid, str(NAMESPACES[p][c])) for rid, p, c in MUST_HAVE_IRI]
+                 + [("R1", "http://iirds.tekom.de/iirds#ClassificationType"),
+                    ("R2", "http://iirds.tekom.de/iirds/domain/handover#DocumentCategory")])
+
+
+@pytest.mark.parametrize("rule_id,class_iri", NODEKIND_ROWS,
+                         ids=[r for r, _ in NODEKIND_ROWS])
+def test_nodekind_parity_on_the_mutant_and_its_repair(rule_id, class_iri, tmp_path):
+    # Shape-file selection follows the PACKAGE's declared profile, exactly as
+    # the runner selects rules by ctx.variant — never the namespace of a class
+    # that happens to appear. First draft selected handover files because R2's
+    # class lives in the handover namespace, and M15.11a promptly fired on an
+    # unrestricted package; the gate caught its own harness.
+    broken = MINIMAL_RDF.replace("</rdf:RDF>", BLANK % class_iri + "</rdf:RDF>")
+    fired = assert_parity(tmp_path, "b.iirds", broken)
+    assert rule_id in fired, "the mutant must actually provoke its rule"
+
+    repaired = MINIMAL_RDF.replace("</rdf:RDF>", NAMED % class_iri + "</rdf:RDF>")
+    assert_parity(tmp_path, "r.iirds", repaired)
+
+
+# ---------------------------------------------------------------------------
+# 2. The cardinality pairs — two distinct values, then one.
+# ---------------------------------------------------------------------------
+
+from test_cardinality_rules_fire import PAIRS, _statement  # noqa: E402
+
+
+@pytest.mark.parametrize("rule_id,cls,prop", PAIRS, ids=[p[0] for p in PAIRS])
+def test_cardinality_parity_both_sides_of_the_line(rule_id, cls, prop, tmp_path):
+    def metadata(count):
+        body = "".join(_statement(prop, "v%d" % n) for n in range(count))
+        element = ("  <rdf:Description rdf:about='urn:test:subject'>\n"
+                   "    <rdf:type rdf:resource='%s'/>\n%s  </rdf:Description>\n" % (cls, body))
+        return MINIMAL_RDF.replace("</rdf:RDF>", element + "</rdf:RDF>")
+
+    fired = assert_parity(tmp_path, "two.iirds", metadata(2))
+    assert rule_id in fired
+    assert_parity(tmp_path, "one.iirds", metadata(1))
+
+
+# ---------------------------------------------------------------------------
+# 3. iiRDS/H — the conformant package, broken one requirement at a time.
+# ---------------------------------------------------------------------------
+
+from test_handover_rules_fire import HANDOVER, REMOVALS, _jsonld  # noqa: E402
+
+H_EXTRA = (("content/doc1.pdf", b"%PDF-1.4"), ("index.html", "<html/>"))
+
+
+def _h_parity(tmp_path, name, metadata):
+    package = build_package(tmp_path, name, metadata=metadata, jsonld=_jsonld(metadata),
+                            content=(), extra=H_EXTRA)
+    py = {f.rule.id for f in runner.run(package, runner.ALL_KINDS).findings} & EMITTED
+    severities = {}
+    sh = shacl_fired(metadata, handover=True, severities=severities)
+    assert sh == py, "SHACL %s vs Python %s" % (sorted(sh - py), sorted(py - sh))
+    wrong = {rid: sevs for rid, sevs in severities.items()
+             if sevs != {_SEV[_rule_severity(rid)]}}
+    assert wrong == {}, wrong
+    return py
+
+
+def test_the_conformant_handover_package_is_silent_in_both_encodings(tmp_path):
+    assert _h_parity(tmp_path, "clean.iirds", HANDOVER) == set()
+
+
+H_CORE_REMOVALS = [(rid, line) for rid, line in REMOVALS if rid in EMITTED]
+
+
+@pytest.mark.parametrize("rule_id,line", H_CORE_REMOVALS,
+                         ids=[r for r, _ in H_CORE_REMOVALS])
+def test_handover_removal_parity(rule_id, line, tmp_path):
+    fired = _h_parity(tmp_path, "%s.iirds" % rule_id.replace(".", "_"),
+                      HANDOVER.replace(line, "", 1))
+    assert rule_id in fired
+
+
+def test_forbidden_classes_fire_in_both_encodings(tmp_path):
+    broken = HANDOVER.replace("</rdf:RDF>", """  <iirds:DirectoryNode rdf:about="urn:test:nav"/>
+  <iirds:FragmentSelector rdf:about="urn:test:sel">
+    <rdf:value>//x</rdf:value>
+  </iirds:FragmentSelector>
+</rdf:RDF>""")
+    fired = _h_parity(tmp_path, "forbidden.iirds", broken)
+    assert {"M15.11b", "M15.11c"} <= fired
+
+
+# ---------------------------------------------------------------------------
+# 4. The clean line-up: anchors across the three profiles.
+# ---------------------------------------------------------------------------
+
+from test_clean_realistic_package import METADATA as ANCHOR  # noqa: E402
+
+
+def test_the_anchor_is_silent_in_both_encodings(tmp_path):
+    py = python_fired(tmp_path, "anchor.iirds", ANCHOR, content=(),
+                      extra=(("content/doc.xhtml", "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>t</title></head><body><p>x</p></body></html>"),
+                             ("content/t1.xhtml", "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>t</title></head><body><p>x</p></body></html>"),
+                             ("content/t2.xhtml", "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>t</title></head><body><p>x</p></body></html>")))
+    assert py == set()
+    assert shacl_fired(ANCHOR) == set()
+
+
+def test_the_anchor_under_profile_a_is_silent_in_both_encodings(tmp_path):
+    metadata = ANCHOR.replace("<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+                              "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>"
+                              "<iirds:formatRestriction>A</iirds:formatRestriction>")
+    assert shacl_fired(metadata) == set()
+
+
+# ---------------------------------------------------------------------------
+# 5. The SPARQL thirteen — a defect and its repair for every one.
+# ---------------------------------------------------------------------------
+
+HEAD_ = MINIMAL_RDF.replace("</rdf:RDF>", "")
+
+
+def _meta(body: str) -> str:
+    return HEAD_ + body + "</rdf:RDF>\n"
+
+
+_PKG_BLOCK = """<iirds:Package rdf:about="urn:test:package">
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+    <iirds:title>Test package</iirds:title>
+  </iirds:Package>"""
+
+SPARQL_CASES = [
+    ("M3", MINIMAL_RDF.replace(_PKG_BLOCK, ""), MINIMAL_RDF),
+    ("M17", _meta("""  <rdf:Description rdf:about="urn:test:topic1">
+    <iirds:relates-to-component rdf:resource="http://example.com/p#Spindle"/>
+  </rdf:Description>
+"""), _meta("""  <rdf:Description rdf:about="urn:test:topic1">
+    <iirds:relates-to-component rdf:resource="urn:test:c1"/>
+  </rdf:Description>
+  <iirds:Component rdf:about="urn:test:c1"><rdfs:label xml:lang="en">C</rdfs:label></iirds:Component>
+""")),
+    ("M18", _meta("""  <rdf:Description rdf:about="urn:test:topic1">
+    <iirds:relates-to-product-variant rdf:resource="http://example.com/p#X"/>
+  </rdf:Description>
+"""), _meta("""  <rdf:Description rdf:about="urn:test:topic1">
+    <iirds:relates-to-product-variant rdf:resource="urn:test:v1"/>
+  </rdf:Description>
+  <iirds:ProductVariant rdf:about="urn:test:v1"><rdfs:label xml:lang="en">V</rdfs:label></iirds:ProductVariant>
+""")),
+    ("M19.4", _meta("""  <iirds:Identity rdf:about="urn:test:i1">
+    <iirds:identifier>X</iirds:identifier>
+    <iirds:has-identity-domain rdf:resource="urn:test:d1"/>
+  </iirds:Identity>
+  <iirds:Component rdf:about="urn:test:d1"><rdfs:label xml:lang="en">nd</rdfs:label></iirds:Component>
+"""), _meta("""  <iirds:Identity rdf:about="urn:test:i1">
+    <iirds:identifier>X</iirds:identifier>
+    <iirds:has-identity-domain rdf:resource="urn:test:d1"/>
+  </iirds:Identity>
+  <iirds:IdentityDomain rdf:about="urn:test:d1"><rdfs:label xml:lang="en">D</rdfs:label></iirds:IdentityDomain>
+""")),
+    ("M22.2", _meta("""  <iirds:Party rdf:about="urn:test:p1">
+    <iirds:has-party-role rdf:resource="urn:test:r1"/>
+  </iirds:Party>
+  <iirds:Component rdf:about="urn:test:r1"><rdfs:label xml:lang="en">nr</rdfs:label></iirds:Component>
+"""), _meta("""  <iirds:Party rdf:about="urn:test:p1">
+    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>
+  </iirds:Party>
+""")),
+    ("M24.6", _meta("""  <iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+"""), _meta("""  <iirds:DirectoryNode rdf:about="urn:test:root">
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+    <iirds:has-next-sibling rdf:resource="http://iirds.tekom.de/iirds#nil"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+    <iirds:has-next-sibling rdf:resource="http://iirds.tekom.de/iirds#nil"/>
+  </iirds:DirectoryNode>
+""")),
+    ("M30", _meta("""  <rdf:Description rdf:about="http://iirds.tekom.de/iirds#Component">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#InformationObject"/>
+  </rdf:Description>
+"""), _meta("""  <rdf:Description rdf:about="http://iirds.tekom.de/iirds#Component">
+    <rdfs:subClassOf rdf:resource="http://example.com/p#Part"/>
+  </rdf:Description>
+""")),
+    ("M16.3", _meta("""  <rdf:Description rdf:about="http://example.com/e#Overheat">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Event"/>
+  </rdf:Description>
+"""), _meta("""  <rdf:Description rdf:about="http://example.com/e#Overheat">
+    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Event"/>
+  </rdf:Description>
+""")),
+    ("M1", _meta("""  <iirds:InformationUnit rdf:about="urn:test:iu1">
+    <iirds:title>direct</iirds:title>
+  </iirds:InformationUnit>
+"""), MINIMAL_RDF),
+    ("M12", _meta("""  <iirds:Selector rdf:about="urn:test:sel1"/>
+"""), _meta("""  <iirds:FragmentSelector rdf:about="urn:test:sel1">
+    <rdf:value>//x</rdf:value>
+    <dcterms:conformsTo xmlns:dcterms="http://purl.org/dc/terms/" rdf:resource="http://www.w3.org/TR/xpath/"/>
+  </iirds:FragmentSelector>
+""")),
+    ("L10", _meta("""  <iirds:Qualification rdf:about="urn:test:q1">
+    <rdfs:label xml:lang="en">Tech</rdfs:label>
+  </iirds:Qualification>
+"""), _meta("""  <iirds:Role rdf:about="urn:test:q1">
+    <rdfs:label xml:lang="en">Tech</rdfs:label>
+  </iirds:Role>
+""")),
+    ("M5", _meta("""  <iirds:Component rdf:about="component/spindle">
+    <rdfs:label xml:lang="en">Spindle</rdfs:label>
+  </iirds:Component>
+"""), _meta("""  <iirds:Component rdf:about="urn:test:spindle">
+    <rdfs:label xml:lang="en">Spindle</rdfs:label>
+  </iirds:Component>
+""")),
+]
+
+
+@pytest.mark.parametrize("rule_id,broken,repaired", SPARQL_CASES,
+                         ids=[c[0] for c in SPARQL_CASES])
+def test_sparql_shape_parity_on_defect_and_repair(rule_id, broken, repaired, tmp_path):
+    fired = assert_parity(tmp_path, "broken.iirds", broken)
+    assert rule_id in fired, "the defect must actually provoke its rule"
+    assert_parity(tmp_path, "repaired.iirds", repaired)
+
+
+def test_m15_11a_parity_in_the_handover_profile(tmp_path):
+    broken = HANDOVER.replace("</rdf:RDF>", """  <iirds:Topic rdf:about="urn:test:t9">
+    <iirds:title>Not allowed in H</iirds:title>
+  </iirds:Topic>
+</rdf:RDF>""")
+    fired = _h_parity(tmp_path, "m15_11a.iirds", broken)
+    assert "M15.11a" in fired
+
+
+# ---------------------------------------------------------------------------
+# 6. Tier 2: the whole vendored corpus, both encodings, every parsable file.
+# ---------------------------------------------------------------------------
+
+import vendor_corpus  # noqa: E402
+from crossvalidate import wrap  # noqa: E402
+from iirds_validate.registry import all_rules  # noqa: E402
+
+RULES_BY_ID = {r.id: r for r in all_rules()}
+CORPUS_MANIFEST = json.loads(vendor_corpus.MANIFEST.read_text("utf-8"))
+
+
+def _applicable(effective_version: str, variant: str) -> set:
+    out = set()
+    for rid in EMITTED:
+        rule = RULES_BY_ID[rid]
+        if rule.versions and effective_version not in rule.versions:
+            continue
+        if "H" in (rule.variants or ()) and variant != "H":
+            continue
+        out.add(rid)
+    return out
+
+
+#: What the applicability mask hides, named file by file. The shapes are
+#: deliberately version-blind (one edition, 1.3, no runtime switch), so on a
+#: corpus file declaring an older edition they fire rules Python rightly
+#: skips. Masking that difference is correct; masking it *silently* is how
+#: the review hid seven files\' divergence from us. Any change to
+#: this dict -- growth or shrinkage -- must arrive as a deliberate edit here.
+VERSION_GATED_EXTRAS = {
+    "M96-1_false.rdf": ["M96.1"],
+    "M96-2_false.rdf": ["M96.2"],
+    "M96-3_false.rdf": ["M96.3"],
+    "M96-4_false.rdf": ["M96.3"],
+    "M97-1_false.rdf": ["M96.3", "M97.1", "M97.2"],
+    "M97-2_false.rdf": ["M96.3"],
+    "metadata_iirds_sample-M9_false.rdf": ["M8"],
+}
+
+
+def test_the_whole_corpus_agrees_between_encodings(tmp_path):
+    """117 parsable reference fixtures, rule-set equality per file. The same
+    corpus that cross-validates the Python rules against plusmeta now
+    cross-validates the shapes against the Python rules."""
+    disagreements = []
+    checked = 0
+    rdflib_rejects = []
+    masked = {}
+    for name, meta in sorted(CORPUS_MANIFEST["files"].items()):
+        if meta["parses"] not in ("ok", "needs_namespace_wrapper"):
+            continue
+        raw = (vendor_corpus.FILES / name).read_bytes()
+        if meta["parses"] == "needs_namespace_wrapper":
+            text = raw.decode("utf-8", "replace")
+            body = text.split("?>", 1)[1] if text.lstrip().startswith("<?xml") else text
+            raw = (vendor_corpus.NAMESPACE_WRAPPER % body).encode("utf-8")
+
+        package = wrap(raw, tmp_path / ("c%d.iirds" % checked))
+        report = runner.run(package, runner.ALL_KINDS)
+        applicable = _applicable(report.effective_version, report.variant)
+        python_ids = {f.rule.id for f in report.findings} & applicable
+
+        try:
+            data = Graph().parse(data=raw.decode("utf-8", "replace"), format="xml",
+                                 publicID=PACKAGE_BASE)
+        except Exception:
+            # rdflib's RDF/XML reader is stricter than ElementTree (and one of
+            # its error paths crashes outright). The Python side survives these
+            # because build_graph catches the failure and reports it — there is
+            # no graph for either encoding to disagree about. Counted and
+            # pinned below, never silently skipped.
+            rdflib_rejects.append(name)
+            continue
+        shapes = CORE_H if report.variant == "H" else CORE
+        _ok, results, _ = pyshacl.validate(data, shacl_graph=shapes,
+                                           advanced=True, inference="none")
+        shacl_ids = set()
+        for _r, _p, source in results.triples((None, SH.sourceShape, None)):
+            shacl_ids.add(str(source).rsplit("#", 1)[-1].split("-p")[0])
+        SH_FIRED_EVER.update(shacl_ids)
+        extra = sorted(shacl_ids - applicable)
+        if extra:
+            masked[name] = extra
+        shacl_ids &= applicable
+
+        if shacl_ids != python_ids:
+            disagreements.append((name[:60], sorted(shacl_ids - python_ids),
+                                  sorted(python_ids - shacl_ids)))
+        checked += 1
+
+    assert checked == 114, checked   # 117 parsable - the 3 pinned rejects
+    # Named, not merely bounded: "<= 5" would let two more files drop out of
+    # the comparison without anyone saying so (round 2). These three trip an
+    # rdflib RDF/XML error path; the Python side still validates them because
+    # build_graph reports the parse failure as a finding.
+    assert sorted(rdflib_rejects) == [
+        "Example 46 - Tagging.rdf",
+        "metadata_iirds_sample_pass-M77_false.rdf",
+        "metadata_iirds_sample_pass-M77_true.rdf",
+    ], rdflib_rejects
+    assert disagreements == [], disagreements[:8]
+    assert masked == VERSION_GATED_EXTRAS
+
+
+# ---------------------------------------------------------------------------
+# 6b. Provocations for the shapes nothing else reaches.
+#
+# The coverage test below found these five sitting out the entire suite --
+# three of them exactly the shapes the review proved wrong and
+# this campaign repaired. A repair that is never provoked is indistinguishable
+# from the defect it replaced.
+# ---------------------------------------------------------------------------
+
+_NIL = 'rdf:resource="http://iirds.tekom.de/iirds#nil"'
+
+_TOC = _meta("""  <iirds:DirectoryNode rdf:about="urn:test:root">
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n2">
+    <iirds:has-next-sibling %s/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+""" % _NIL)
+
+PROVOCATIONS = [
+    # S4: the version literal is checked after strip() in Python, so the
+    # repair is deliberately padded -- whitespace tolerance is part of parity.
+    ("S4", MINIMAL_RDF.replace(">1.3<", ">9.9<"),
+           MINIMAL_RDF.replace(">1.3<", "> 1.3 <")),
+    ("S5", MINIMAL_RDF.replace("</iirds:Package>",
+        "  <iirds:formatRestriction>X</iirds:formatRestriction>\n  </iirds:Package>"),
+          MINIMAL_RDF.replace("</iirds:Package>",
+        "  <iirds:formatRestriction> A </iirds:formatRestriction>\n  </iirds:Package>")),
+    # M25: a sibling chain that just stops, against one terminated at nil.
+    ("M25", _TOC.replace('    <iirds:has-next-sibling %s/>\n' % _NIL, ""), _TOC),
+    # M27: the level's first child must head its list -- nothing may reach it
+    # via has-next-sibling. (Python has no nil exemption here; neither may we.)
+    ("M27", _TOC.replace('<iirds:DirectoryNode rdf:about="urn:test:n1">',
+        '''<iirds:DirectoryNode rdf:about="urn:test:n0">
+    <iirds:has-next-sibling rdf:resource="urn:test:n1"/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1">'''), _TOC),
+    # M24.5: a child claiming to be a root.
+    ("M24.5", _TOC.replace('<iirds:DirectoryNode rdf:about="urn:test:n1">',
+        '<iirds:DirectoryNode rdf:about="urn:test:n1">\n'
+        '    <iirds:has-directory-structure-type '
+        'rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>'), _TOC),
+]
+
+# The ontology says iirds:nil is a subclass of iirds:DirectoryNode, so a node
+# *typed* iirds:nil is a directory node to Python's ontology closure -- and
+# must be one to the shapes too. The review found the old shapes
+# blind to exactly this; a child typed nil that claims the root's structure
+# type has to fire M24.5 in both encodings or the closure mirror is a fiction.
+PROVOCATIONS.append(("M24.5-typed-nil", _TOC.replace(
+    '''<iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>''',
+    '''<iirds:nil rdf:about="urn:test:n1">
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>''').replace(
+    '''    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n2">''',
+    '''    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:nil>
+  <iirds:DirectoryNode rdf:about="urn:test:n2">''', 1), _TOC))
+
+
+@pytest.mark.parametrize("rule_id,broken,repaired", PROVOCATIONS,
+                         ids=[c[0] for c in PROVOCATIONS])
+def test_provocation_parity_on_defect_and_repair(rule_id, broken, repaired, tmp_path):
+    rid = rule_id.split("-")[0]
+    assert rid in assert_parity(tmp_path, "broken.iirds", broken)
+    assert rid not in assert_parity(tmp_path, "repaired.iirds", repaired)
+
+
+# ---------------------------------------------------------------------------
+# 6c. The review's disagreement archetypes, kept as fixtures.
+#
+# Each of these is a place where the two encodings used to give different
+# answers. The repairs made them agree; these pin the agreement so it cannot
+# quietly rot. The assertion of record is assert_parity's set equality --
+# the named rule is only the reason the fixture exists.
+# ---------------------------------------------------------------------------
+
+def test_a_leading_slash_is_absolute_in_both_encodings(tmp_path):
+    # Python: '://' in value OR value.startswith('/'). The old shape knew only
+    # the first half, so /abs/topic.xhtml fired Python-only.
+    fired = assert_parity(tmp_path, "slash.iirds",
+                          MINIMAL_RDF.replace(">content/topic1.xhtml<",
+                                              ">/content/topic1.xhtml<"))
+    assert "M9" in fired
+
+
+def test_namespace_lookalikes_fool_neither_encoding(tmp_path):
+    # is_iirds_term is startswith on the four exact namespaces, '#' included.
+    # The old shapes matched on a broader prefix, so a term minted under
+    # .../iirdsx# counted as an iiRDS term to SHACL and not to Python.
+    lookalike = MINIMAL_RDF.replace(
+        "</rdf:RDF>",
+        '''  <rdf:Description rdf:about="http://iirds.tekom.de/iirdsx#Widget">
+    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:topic1">
+    <rdf:type rdf:resource="http://iirds.tekom.de/iirdsx#Widget"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert_parity(tmp_path, "lookalike.iirds", lookalike)
+
+
+def test_m15_5_fires_on_two_information_objects_as_well_as_none(tmp_path):
+    # "Exactly one" has two failure directions. The removal fixtures walk the
+    # zero side; the old shape had sh:qualifiedMinCount only, so the two side
+    # fired Python-only.
+    doubled = HANDOVER.replace(
+        '<iirds:is-version-of rdf:resource="urn:test:io1"/>',
+        '<iirds:is-version-of rdf:resource="urn:test:io1"/>\n'
+        '    <iirds:is-version-of rdf:resource="urn:test:io2"/>')
+    doubled = doubled.replace(
+        '</iirds:InformationObject>',
+        '''</iirds:InformationObject>
+
+  <iirds:InformationObject rdf:about="urn:test:io2">
+    <iirds:title>Operating instructions, second object</iirds:title>
+    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>
+  </iirds:InformationObject>''', 1)
+    fired = _h_parity(tmp_path, "two_ios.iirds", doubled)
+    assert "M15.5" in fired
+
+
+def test_a_proprietary_subclass_is_its_parent_in_both_encodings(tmp_path):
+    # iiRDS section 7: proprietary classes subclass iiRDS classes, and a
+    # consumer processes them as the parent. SHACL gets this by definition
+    # (targetClass follows the data graph's rdfs:subClassOf); Python's closure
+    # originally walked only the bundled ontology and was blind. This fixture
+    # caught that as a SHACL-only L7 -- the differential gate arguing with
+    # its own author -- and now pins the repaired agreement: the untitled
+    # instance below is an information unit to both encodings.
+    subclassed = MINIMAL_RDF.replace(
+        "</rdf:RDF>",
+        '''  <rdf:Description rdf:about="urn:acme:SpecialTopic">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:special1">
+    <rdf:type rdf:resource="urn:acme:SpecialTopic"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "L7" in assert_parity(tmp_path, "subclass.iirds", subclassed)
+
+
+# ---------------------------------------------------------------------------
+# 6d. Round-2 divergences, pinned. The first repair fixed eighteen instances;
+# a later review found the *classes* those instances belonged to
+# still alive elsewhere. Each case here disagreed between encodings on
+# 2026-08-21 and now must agree forever.
+# ---------------------------------------------------------------------------
+
+def test_s4_tolerates_the_whitespace_a_pretty_printer_emits(tmp_path):
+    # An indenting serialiser pads with newlines and tabs; " *" rejected a
+    # conformant package -- the worst direction for a validator to be wrong.
+    padded = MINIMAL_RDF.replace(">1.3<", ">\n      1.3\n    <")
+    assert "S4" not in assert_parity(tmp_path, "pretty.iirds", padded)
+    nbsp = MINIMAL_RDF.replace(">1.3<", ">\u00a01.3\u00a0<")
+    assert "S4" not in assert_parity(tmp_path, "nbsp.iirds", nbsp)
+
+
+def test_s5_reads_an_empty_restriction_as_unrestricted(tmp_path):
+    empty = MINIMAL_RDF.replace(
+        "</iirds:Package>",
+        "  <iirds:formatRestriction></iirds:formatRestriction>\n  </iirds:Package>")
+    assert "S5" not in assert_parity(tmp_path, "empty.iirds", empty)
+    tabbed = MINIMAL_RDF.replace(
+        "</iirds:Package>",
+        "  <iirds:formatRestriction>\tA\t</iirds:formatRestriction>\n  </iirds:Package>")
+    assert "S5" not in assert_parity(tmp_path, "tabbed.iirds", tabbed)
+
+
+def test_m5_ignores_types_from_a_lookalike_namespace(tmp_path):
+    # The bare-domain STRSTARTS survived in M5 after the same defect was
+    # repaired in M30/M16.3/M22.2 -- fixing instances, not the class.
+    lookalike = MINIMAL_RDF.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="component/spindle">
+    <rdf:type rdf:resource="http://iirds.tekom.de/iirdsx#Widget"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M5" not in assert_parity(tmp_path, "lookalike5.iirds", lookalike)
+
+
+def test_m17_counts_a_proprietary_component_subclass_as_declared(tmp_path):
+    subclassed = MINIMAL_RDF.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="urn:test:topic1">
+    <iirds:relates-to-component rdf:resource="urn:test:c1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:acme:MyComp">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Component"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:c1">
+    <rdf:type rdf:resource="urn:acme:MyComp"/>
+    <rdfs:label xml:lang="en">C</rdfs:label>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M17" not in assert_parity(tmp_path, "subcomp.iirds", subclassed)
+
+
+_MY_NODE = '''  <rdf:Description rdf:about="urn:acme:MyNode">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#DirectoryNode"/>
+  </rdf:Description>
+'''
+
+
+def test_m24_6_sees_a_proprietary_directory_node_in_both_roles(tmp_path):
+    # Hardcoded type pairs diverged in both directions: a subclassed node
+    # with no root fired Python-only; the same node *as* the root fired
+    # SHACL-only. The closure path answers both.
+    rootless = MINIMAL_RDF.replace("</rdf:RDF>", _MY_NODE + '''  <rdf:Description rdf:about="urn:test:lone">
+    <rdf:type rdf:resource="urn:acme:MyNode"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M24.6" in assert_parity(tmp_path, "rootless.iirds", rootless)
+
+    rooted = MINIMAL_RDF.replace("</rdf:RDF>", _MY_NODE + '''  <rdf:Description rdf:about="urn:test:root">
+    <rdf:type rdf:resource="urn:acme:MyNode"/>
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+  </rdf:Description>
+  <iirds:DirectoryNode rdf:about="urn:test:n1">
+    <iirds:has-next-sibling rdf:resource="http://iirds.tekom.de/iirds#nil"/>
+    <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+  </iirds:DirectoryNode>
+</rdf:RDF>''')
+    assert "M24.6" not in assert_parity(tmp_path, "rooted.iirds", rooted)
+
+
+def test_m22_2_catches_a_misspelled_role_inside_the_real_namespace(tmp_path):
+    # The namespace-prefix exemption hid exactly the typo this rule exists
+    # to catch. The defined-terms list does not.
+    typo = MINIMAL_RDF.replace("</rdf:RDF>", '''  <iirds:Party rdf:about="urn:test:party1">
+    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#NotARealTerm"/>
+  </iirds:Party>
+  <rdf:Description rdf:about="http://iirds.tekom.de/iirds#NotARealTerm">
+    <rdfs:label xml:lang="en">looks official, is not</rdfs:label>
+  </rdf:Description>
+</rdf:RDF>''')
+    fired = assert_parity(tmp_path, "typo.iirds", typo)
+    assert "M22.2" in fired
+
+
+def test_m22_2_accepts_a_proprietary_party_role_subclass(tmp_path):
+    subclassed = MINIMAL_RDF.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="urn:acme:ChiefRole">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#PartyRole"/>
+  </rdf:Description>
+  <iirds:Party rdf:about="urn:test:party1">
+    <iirds:has-party-role rdf:resource="urn:test:role1"/>
+  </iirds:Party>
+  <rdf:Description rdf:about="urn:test:role1">
+    <rdf:type rdf:resource="urn:acme:ChiefRole"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M22.2" not in assert_parity(tmp_path, "chief.iirds", subclassed)
+
+
+def test_m15_5_counts_a_proprietary_information_object_subclass(tmp_path):
+    # Python used exact typing where the shape used sh:class; section 7 says
+    # the shape was right. Fixed in the rule, pinned here in H parity.
+    subclassed = HANDOVER.replace(
+        '<iirds:InformationObject rdf:about="urn:test:io1">',
+        '''<rdf:Description rdf:about="urn:acme:SpecialIO">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#InformationObject"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:io1">
+    <rdf:type rdf:resource="urn:acme:SpecialIO"/>''').replace(
+        '</iirds:InformationObject>', '</rdf:Description>')
+    fired = _h_parity(tmp_path, "subio.iirds", subclassed)
+    assert "M15.5" not in fired
+
+
+# ---------------------------------------------------------------------------
+# 7. No shape may sit out the whole suite.
+#
+# Set-equality per fixture proves agreement on what fires; it proves nothing
+# about a shape that never fires. The review demonstrated exactly
+# that: seven shapes were quietly disabled and every test above stayed green,
+# because no fixture ever provoked them. This test runs last in the file and
+# demands that every emitted shape has been seen firing at least once — a
+# constraint under which a disabled shape turns the gate red by definition.
+# (Same shape as `.rule-coverage.json` on the Python side: observed, not
+# assumed. File-order matters and pytest honours definition order; running
+# this test alone is meaningless and it says so.)
+# ---------------------------------------------------------------------------
+
+def test_every_emitted_shape_has_fired_somewhere_in_this_file():
+    never_fired = EMITTED - SH_FIRED_EVER
+    assert len(SH_FIRED_EVER) > 50, (
+        "the accumulator is empty-ish; this test only means something after "
+        "the whole file has run -- do not run it in isolation")
+    assert never_fired == set(), sorted(never_fired)

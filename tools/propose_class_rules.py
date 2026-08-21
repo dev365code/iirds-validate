@@ -79,7 +79,7 @@ from __future__ import annotations
 from rdflib.namespace import RDF
 
 from ..model import HOV, IIRDS, MACH, SW, Violation, is_named
-from ..registry import CATALOG, rule
+from ..registry import rule
 
 NAMESPACES = {"IIRDS": IIRDS, "MACH": MACH, "SW": SW, "HOV": HOV}
 
@@ -150,12 +150,15 @@ def _register() -> None:
     for rule_id, prefix, class_name in MUST_HAVE_IRI:
         fn = _must_have_iri(prefix, class_name)
         fn.__name__ = "%s_%s_must_have_iri" % (rule_id.replace(".", "_").lower(), class_name.lower())
-        # A couple of catalogue rows carry the bare table cell "IRI: REQUIRED"
-        # as their wording, which is meaningless as a title in `iirdsv rules`.
-        meta_title = CATALOG.get(rule_id, {}).get("en", "")
-        title = None if len(meta_title) > 24 else \
-            "instances of %s must have an IRI" % class_name
-        rule(rule_id, versions=NARROWED.get(rule_id), title=title,
+        # Always the generated sentence, never the catalogue cell. The cells
+        # are either the bare table fragment "IRI: REQUIRED" or -- for
+        # M78-M94 -- the ontology's own description prose ("Not intended to
+        # be used directly..."), which as a message tells the reader about a
+        # different rule than the one firing, and as shipped text contradicts
+        # every "no ontology content" notice in shapes/. The constraint is
+        # identical for every row, so one accurate sentence covers them all.
+        rule(rule_id, versions=NARROWED.get(rule_id),
+             title="instances of %s must have an IRI" % class_name,
              fix=NAMED_FIX % {"cls": class_name})(fn)
 
     for rule_id, prefix, class_name in NOT_USED_DIRECTLY:

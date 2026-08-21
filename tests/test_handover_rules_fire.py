@@ -242,3 +242,23 @@ def test_none_of_these_rules_apply_outside_the_handover_profile(tmp_path):
     stripped = unrestricted.replace("    <iirds:language>en</iirds:language>\n", "")
     found = _ids(tmp_path, "unrestricted.iirds", stripped)
     assert not {r for r in found if r.startswith("M15.")}
+
+
+def test_m15_5_accepts_a_proprietary_subclass_of_information_object(make_package):
+    """Section 7 again: an object typed with the package's own subclass of
+    iirds:InformationObject is an InformationObject. Exact-typing here made
+    the Python side fire where SHACL (whose sh:class follows the data graph's
+    subClassOf) was rightly silent — found by the review."""
+    subclassed = HANDOVER.replace(
+        '<iirds:InformationObject rdf:about="urn:test:io1">',
+        '''<rdf:Description rdf:about="urn:acme:SpecialIO">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#InformationObject"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:io1">
+    <rdf:type rdf:resource="urn:acme:SpecialIO"/>''').replace(
+        '</iirds:InformationObject>', '</rdf:Description>')
+    package = make_package(name="sub.iirds", metadata=subclassed,
+                           jsonld=_jsonld(subclassed), content=(),
+                           extra=(("content/doc1.pdf", b"%PDF-1.4"), ("index.html", "<html/>")))
+    report = runner.run(package, runner.ALL_KINDS)
+    assert "M15.5" not in {f.rule.id for f in report.findings}

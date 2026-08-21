@@ -52,10 +52,23 @@ class Context:
     #: other rule and is exactly what hides a disagreement.
     per_source: dict = field(default_factory=dict)
 
+    #: Per-class closure over ontology *and* package subclass declarations,
+    #: filled lazily. Per-instance, same reasoning as Ontology's caches.
+    _closure: dict = field(default_factory=dict, repr=False)
+
     # -- graph helpers ------------------------------------------------------
     def instances_of(self, cls: URIRef, include_subclasses: bool = True) -> List:
-        """Subjects typed `cls`, or any class beneath it."""
-        classes = self.ontology.subclasses_of(cls) if include_subclasses else {cls}
+        """Subjects typed `cls`, or any class beneath it.
+
+        "Beneath it" spans both hierarchies: the bundled ontology's, and any
+        rdfs:subClassOf the package itself declares. Section 7 lets a package
+        mint proprietary subclasses of iiRDS classes and requires consumers to
+        process them as the parent -- so an instance typed only with the
+        package's own subclass of iirds:Topic is a Topic to every rule here.
+        (SHACL agrees by definition: targetClass follows the data graph's
+        subClassOf. The differential gate caught this as a SHACL-only firing.)
+        """
+        classes = self._class_closure(cls) if include_subclasses else {cls}
         out, seen = [], set()
         for c in classes:
             for s in self.graph.subjects(RDF.type, c):
@@ -64,9 +77,25 @@ class Context:
                     out.append(s)
         return out
 
+    def _class_closure(self, cls: URIRef) -> frozenset:
+        if cls not in self._closure:
+            classes = set(self.ontology.subclasses_of(cls))
+            for c in tuple(classes):
+                classes.update(self.graph.transitive_subjects(RDFS.subClassOf, c))
+            self._closure[cls] = frozenset(classes)
+        return self._closure[cls]
+
     def typed_exactly(self, cls: URIRef) -> List:
         """Subjects carrying `cls` itself as an rdf:type (no subclasses)."""
         return list(self.graph.subjects(RDF.type, cls))
+
+    def is_instance(self, node, cls: URIRef) -> bool:
+        """Is `node` an instance of `cls` under the same closure as
+        `instances_of` — ontology hierarchy plus the package's own
+        subclass declarations? Rules that ask about one node should ask
+        this, not compare rdf:type values directly: exact typing is how
+        section 7 gets forgotten one rule at a time."""
+        return bool(set(self.values(node, RDF.type)) & self._class_closure(cls))
 
     def values(self, subject, prop: URIRef) -> List:
         return list(self.graph.objects(subject, prop))

@@ -1,0 +1,755 @@
+{
+ "_generated_by": "tools/emit_shacl.py",
+ "_shapes_version": "0.1.0",
+ "_edition": "1.3",
+ "_catalogue_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
+ "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
+ "_note": "Every registered rule appears in exactly one bucket; the emitter refuses to run otherwise. not_expressible reasons are the differential gate's exclusion list — one source, no ad-hoc skips.",
+ "counts": {
+  "core_emitted": 118,
+  "version_excluded": 2,
+  "sparql_emitted": 15,
+  "deferred_v1.1": 11,
+  "not_expressible": 38,
+  "noop": 1
+ },
+ "core_emitted": [
+  "L7",
+  "M2.1",
+  "M2.3",
+  "M2.4",
+  "M2.5",
+  "M2.6",
+  "M2.7",
+  "M2.8",
+  "M2.9",
+  "M4",
+  "M6",
+  "M7.1",
+  "M8",
+  "M9",
+  "M10",
+  "M11",
+  "M13.1",
+  "M13.2",
+  "M14.1",
+  "M14.2",
+  "M15.1",
+  "M15.2",
+  "M15.3",
+  "M15.4",
+  "M15.5",
+  "M15.6",
+  "M15.11b",
+  "M15.11c",
+  "M15.7a",
+  "M15.7c",
+  "M19.1",
+  "M19.2",
+  "M19.3",
+  "M20.1",
+  "M21.1",
+  "M21.2",
+  "M21.3",
+  "M21.4",
+  "M21.5",
+  "M21.6",
+  "M22.1",
+  "M23",
+  "M24.1",
+  "M24.2",
+  "M24.3",
+  "M24.4",
+  "M24.5",
+  "M25",
+  "M26",
+  "M27",
+  "M35",
+  "M36",
+  "M37",
+  "M38",
+  "M39",
+  "M40",
+  "M41",
+  "M42",
+  "M43",
+  "M44",
+  "M45",
+  "M46",
+  "M47",
+  "M48",
+  "M49",
+  "M50",
+  "M51",
+  "M52",
+  "M53",
+  "M54",
+  "M55",
+  "M56",
+  "M57",
+  "M58",
+  "M59",
+  "M60",
+  "M61",
+  "M62",
+  "M63",
+  "M64",
+  "M65",
+  "M66",
+  "M67",
+  "M68",
+  "M69",
+  "M70",
+  "M71",
+  "M72",
+  "M73",
+  "M74",
+  "M75",
+  "M76",
+  "M77",
+  "M78",
+  "M79",
+  "M80",
+  "M81",
+  "M82",
+  "M83",
+  "M84",
+  "M85",
+  "M86",
+  "M87",
+  "M88",
+  "M89",
+  "M90",
+  "M91",
+  "M92",
+  "M93",
+  "M94",
+  "M95",
+  "M96.1",
+  "M96.2",
+  "M96.3",
+  "M97.1",
+  "M97.2",
+  "R1",
+  "R2"
+ ],
+ "sparql_emitted": [
+  "L10",
+  "M1",
+  "M3",
+  "M5",
+  "M12",
+  "M15.11a",
+  "M16.3",
+  "M17",
+  "M18",
+  "M19.4",
+  "M22.2",
+  "M24.6",
+  "M30",
+  "S4",
+  "S5"
+ ],
+ "version_excluded": {
+  "M16.1": [
+   "1.0",
+   "1.0.1",
+   "1.1"
+  ],
+  "M16.2": [
+   "1.0",
+   "1.0.1",
+   "1.1"
+  ]
+ },
+ "deferred_v1.1": {
+  "L1": "dangling-reference exemptions (WELL_KNOWN, ontology terms)",
+  "L3": "reachability over (first-child|next-sibling)*",
+  "L4": "cycle detection via property-path +",
+  "L5": "proprietary-class linkage exemption nest",
+  "L6": "structural-node and label exemption nest",
+  "L8": "external-vocabulary filters",
+  "M15.7b": "manufacturer chain + undescribed-vcard softening",
+  "M15.7d": "manufacturer chain + undescribed-vcard softening",
+  "M15.8": "party chain + undescribed-vcard softening",
+  "M15.9": "party chain + undescribed-vcard softening",
+  "M15.10": "party chain + undescribed-vcard softening"
+ },
+ "not_expressible": {
+  "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C2": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C3": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C4": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C5": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C6": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C7": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C8": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C9": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C10": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C11.1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C11.1H": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C11.2": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C12": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C13": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C14": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C15": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C16.1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "C16.2": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "R3": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
+  "B1": "content: the subject is XHTML files inside the archive",
+  "B2": "content: the subject is XHTML files inside the archive",
+  "B3": "content: the subject is XHTML files inside the archive",
+  "B4": "content: the subject is XHTML files inside the archive",
+  "B5": "content: the subject is XHTML files inside the archive",
+  "B6": "content: the subject is XHTML files inside the archive",
+  "B7": "content: the subject is XHTML files inside the archive",
+  "B8": "content: the subject is XHTML files inside the archive",
+  "S1": "system: the subject is the run itself, not the graph",
+  "S2": "system: the subject is the run itself, not the graph",
+  "S3": "system: the subject is the run itself, not the graph",
+  "S6": "archive: entry names, encryption bits, ZIP64 records",
+  "S7": "archive: entry names, encryption bits, ZIP64 records",
+  "S8": "archive: entry names, encryption bits, ZIP64 records",
+  "L2": "graph×ZIP join: the verdict depends on which files the archive carries",
+  "L11": "graph×ZIP join: the verdict depends on which files the archive carries",
+  "L12": "graph×ZIP join: the verdict depends on which files the archive carries",
+  "L9": "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
+ },
+ "noop": {
+  "M96.4": "a MAY with nothing to violate; registered so `iirdsv rules` lists the catalogue"
+ },
+ "shapes": {
+  "L7": {
+   "iri": "https://w3id.org/iirds-validate/shapes#L7",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.3",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.4",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.5",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.6",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.7": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.7",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.8": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.8",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M2.9": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M2.9",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M4",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M6",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M7.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M7.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M8": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M8",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M9": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M9",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M10": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M10",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M11": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M11",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M13.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M13.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M13.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M13.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M14.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M14.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M14.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M14.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M15.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M15.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.2",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.3",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.4",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.5",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.6",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.11b": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.11b",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.11c": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.11c",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.7a": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.7a",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M15.7c": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.7c",
+   "file": "iirds-1.3/iirds-handover-core.ttl"
+  },
+  "M19.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M19.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M19.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M19.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M19.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M19.3",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M20.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M20.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.3",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.4",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.5",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M21.6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M21.6",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M22.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M22.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M23": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M23",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M24.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M24.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M24.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.3",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M24.4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.4",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M24.5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.5",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M25": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M25",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M26": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M26",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M27": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M27",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M35": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M35",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M36": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M36",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M37": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M37",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M38": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M38",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M39": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M39",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M40": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M40",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M41": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M41",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M42": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M42",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M43": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M43",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M44": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M44",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M45": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M45",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M46": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M46",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M47": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M47",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M48": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M48",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M49": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M49",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M50": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M50",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M51": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M51",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M52": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M52",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M53": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M53",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M54": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M54",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M55": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M55",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M56": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M56",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M57": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M57",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M58": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M58",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M59": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M59",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M60": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M60",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M61": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M61",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M62": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M62",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M63": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M63",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M64": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M64",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M65": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M65",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M66": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M66",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M67": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M67",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M68": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M68",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M69": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M69",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M70": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M70",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M71": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M71",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M72": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M72",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M73": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M73",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M74": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M74",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M75": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M75",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M76": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M76",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M77": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M77",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M78": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M78",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M79": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M79",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M80": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M80",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M81": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M81",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M82": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M82",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M83": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M83",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M84": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M84",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M85": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M85",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M86": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M86",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M87": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M87",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M88": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M88",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M89": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M89",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M90": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M90",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M91": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M91",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M92": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M92",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M93": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M93",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M94": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M94",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M95": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M95",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M96.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M96.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M96.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M96.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M96.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M96.3",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M97.1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M97.1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "M97.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M97.2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R1",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "L10": {
+   "iri": "https://w3id.org/iirds-validate/shapes#L10",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M1": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M1",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M3",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M5",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M12": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M12",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M15.11a": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.11a",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M16.3": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M16.3",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M17": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M17",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M18": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M18",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M19.4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M19.4",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M22.2": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M22.2",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M24.6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M24.6",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "M30": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M30",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "S4": {
+   "iri": "https://w3id.org/iirds-validate/shapes#S4",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "S5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#S5",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  }
+ }
+}

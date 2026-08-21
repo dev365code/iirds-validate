@@ -12,7 +12,7 @@ RUFF_VERSION := 0.16.3
 PYTHON       ?= python3
 export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests
 
-.PHONY: help check test lint fix generated corpus exercised versions requirements tools dev clean
+.PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean
 
 help:
 	@echo "make check   everything CI runs: lint, tests, the equivalence proof"
@@ -23,11 +23,12 @@ help:
 	@echo "make exercised  no rule has quietly stopped firing anywhere"
 	@echo "make versions  no rule claims a version whose vocabulary it predates"
 	@echo "make requirements  the specification index is internally consistent"
+	@echo "make shapes  the emitted SHACL shapes still match their generator"
 	@echo "make fix     ruff --fix, for the things it can correct itself"
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
 
-check: lint generated corpus versions requirements test exercised tools
+check: lint generated corpus versions requirements shapes test exercised tools
 
 test:
 	$(PYTHON) -m pytest -q
@@ -65,6 +66,11 @@ versions:
 requirements:
 	$(PYTHON) tools/extract_requirements.py
 	$(PYTHON) tools/requirement_coverage.py
+
+# The language-neutral encoding of the rules. Committed and byte-compared,
+# like every other generated artefact here.
+shapes:
+	$(PYTHON) tools/emit_shacl.py --check
 
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check

@@ -44,6 +44,20 @@ jobs:
           python tools/extract_requirements.py
           python tools/requirement_coverage.py
 
+      - name: the emitted SHACL shapes still match their generator
+        run: python tools/emit_shacl.py --check
+
+      - name: the shapes agree with the Python rules, rule for rule
+        # pySHACL rides only on this row; the matrix rows skip via
+        # importorskip. Full differential parity: per-rule mutants, the
+        # handover removals, the calibration anchor, and the entire vendored
+        # corpus in both encodings. Pinned to a minor: the gate's claims are
+        # "tested on pySHACL 0.40", and an engine that silently changes under
+        # us is the one failure mode a differential gate cannot see.
+        run: |
+          pip install "pyshacl==0.40.*"
+          pytest -q tests/test_shapes_static.py tests/test_shapes_parity.py
+
   test:
     name: py${{ matrix.python }} ${{ matrix.label }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

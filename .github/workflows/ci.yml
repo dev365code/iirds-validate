@@ -55,7 +55,7 @@ jobs:
         # "tested on pySHACL 0.40", and an engine that silently changes under
         # us is the one failure mode a differential gate cannot see.
         run: |
-          pip install "pyshacl==0.40.*"
+          pip install pytest "pyshacl==0.40.*"
           pytest -q tests/test_shapes_static.py tests/test_shapes_parity.py
 
   test:

@@ -38,6 +38,12 @@ jobs:
           cmp dist/iirds-validate.pyz /tmp/again.pyz
           echo "reproducible: yes"
 
+      - name: bundle the SHACL shapes
+        # The language-neutral encoding travels with every release, zipped
+        # with its README and manifest so a SHACL user never needs this repo.
+        run: |
+          (cd shapes && zip -qr ../dist/iirds-shapes-1.3.zip .)
+
       - name: checksums
         run: |
           cd dist

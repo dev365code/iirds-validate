@@ -111,6 +111,66 @@ it has no requirement id to cite. How much else is stated that way is not
 known. The denominator is therefore a floor rather than a total, which is the
 right direction for it to be wrong in but is worth saying out loud.
 
+### Caught by the differential gate, on its first run
+
+The SHACL shapes are a third encoding of the same reading, and the gate that
+compares them to the Python rules found an inversion the moment it first ran:
+the M24.5 shape said "a root node must carry the structure type" where the
+rule — and the specification — say "only the root may carry it; a linked node
+carrying it is the violation". Opposite directions, both plausible-sounding,
+and every static check passed the wrong one. Three mutant suites disagreed
+between encodings (SHACL fired M24.5 where Python was rightly silent) and the
+per-(graph, rule) equality assertion named it. Translation errors are exactly
+the failure mode a second encoding cannot detect in itself — and exactly what
+a differential gate detects with certainty.
+
+### Caught by the differential gate, in the other direction
+
+The gate's job description was "find shapes that mistranslate the rules". On
+2026-08-21 it found the opposite: a fixture typing an instance with a
+package-declared subclass of `iirds:Topic` fired L7 in SHACL and nothing in
+Python. SHACL was right — `sh:targetClass` follows the data graph's
+`rdfs:subClassOf` by definition, which is exactly the semantics iiRDS
+section 7 requires of consumers — and the Python validator's class closure,
+which walked only the bundled ontology, was blind to proprietary subclasses
+in every rule that asks "instances of X". Fixed in `context.instances_of`,
+pinned by a lint test and a parity fixture. A differential gate does not
+know which side is wrong; it only refuses to let them differ, and this time
+the defendant was its author.
+
+### What adversarial review found that self-review did not
+
+Before delivering the shapes, two independent review passes ran against
+them: a red team told to break the claims, and a simulated consortium
+reviewer told to judge the submission. Between them: the documented
+quickstart silently skipped all SPARQL shapes (pySHACL's `-e` feeds the
+*data* graph); seven shapes could be neutered with every test staying green
+(no firing-coverage check existed); 85 of 133 shape titles reproduced
+catalogue wording while a header claimed "wording is this project's own";
+and 18 rules disagreed between encodings on crafted inputs (namespace
+lookalikes, whitespace, `iirds:nil` typing, leading-slash sources). The
+author's own review of the same material, run first with a sealed findings
+list, found five of these and missed the two worst. All are fixed and each
+fix carries a regression test; the procedural lesson is recorded in
+[design.md](design.md)'s working rules: adversarial review by an agent that
+did not write the code is a standing pre-delivery step, not an option.
+
+Round two, run against the repaired tree, returned twenty-five findings and
+a do-not-ship. The blocker: seventeen shapes carried the ontology's own
+description prose as their message — arrived through the catalogue's `en`
+field via a title fallback, shipped under six separate "no ontology content"
+claims, while the test named as the guarantor checked a predicate and not
+the text. The pattern in the rest: the first repair had fixed eighteen
+*instances* without fixing their *classes* — the same bare-domain prefix
+survived in M5 after being repaired in M30, the same exact-typing bypassed
+the section-7 closure in M15.5 and M22.2 after being repaired in
+`instances_of`, the same single-space regex in S4/S5 after whitespace
+handling was repaired elsewhere. Every finding is now a fixture that fails
+if the agreement rots, the leak-guard reads the actual text, and the emitted
+rule set is pinned by name rather than by count. The lesson worth the ink:
+when a reviewer hands you a broken instance, grep for its class before
+declaring the repair done.
+
 ### The first outside evidence
 
 The Consortium's own sample packages — the only complete .iirds files the

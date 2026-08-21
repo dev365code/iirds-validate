@@ -263,6 +263,21 @@ borrows its class hierarchy; the report says so when it happens.
 
 ---
 
+## The rules as SHACL — for everyone who is not running Python
+
+[`shapes/`](shapes/) carries the language-neutral encoding: 133 SHACL shapes
+generated from the same sources as the rules, written to SHACL Core and
+SHACL-AF and tested on pySHACL 0.40, so a SHACL engine can check the graph
+half of iiRDS conformance without this project's code. Every shape carries
+the remedy text, severity, spec link and requirement id; every one is
+differentially tested against the Python rules — fire-set equality over the
+reference corpus, severity equality on every mutant and provocation fixture, and a
+closing check that no shape sits the suite out — and [`shapes/MANIFEST.json`](shapes/MANIFEST.json) accounts for
+every rule without a shape, starting with the 38 that can never be one (ZIP
+bytes have no graph), so nobody mistakes shapes for full conformance.
+[`shapes/README.md`](shapes/README.md) has the three conventions that matter
+and the honest caveats.
+
 ## Limits, measured
 
 "Can it handle large packages?" is three questions, because validation grows
@@ -390,7 +405,9 @@ package or a reduced case.
 ## Contributing
 
 A rule is its implementation and two tests; the metadata comes from the
-catalogue. See [CONTRIBUTING.md](CONTRIBUTING.md). Four rules of the road, each
+catalogue. See [CONTRIBUTING.md](CONTRIBUTING.md) — including the DCO: every
+commit carries a `Signed-off-by` line (`git commit -s`), which is a
+certificate of origin, not a transfer of rights. Four rules of the road, each
 of which exists because it was broken once:
 
 1. Never spell an iiRDS term inline. Add it to `terms.py`, where a test confirms

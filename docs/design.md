@@ -99,3 +99,21 @@ appears there.
 It is plain ASCII rather than block-drawing characters. Those look better in a
 modern terminal and turn into rubbish in a Windows console or over a serial
 link, and the machines this tool exists for are the ones with the old fonts.
+
+
+## Working rule: adversarial review before delivery
+
+Self-review of the SHACL deliverable was run first, against a sealed list of
+findings from two independent adversarial passes. Score: five of the issues
+found, the two worst missed — a quickstart whose flags silently skipped every
+SPARQL shape, and a licence header whose central claim ("wording is this
+project's own") was false for 85 of 133 shapes. Both were the kind of error an
+author cannot see: one requires *distrusting the documentation you wrote*, the
+other *re-deriving a fact you already believe*.
+
+So the rule, standing: before anything is delivered — a release, a submission,
+a claim in a README — an adversarial pass by a reviewer that did not write the
+material runs against it, and the review's findings become regression tests,
+not just fixes. The gate that never catches anything is indistinguishable from
+no gate; the reviewer that shares the author's beliefs is indistinguishable
+from the author.

@@ -1,8 +1,38 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.2.0 — unreleased
 
-First version. Everything below describes the state at the first public tag.
+- **SHACL shapes** (`shapes/`): 133 shapes for iiRDS 1.3 — the
+  language-neutral encoding of the rules, generated from the same sources,
+  differentially tested against the Python validator — fire-set equality
+  over the entire reference corpus, severity equality on every mutant
+  and provocation fixture — with a closing check that every emitted shape fires somewhere
+  in the suite. Single-file
+  `iirds-complete.ttl` / `iirds-handover-complete.ttl` forms for the pySHACL
+  command line; remedy text, severity, spec link, `ivm:ruleId` and
+  `ivm:versions` on every shape, node and property shapes alike; graph-global
+  checks name the offending node in `sh:value` where one exists ("no
+  package is declared" has none — that one result points at the shape's
+  own IRI, the engine's convention for a nodeless failure). The 52 rules without a shape
+  are accounted for by category in the README and manifest — 38 that no RDF
+  graph can express, 11 deferred (five iiRDS/H MUSTs among them, named), 2
+  out of edition, 1 no-op. Answers iirds-consortium/models#24.
+- **iiRDS §7 fixes in the validator itself, found by the shapes gate**:
+  instances typed with a package-declared subclass of an iiRDS class are now
+  seen by every rule — including two (M15.5, M22.2) that had private
+  exact-typing tests bypassing the shared closure. SHACL's `sh:targetClass`
+  had these semantics by definition; the differential gate refused to let
+  the two encodings differ, and the Python side was the one corrected. The
+  seventeen nodekind rules M78–M94 also shed titles that were accidentally
+  the ontology's description prose, for constraint-describing ones.
+- Interpretation choices, where prose underdetermines a rule, remain
+  documented in [docs/divergences.md](docs/divergences.md).
+- pySHACL rides as a dev-only extra (`.[shacl]`); the runtime stays
+  rdflib-only and the `.pyz` is unchanged.
+
+## 0.1.0 — 2026-08-20
+
+First public release.
 
 ### What it does
 

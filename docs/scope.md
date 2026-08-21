@@ -73,6 +73,11 @@ more than two of them. This is the whole reason the apparatus is large.
 
 Two things about that table are worth internalising.
 
+The SHACL differential gate is the newest instrument, and it hunts a fifth
+failure mode the table above has no column for: **translation errors** —
+places where a second encoding of the same reading says something different.
+It caught an inverted shape on its own first run.
+
 **Mutation testing cannot detect a misreading.** The mutations are derived from
 our own reading, so the mutant and the rule are two encodings of one belief;
 their agreement carries no information about whether the belief is right. Its

@@ -57,6 +57,12 @@ adds to, removes from, or otherwise varies the terms of that material.
     operating on an XML DOM. Rule identifiers are preserved deliberately so
     that results from both tools can be compared rule by rule.
 
+    The generated SHACL shapes (shapes/) carry the same identifiers, and,
+    where a catalogue-sourced shape's sh:message keeps the catalogue's rule
+    wording, that wording; shapes/THIRD-PARTY-NOTICES.md restates this so a
+    copy of that directory is self-contained. The shapes embed no ontology
+    content (see item 1); a test enforces the boundary.
+
     Regenerate with tools/extract_catalog.py; the source commit is recorded in
     the catalogue's "_commit" field.
 

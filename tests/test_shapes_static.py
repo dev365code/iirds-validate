@@ -49,8 +49,8 @@ def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
     assert counts["core_emitted"] == 118
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 15
-    assert counts["deferred_v1.1"] == 11
+    assert counts["sparql_emitted"] == 20
+    assert counts["deferred_v1.1"] == 6
     assert counts["not_expressible"] == 38
     assert counts["noop"] == 1
 
@@ -184,16 +184,20 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     assert "| %d shapes: cardinalities" % per_file["iirds-core.ttl"] in readme
     assert "| %d shapes: graph-global" % per_file["iirds-sparql.ttl"] in readme
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
-    assert "| %d iiRDS/H addition |" % per_file["iirds-handover-sparql.ttl"] in readme
+    assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
     assert "38 of the 185 rules" in readme
     assert str(len(MANIFEST["not_expressible"])) == "38"
     # The 52-rule remainder is broken out by category, and the five deferred
     # iiRDS/H MUSTs are named -- a reader under H must know to keep the
     # Python validator in the loop.
-    assert "52 of the 185" in readme
-    assert len(MANIFEST["deferred_v1.1"]) == 11
+    assert "47 of the 185" in readme
+    assert len(MANIFEST["deferred_v1.1"]) == 6
+    # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
+    # that once demanded they be named as missing now demands the opposite.
     for rid in ("M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"):
-        assert rid in MANIFEST["deferred_v1.1"] and rid in readme
+        assert rid not in MANIFEST["deferred_v1.1"]
+    for rid in MANIFEST["deferred_v1.1"]:
+        assert rid in readme
     for rid in MANIFEST["version_excluded"]:
         assert rid in readme
     for rid in MANIFEST["noop"]:
@@ -213,8 +217,9 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
 
 EMITTED_IDS = frozenset((
     "L10", "L7", "M1", "M10", "M11", "M12", "M13.1", "M13.2", "M14.1",
-    "M14.2", "M15.1", "M15.11a", "M15.11b", "M15.11c", "M15.2", "M15.3",
-    "M15.4", "M15.5", "M15.6", "M15.7a", "M15.7c", "M16.3", "M17", "M18",
+    "M14.2", "M15.1", "M15.10", "M15.11a", "M15.11b", "M15.11c", "M15.2",
+    "M15.3", "M15.4", "M15.5", "M15.6", "M15.7a", "M15.7b", "M15.7c",
+    "M15.7d", "M15.8", "M15.9", "M16.3", "M17", "M18",
     "M19.1", "M19.2", "M19.3", "M19.4", "M2.1", "M2.3", "M2.4", "M2.5",
     "M2.6", "M2.7", "M2.8", "M2.9", "M20.1", "M21.1", "M21.2", "M21.3",
     "M21.4", "M21.5", "M21.6", "M22.1", "M22.2", "M23", "M24.1", "M24.2",

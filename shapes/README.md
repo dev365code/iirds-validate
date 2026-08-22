@@ -21,7 +21,7 @@ demonstrated.
 | `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 109 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
 | `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 14 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
-| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 1 iiRDS/H addition |
+| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 6 iiRDS/H additions (SPARQL): M15.11a plus the five named-party MUSTs |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
 
 The `-complete` files exist because the pySHACL command line takes **one**
@@ -78,6 +78,13 @@ Python validator treat an instance of such a subclass as its iiRDS parent.
 Full inference on top of that would additionally materialise the bundled
 ontology's entailment hints and change what "described in this package"
 means.
+
+**One file, not the union.** These shapes validate the graph you hand
+them — in practice `META-INF/metadata.rdf`. The CLI validates the *union*
+of every metadata serialisation in the container (an `.iirds` may also
+carry `metadata.jsonld`), so a package whose serialisations disagree can
+validate differently here than there; the CLI's L9 reports that
+disagreement itself, which no single-graph shape can see.
 
 **Editions.** These shapes are the 1.3 reading, and they do not gate by
 declared edition — a shapes file has no way to ask what the package
@@ -136,7 +143,7 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-52 of the 185 catalogued rules have no shape, in four honest categories,
+47 of the 185 catalogued rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
 - **38 not expressible** — 38 of the 185 rules are about ZIP bytes, content
@@ -146,13 +153,13 @@ each listed with its reason in `MANIFEST.json`:
   exists in an RDF graph, **by nature, not omission**. A package can satisfy
   every shape here and still be unreadable to every consumer; full checking
   needs a container-aware validator, which is what iirds-validate is.
-- **11 deferred** — expressible in principle, not yet written: six lint
-  rules whose exemption lists are long (L1, L3, L5, L6, L8 — and L4, which
-  is itself MUST-level: directory-structure cycle detection) and — worth
-  naming, because they are MUSTs — five iiRDS/H requirements (M15.7b,
-  M15.7d, M15.8, M15.9, M15.10) whose party/manufacturer chains need
-  softening logic for undescribed vCards that a first release should not
-  approximate. Under iiRDS/H, run the Python validator until these land.
+- **6 deferred** — expressible in principle, not yet written: the six
+  lint rules whose exemption lists are long (L1, L3, L5, L6, L8 — and L4,
+  which is itself MUST-level: directory-structure cycle detection). The
+  five iiRDS/H MUSTs deferred at first release (M15.7b, M15.7d,
+  M15.8–M15.10) have since landed as SPARQL shapes, softenings included:
+  a party whose vCard this package does not describe passes here and is
+  L1's business, exactly as in the Python reading.
 - **2 out of edition** — M16.1 and M16.2 exist only in editions 1.0–1.1;
   a 1.3 shapes set has nothing to say about them.
 - **1 no-op** — M96.4 is a MAY with nothing to violate; it is registered so

@@ -734,6 +734,86 @@ def test_m15_5_counts_a_proprietary_information_object_subclass(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# 6e. The five named-party MUSTs and their softening.
+#
+# Deferred at first release as "the subtlest readings in the codebase"; now
+# that they are shapes, the subtlety itself is pinned: a party whose vCard
+# this package does not describe PASSES (the dangling reference is L1's
+# finding, once — not this rule's, five times). Both encodings must hold
+# that reading, or the shapes fail conformant packages the CLI passes.
+# ---------------------------------------------------------------------------
+
+def test_an_undescribed_vcard_soft_passes_the_named_party_musts(tmp_path):
+    softened = HANDOVER.replace('''  <vcard:Organization rdf:about="urn:test:supplier-card">
+    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>
+  </vcard:Organization>''', "")
+    fired = _h_parity(tmp_path, "soft.iirds", softened)
+    assert fired & {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"} == set()
+
+
+def test_any_card_semantics_one_named_one_nameless_stays_silent(tmp_path):
+    # An "all cards must be named" mis-encoding survives the other pins;
+    # this one kills it (round-4 verifier, finding 2).
+    extra = HANDOVER.replace(
+        '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
+        '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n'
+        '    <iirds:relates-to-vcard rdf:resource="urn:test:bare-card"/>', 1)
+    extra = extra.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="urn:test:bare-card">
+    <rdf:type rdf:resource="http://www.w3.org/2006/vcard/ns#Organization"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    fired = _h_parity(tmp_path, "mixed_cards.iirds", extra)
+    assert fired & {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"} == set()
+
+
+def test_a_roleless_party_with_a_good_card_does_not_leak_across_parties(tmp_path):
+    # A UNION branch that binds its card from a free variable instead of the
+    # role-holding party would soft-pass here; both encodings must fire.
+    leaky = HANDOVER.replace(
+        "    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n", ""
+    ).replace("</rdf:RDF>", '''  <iirds:Party rdf:about="urn:test:bystander">
+    <iirds:relates-to-vcard rdf:resource="urn:test:ghost-card"/>
+  </iirds:Party>
+</rdf:RDF>''')
+    fired = _h_parity(tmp_path, "bystander.iirds", leaky)
+    assert {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"} <= fired
+
+
+def test_a_described_vcard_without_a_name_fails_them_in_both_encodings(tmp_path):
+    # The other side of the softening: described-but-nameless is the real
+    # defect, and it must fire everywhere the chain is required.
+    nameless = HANDOVER.replace(
+        "    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n", "")
+    fired = _h_parity(tmp_path, "nameless.iirds", nameless)
+    assert {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"} <= fired
+
+
+def test_m3_sees_a_subclass_typed_package_in_both_directions(tmp_path):
+    # The round-4 verifier caught M3 still testing bare rdf:type after five
+    # sibling rules got the section-7 repair -- and in the false-reject
+    # direction: a conformant package typed via its own declared subclass
+    # failed SHACL-only. Both directions pinned.
+    subclass_decl = '''  <rdf:Description rdf:about="urn:acme:DeliveryPackage">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Package"/>
+  </rdf:Description>
+'''
+    retyped = MINIMAL_RDF.replace(
+        '<iirds:Package rdf:about="urn:test:package">',
+        subclass_decl + '  <rdf:Description rdf:about="urn:test:package">\n'
+        '    <rdf:type rdf:resource="urn:acme:DeliveryPackage"/>').replace(
+        "</iirds:Package>", "</rdf:Description>")
+    assert "M3" not in assert_parity(tmp_path, "sub_pkg.iirds", retyped)
+
+    second = MINIMAL_RDF.replace("</rdf:RDF>", subclass_decl + '''  <rdf:Description rdf:about="urn:test:package2">
+    <rdf:type rdf:resource="urn:acme:DeliveryPackage"/>
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+    <iirds:title>Second, subclass-typed</iirds:title>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M3" in assert_parity(tmp_path, "two_pkg.iirds", second)
+
+
+# ---------------------------------------------------------------------------
 # 7. No shape may sit out the whole suite.
 #
 # Set-equality per fixture proves agreement on what fires; it proves nothing

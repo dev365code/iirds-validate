@@ -1743,10 +1743,13 @@ ivs:M3 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=Each%20iiRDS%20package%20MUST%20have%20exactly%20one%20corresponding%20iirds%3APackage%20instance%20in%20the%20metadata.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:M3 ;
-  sh:sparql [ sh:select """SELECT $this WHERE { FILTER NOT EXISTS { ?p a <http://iirds.tekom.de/iirds#Package> } }""" ] ;
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  FILTER NOT EXISTS { ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value a <http://iirds.tekom.de/iirds#Package> . FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 }
-  ?p2 a <http://iirds.tekom.de/iirds#Package> . FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 }
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 }
+  ?p2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 }
   FILTER (?value != ?p2) }""" ] .
 
 ivs:M5 a sh:NodeShape ;
@@ -2088,6 +2091,72 @@ ivs:M15.7c-p a sh:PropertyShape ;
   sh:qualifiedValueShape [ sh:in ( iirds:ProductType ) ] ;
   sh:qualifiedMinCount 1 .
 
+ivs:M15.8 a sh:NodeShape ;
+  rdfs:label "In iiRDS/H each iirds:Document must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Author and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  sh:severity sh:Violation ;
+  sh:message "In iiRDS/H each iirds:Document must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Author and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  ivm:ruleId "M15.8" ;
+  ivm:ruleSource "catalogue" ;
+  sh:description "Add iirds:relates-to-Party on the Document, relating it to a Party with a role. A handover document with no responsible organisation leaves the receiving plant with nobody to ask about it." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  ivm:versions "1.3" ;
+  sh:targetNode ivs:M15.8 ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Document> .
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Author> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .
+
+ivs:M15.9 a sh:NodeShape ;
+  rdfs:label "In iiRDS/H each iirds:Package must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  sh:severity sh:Violation ;
+  sh:message "In iiRDS/H each iirds:Package must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  ivm:ruleId "M15.9" ;
+  ivm:ruleSource "catalogue" ;
+  sh:description "Add iirds:relates-to-Party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  ivm:versions "1.3" ;
+  sh:targetNode ivs:M15.9 ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Creator> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .
+
+ivs:M15.10 a sh:NodeShape ;
+  rdfs:label "In iiRDS/H each iirds:InformationObject must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  sh:severity sh:Violation ;
+  sh:message "In iiRDS/H each iirds:InformationObject must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  ivm:ruleId "M15.10" ;
+  ivm:ruleSource "catalogue" ;
+  sh:description "Add iirds:relates-to-Party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  ivm:versions "1.3" ;
+  sh:targetNode ivs:M15.10 ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> .
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Creator> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .
+
 ivs:M15.11a a sh:NodeShape ;
   rdfs:label "An iiRDS/H package MUST contain only information units of the subclasses iirds:Document and iirds:Package." ;
   sh:severity sh:Violation ;
@@ -2100,3 +2169,55 @@ ivs:M15.11a a sh:NodeShape ;
   sh:targetNode ivs:M15.11a ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value a ?t . FILTER (?t IN (<http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Topic>, <http://iirds.tekom.de/iirds#Fragment>)) }""" ] .
+
+ivs:M15.7b a sh:NodeShape ;
+  rdfs:label "The iirds:IdentityDomain of the Instance Identity (ObjectInstanceURI/ObjectTypeURI/SerialNumber) MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name." ;
+  sh:severity sh:Violation ;
+  sh:message "The iirds:IdentityDomain of the Instance Identity (ObjectInstanceURI/ObjectTypeURI/SerialNumber) MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name." ;
+  ivm:ruleId "M15.7b" ;
+  ivm:ruleSource "catalogue" ;
+  sh:description "Give the instance Identity an iirds:IdentityDomain that names one of ObjectInstanceURI, ObjectTypeURI or SerialNumber. The domain says which identifier scheme the value belongs to; without it a serial number and an asset URI are indistinguishable strings." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  ivm:versions "1.3" ;
+  sh:targetNode ivs:M15.7b ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?variant <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
+  ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+  ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
+  ?value <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
+  FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ObjectInstanceURI>, <http://iirds.tekom.de/iirds#ObjectTypeURI>, <http://iirds.tekom.de/iirds#SerialNumber>))
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Manufacturer> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .
+
+ivs:M15.7d a sh:NodeShape ;
+  rdfs:label "The iirds:IdentityDomain of the ProductType Identity MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name." ;
+  sh:severity sh:Violation ;
+  sh:message "The iirds:IdentityDomain of the ProductType Identity MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name." ;
+  ivm:ruleId "M15.7d" ;
+  ivm:ruleSource "catalogue" ;
+  sh:description "Relate the ProductType IdentityDomain to an iirds:Party with iirds:has-party-role. Identifier schemes are only unique within the organisation that issues them, so the domain has to say whose scheme it is." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  ivm:versions "1.3" ;
+  sh:targetNode ivs:M15.7d ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?variant <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
+  ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+  ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
+  ?value <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
+  FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ProductType>))
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Manufacturer> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .

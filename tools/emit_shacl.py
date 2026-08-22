@@ -237,15 +237,67 @@ def _ns_test(var):
     return "(" + " || ".join('STRSTARTS(STR(%s), "%s")' % (var, ns)
                              for ns in _IIRDS_NS) + ")"
 
+#: The five iiRDS/H "named party" MUSTs share one reading
+#: (rules/handover.py _needs_named_party): the subject must reach a Party
+#: holding the role, whose vcard is either undescribed in this package
+#: (then L1 owns the dangling reference -- one unresolvable pointer must
+#: not produce the same finding five times) or states a
+#: vcard:organization-name. Deferred at first release for exactly this
+#: subtlety; the differential gate now holds the reading in both encodings.
+#: UNION branches are evaluated independently and only then joined, so a
+#: branch containing nothing but a FILTER sees ?card *unbound* -- and
+#: `NOT EXISTS { ?card ?cp ?co }` with an unbound ?card asks "is the graph
+#: empty", which it never is. Each branch therefore carries its own
+#: relates-to-vcard triple, binding the card before testing it (found by
+#: the softening pin the moment these shapes first ran).
+_NAMED_VCARD = ("{ ?party <%(ii)srelates-to-vcard> ?card .\n"
+                "      FILTER NOT EXISTS { ?card ?cp ?co } }\n"
+                "    UNION\n"
+                "    { ?party <%(ii)srelates-to-vcard> ?namedcard .\n"
+                "      ?namedcard <%(vc)sorganization-name> ?orgname }")
+
+
+def _named_party_query(cls, role):
+    return ("""SELECT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + cls + """> .
+  FILTER NOT EXISTS {
+    ?value <%(ii)srelates-to-party> ?party .
+    ?party <%(ii)shas-party-role> <%(ii)s""" + role + """> .
+    """ + _NAMED_VCARD + """
+  } }""")
+
+
+def _domain_manufacturer_query(type_list):
+    return ("""SELECT $this ?value WHERE {
+  ?variant <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> .
+  ?variant <%(ii)shas-identity> ?identity .
+  ?identity <%(ii)shas-identity-domain> ?value .
+  ?value <%(ii)shas-identity-type> ?idtype .
+  FILTER (?idtype IN (""" + type_list + """))
+  FILTER NOT EXISTS {
+    ?value <%(ii)srelates-to-party> ?party .
+    ?party <%(ii)shas-party-role> <%(ii)sManufacturer> .
+    """ + _NAMED_VCARD + """
+  } }""")
+
+
 SPARQL_FORMS = {
     # Where a violating node exists, the query binds it to ?value: a SPARQL
     # constraint's ?value binding becomes the result's sh:value, so a global
     # check reports "at this node" instead of "somewhere in the graph". The
     # first M3 query reports an absence and has no node to name.
-    "M3": ("fixed", ["""SELECT $this WHERE { FILTER NOT EXISTS { ?p a <%(ii)sPackage> } }""",
+    # rdf:type/rdfs:subClassOf*, not bare rdf:type: a package typed only
+    # with its own declared subclass of iirds:Package is a Package (section
+    # 7). The five named-party MUSTs, M17, M18, M24.6 and M22.2 all got this
+    # repair; M3 was the straggler the round-4 verifier caught -- in the
+    # false-reject direction, the worst one.
+    "M3": ("fixed", ["""SELECT $this WHERE {
+  FILTER NOT EXISTS { ?p <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }""",
                      """SELECT $this ?value WHERE {
-  ?value a <%(ii)sPackage> . FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 }
-  ?p2 a <%(ii)sPackage> . FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 }
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 }
+  ?p2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 }
   FILTER (?value != ?p2) }"""]),
     # rdf:type/rdfs:subClassOf*: the same instance test sh:class performs,
     # so a package-declared subclass of Component satisfies the "declares one
@@ -317,6 +369,13 @@ SPARQL_FORMS = {
   FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
 }
 
+SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
+SPARQL_FORMS["M15.9"] = ("fixed", [_named_party_query("Package", "Creator")])
+SPARQL_FORMS["M15.10"] = ("fixed", [_named_party_query("InformationObject", "Creator")])
+SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_manufacturer_query(
+    "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>")])
+SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>")])
+
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.
@@ -327,11 +386,6 @@ DEFERRED_V11 = {
     "L5": "proprietary-class linkage exemption nest",
     "L6": "structural-node and label exemption nest",
     "L8": "external-vocabulary filters",
-    "M15.7b": "manufacturer chain + undescribed-vcard softening",
-    "M15.7d": "manufacturer chain + undescribed-vcard softening",
-    "M15.8": "party chain + undescribed-vcard softening",
-    "M15.9": "party chain + undescribed-vcard softening",
-    "M15.10": "party chain + undescribed-vcard softening",
 }
 
 #: No RDF graph to look at, or two graphs, or graph×ZIP joins. Verbatim family
@@ -668,6 +722,7 @@ def build() -> dict:
                  "abstract": ", ".join("<%s>" % c for c in ABSTRACT_CLASSES),
                  "ns_s": _ns_test("?s"), "ns_o": _ns_test("?o"),
                  "ns_v": _ns_test("?value"), "ns_t": _ns_test("?t"),
+                 "vc": "http://www.w3.org/2006/vcard/ns#",
                  "defined_terms": ", ".join(
                      "<%s>" % term for term in
                      sorted(str(term) for term in _ONTOLOGY.defined_terms()))}

@@ -148,7 +148,20 @@ def test_the_fixture_is_a_conformant_handover_package(tmp_path):
 
 
 #: (rule, the line whose removal is exactly that rule's requirement)
-REMOVALS = [
+#: The five named-party MUSTs, provoked by breaking the chain at its most
+#: telling link: the Author party line for M15.8; the shared Creator role
+#: for M15.9/M15.10 (one party serves Package and InformationObject, so one
+#: removal provokes both -- each row asserts only its own rule); the shared
+#: Manufacturer role for M15.7b/M15.7d likewise.
+NAMED_PARTY_REMOVALS = [
+    ("M15.8", '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>'),
+    ("M15.9", '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>'),
+    ("M15.10", '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>'),
+    ("M15.7b", '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>'),
+    ("M15.7d", '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>'),
+]
+
+REMOVALS = NAMED_PARTY_REMOVALS + [
     ("M15.2",  '    <hov:has-document-category rdf:resource="%sOperatingInstructions"/>\n' % HOV),
     ("M15.3",  "    <iirds:language>en</iirds:language>\n"),
     ("M15.4",  "    <iirds:title>Operating instructions</iirds:title>\n"),

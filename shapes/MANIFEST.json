@@ -8,8 +8,8 @@
  "counts": {
   "core_emitted": 118,
   "version_excluded": 2,
-  "sparql_emitted": 15,
-  "deferred_v1.1": 11,
+  "sparql_emitted": 20,
+  "deferred_v1.1": 6,
   "not_expressible": 38,
   "noop": 1
  },
@@ -139,7 +139,12 @@
   "M3",
   "M5",
   "M12",
+  "M15.8",
+  "M15.9",
+  "M15.10",
   "M15.11a",
+  "M15.7b",
+  "M15.7d",
   "M16.3",
   "M17",
   "M18",
@@ -168,12 +173,7 @@
   "L4": "cycle detection via property-path +",
   "L5": "proprietary-class linkage exemption nest",
   "L6": "structural-node and label exemption nest",
-  "L8": "external-vocabulary filters",
-  "M15.7b": "manufacturer chain + undescribed-vcard softening",
-  "M15.7d": "manufacturer chain + undescribed-vcard softening",
-  "M15.8": "party chain + undescribed-vcard softening",
-  "M15.9": "party chain + undescribed-vcard softening",
-  "M15.10": "party chain + undescribed-vcard softening"
+  "L8": "external-vocabulary filters"
  },
  "not_expressible": {
   "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
@@ -711,8 +711,28 @@
    "iri": "https://w3id.org/iirds-validate/shapes#M12",
    "file": "iirds-1.3/iirds-sparql.ttl"
   },
+  "M15.8": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.8",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M15.9": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.9",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M15.10": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.10",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
   "M15.11a": {
    "iri": "https://w3id.org/iirds-validate/shapes#M15.11a",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M15.7b": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.7b",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M15.7d": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.7d",
    "file": "iirds-1.3/iirds-handover-sparql.ttl"
   },
   "M16.3": {

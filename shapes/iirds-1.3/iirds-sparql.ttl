@@ -52,10 +52,13 @@ ivs:M3 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=Each%20iiRDS%20package%20MUST%20have%20exactly%20one%20corresponding%20iirds%3APackage%20instance%20in%20the%20metadata.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:M3 ;
-  sh:sparql [ sh:select """SELECT $this WHERE { FILTER NOT EXISTS { ?p a <http://iirds.tekom.de/iirds#Package> } }""" ] ;
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  FILTER NOT EXISTS { ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value a <http://iirds.tekom.de/iirds#Package> . FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 }
-  ?p2 a <http://iirds.tekom.de/iirds#Package> . FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 }
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 }
+  ?p2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 }
   FILTER (?value != ?p2) }""" ] .
 
 ivs:M5 a sh:NodeShape ;

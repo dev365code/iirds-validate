@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+- **The five deferred iiRDS/H MUSTs land as shapes** (M15.7b, M15.7d,
+  M15.8–M15.10): the named-party chains, softenings included — a party
+  whose vCard the package does not describe passes (the dangling
+  reference is L1's finding, once), a described-but-nameless vCard fails.
+  138 shapes; the deferred bucket is down to the six long-exemption lint
+  rules. The differential gate caught a SPARQL scoping trap on the way in
+  (a UNION branch evaluates independently, so a filter-only branch saw
+  its variable unbound) — recorded in the generator's comments.
+- The `ivs:`/`ivm:` namespaces resolve through w3id.org permalinks
+  (perma-id/w3id.org#6584).
+- **A package shipping both metadata serialisations no longer double-counts
+  its blank nodes**: two isomorphic sources now merge as one graph, so an
+  inline IdentityDomain is one domain, not "2 domains". Genuinely divergent
+  sources still union — their disagreement is L9's finding, and hiding
+  either side would hide the evidence. Found by the round-4 hostile
+  pass, where the single-file SHACL shapes were the side that was right.
+- **`--fragment`**: validate a bare metadata file — a spec example, a
+  snippet under an editor's hands — inside a throwaway container, with the
+  four rules a fragment cannot satisfy (M3, M4, L2, S6) suspended and named
+  in a note. The wrapping this project offered the specification's CI in
+  iirds-consortium/specification#34, shipped as a flag.
+
 ## 0.2.0 — 2026-08-21
 
 - **SHACL shapes** (`shapes/`): 133 shapes for iiRDS 1.3 — the

@@ -265,7 +265,7 @@ borrows its class hierarchy; the report says so when it happens.
 
 ## The rules as SHACL — for everyone who is not running Python
 
-[`shapes/`](shapes/) carries the language-neutral encoding: 133 SHACL shapes
+[`shapes/`](shapes/) carries the language-neutral encoding: 138 SHACL shapes
 generated from the same sources as the rules, written to SHACL Core and
 SHACL-AF and tested on pySHACL 0.40, so a SHACL engine can check the graph
 half of iiRDS conformance without this project's code. Every shape carries

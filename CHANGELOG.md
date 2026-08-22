@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-08-22
 
 - **The five deferred iiRDS/H MUSTs land as shapes** (M15.7b, M15.7d,
   M15.8–M15.10): the named-party chains, softenings included — a party

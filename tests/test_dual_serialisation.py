@@ -47,3 +47,35 @@ def test_a_missing_statement_in_one_serialisation_is_reported(make_package):
 
 def test_one_serialisation_alone_is_not_a_finding(make_package):
     assert "L9" not in ids(runner.lint(make_package(metadata=MINIMAL_RDF)))
+
+
+def test_matching_serialisations_do_not_double_blank_nodes(make_package):
+    """Two serialisations of the same graph must count as one graph.
+
+    Blank nodes cannot be co-identified across documents, so merging both
+    files naively doubles every blank-node-rooted structure — and a package
+    that legitimately ships RDF/XML and JSON-LD then fails count rules
+    (one inline IdentityDomain becomes "2 domains") that the same metadata
+    passes when shipped alone. Found by the review; the
+    SHACL shapes, which read one file, were the side that was right."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from test_handover_rules_fire import _jsonld
+
+    with_bnode = MINIMAL_RDF.replace("</rdf:RDF>", """  <iirds:Identity rdf:about="urn:test:id1">
+    <iirds:identifier>SN-1</iirds:identifier>
+    <iirds:has-identity-domain>
+      <iirds:IdentityDomain>
+        <rdfs:label xml:lang="en">Serials</rdfs:label>
+      </iirds:IdentityDomain>
+    </iirds:has-identity-domain>
+  </iirds:Identity>
+</rdf:RDF>""")
+    alone = runner.check(make_package(metadata=with_bnode, name="alone.iirds"))
+    both = runner.check(make_package(metadata=with_bnode, jsonld=_jsonld(with_bnode),
+                                     name="both.iirds"))
+    assert ids(alone) == ids(both), (
+        "the same graph, shipped once vs twice, must not change what fires; "
+        "diff: %s" % sorted(ids(both) ^ ids(alone)))
+    assert "M19.3" not in ids(both) and "M36" not in ids(both)

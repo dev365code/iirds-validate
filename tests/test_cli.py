@@ -59,3 +59,42 @@ def test_an_unpublished_version_is_rejected_by_the_parser(make_package):
     with pytest.raises(SystemExit) as exc:
         main(["check", str(make_package()), "--iirds-version", "9.9"])
     assert exc.value.code == 2
+
+
+FRAGMENT = """<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:iirds="http://iirds.tekom.de/iirds#">
+  <iirds:Topic rdf:about="urn:frag:topic1">
+    <iirds:title>A fragment under test</iirds:title>
+    <iirds:has-rendition>
+      <iirds:Rendition>
+        <iirds:format>application/xhtml+xml</iirds:format>
+        <iirds:source>/absolute/path.xhtml</iirds:source>
+      </iirds:Rendition>
+    </iirds:has-rendition>
+  </iirds:Topic>
+</rdf:RDF>
+"""
+
+
+def test_fragment_mode_finds_real_defects_without_package_noise(tmp_path, capsys):
+    """A bare metadata file — a spec example, a snippet under an editor's
+    hands — is not a package, and drowning its one real defect under "no
+    Package declared" noise teaches people to ignore the tool. --fragment
+    wraps it in a throwaway container and suspends exactly the rules a
+    fragment cannot satisfy, saying so in a note."""
+    frag = tmp_path / "snippet.rdf"
+    frag.write_text(FRAGMENT, "utf-8")
+    assert main(["check", str(frag), "--fragment"]) == EXIT_FINDINGS
+    out = capsys.readouterr().out
+    assert "M9" in out                      # the real defect: absolute source
+    # The suspended rules may be *named* -- in the note that says they were
+    # suspended -- but must not appear as findings.
+    finding_lines = [line for line in out.splitlines() if "suspended" not in line]
+    for rid in ("M3", "M4", "L2", "S6"):
+        assert not any(rid in line for line in finding_lines), rid
+    assert "suspended" in out               # and the note is actually there
+
+    clean = tmp_path / "clean.rdf"
+    clean.write_text(FRAGMENT.replace("/absolute/path.xhtml", "content/t.xhtml"), "utf-8")
+    assert main(["check", str(clean), "--fragment"]) == EXIT_OK

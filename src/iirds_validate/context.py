@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from rdflib import BNode, Graph, URIRef
+from rdflib.compare import isomorphic
 from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
@@ -227,6 +228,7 @@ def build_graph(package: Package):
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
+    merged_from: List[Graph] = []
 
     for name, fmt in ((METADATA_RDF, "xml"), (METADATA_JSONLD, "json-ld")):
         if not package.has(name):
@@ -266,7 +268,16 @@ def build_graph(package: Package):
             errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
             continue
         per_source[name] = single
-        graph += single
+        # Merge, unless this source is the same graph again. Blank nodes
+        # cannot be co-identified across documents, so naively unioning two
+        # serialisations of one graph doubles every blank-node-rooted
+        # structure and count rules fail a conformant package ("2 domains"
+        # where the metadata has one). Isomorphic sources therefore merge as
+        # one; genuinely divergent sources still union -- their disagreement
+        # is L9's finding, and hiding either side would hide the evidence.
+        if not any(isomorphic(single, seen) for seen in merged_from):
+            graph += single
+            merged_from.append(single)
         sources.append(name)
 
     return graph, errors, sources, per_source

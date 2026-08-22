@@ -105,6 +105,7 @@ A path means "check it". No subcommand needed.
 | `iirdsv <path>` | check **and** lint — what you want most of the time |
 | `iirdsv check <path>` | **does it conform?** container, metadata graph, content |
 | `iirdsv lint <path>` | **will anyone else be able to read it?** |
+| `iirdsv check --fragment <file>` | a bare metadata snippet — spec example, editor's draft — with package-level rules suspended and named |
 | `iirdsv pack <dir>` | write a directory as a conformant `.iirds`, then check that |
 | `iirdsv rules` | every rule, one line each; `iirdsv rules M11` or `-v` adds versions, spec link, source and remedy |
 

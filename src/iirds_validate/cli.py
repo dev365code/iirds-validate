@@ -2,6 +2,7 @@
 
     iirdsv check pkg.iirds      conformance  (container + graph rules)
     iirdsv lint  pkg.iirds      interoperability  (can a consumer use it?)
+    iirdsv check --fragment x.rdf   a bare metadata snippet, package rules suspended
     iirdsv all   pkg.iirds      both
     iirdsv rules --kind lint    what this tool knows how to check
 
@@ -37,6 +38,10 @@ def _add_target(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-q", "--quiet", action="store_true", help="exit code only")
     parser.add_argument("-W", "--warnings-as-errors", action="store_true",
                         help="fail the run on warnings too")
+    parser.add_argument("--fragment", action="store_true",
+                        help="treat each path as a bare metadata file (a spec example, a "
+                             "snippet): wrap it in a throwaway container and suspend the "
+                             "package-level rules a fragment cannot satisfy")
 
 
 def _targets(paths):
@@ -63,15 +68,24 @@ def _run(args, kinds) -> int:
     # A path that is not there is an operator error, not a validation result:
     # exit 2. A file that opens but is not a valid container is a finding about
     # the package, so it goes through the rules and exits 1.
-    targets, missing, empty = _targets(args.package)
-    for path in missing:
-        print("iirds-validate: no such file or directory: %s" % path, file=sys.stderr)
-    for path in empty:
-        print("iirds-validate: no iiRDS package found under %s" % path, file=sys.stderr)
-    if missing or empty:
-        return EXIT_ERROR
-
-    reports = [runner.run(path, kinds, version=args.version) for path in targets]
+    if getattr(args, "fragment", False):
+        # Fragments are files, named one by one; discovery is for containers.
+        missing = [p for p in args.package if not os.path.isfile(p)]
+        for path in missing:
+            print("iirds-validate: no such file: %s" % path, file=sys.stderr)
+        if missing:
+            return EXIT_ERROR
+        reports = [runner.run_fragment(path, kinds, version=args.version)
+                   for path in args.package]
+    else:
+        targets, missing, empty = _targets(args.package)
+        for path in missing:
+            print("iirds-validate: no such file or directory: %s" % path, file=sys.stderr)
+        for path in empty:
+            print("iirds-validate: no iiRDS package found under %s" % path, file=sys.stderr)
+        if missing or empty:
+            return EXIT_ERROR
+        reports = [runner.run(path, kinds, version=args.version) for path in targets]
 
     if args.format == "json":
         payload = [r.as_dict() for r in reports]

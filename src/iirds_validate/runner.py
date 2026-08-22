@@ -1,6 +1,7 @@
 """Rule execution."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional, Sequence
 
 from . import rules as _rules  # noqa: F401  — importing registers every rule
@@ -56,6 +57,50 @@ def _metadata_findings(ctx: Context, kinds: Sequence[str]):
                       Violation("metadata could not be parsed", subject=name, detail=detail))
 
 
+
+
+#: What a bare metadata file can never satisfy: a container around it
+#: (L2 resolves sources against entries, S6 walks entry paths) and the
+#: package-level declarations (M3, M4). Suspending them in fragment mode is
+#: not leniency -- reporting "your snippet is not a whole package" five ways
+#: buries the finding the snippet was brought here for.
+FRAGMENT_SUSPENDED = frozenset(("M3", "M4", "L2", "S6"))
+
+
+def run_fragment(path, kinds, version=None):
+    """Validate a bare metadata file as if it were a package's metadata.
+
+    The file is staged into a throwaway conformant container (mimetype
+    first and stored -- the packer's usual guarantees), validated normally,
+    and the rules a fragment cannot satisfy are suspended, with a note
+    saying so. The report keeps the fragment's own path: the person reading
+    it pointed at a file, not at our scratch directory.
+    """
+    import shutil
+    import tempfile
+
+    from .model import METADATA_RDF
+    from .packer import pack
+
+    source = Path(path)
+    staging = Path(tempfile.mkdtemp(prefix="iirds-fragment-"))
+    try:
+        target = staging / "container" / METADATA_RDF
+        target.parent.mkdir(parents=True)
+        target.write_bytes(source.read_bytes())
+        packed = pack(staging / "container", staging / "fragment.iirds")
+        report = run(packed, kinds, version=version)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+    report.path = str(source)
+    suspended = sorted({f.rule.id for f in report.findings} & FRAGMENT_SUSPENDED)
+    report.findings = [f for f in report.findings if f.rule.id not in FRAGMENT_SUSPENDED]
+    report.notes.append(
+        "fragment mode: validated inside a throwaway container; "
+        "package-level rules suspended (%s)"
+        % (", ".join(suspended) if suspended else "none fired"))
+    return report
 
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,

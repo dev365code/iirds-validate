@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 — 2026-08-24
+
+- **The container layer is shared with the [`iirds`](https://github.com/dev365code/iirds)
+  SDK, in both directions.** `pack()` moved to the SDK (same bytes, same
+  refusals — the eleven packing tests pass against it unedited), and the
+  metadata reader — the hardening guards, the parser, the
+  isomorphic-once merge — is imported back from it, so the SDK's answer
+  can never contradict the validator's. The seam is pinned by object
+  identity, not equality: a fork of either side fails loudly. Two
+  runtime dependencies now, both pure Python: rdflib and
+  `iirds>=0.2.0,<0.3`, each exercised at its floor in CI.
+- **Both size gates were disabled for directory packages.**
+  `DirectoryPackage.info()` answered `None`, so a 64 MiB+ document that
+  an archive refuses was read and parsed whole in the
+  check-before-you-zip form — and neither gate, in either form, had
+  ever been observed firing by any test. Four tests now watch both;
+  the defect register records the silent pass.
+- The section-7 class closure's data half is now literally the SDK's
+  `subclasses_of`: "the SDK's answer is a subset of the validator's"
+  became a property of the code rather than a claim about it.
+- The `.pyz` build script reads its bundle list from `pyproject.toml`
+  instead of hard-coding it, and the smoke test proves self-containment
+  for every bundled dependency (887 KB with the SDK inside).
+- The CLI's pack error wording is owned by the CLI: the SDK speaks API
+  ("pass overwrite=True"), the terminal speaks flags ("pass
+  --overwrite"), and the boundary translates.
+
 ## 0.3.0 — 2026-08-22
 
 - **The five deferred iiRDS/H MUSTs land as shapes** (M15.7b, M15.7d,

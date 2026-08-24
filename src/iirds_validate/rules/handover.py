@@ -15,9 +15,19 @@ from __future__ import annotations
 
 from .. import terms as T
 from ..model import VCARD, Violation
-from ..registry import rule
+from ..registry import CATALOG, rule
 
 ORGANISATION_NAME = VCARD["organization-name"]
+
+
+def _spec_sans_quote(rule_id: str):
+    """The catalogue's link, minus its text fragment. For four rules here
+    the fragment quotes "mandatory for each iirds:Document" while the rule
+    governs Package, InformationObject or IdentityDomain -- a reader lands
+    on a sentence about the wrong class. The section anchor is kept; the
+    misleading quotation is not."""
+    url = CATALOG.get(rule_id, {}).get("spec") or ""
+    return url.partition(":~:text=")[0] or None
 
 
 def _parties(ctx, subject, role):
@@ -147,7 +157,7 @@ def m15_7a_product_variant_instance_identity(ctx):
                             subject=ctx.ref(doc))
 
 
-@rule("M15.7b",
+@rule("M15.7b", spec=_spec_sans_quote("M15.7b"),
        fix="Give the instance Identity an iirds:IdentityDomain that names one of ObjectInstanceURI, ObjectTypeURI or SerialNumber. The domain says which identifier scheme the value belongs to; without it a serial number and an asset URI are indistinguishable strings.")
 def m15_7b_instance_identity_manufacturer(ctx):
     for variant in ctx.instances_of(T.ProductVariant):
@@ -171,7 +181,7 @@ def m15_7c_product_type_identity(ctx):
                             subject=ctx.ref(variant), detail=ctx.label_of(variant))
 
 
-@rule("M15.7d",
+@rule("M15.7d", spec=_spec_sans_quote("M15.7d"),
        fix="Relate the ProductType IdentityDomain to an iirds:Party with iirds:has-party-role. Identifier schemes are only unique within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7d_product_type_manufacturer(ctx):
     for variant in ctx.instances_of(T.ProductVariant):
@@ -195,13 +205,13 @@ def m15_8_document_author(ctx):
     yield from _needs_named_party(ctx, T.Document, T.Author, "iirds:Document")
 
 
-@rule("M15.9",
+@rule("M15.9", spec=_spec_sans_quote("M15.9"),
        fix="Add iirds:relates-to-Party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it.")
 def m15_9_package_creator(ctx):
     yield from _needs_named_party(ctx, T.Package, T.Creator, "iirds:Package")
 
 
-@rule("M15.10",
+@rule("M15.10", spec=_spec_sans_quote("M15.10"),
        fix="Add iirds:relates-to-Party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both.")
 def m15_10_information_object_creator(ctx):
     yield from _needs_named_party(ctx, T.InformationObject, T.Creator, "iirds:InformationObject")

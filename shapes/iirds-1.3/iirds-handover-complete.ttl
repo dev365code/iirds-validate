@@ -2120,7 +2120,7 @@ ivs:M15.9 a sh:NodeShape ;
   ivm:ruleId "M15.9" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:relates-to-Party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.9 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
@@ -2142,7 +2142,7 @@ ivs:M15.10 a sh:NodeShape ;
   ivm:ruleId "M15.10" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:relates-to-Party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.10 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
@@ -2177,7 +2177,7 @@ ivs:M15.7b a sh:NodeShape ;
   ivm:ruleId "M15.7b" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Give the instance Identity an iirds:IdentityDomain that names one of ObjectInstanceURI, ObjectTypeURI or SerialNumber. The domain says which identifier scheme the value belongs to; without it a serial number and an asset URI are indistinguishable strings." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.7b ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
@@ -2203,7 +2203,7 @@ ivs:M15.7d a sh:NodeShape ;
   ivm:ruleId "M15.7d" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Relate the ProductType IdentityDomain to an iirds:Party with iirds:has-party-role. Identifier schemes are only unique within the organisation that issues them, so the domain has to say whose scheme it is." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.7d ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {

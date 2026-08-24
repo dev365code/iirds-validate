@@ -82,3 +82,17 @@ def test_every_finding_says_whose_rule_it_is():
     ours = next(r for r in all_rules() if r.id not in CATALOG)
     assert Finding(catalogued, Violation("x")).as_dict()["source"] == "catalogue"
     assert Finding(ours, Violation("x")).as_dict()["source"] == "iirds-validate"
+
+
+def test_the_named_party_rules_do_not_quote_the_document_sentence():
+    """The catalogue's spec links for four iiRDS/H rules carry a text
+    fragment quoting "The following metadata is mandatory for each
+    iirds:Document" — while the rules govern Package, InformationObject
+    and IdentityDomain. A reader following the link lands on a sentence
+    about the wrong class (round-4 review, finding 5). The registry keeps
+    the section anchor and drops the misleading quotation."""
+    from iirds_validate.registry import all_rules
+
+    for rule in all_rules():
+        if rule.id in ("M15.7b", "M15.7d", "M15.9", "M15.10"):
+            assert rule.spec and ":~:text=" not in rule.spec, rule.id

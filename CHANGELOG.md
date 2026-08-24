@@ -26,6 +26,11 @@
 - The CLI's pack error wording is owned by the CLI: the SDK speaks API
   ("pass overwrite=True"), the terminal speaks flags ("pass
   --overwrite"), and the boundary translates.
+- **The offline claim became a gate**: CI seals the network at the
+  socket layer and runs every rule against a real container; "touches
+  no network" is now enforced, not asserted.
+- Four spec links on dcterms-backed rules stopped quoting a sentence
+  about the wrong class.
 
 ## 0.3.0 — 2026-08-22
 

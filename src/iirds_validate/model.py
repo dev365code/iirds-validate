@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Tuple
 
+from iirds import METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE  # noqa: F401  (re-exported)
 from rdflib import Namespace, URIRef
 from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
 
@@ -22,21 +23,20 @@ VERSIONS: Tuple[str, ...] = ("1.0", "1.0.1", "1.1", "1.2", "1.3")
 LATEST_VERSION = "1.3"
 VARIANTS: Tuple[str, ...] = ("unrestricted", "A", "H")
 
-# Where metadata lives inside the container.
+# Where metadata lives inside the container. The two metadata paths and the
+# parse base are the ecosystem's agreement, not this project's alone, so they
+# are imported from the shared SDK above rather than declared a second time.
 MIMETYPE_FILE = "mimetype"
 MIMETYPE_VALUE = "application/iirds+zip"
 META_DIR = "META-INF"
-METADATA_RDF = "META-INF/metadata.rdf"
-METADATA_JSONLD = "META-INF/metadata.jsonld"
 
 
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
-#: The base every metadata document is parsed against. Deliberately a URN:
-#: URNs are not hierarchical, so a relative rdf:about is left relative rather
-#: than being silently joined into something that looks absolute.
-PACKAGE_BASE = "urn:iirds:package:"
+#: PACKAGE_BASE (imported above) is deliberately a URN: URNs are not
+#: hierarchical, so a relative rdf:about is left relative rather than being
+#: silently joined into something that looks absolute.
 
 
 def is_absolute_iri(node) -> bool:

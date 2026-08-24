@@ -22,13 +22,11 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 from __future__ import annotations
 
 import hashlib
-import json
-import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
+from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_of
 from rdflib import BNode, Graph, URIRef
-from rdflib.compare import isomorphic
 from rdflib.namespace import RDF, RDFS
 
 from . import ontology as ontology_mod
@@ -82,7 +80,7 @@ class Context:
         if cls not in self._closure:
             classes = set(self.ontology.subclasses_of(cls))
             for c in tuple(classes):
-                classes.update(self.graph.transitive_subjects(RDFS.subClassOf, c))
+                classes.update(subclasses_of(self.graph, c))
             self._closure[cls] = frozenset(classes)
         return self._closure[cls]
 
@@ -167,70 +165,24 @@ def _detect(graph: Graph):
     return declared, (variant or "unrestricted")
 
 
-#: An .iirds package arrives from a supplier, so its metadata is untrusted
-#: input. Two cheap guards, applied before the parser sees anything.
-MAX_METADATA_BYTES = 64 * 1024 * 1024
-_ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
-_HAS_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-
-
-#: rdflib decodes a bytes payload as UTF-8 unconditionally, so a document that
-#: declares — and marks with a byte order mark — any other encoding fails to
-#: parse at all. XML says the BOM decides, so it is honoured here and the
-#: payload handed on as UTF-8.
-_BOMS = ((b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"),
-         (b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"),
-         (b"\xef\xbb\xbf", "utf-8-sig"))
-
-
-def _decode_by_bom(raw: bytes) -> bytes:
-    for bom, encoding in _BOMS:
-        if raw.startswith(bom):
-            text = raw.decode(encoding)
-            # The declaration would now contradict the bytes.
-            text = re.sub(r'(<\?xml[^>]*?)\s+encoding\s*=\s*(["\'])[^"\']*\2',
-                          r"\1", text, count=1)
-            return text.encode("utf-8")
-    return raw
-
-
-def _remote_contexts(node, found=None):
-    """Every `@context` in the document that names a location to go and fetch.
-
-    JSON-LD lets a context be a URL, and the parser will dereference it. In a
-    package that arrived from a supplier that is two separate problems: it
-    breaks the promise that validation touches no network, and it lets the
-    sender choose a host for a machine inside the plant to connect to.
-
-    Contexts nest, and a context can be an array mixing inline objects with
-    URLs, so the whole document is walked rather than just the top level.
-    """
-    found = [] if found is None else found
-    if isinstance(node, dict):
-        for key, value in node.items():
-            if key == "@context":
-                for candidate in (value if isinstance(value, list) else [value]):
-                    if isinstance(candidate, str) and _HAS_SCHEME.match(candidate):
-                        found.append(candidate)
-                    else:
-                        _remote_contexts(candidate, found)
-            else:
-                _remote_contexts(value, found)
-    elif isinstance(node, list):
-        for item in node:
-            _remote_contexts(item, found)
-    return found
-
 
 def build_graph(package: Package):
-    """Parse every metadata serialisation in the container into one graph."""
-    graph = Graph()
+    """Parse every metadata serialisation in the container into one graph.
+
+    The guards (entity declarations, oversize, remote @context, byte order
+    marks), the parser and the isomorphic-once merge live in the iirds SDK:
+    this project wrote them, moved them to the layer every tool shares, and
+    imports them back, so the SDK's answer can never contradict this one.
+    The one gate kept here is the pre-read size check -- it runs off the
+    container's directory, refusing an oversized document without ever
+    decompressing it, which only the container layer can do; the SDK's own
+    length check backstops direct callers.
+    """
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
-    merged_from: List[Graph] = []
 
-    for name, fmt in ((METADATA_RDF, "xml"), (METADATA_JSONLD, "json-ld")):
+    for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
             continue
 
@@ -240,47 +192,14 @@ def build_graph(package: Package):
                           % (name, info.file_size, MAX_METADATA_BYTES))
             continue
 
-        raw = _decode_by_bom(package.read(name))
-
-        # Nested internal entities expand geometrically: a few hundred bytes of
-        # declarations can occupy the parser indefinitely. iiRDS metadata has no
-        # legitimate use for them, so refuse rather than try to bound the damage.
-        if fmt == "xml" and _ENTITY_DECL.search(raw):
-            errors.append("%s: refused: the document declares XML entities" % name)
-            continue
-
-        if fmt == "json-ld":
-            try:
-                document = json.loads(raw.decode("utf-8"))
-            except Exception as exc:
-                errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
-                continue
-            remote = _remote_contexts(document)
-            if remote:
-                errors.append("%s: refused: @context must be inline, not fetched from %s"
-                              % (name, ", ".join(sorted(set(remote))[:3])))
-                continue
-
-        try:
-            single = Graph()
-            single.parse(data=raw, format=fmt, publicID=PACKAGE_BASE)
-        except Exception as exc:
-            errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
+        single, error = parse_metadata(name, package.read(name), base=PACKAGE_BASE)
+        if error is not None:
+            errors.append(error)
             continue
         per_source[name] = single
-        # Merge, unless this source is the same graph again. Blank nodes
-        # cannot be co-identified across documents, so naively unioning two
-        # serialisations of one graph doubles every blank-node-rooted
-        # structure and count rules fail a conformant package ("2 domains"
-        # where the metadata has one). Isomorphic sources therefore merge as
-        # one; genuinely divergent sources still union -- their disagreement
-        # is L9's finding, and hiding either side would hide the evidence.
-        if not any(isomorphic(single, seen) for seen in merged_from):
-            graph += single
-            merged_from.append(single)
         sources.append(name)
 
-    return graph, errors, sources, per_source
+    return merge_sources(per_source), errors, sources, per_source
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:

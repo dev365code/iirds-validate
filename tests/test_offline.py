@@ -82,3 +82,21 @@ def test_ontology_hierarchy_is_read_not_hardcoded():
     from iirds_validate import terms as T
     subclasses = load().subclasses_of(T.InformationUnit)
     assert T.Topic in subclasses and T.Document in subclasses and T.Fragment in subclasses
+
+
+def test_a_full_validation_run_never_touches_the_network(make_package, monkeypatch):
+    """The offline claim, enforced rather than stated: seal DNS and every
+    connect, then run all 166+ rules. A single network attempt anywhere in
+    the pipeline dies loudly. This is the sentence on the front page
+    ("fully offline") turned into a gate."""
+    import socket
+
+    def die(*args, **kwargs):
+        raise OSError("network attempt during validation — the offline claim broke")
+
+    monkeypatch.setattr(socket, "create_connection", die)
+    monkeypatch.setattr(socket, "getaddrinfo", die)
+    monkeypatch.setattr(socket.socket, "connect", die, raising=True)
+
+    report = runner.run(make_package(), runner.ALL_KINDS)
+    assert report.checked > 150

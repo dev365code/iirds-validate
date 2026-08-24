@@ -8,8 +8,8 @@ and the rights to create one. A `.pyz` needs a copy of the file and a Python.
 
     python iirds-validate.pyz path/to/package.iirds
 
-Everything is inside it, rdflib included, and nothing is compiled — the same
-file runs on Linux, macOS and Windows. It is also an ordinary zip: anyone who
+Everything is inside it — rdflib and the iirds SDK included — and nothing is
+compiled: the same file runs on Linux, macOS and Windows. It is also an ordinary zip: anyone who
 has to approve it can open it and read every line, which matters more than
 convenience when the approval is the hard part.
 
@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -79,10 +80,23 @@ def create_archive(source: Path, target: Path) -> None:
     target.chmod(target.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
+def dependencies() -> list:
+    """The validator's runtime dependencies, read from pyproject.toml.
+
+    Read rather than repeated. The first dependency this script bundled was
+    hard-coded, which worked for exactly as long as the list had one entry:
+    the day the SDK became a dependency, a hand-maintained copy here would
+    have shipped a .pyz that dies on import somewhere with no pip to save it.
+    """
+    text = (ROOT / "pyproject.toml").read_text("utf-8")
+    block = re.search(r"^dependencies = \[(.*?)\]", text, re.M | re.S).group(1)
+    return re.findall(r'"([^"]+)"', block)
+
+
 def stage(target: Path) -> None:
     shutil.copytree(SOURCE, target / "iirds_validate")
     subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
-                    "--target", str(target), "rdflib"], check=True)
+                    "--target", str(target), *dependencies()], check=True)
     (target / "__main__.py").write_text(MAIN, "utf-8")
 
     for cache in target.rglob("__pycache__"):
@@ -116,13 +130,14 @@ def smoke(pyz: Path) -> int:
         print("  ok: %s" % what)
 
     # The point of the exercise: it must not need anything installed.
-    probe = subprocess.run([sys.executable, "-S", "-c", "import rdflib"],
-                           capture_output=True, text=True)
-    if probe.returncode == 0:
-        print("  note: rdflib is importable without the archive, so this run does not "
-              "prove self-containment", file=sys.stderr)
-    else:
-        print("  ok: rdflib came from inside the archive")
+    for module in (re.match(r"[A-Za-z0-9_-]+", spec).group(0) for spec in dependencies()):
+        probe = subprocess.run([sys.executable, "-S", "-c", "import %s" % module],
+                               capture_output=True, text=True)
+        if probe.returncode == 0:
+            print("  note: %s is importable without the archive, so this run does not "
+                  "prove self-containment" % module, file=sys.stderr)
+        else:
+            print("  ok: %s came from inside the archive" % module)
     return 0
 
 

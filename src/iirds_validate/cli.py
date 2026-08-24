@@ -15,11 +15,12 @@ import json
 import os
 import sys
 
+from iirds import PackError, pack
+
 from . import __version__, runner
 from .banner import banner
 from .model import VERSIONS, Severity
 from .package import discover
-from .packer import PackError, pack
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -119,7 +120,10 @@ def _cmd_pack(args) -> int:
     try:
         output = pack(args.directory, args.output, overwrite=args.overwrite)
     except PackError as exc:
-        print("iirds-validate: %s" % exc, file=sys.stderr)
+        # The SDK's pack() speaks API ("pass overwrite=True"); this is a
+        # terminal, so the one remedy it names is translated to its flag.
+        message = str(exc).replace("pass overwrite=True", "pass --overwrite")
+        print("iirds-validate: %s" % message, file=sys.stderr)
         return EXIT_ERROR
 
     if not args.quiet and args.format == "text":

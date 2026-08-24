@@ -13,11 +13,11 @@ import hashlib
 import zipfile
 
 import pytest
+from iirds import PackError, pack
 
 from iirds_validate import runner
 from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, main
 from iirds_validate.model import MIMETYPE_VALUE
-from iirds_validate.packer import PackError, pack
 
 ARCHIVE_RULES = {"C1", "C3", "C4", "C5", "C6", "S7", "S8"}
 
@@ -115,3 +115,28 @@ def test_a_defect_in_the_directory_survives_packing(unpacked, tmp_path):
 def test_packing_something_unpackable_is_an_operator_error(tmp_path, capsys):
     assert main(["pack", str(tmp_path / "nope"), "-q"]) == EXIT_ERROR
     assert "iirds-validate:" in capsys.readouterr().err
+
+
+def test_the_exists_refusal_speaks_cli_on_the_cli(unpacked, tmp_path, capsys):
+    """The library half of pack() speaks API ("overwrite=True"); a person at
+    a terminal needs the flag spelling. The CLI owns its own wording, so the
+    message is translated at the boundary rather than leaking either dialect
+    into the other layer."""
+    target = tmp_path / "out.iirds"
+    pack(unpacked, target)
+    code = main(["pack", str(unpacked), "-o", str(target)])
+    assert code == EXIT_ERROR
+    err = capsys.readouterr().err
+    assert "--overwrite" in err
+    assert "overwrite=True" not in err
+
+
+def test_the_pyz_bundles_what_pyproject_declares():
+    """The .pyz build script reads its bundle list from pyproject.toml, so
+    the two cannot drift; this pins what that list currently is. A third
+    dependency flows into the archive automatically -- and changes this
+    test, so it happens on purpose."""
+    import build_zipapp
+    names = sorted(spec.split(">")[0].split("=")[0].split("<")[0]
+                   for spec in build_zipapp.dependencies())
+    assert names == ["iirds", "rdflib"]

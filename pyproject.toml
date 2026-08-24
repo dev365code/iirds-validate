@@ -26,7 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = ["rdflib>=6.0"]
+dependencies = ["iirds>=0.2.0,<0.3", "rdflib>=6.0"]
 
 [project.urls]
 Homepage = "https://github.com/dev365code/iirds-validate"

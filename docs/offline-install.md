@@ -21,7 +21,8 @@ python iirds-validate.pyz dist/       # on the machine without one
 ```
 
 No pip, no index, no virtual environment, no rights to create one. Everything
-is inside the archive, including `rdflib` and the ontologies, and nothing in it
+is inside the archive, including `rdflib`, the `iirds` SDK and the ontologies,
+and nothing in it
 is compiled — the same file runs on Linux, macOS and Windows.
 
 It is deliberately not a compiled binary. An unsigned executable is harder to
@@ -40,8 +41,8 @@ On a machine with a network:
 pip download iirds-validate -d wheels/
 ```
 
-That directory holds `iirds_validate`, `rdflib` and its handful of
-dependencies. Copy it in by whatever means your site allows, then:
+That directory holds `iirds_validate`, `rdflib`, the `iirds` SDK and their
+handful of dependencies. Copy it in by whatever means your site allows, then:
 
 ```sh
 pip install --no-index --find-links wheels/ iirds-validate
@@ -49,8 +50,8 @@ iirdsv --version
 ```
 
 If even pip is unavailable, the package is pure Python: unzip the wheel and put
-`iirds_validate/` on `PYTHONPATH`. `rdflib` is the only thing you must bring
-along.
+`iirds_validate/` on `PYTHONPATH`. `rdflib` and `iirds` are the only things
+you must bring along.
 
 ## Verifying what you carried in
 
@@ -96,8 +97,8 @@ as never loading the page at all.
   memory, sending it anywhere is one `fetch()`. Only the current source code
   stands between the two, and see the previous point.
 - **The dependency surface is large.** A Vue application pulls in hundreds of
-  npm packages. Auditing that before every use is not realistic; auditing one
-  pure-Python package with a single dependency is.
+  npm packages. Auditing that before every use is not realistic; auditing a
+  pure-Python package with two pure-Python dependencies is.
 - **Most sites will not approve it regardless.** "Open a browser tab to an
   external domain and feed it engineering documentation" is not a request that
   passes review at a manufacturer, and being technically safe does not make it

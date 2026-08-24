@@ -79,8 +79,9 @@ def run_fragment(path, kinds, version=None):
     import shutil
     import tempfile
 
+    from iirds import pack
+
     from .model import METADATA_RDF
-    from .packer import pack
 
     source = Path(path)
     staging = Path(tempfile.mkdtemp(prefix="iirds-fragment-"))

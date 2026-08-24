@@ -99,6 +99,23 @@ class Package:
             return str(exc)
 
 
+class _FileInfo:
+    """The one thing a directory can honestly answer about an entry: its size.
+
+    Deliberately tiny and deliberately not a ZipInfo. Rules that need ZIP
+    facts (entry order, compression) check `is_archive` and stand down; the
+    size gates need only `file_size`, and while `DirectoryPackage.info()`
+    answered None they were silently disabled for the unpacked form — the
+    same oversized document an archive refuses was read and parsed whole
+    when checked before zipping.
+    """
+
+    __slots__ = ("file_size",)
+
+    def __init__(self, file_size: int):
+        self.file_size = file_size
+
+
 class DirectoryPackage:
     """An unpacked container: the shape a package has while you are building it.
 
@@ -143,7 +160,9 @@ class DirectoryPackage:
         return self.read(name).decode(encoding, errors="replace")
 
     def info(self, name: str):
-        return None
+        if name not in self._name_set:
+            return None
+        return _FileInfo((self.path / name).stat().st_size)
 
     @property
     def first_entry(self):

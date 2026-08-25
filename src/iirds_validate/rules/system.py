@@ -55,7 +55,7 @@ def s2_no_usable_metadata(ctx):
 
 
 @rule("S3", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",
-       fix="Fix the metadata parse error reported alongside this. The graph could not be built, so every rule that reads it stood down rather than reporting a clean package.")
+       fix="Report this against iirds-validate, quoting the rule id and the exception named beside it. A rule that raised has checked nothing, and this finding exists so that its silence is not read as a pass; the other rules ran and what they report stands.")
 def s3_rule_raised(ctx):
     """Emitted by `runner.run` when a rule raises.
 

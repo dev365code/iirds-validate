@@ -49,6 +49,35 @@ warning, labelled as this project's own reading rather than as a MUST.
 `dateOfStatus` deserves a note: taking the wording for both M21.4 and M21.5
 would mean checking `purpose` twice and never checking `dateOfStatus` at all.
 
+## Catalogue titles that name a term the ontology does not define
+
+Rule titles are the catalogue's wording, reproduced character for character
+so results stay diffable against the reference tool rule by rule. Eight of
+them name a property or class that does not exist under the spelling given.
+Correcting them here would break that comparison, so they are recorded
+rather than edited — and a gate skips exactly these when it checks that a
+rule's *own* prose names real terms.
+
+| the title says | the ontology defines | rules |
+|---|---|---|
+| `iirds:eventCode` | `iirds:has-event-code` | M16.1 |
+| `iirds:eventType` | `iirds:has-event-type` | M16.2 |
+| `iirds:relates-to-Party` | `iirds:relates-to-party` — capitalisation only | M15.8, M15.9, M15.10 |
+| `iirds:ContentLifecyleStatus` | `iirds:ContentLifeCycleStatus` — "Lifecyle" is a typo for "LifeCycle" | M21.1 |
+| `iirds:ContentLifecyleStatusValue` | `iirds:ContentLifeCycleStatusValue`, same typo | M21.1 |
+| `iirds:DocumentTypes` | `iirds:DocumentType` — plural | M15.1 |
+| `iirds:first-child` | `iirds:has-first-child` | M24.6 |
+| `iirds:next-sibling` | `iirds:has-next-sibling` | M24.6 |
+
+The first two were already noted where the Consortium's own samples are
+discussed, because the 1.0 prose uses them too and the 1.0 *schema* does
+not — a discrepancy between one edition's document and its own vocabulary,
+not a tool's mistake. The other six are the catalogue's alone. None of them
+affects what any rule checks: every term a rule *evaluates* comes from
+`terms.py`, where a test resolves it against the bundled ontology. What is
+affected is what a reader is told, which is why they are listed rather than
+left to be rediscovered.
+
 ## Rules where the reference's implementation is broken
 
 Following it would mean implementing a bug.

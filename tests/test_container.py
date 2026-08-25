@@ -47,6 +47,24 @@ def test_broken_xml_is_reported_not_crashed(make_package):
     assert not report.ok
 
 
+def test_undecodable_metadata_is_reported_not_crashed(make_package):
+    """The other way a metadata document fails to be read.
+
+    A byte order mark says which codec applies and the bytes then have to
+    survive it; a transfer cut short is enough that they do not. That decode
+    was the one step in the SDK's reader outside a try, so it raised through
+    a function whose contract is (graph, None) or (None, error) -- and out of
+    this tool as a traceback, on a 733-byte container. Nothing hostile is
+    needed: a supplier saving as utf-16 and a truncated copy will do.
+    """
+    from conftest import MINIMAL_RDF
+    truncated = (b"\xff\xfe" + MINIMAL_RDF.encode("utf-16-le"))[:-1]
+    report = runner.check(make_package(metadata=truncated))
+    assert "C16.1" in ids(report)
+    assert "S2" in ids(report), "no graph rule could run; that has to be said"
+    assert not report.ok
+
+
 def test_not_a_zip(tmp_path):
     path = tmp_path / "broken.iirds"
     path.write_bytes(b"this is not a zip file")

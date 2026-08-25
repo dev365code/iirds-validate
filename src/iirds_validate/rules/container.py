@@ -262,11 +262,19 @@ def c15_unique_names(ctx):
 
 @rule("C16.1",
        covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
-       fix="Fix the XML syntax error reported alongside this, then confirm the file is RDF 1.1 XML rather than some other XML. Until it parses, no statement in it reaches a consumer.")
+       fix="Read the error reported alongside this: a syntax error means the markup is malformed and has to be corrected, while an encoding error means the bytes were damaged or cut short in transit and the file has to be sent again. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
         if err.startswith(METADATA_RDF):
-            yield Violation("metadata.rdf is not valid RDF 1.1 XML syntax",
+            # "could not be read", not "invalid syntax": the reader refuses on
+            # size and on entity declarations, and fails on an encoding the
+            # bytes do not honour, none of which is a syntax error. The
+            # detail carries which one it was. Deliberately not branching on
+            # the error string to say more -- the seam contract is that it
+            # leads with the file name and partitions on the first ": ", and
+            # reading further into the SDK's wording would be a dependency
+            # nothing pins.
+            yield Violation("metadata.rdf could not be read as RDF 1.1 XML",
                             subject=METADATA_RDF, detail=err.split(": ", 1)[-1])
 
 

@@ -192,7 +192,20 @@ def build_graph(package: Package):
                           % (name, info.file_size, MAX_METADATA_BYTES))
             continue
 
-        single, error = parse_metadata(name, package.read(name), base=PACKAGE_BASE)
+        try:
+            single, error = parse_metadata(name, package.read(name), base=PACKAGE_BASE)
+        except Exception as exc:
+            # The reader's contract is (graph, None) or (None, error), and a
+            # rule that raises already becomes a finding rather than ending
+            # the run. The reader earns the same treatment, because this
+            # project declares a dependency floor rather than a pin: it will
+            # be paired with readers it was never tested against, and no
+            # package may end a run before a single rule has looked at it.
+            # Observed on iirds 0.2.0, which raised UnicodeDecodeError out of
+            # parse_metadata for metadata truncated mid code unit -- a
+            # 733-byte container, and a traceback instead of a report.
+            errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
+            continue
         if error is not None:
             errors.append(error)
             continue

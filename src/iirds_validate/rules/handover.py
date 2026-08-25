@@ -81,7 +81,7 @@ def _needs_named_party(ctx, cls, role, what):
 # --------------------------------------------------------------------------
 
 @rule("M15.2",
-       fix="Add exactly one iirdsHov:has-document-type to the Document, naming one of the handover document types. In iiRDS/H a receiving plant sorts incoming documents by this before anything reads them.")
+       fix="Add exactly one iirdsHov:has-document-category to the Document, naming one of the handover document categories. In iiRDS/H a receiving plant sorts incoming documents by this before anything reads them.")
 def m15_2_document_category(ctx):
     for doc in ctx.instances_of(T.Document):
         if len(ctx.values(doc, T.hov_has_document_category)) != 1:
@@ -200,19 +200,19 @@ def m15_7d_product_type_manufacturer(ctx):
 # --------------------------------------------------------------------------
 
 @rule("M15.8",
-       fix="Add iirds:relates-to-Party on the Document, relating it to a Party with a role. A handover document with no responsible organisation leaves the receiving plant with nobody to ask about it.")
+       fix="Add iirds:relates-to-party on the Document, relating it to a Party with a role. A handover document with no responsible organisation leaves the receiving plant with nobody to ask about it.")
 def m15_8_document_author(ctx):
     yield from _needs_named_party(ctx, T.Document, T.Author, "iirds:Document")
 
 
 @rule("M15.9", spec=_spec_sans_quote("M15.9"),
-       fix="Add iirds:relates-to-Party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it.")
+       fix="Add iirds:relates-to-party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it.")
 def m15_9_package_creator(ctx):
     yield from _needs_named_party(ctx, T.Package, T.Creator, "iirds:Package")
 
 
 @rule("M15.10", spec=_spec_sans_quote("M15.10"),
-       fix="Add iirds:relates-to-Party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both.")
+       fix="Add iirds:relates-to-party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both.")
 def m15_10_information_object_creator(ctx):
     yield from _needs_named_party(ctx, T.InformationObject, T.Creator, "iirds:InformationObject")
 

@@ -20,6 +20,12 @@ from ..registry import rule
 
 NAMESPACES = {"IIRDS": IIRDS, "MACH": MACH, "SW": SW, "HOV": HOV}
 
+#: How the specification and the ontology files spell each namespace. The
+#: remedy tells an author which element to go and edit, so it has to use the
+#: prefix they will see there: six of these classes live in the machinery
+#: domain, and <iirds:SparePart> names nothing at all.
+PREFIXES = {"IIRDS": "iirds", "MACH": "iirdsMch", "SW": "iirdsSft", "HOV": "iirdsHov"}
+
 #: 61 rules.
 MUST_HAVE_IRI = [
     ("M7.1",  "IIRDS", 'InformationObject'),
@@ -121,13 +127,13 @@ def _not_used_directly(prefix: str, class_name: str):
 #: The remedy is the same shape for all sixty-one, because the defect is: the
 #: element was written without an identifier, so nothing else in the package —
 #: or in the package that references this one — can point at it.
-NAMED_FIX = ('Give the <iirds:%(cls)s> element an rdf:about with an IRI, for example '
+NAMED_FIX = ('Give the <%(prefix)s:%(cls)s> element an rdf:about with an IRI, for example '
              'rdf:about="urn:uuid:..." or a URL under a domain you control. Without '
              'one the element is anonymous, so no other statement can refer to it '
              'and a consumer merging this package with another cannot tell two of '
              'them apart.')
 
-ABSTRACT_FIX = ('Retype the instance as one of the subclasses of iirds:%(cls)s. The '
+ABSTRACT_FIX = ('Retype the instance as one of the subclasses of %(prefix)s:%(cls)s. The '
                 'grouping class says only that something of that family is involved, '
                 'which leaves a consumer nothing to act on.')
 
@@ -161,12 +167,13 @@ def _register() -> None:
         # identical for every row, so one accurate sentence covers them all.
         rule(rule_id, versions=NARROWED.get(rule_id),
              title="instances of %s must have an IRI" % class_name,
-             fix=NAMED_FIX % {"cls": class_name})(fn)
+             fix=NAMED_FIX % {"prefix": PREFIXES[prefix], "cls": class_name})(fn)
 
     for rule_id, prefix, class_name in NOT_USED_DIRECTLY:
         fn = _not_used_directly(prefix, class_name)
         fn.__name__ = "%s_%s_not_direct" % (rule_id.replace(".", "_").lower(), class_name.lower())
-        rule(rule_id, fix=ABSTRACT_FIX % {"cls": class_name})(fn)
+        rule(rule_id, fix=ABSTRACT_FIX % {"prefix": PREFIXES[prefix],
+                                          "cls": class_name})(fn)
 
 
 _register()

@@ -672,7 +672,7 @@ def m96_3_classification_identifier_non_empty(ctx):
 
 
 @rule("M96.4",
-       fix="Relate the instance to a classification with iirds:relates-to-classification, or remove the empty classification. A ProductVariant, ProductFeature, Component or InformationObject is classified or it is not.")
+       fix="Relate the instance to a classification with iirds:has-external-classification, or remove the empty classification. A ProductVariant, ProductFeature, Component or InformationObject is classified or it is not.")
 def m96_4_external_classification_is_optional(ctx):
     """A MAY, so there is nothing to violate.
 

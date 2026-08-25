@@ -11,9 +11,14 @@ without one.
 """
 from __future__ import annotations
 
+import re
+
 import pytest
 
-from iirds_validate.registry import all_rules
+from iirds_validate import terms as T
+from iirds_validate.model import HOV, IIRDS, MACH, SW
+from iirds_validate.ontology import load
+from iirds_validate.registry import CATALOG, all_rules
 
 RULES = all_rules()
 
@@ -61,3 +66,66 @@ def test_a_violation_may_override_its_rule(make_package):
                 spec=None, fn=lambda ctx: [], fix="The standing advice.")
     assert Finding(rule, Violation("m")).fix == "The standing advice."
     assert Finding(rule, Violation("m", fix="This one instead.")).fix == "This one instead."
+
+
+# ---------------------------------------------------------------------------
+# ...and the terms it names have to exist.
+#
+# `terms.py` is guarded: every term a rule *evaluates* is checked against the
+# bundled ontology by tests/test_terms.py, which turns a guess into a failing
+# test. The advice beside it was not guarded at all, because it is a string.
+#
+# So a rule could name a real defect, and then tell the reader to add a
+# property the standard does not have. Three did, in two ways: a generator
+# that spelled every class `iirds:` when six of them are `iirdsMch:`, and two
+# sentences written from memory. The spec link printed two lines above the
+# remedy carried the right spelling in both cases.
+#
+# The remedy is the only iiRDS claim this repository ships without a gate,
+# and it ships twice -- `iirdsv rules -v` prints it and `sh:description`
+# carries it into the shapes.
+# ---------------------------------------------------------------------------
+
+#: The prefixes the ontology files declare for themselves, so the advice
+#: spells a term the way the specification does.
+PREFIXES = {"iirds": IIRDS, "iirdsHov": HOV, "iirdsMch": MACH, "iirdsSft": SW}
+
+_TERM = re.compile(r"\b(iirds|iirdsHov|iirdsMch|iirdsSft):([A-Za-z][A-Za-z0-9-]*)")
+
+#: Terms the specification uses that the ontology files never declare. Taken
+#: from the same list test_terms.py exempts, rather than a second one that
+#: could drift away from it.
+UNDECLARED = {str(T.TERMS[name]).split("#")[-1] for name in T.NOT_IN_ONTOLOGY}
+
+
+def _named_terms(text):
+    for prefix, local in _TERM.findall(text or ""):
+        if local not in UNDECLARED:
+            yield prefix, local, PREFIXES[prefix][local]
+
+
+@pytest.mark.parametrize("rule", RULES, ids=[r.id for r in RULES])
+def test_the_remedy_names_terms_that_exist(rule):
+    for prefix, local, iri in _named_terms(rule.fix):
+        assert load().is_defined(iri), (
+            "%s: the remedy tells the reader to use %s:%s, which the bundled "
+            "ontology does not define" % (rule.id, prefix, local))
+
+
+@pytest.mark.parametrize("rule", RULES, ids=[r.id for r in RULES])
+def test_our_own_titles_name_terms_that_exist(rule):
+    """Titles this project wrote, not the ones it inherited.
+
+    The catalogue's wording is reproduced verbatim so results stay diffable
+    against the reference tool rule by rule, and several of its sentences name
+    properties the ontology spells differently -- M16's `iirds:eventCode` is
+    `iirds:has-event-code`. Correcting those would break the comparison this
+    project promises, so they are recorded in docs/divergences.md instead of
+    edited. What is checked here is the wording we chose ourselves.
+    """
+    if rule.title == CATALOG.get(rule.id, {}).get("en"):
+        pytest.skip("catalogue wording, reproduced verbatim; see docs/divergences.md")
+    for prefix, local, iri in _named_terms(rule.title):
+        assert load().is_defined(iri), (
+            "%s: the title names %s:%s, which the bundled ontology does not define"
+            % (rule.id, prefix, local))

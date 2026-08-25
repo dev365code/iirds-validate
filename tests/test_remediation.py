@@ -76,9 +76,10 @@ def test_a_violation_may_override_its_rule(make_package):
 # test. The advice beside it was not guarded at all, because it is a string.
 #
 # So a rule could name a real defect, and then tell the reader to add a
-# property the standard does not have. Three did, in two ways: a generator
-# that spelled every class `iirds:` when six of them are `iirdsMch:`, and two
-# sentences written from memory. The spec link printed two lines above the
+# property the standard does not have. Eleven did, in two ways: a generator
+# that spelled every class `iirds:` when six of them live in `iirdsMch:`, and
+# five sentences written from memory. A hand search of the same text, run
+# first, found eight of the eleven -- which is the argument for the gate. The spec link printed two lines above the
 # remedy carried the right spelling in both cases.
 #
 # The remedy is the only iiRDS claim this repository ships without a gate,

@@ -56,7 +56,7 @@ def test_undecodable_metadata_is_reported_not_crashed(make_package):
     survive it; a transfer cut short is enough that they do not. That decode
     was the one step in the SDK's reader outside a try, so it raised through
     a function whose contract is (graph, None) or (None, error) -- and out of
-    this tool as a traceback, on a 733-byte container. Nothing hostile is
+    this tool as a traceback, on a container under a kilobyte. Nothing hostile is
     needed: a supplier saving as utf-16 and a truncated copy will do.
     """
     from conftest import MINIMAL_RDF

@@ -203,7 +203,7 @@ def build_graph(package: Package):
             # package may end a run before a single rule has looked at it.
             # Observed on iirds 0.2.0, which raised UnicodeDecodeError out of
             # parse_metadata for metadata truncated mid code unit -- a
-            # 733-byte container, and a traceback instead of a report.
+            # container under a kilobyte, and a traceback instead of a report.
             errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
             continue
         if error is not None:

@@ -67,9 +67,13 @@ class Context:
         (SHACL agrees by definition: targetClass follows the data graph's
         subClassOf. The differential gate caught this as a SHACL-only firing.)
         """
+        # Sorted, like typed_as: the closure is a frozenset, and iterating one
+        # orders the subjects by whichever class came out first. That reaches
+        # the report through the order findings are generated in, and through
+        # every rule that lists what it found.
         classes = self._class_closure(cls) if include_subclasses else {cls}
         out, seen = [], set()
-        for c in classes:
+        for c in sorted(classes, key=str):
             for s in self.graph.subjects(RDF.type, c):
                 if s not in seen:
                     seen.add(s)

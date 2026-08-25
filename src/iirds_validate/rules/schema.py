@@ -36,9 +36,14 @@ def _at_most_one(ctx, cls, prop, label):
     for subj in ctx.instances_of(cls):
         values = ctx.values(subj, prop)
         if len(values) > 1:
+            # Sorted before the slice, or the four named are whichever four the
+            # store yielded first -- which differs between processes, so the
+            # same package reported a different four on the next run.
+            listed = sorted(str(v) for v in values)[:4]
             yield Violation("more than one %s" % label,
                             subject=ctx.ref(subj),
-                            detail="%d values: %s" % (len(values), ", ".join(str(v)[:40] for v in values[:4])))
+                            detail="%d values: %s" % (len(values),
+                                                      ", ".join(v[:40] for v in listed)))
 
 
 # --------------------------------------------------------------------------
@@ -122,7 +127,7 @@ def m3_exactly_one_package(ctx):
         yield Violation("metadata declares no iirds:Package for this container")
     elif len(own) > 1:
         yield Violation("more than one iirds:Package represents this container",
-                        detail=", ".join(str(p) for p in own[:5]))
+                        detail=", ".join(sorted(str(p) for p in own)[:5]))
 
 
 @rule("M4",

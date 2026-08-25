@@ -14,7 +14,9 @@ did. Both show up immediately if you compare the text.
 from __future__ import annotations
 
 import json
+import os
 import re
+from pathlib import Path
 
 from conftest import (
     ATTRIBUTE_STYLE_RDF,
@@ -24,6 +26,8 @@ from conftest import (
     build_package,
 )
 from iirds_validate import runner
+
+ROOT = Path(__file__).resolve().parents[1]
 
 #: Renditions are the usual blank nodes in a real package, and dropping the
 #: format from one is a defect reported *against* the blank node — so it is
@@ -35,8 +39,24 @@ BROKEN_RDF = MINIMAL_RDF.replace(
 _GENERATED = re.compile(r"\bN[0-9a-f]{20,}\b")
 
 
+#: A topic with six titles. The cardinality rules list the values they found,
+#: and listing is where a set becomes an order.
+MANY_TITLES = MINIMAL_RDF.replace(
+    "    <iirds:title>A topic</iirds:title>\n",
+    "".join('    <iirds:title>Title %s</iirds:title>\n' % word
+            for word in ("alpha", "bravo", "charlie", "delta", "echo", "foxtrot")))
+
+
 def _lines(report):
-    return sorted("%s|%s|%s" % (f.rule.id, f.violation.subject, f.violation.message)
+    """Everything a reader sees, `detail` included.
+
+    It was excluded, and `detail` is exactly where the non-determinism was: a
+    rule that lists four of six values it found was listing whichever four came
+    out of the store first. Comparing the fields either side of it proved the
+    property for the fields that already held it.
+    """
+    return sorted("%s|%s|%s|%s" % (f.rule.id, f.violation.subject,
+                                   f.violation.message, f.violation.detail)
                   for f in report.findings)
 
 
@@ -129,3 +149,31 @@ def test_rdf_xml_and_json_ld_agree_finding_for_finding(tmp_path):
 
     assert _lines(runner.check(rdf_only)), "the defect must be reported at all"
     assert _lines(runner.check(rdf_only)) == _lines(runner.check(both))
+
+
+def test_the_report_is_byte_identical_across_hash_seeds(tmp_path):
+    """The axis the in-process tests cannot reach.
+
+    String hashing is fixed for the life of a process, so three runs inside one
+    interpreter agree with each other whatever the underlying order is. The
+    claim in README.md is about seeds, and only a new process can vary one.
+    """
+    import subprocess
+    import sys
+
+    package = build_package(tmp_path, "seeds.iirds", metadata=MANY_TITLES)
+    script = (
+        "import json, sys;"
+        "sys.path[:0] = [%r];"
+        "from iirds_validate import runner;"
+        "print(json.dumps(runner.check(%r).as_dict(), sort_keys=True))"
+        % (str(ROOT / "src"), str(package)))
+
+    reports = set()
+    for seed in ("0", "1", "2", "3", "4"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        out = subprocess.run([sys.executable, "-c", script], env=env,
+                             capture_output=True, text=True, check=True).stdout
+        assert '"findings"' in out, out
+        reports.add(out)
+    assert len(reports) == 1, "%d distinct reports across five seeds" % len(reports)

@@ -288,7 +288,7 @@ def l6_unlabelled_concepts(ctx):
             continue
         if _labelled(ctx, subj):
             continue
-        types = [str(ty).split("#")[-1] for ty in ctx.values(subj, RDF.type)]
+        types = sorted(str(ty).split("#")[-1] for ty in ctx.values(subj, RDF.type))
         yield Violation("metadata value has no label a consumer could display",
                         subject=ctx.ref(subj),
                         detail=("typed as %s" % ", ".join(types)) if types else None)
@@ -304,7 +304,7 @@ def l7_untitled_information_units(ctx):
         if T.Package in ctx.values(unit, RDF.type):
             continue
         if not ctx.has(unit, T.title):
-            types = [str(t).split("#")[-1] for t in ctx.values(unit, RDF.type)]
+            types = sorted(str(t).split("#")[-1] for t in ctx.values(unit, RDF.type))
             yield Violation("information unit has no iirds:title",
                             subject=ctx.ref(unit), detail=", ".join(types) or None)
 

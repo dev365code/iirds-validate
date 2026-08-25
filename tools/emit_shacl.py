@@ -558,8 +558,14 @@ DIRNODE_OR_NIL = "[ sh:or ( [ sh:class iirds:DirectoryNode ] [ sh:class iirds:ni
 
 
 def family_m25_closed_list(sid, p):
+    # sh:in is the node iirds:nil; sh:class iirds:nil is an instance of it.
+    # The requirement says "relating to an instance of the class iirds:nil",
+    # so a package that mints its own terminator is doing what it asks -- and
+    # a minted terminator is a DirectoryNode by the ontology's own hierarchy,
+    # so without this alternative the shape demands an end for the end.
     return (["sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling",
              "sh:or ( [ sh:in ( iirds:nil ) ] "
+             "[ sh:class iirds:nil ] "
              "[ sh:not %s ] "
              "[ sh:property [ sh:path iirds:has-next-sibling ; "
              "sh:qualifiedValueShape [ sh:or ( [ sh:in ( iirds:nil ) ] "

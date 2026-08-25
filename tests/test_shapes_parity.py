@@ -869,3 +869,17 @@ def test_every_emitted_shape_has_fired_somewhere_in_this_file():
         "the accumulator is empty-ish; this test only means something after "
         "the whole file has run -- do not run it in isolation")
     assert never_fired == set(), sorted(never_fired)
+
+
+def test_m25_accepts_a_terminator_the_package_mints(tmp_path):
+    """"relating to an instance of the class iirds:nil" is the requirement's
+    own wording, and iirds:nil really is a class -- so a package that mints its
+    own terminator and types it is doing what the sentence says. Python reads
+    it that way. The shape's identity test is `sh:in ( iirds:nil )`, which is
+    the node and not the class, so the minted terminator falls through to the
+    branch that demands a sibling of the end of the list."""
+    minted = _TOC.replace('rdf:resource="http://iirds.tekom.de/iirds#nil"',
+                          'rdf:resource="urn:test:end"').replace(
+        "</rdf:RDF>", '''  <iirds:nil rdf:about="urn:test:end"/>
+</rdf:RDF>''')
+    assert "M25" not in assert_parity(tmp_path, "minted.iirds", minted)

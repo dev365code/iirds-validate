@@ -274,6 +274,51 @@ file was meant to contain, which is the one thing an oracle must not be. The
 honest disposition is "no comparison possible", and the way out is a mutation
 of a package we control, not a repair of a package we do not.
 
+## M2.6 — one title, or one title per language? (open, raised from outside)
+
+[iirds-validate#1](https://github.com/dev365code/iirds-validate/issues/1),
+opened 2026-08-22 by Vladimir Alexiev, is the first defect report this project
+has had from anyone else. It is a real one.
+
+The shape and the Python rule both cap `iirds:title` at one value, and both
+carried a remedy telling authors to write one title per language with
+`xml:lang`. In RDF those are distinct terms, so the advice asked for precisely
+what the constraint rejects. Both encodings agreed with each other and
+contradicted their own sentence, which is exactly why the differential gate
+between them stayed silent: it compares constraints, and this was prose.
+
+The remedy is corrected. **Which half was wrong is not settled**, so the reading
+is published here rather than decided.
+
+**Read one way, the constraint is faithful.** Appendix A.1.1 gives
+`0..1 iirds:title` for `iirds:InformationUnit`, and the ontology repeats it as
+`Cardinality: iirds:InformationUnit [0..1]`. Section 6.10.1 models multilingual
+content as one information unit per document language, each relating to the same
+`iirds:InformationObject`; 6.10.2 relates those units with
+`iirds:is-translation-of`. That machinery operates on units, not on titles, and
+would be redundant if a unit could simply carry a title per language.
+
+**Read the other way, the constraint is too strict.** `iirds:language` is
+`0..*` on the same class, so an information unit is not modelled as monolingual.
+Section 6.10.1 is a MAY, and it is about *content* language: a package whose
+content is English only has no mechanism at all for carrying a German title for
+a German-speaking consumer. And `iirds:title` is `rdfs:subPropertyOf
+dcterms:title` with range `rdfs:Literal`, which includes `rdf:langString`. On
+this reading `0..1` was written without language tags in mind.
+
+Nothing in the specification says whether `0..1` counts RDF terms or titles, so
+the question goes to tekom. Until it is answered the constraint stays: relaxing
+it would make these shapes more permissive than the standard on a reading the
+standard does not state, and the rule here is that a reading of ours is
+published, not shipped as a MUST.
+
+If the answer is that language variants count as one title, the shape the issue
+proposes is the one to adopt — `sh:uniqueLang true` together with
+`sh:qualifiedValueShape [ sh:datatype xsd:string ] ; sh:qualifiedMaxCount 1`.
+The second half is the part that is easy to miss: `rdf:langString` and
+`xsd:string` are different datatypes, so `sh:uniqueLang` alone leaves an
+untagged literal uncapped.
+
 ## Where severity currently outruns the reading
 
 The README's rule is that anything resting on this project's own reading is a

@@ -83,7 +83,7 @@ def m2_5(ctx):
 
 
 @rule("M2.6",
-       fix="Keep one iirds:title and remove the rest. For a title in several languages, use one property per language with xml:lang rather than several bare ones.")
+       fix="Keep one iirds:title and remove the rest. Where the same content exists in several languages, the specification models that as one information unit per language, all related to the same iirds:InformationObject (section 6.10.1).")
 def m2_6(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.title, "iirds:title")
 

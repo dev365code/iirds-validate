@@ -68,7 +68,9 @@ FIX = ('Give the <%(name)s> element an rdf:about with an IRI. Without one the '
 
 def _must_have_iri(cls: URIRef, name: str):
     def check(ctx):
-        for subject in ctx.typed_exactly(cls):
+        # Same population as the generated table's sixty-one; these two are
+        # the rest of the sixty-three, and they name concrete classes.
+        for subject in ctx.typed_as(cls):
             if not is_named(subject):
                 yield Violation("%s must have an IRI" % name, subject=ctx.ref(subject))
     return check

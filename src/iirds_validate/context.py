@@ -84,6 +84,29 @@ class Context:
             self._closure[cls] = frozenset(classes)
         return self._closure[cls]
 
+    def typed_as(self, cls: URIRef) -> List:
+        """Subjects typed `cls`, or any subclass the *package itself* declares.
+
+        Between `instances_of`, which also walks the bundled ontology, and
+        `typed_exactly`, which walks nothing. Section 7 lets a package subclass
+        an iiRDS class and requires a consumer to process the instance as the
+        parent, so a rule about a class has to see those; the ontology's own
+        hierarchy is a different matter, because `iirds:iirdsDomainEntity` sits
+        above nearly everything and pulling its descendants into one grouping
+        class's rule would report every blank-node Rendition in a good package.
+
+        `sh:targetClass` sees exactly this population -- the data graph's
+        `rdfs:subClassOf` and nothing else -- which is what keeps the two
+        encodings from disagreeing about who is in scope.
+        """
+        out, seen = [], set()
+        for c in sorted(subclasses_of(self.graph, cls), key=str):
+            for subject in self.graph.subjects(RDF.type, c):
+                if subject not in seen:
+                    seen.add(subject)
+                    out.append(subject)
+        return out
+
     def typed_exactly(self, cls: URIRef) -> List:
         """Subjects carrying `cls` itself as an rdf:type (no subclasses)."""
         return list(self.graph.subjects(RDF.type, cls))

@@ -100,12 +100,16 @@ def _must_have_iri(prefix: str, class_name: str):
     cls = NAMESPACES[prefix][class_name]
 
     def check(ctx):
-        # Direct typing only. Expanding to subclasses would make a rule about a
-        # grouping class fire on every descendant — iirdsDomainEntity sits above
-        # nearly everything, so its rule would report every blank-node Rendition
-        # in a perfectly good package. Each class's own rule covers its own
-        # instances, and M2.1 covers information units generally.
-        for subject in ctx.typed_exactly(cls):
+        # The package's own subclasses, never the ontology's. Section 7 lets a
+        # package subclass an iiRDS class and requires consumers to process the
+        # instance as the parent, so exact typing was looking at a smaller
+        # population than the standard gives — and a smaller one than this
+        # rule's own SHACL shape, which has always seen the wider set because
+        # sh:targetClass follows the data graph's rdfs:subClassOf. The
+        # ontology's hierarchy stays out: iirdsDomainEntity sits above nearly
+        # everything, and pulling its descendants in would report every
+        # blank-node Rendition in a good package under one grouping rule.
+        for subject in ctx.typed_as(cls):
             if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=ctx.ref(subject))

@@ -96,3 +96,25 @@ def test_m15_11a_handover_packages_carry_documents_only(make_package):
     report = runner.check(make_package(metadata=handover, jsonld="{}",
                                        extra=(("index.html", "<html/>"),)))
     assert "M15.11a" in ids(report)
+
+
+def test_m25_a_sibling_that_is_not_nil_and_not_a_node_does_not_close_the_list(make_package):
+    """M25 asks whether the property is present, and its own message asks for
+    more than that: a terminator. A last node pointing at a topic satisfies
+    the presence check and leaves the chain open — the walk arrives somewhere
+    that is neither another node nor the end, which is the state M25 exists to
+    keep out. Nothing else covers it: M26 checks the range of has-first-child,
+    and no rule checks the range of has-next-sibling."""
+    broken = GOOD.replace('<iirds:has-next-sibling %s/>' % NIL,
+                          '<iirds:has-next-sibling rdf:resource="urn:test:topic1"/>')
+    assert "M25" in ids(runner.check(make_package(metadata=broken)))
+
+
+def test_m25_does_not_fire_on_nil_when_the_package_declares_it(make_package):
+    """A package is allowed to state what it points at. Declaring the
+    terminator makes it an instance of iirds:DirectoryNode and a linked node,
+    so M25 demands that the end of the list have an end of its own."""
+    declared = GOOD.replace("</rdf:RDF>",
+                            '  <iirds:DirectoryNode rdf:about='
+                            '"http://iirds.tekom.de/iirds#nil"/>\n</rdf:RDF>')
+    assert "M25" not in ids(runner.check(make_package(metadata=declared)))

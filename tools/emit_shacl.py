@@ -546,7 +546,10 @@ def family_m25_closed_list(sid, p):
     return (["sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling",
              "sh:or ( [ sh:in ( iirds:nil ) ] "
              "[ sh:not %s ] "
-             "[ sh:property [ sh:path iirds:has-next-sibling ; sh:minCount 1 ] ] )"
+             "[ sh:property [ sh:path iirds:has-next-sibling ; "
+             "sh:qualifiedValueShape [ sh:or ( [ sh:in ( iirds:nil ) ] "
+             "[ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ; "
+             "sh:qualifiedMinCount 1 ] ] )"
              % DIRNODE_OR_NIL], [])
 
 

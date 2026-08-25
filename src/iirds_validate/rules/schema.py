@@ -415,19 +415,42 @@ def m24_5_only_root_has_structure_type(ctx):
                             subject=ctx.ref(node), detail=ctx.label_of(node))
 
 
+def _closes_a_level(ctx):
+    """What may sit at the end of a chain.
+
+    The MUST reads "relating to an instance of the class iirds:nil", and
+    iirds:nil is declared a class, so a package that mints its own terminator
+    and types it iirds:nil is doing what the sentence says. The sample
+    packages instead point straight at the class IRI, which is what everyone
+    ships. Both end a level, and so does the terminator itself: a package is
+    allowed to declare what it points at, and declaring iirds:nil an
+    iirds:DirectoryNode used to make this rule demand an end for the end.
+    """
+    return {T.nil} | set(ctx.instances_of(T.nil))
+
+
 @rule("M25",
-       fix="Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit.")
+       fix="Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level, or at the next iirds:DirectoryNode if the level continues. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit.")
 def m25_lists_are_closed(ctx):
     """Every level is a closed list: the last node points at iirds:nil.
 
     Without the terminator a consumer cannot tell the end of a list from
-    truncated data.
+    truncated data -- and a sibling link that lands on neither a node nor the
+    terminator leaves exactly that ambiguity while satisfying a check that
+    asks only whether the property is present.
     """
-    for node in sorted(_linked_nodes(ctx) & set(ctx.instances_of(T.DirectoryNode)), key=str):
-        if not ctx.has(node, T.has_next_sibling):
+    closers = _closes_a_level(ctx)
+    nodes = set(ctx.instances_of(T.DirectoryNode))
+    for node in sorted((_linked_nodes(ctx) & nodes) - closers, key=str):
+        siblings = sorted(ctx.values(node, T.has_next_sibling), key=str)
+        if not siblings:
             yield Violation("the last node in a list level must have iirds:has-next-sibling "
                             "relating to iirds:nil",
                             subject=ctx.ref(node), detail=ctx.label_of(node))
+        elif not any(s in closers or s in nodes for s in siblings):
+            yield Violation("iirds:has-next-sibling leaves this level open: it relates neither "
+                            "to another iirds:DirectoryNode nor to iirds:nil",
+                            subject=ctx.ref(node), detail=ctx.ref(siblings[0]))
 
 
 @rule("M26",

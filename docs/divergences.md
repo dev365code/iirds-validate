@@ -291,7 +291,19 @@ of a free-text field.
 ### M25 — no comparison is possible
 
 > To model closed lists, the last node in a list level MUST have the property
-> `iirds:has-next-sibling` relating to `iirds:nil`.
+> `iirds:has-next-sibling` relating to an instance of the class `iirds:nil`.
+
+"An instance of the class" is the sentence's own wording and `iirds:nil` is
+declared `rdfs:Class`, so a package that mints its own terminator and types it
+`iirds:nil` has done what the sentence asks; the sample packages instead point
+straight at the class IRI. Both close a level here.
+
+The rule does not claim `covers=x6-9-1-directory-nodes#3`, because it does not
+cover all of it. A node nothing points at is a root, and M25 exempts roots --
+tekom's own `iirds-sample-1` has twenty-seven directory nodes, exactly one
+root, and that root carries no `iirds:has-next-sibling` at all. A reading that
+made the requirement reach the root would fail the Consortium's own sample, so
+the exemption stays and the citation would be an overclaim.
 
 Its only fixture, `Example 38 - Table of contents-M36_false.rdf`, is one of the
 eleven that do not parse — `mismatched tag` at line 27. There is nothing to run,

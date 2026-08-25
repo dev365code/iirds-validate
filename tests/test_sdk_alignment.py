@@ -12,12 +12,12 @@ than about the commit. The two projects are repaired together, and the
 suite that exercises the pair is this one.
 """
 import os
-import re
 from pathlib import Path
 
 import iirds
 import pytest
 
+from conftest import declared_sdk_floor, version_tuple
 from iirds_validate import context, model
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,21 +65,6 @@ def test_the_generated_shapes_speak_the_same_base():
 # Which SDK the run used
 # ---------------------------------------------------------------------------
 
-def _declared_floor():
-    """The lowest `iirds` this project says it works with."""
-    text = (ROOT / "pyproject.toml").read_text("utf-8")
-    found = re.search(r'"iirds>=([0-9]+(?:\.[0-9]+)*)"', text)
-    assert found, "pyproject.toml no longer declares an iirds floor in the expected shape"
-    return tuple(int(part) for part in found.group(1).split("."))
-
-
-def _version(text: str):
-    parts = text.split(".")
-    assert all(part.isdigit() for part in parts), (
-        "iirds %s is not a plain release; this comparison cannot judge it" % text)
-    return tuple(int(part) for part in parts)
-
-
 def test_the_sdk_under_test_satisfies_what_this_project_declares():
     """A green run has to be a statement about a version, not about a laptop.
 
@@ -88,7 +73,7 @@ def test_the_sdk_under_test_satisfies_what_this_project_declares():
     its rows, deliberately; a local run took whatever was installed and said
     nothing about it either way.
     """
-    assert _version(iirds.__version__) >= _declared_floor(), (
+    assert version_tuple(iirds.__version__) >= declared_sdk_floor(), (
         "the suite imported iirds %s from %s, below the floor pyproject declares"
         % (iirds.__version__, iirds.__file__))
 
@@ -104,7 +89,7 @@ def test_versions_compare_as_numbers_and_not_as_text(lower, higher):
     is two minor versions past it. The choice was mutation-checked by hand
     once; a hand check that leaves no gate is a hand check nobody repeats.
     """
-    assert _version(lower) < _version(higher)
+    assert version_tuple(lower) < version_tuple(higher)
 
 
 def test_a_chosen_sdk_checkout_is_the_one_that_gets_imported():

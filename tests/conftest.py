@@ -6,6 +6,7 @@ pytest. One builder, imported here, rather than two that drift apart.
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -23,7 +24,36 @@ from make_fixture_package import (  # noqa: E402
 )
 
 __all__ = ["ATTRIBUTE_STYLE_RDF", "DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_JSONLD", "MINIMAL_RDF",
-           "build_package", "make_package"]
+           "build_package", "declared_sdk_floor", "make_package", "sdk_version", "version_tuple"]
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def version_tuple(text: str):
+    """A release as numbers, so 0.10.0 sorts above 0.2.0 rather than below it."""
+    parts = text.split(".")
+    assert all(part.isdigit() for part in parts), (
+        "iirds %s is not a plain release; this comparison cannot judge it" % text)
+    return tuple(int(part) for part in parts)
+
+
+def declared_sdk_floor():
+    """The lowest `iirds` this project says it works with."""
+    found = re.search(r'"iirds>=([0-9]+(?:\.[0-9]+)*)"',
+                      (ROOT / "pyproject.toml").read_text("utf-8"))
+    assert found, "pyproject.toml no longer declares an iirds floor in the expected shape"
+    return version_tuple(found.group(1))
+
+
+def sdk_version():
+    """The release of the reader this run is actually testing against.
+
+    Not the floor and not the worktree: whichever copy `import iirds`
+    resolved to, which is the thing a version-gated expectation has to ask
+    about. `IIRDS_SRC` decides it; see tests/test_sdk_alignment.py.
+    """
+    import iirds
+    return version_tuple(iirds.__version__)
 
 
 @pytest.fixture

@@ -5,8 +5,11 @@ import socket
 
 import pytest
 
+from conftest import sdk_version
 from iirds_validate import runner
+from iirds_validate.context import load_context
 from iirds_validate.ontology import load
+from iirds_validate.package import Package
 
 
 @pytest.fixture
@@ -100,3 +103,53 @@ def test_a_full_validation_run_never_touches_the_network(make_package, monkeypat
 
     report = runner.run(make_package(), runner.ALL_KINDS)
     assert report.checked > 150
+
+
+#: The other half of "reading a package never touches the network", and the
+#: half that had no seal anywhere: a `@context` naming no scheme is not a URL,
+#: so rdflib resolves it against the *operator's* working directory and opens
+#: whatever it finds. The decoy defines a @vocab the document then uses,
+#: because a context contributes no triples of its own -- asserting that the
+#: decoy's triples are absent would otherwise assert nothing at all.
+DECOY_CONTEXT = '{"@context": {"@vocab": "http://leaked.example/secret#"}}'
+RELATIVE_CONTEXT = ('{"@context": "secret-ctx.jsonld", "@id": "urn:test:package",'
+                    ' "@type": "iirds:Package", "leak": "pwned"}')
+
+#: The reader release that first refuses it. The refusal is not this project's
+#: to make -- it belongs to the layer that parses -- so this expectation is
+#: gated on the reader actually under test rather than on the floor this
+#: project declares or on the copy in the next directory.
+REFUSED_FROM = (0, 3, 1)
+
+
+@pytest.mark.xfail(sdk_version() < REFUSED_FROM, strict=True,
+                   reason="the refusal lives in the reader; iirds %s is the first "
+                          "release that carries it" % ".".join(map(str, REFUSED_FROM)))
+def test_a_relative_jsonld_context_reads_no_file_outside_the_container(
+        make_package, monkeypatch, tmp_path):
+    """No byte from outside the container may enter the graph.
+
+    Strict, and gated on the reader's version rather than skipped: green
+    today against a reader that has not shipped the refusal, red the day the
+    refusal regresses, and red the day this project's floor moves past
+    without it. A skip would have been none of those things.
+
+    The assertions are deliberately both halves. Absence alone passes for the
+    wrong reasons -- a parse that failed for an unrelated cause satisfies it
+    -- so the refusal itself is asserted beside it.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "secret-ctx.jsonld").write_text(DECOY_CONTEXT, "utf-8")
+
+    path = make_package(jsonld=RELATIVE_CONTEXT)
+    report = runner.check(path)
+
+    assert not report.ok
+    assert "C16.2" in {f.rule.id for f in report.findings}
+    assert any("inline" in (f.violation.detail or "") for f in report.findings), \
+        [f.violation.detail for f in report.findings]
+
+    with Package(path) as package:
+        graph = load_context(package).graph
+    assert not any("leaked.example" in str(term) for triple in graph for term in triple), \
+        "a file from the operator's working directory reached the graph"

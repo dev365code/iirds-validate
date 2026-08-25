@@ -738,9 +738,11 @@ def test_m15_5_counts_a_proprietary_information_object_subclass(tmp_path):
 #
 # Deferred at first release as "the subtlest readings in the codebase"; now
 # that they are shapes, the subtlety itself is pinned: a party whose vCard
-# this package does not describe PASSES (the dangling reference is L1's
-# finding, once — not this rule's, five times). Both encodings must hold
-# that reading, or the shapes fail conformant packages the CLI passes.
+# this package does not describe passes all five (the pointer is reported
+# once, by R4, rather than five times by these). Both encodings must hold
+# that reading, or the shapes fail conformant packages the CLI passes -- and
+# both must report the pointer, which is the half that went missing for a
+# release: it belonged to a lint, so `check` said nothing at all.
 # ---------------------------------------------------------------------------
 
 def test_an_undescribed_vcard_soft_passes_the_named_party_musts(tmp_path):
@@ -749,6 +751,7 @@ def test_an_undescribed_vcard_soft_passes_the_named_party_musts(tmp_path):
   </vcard:Organization>''', "")
     fired = _h_parity(tmp_path, "soft.iirds", softened)
     assert fired & {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"} == set()
+    assert "R4" in fired
 
 
 def test_any_card_semantics_one_named_one_nameless_stays_silent(tmp_path):

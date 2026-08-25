@@ -376,6 +376,14 @@ SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_manufacturer_query(
     "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>")])
 SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>")])
 
+#: The other half of _NAMED_VCARD. Its first branch lets an undescribed card
+#: satisfy all five queries above, so that one broken pointer does not arrive
+#: five times; this reports that pointer once instead, and the two spellings
+#: of "the package never describes it" are deliberately identical.
+SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
+  ?party <%(ii)srelates-to-vcard> ?value .
+  FILTER NOT EXISTS { ?value ?cp ?co } }"""])
+
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.

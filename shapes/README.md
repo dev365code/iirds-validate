@@ -21,7 +21,7 @@ demonstrated.
 | `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 109 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
 | `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 14 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
-| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 6 iiRDS/H additions (SPARQL): M15.11a plus the five named-party MUSTs |
+| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 7 iiRDS/H additions (SPARQL): M15.11a, the five named-party MUSTs, and R4 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
 
 The `-complete` files exist because the pySHACL command line takes **one**
@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-47 of the 185 catalogued rules have no shape, in four honest categories,
+47 of the 186 catalogued rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **38 not expressible** — 38 of the 185 rules are about ZIP bytes, content
+- **38 not expressible** — 38 of the 186 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, files present
   in the container. None of that

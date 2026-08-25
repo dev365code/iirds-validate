@@ -275,3 +275,44 @@ def test_m15_5_accepts_a_proprietary_subclass_of_information_object(make_package
                            extra=(("content/doc1.pdf", b"%PDF-1.4"), ("index.html", "<html/>")))
     report = runner.run(package, runner.ALL_KINDS)
     assert "M15.5" not in {f.rule.id for f in report.findings}
+
+
+#: The only description of an organisation in the fixture. Three parties --
+#: manufacturer, author, creator -- point at it.
+ORGANISATION = """  <vcard:Organization rdf:about="urn:test:supplier-card">
+    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>
+  </vcard:Organization>
+"""
+
+FIVE = {"M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"}
+
+
+def test_r4_an_undescribed_vcard_is_an_error(tmp_path):
+    """Delete the one organisation the package describes and nobody in the
+    chain can be identified -- which is the whole point of the profile. The
+    five MUSTs deliberately stay quiet so one broken pointer does not arrive
+    five times, and handing it to L1 put it outside the conformance run: the
+    package passed `check` with the manufacturer, the author and the creator
+    all pointing at nothing."""
+    broken = HANDOVER.replace(ORGANISATION, "")
+    report = runner.check(_package(tmp_path, "undescribed.iirds", broken))
+    assert "R4" in {f.rule.id for f in report.findings}
+    assert not report.ok
+
+
+def test_r4_reports_the_vcard_once_not_once_per_party(tmp_path):
+    """The reason the five were softened in the first place."""
+    broken = HANDOVER.replace(ORGANISATION, "")
+    report = runner.run(_package(tmp_path, "once.iirds", broken), runner.ALL_KINDS)
+    assert [f.rule.id for f in report.findings].count("R4") == 1
+    assert not FIVE & {f.rule.id for f in report.findings}
+
+
+def test_r4_leaves_a_described_but_unnamed_vcard_to_the_five(tmp_path):
+    """A card the package describes is a different defect: the party is
+    reachable and simply not named, which is what the five MUSTs say."""
+    unnamed = HANDOVER.replace(ORGANISATION,
+                               '  <vcard:Organization rdf:about="urn:test:supplier-card"/>\n')
+    ids = _ids(tmp_path, "unnamed.iirds", unnamed)
+    assert "R4" not in ids
+    assert FIVE & ids

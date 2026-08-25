@@ -45,9 +45,12 @@ def _names_an_organisation(ctx, party) -> bool:
 
     Two deliberate softenings, both found by running the reference tool's own
     handover fixtures. If the vcard reference resolves to nothing the package
-    describes, this stays quiet and L1 reports the dangling reference: one
+    describes, this stays quiet and R4 reports the dangling pointer once: one
     unresolvable pointer should not produce the same finding five times and
-    bury the real problem. And the test is for a stated organisation name
+    bury the real problem. That case used to be left to L1, which is a lint and
+    does not run under `check` -- so a handover package whose manufacturer,
+    author and creator all pointed at nothing passed conformance in silence.
+    Softening it was right; giving it away was not. And the test is for a stated organisation name
     rather than a declared vcard:Organization type, because those fixtures type
     the node `vcard:organization` — the property, lower case, not the class.
     The substance of the requirement is that the party is identifiable, and
@@ -58,11 +61,23 @@ def _names_an_organisation(ctx, party) -> bool:
     if not cards:
         return False
     for card in cards:
-        if (card, None, None) not in ctx.graph:
-            return True                     # undescribed: L1 owns it
+        if not _describes(ctx, card):
+            return True                     # undescribed: R4 owns it
         if ctx.has(card, ORGANISATION_NAME):
             return True
     return False
+
+
+def _describes(ctx, node) -> bool:
+    """The package says something about this node rather than merely naming it.
+
+    One reading used in two places: R4 reports the pointer that resolves to
+    nothing, and the five named-party MUSTs stay quiet about the same pointer
+    so a single broken reference does not arrive five times. If the two
+    readings ever drifted, the case would fall between them and be reported by
+    nobody -- which is exactly what happened while it belonged to a lint.
+    """
+    return (node, None, None) in ctx.graph
 
 
 def _needs_named_party(ctx, cls, role, what):
@@ -74,6 +89,35 @@ def _needs_named_party(ctx, cls, role, what):
                 "iiRDS/H: %s must relate to an iirds:Party with iirds:has-party-role %s "
                 "that names a vcard:Organization" % (what, str(role).split("#")[-1]),
                 subject=ctx.ref(subject), detail=ctx.label_of(subject))
+
+
+@rule("R4", kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+      title="a vcard a party points at must be described in the package",
+      spec=_spec_sans_quote("M15.8"), diagnosis="cause",
+      fix="Describe the vcard in this package as a vcard:Organization carrying a "
+          "vcard:organization-name, or drop the iirds:relates-to-vcard. A pointer at "
+          "an IRI nothing here describes leaves the party unidentifiable to a reader "
+          "holding only the package, which in handover is the reader it is for.")
+def r4_party_vcard_is_described(ctx):
+    """The cause behind five MUSTs that agree to stay quiet.
+
+    A handover package outlives the project that produced it, so every party
+    in the chain has to be identifiable from the package alone. Five MUSTs say
+    so, and all five soften when the vcard reference resolves to nothing --
+    otherwise one broken pointer arrives five times and buries what happened.
+
+    The softening needs an owner in the same run, and it did not have one:
+    dangling references belong to L1, a lint, so `check` reported nothing at
+    all about a package whose manufacturer, author and creator each pointed at
+    an IRI the package never mentions again. Reported here once per vcard, as
+    a cause, which is what the five findings would have been consequences of.
+    """
+    cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)}
+    for card in sorted((c for c in cards if not _describes(ctx, c)), key=str):
+        users = sorted(ctx.ref(p) for p in ctx.graph.subjects(T.relates_to_vcard, card))
+        yield Violation("iiRDS/H: iirds:relates-to-vcard points at a vcard this package "
+                        "never describes, so no party using it names an organisation",
+                        subject=ctx.ref(card), detail="referenced by %s" % ", ".join(users))
 
 
 # --------------------------------------------------------------------------

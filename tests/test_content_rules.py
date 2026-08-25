@@ -14,16 +14,25 @@ import pytest
 from conftest import MINIMAL_RDF
 from iirds_validate import runner
 
+#: Where tekom puts it in Example 46, the one piece of iiRDS XHTML5 in the
+#: corpus that the people who wrote Appendix B wrote themselves.
+SYMBOL = '<img data-role="safety-alert-symbol" src="../alert.png"/>'
+
 CLEAN = ('<?xml version="1.0" encoding="UTF-8"?>'
          '<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">'
          '<head><link rel="stylesheet" type="text/css" href="../a.css"/>'
          '<title>General safety instructions</title></head>'
          '<body id="c_1"><div class="body">'
          '<div data-role="warning" class="note">'
-         '<div data-role="signalword-panel"><p data-role="signalword">Warning:</p></div>'
+         '<div data-role="signalword-panel">' + SYMBOL +
+         '<p data-role="signalword">Warning:</p></div>'
          '<div data-role="message-panel"><ul><li>Risk of electrical shock</li></ul></div>'
          '<div data-role="symbol-panel"><img src="../f.png" width="76"/></div>'
          '</div></div></body></html>')
+
+
+#: The sample packages' shape, which is CLEAN minus the one thing they omit.
+NO_SYMBOL = CLEAN.replace(SYMBOL, "")
 
 
 def package(make_package, xhtml, name="c.iirds",
@@ -45,7 +54,14 @@ def test_content_shaped_like_tekoms_own_samples_is_clean(make_package):
     """The clean case is the hazard-statement markup from sample 1, including
     the `type` attribute on `<link>` that appears in neither the global
     attribute list nor any element-specific table. A strict attribute
-    whitelist would fail the standard's own examples, so there isn't one."""
+    whitelist would fail the standard's own examples, so there isn't one.
+
+    One thing is not taken from sample 1: the safety alert symbol. Neither
+    sample tags one anywhere -- fifteen hazard statements, none -- while
+    Example 46, written by the authors of Appendix B, carries it inside the
+    signal word panel exactly as the table describes. Where the two disagree
+    the appendix wins, so the symbol is here and `NO_SYMBOL` keeps the samples'
+    shape for the cases that need it."""
     assert not ids(make_package, CLEAN)
 
 
@@ -85,14 +101,14 @@ def test_a_safety_alert_symbol_belongs_in_the_signal_word_panel(make_package):
                               '<img data-role="safety-alert-symbol" src="../f.png"/></div>')
     assert "B8" in ids(make_package, misplaced)
 
-    correct = CLEAN.replace('<p data-role="signalword">Warning:</p>',
+    correct = NO_SYMBOL.replace('<p data-role="signalword">Warning:</p>',
                             '<p data-role="signalword">Warning:</p>'
                             '<img data-role="safety-alert-symbol" src="../f.png"/>')
     assert "B8" not in ids(make_package, correct, name="ok8.iirds")
 
 
 def test_only_one_safety_alert_symbol(make_package):
-    two = CLEAN.replace('<p data-role="signalword">Warning:</p>',
+    two = NO_SYMBOL.replace('<p data-role="signalword">Warning:</p>',
                         '<p data-role="signalword">W</p>'
                         '<img data-role="safety-alert-symbol" src="../a.png"/>'
                         '<img data-role="safety-alert-symbol" src="../b.png"/>')
@@ -104,3 +120,28 @@ def test_only_files_the_package_calls_xhtml_are_checked(make_package):
     were. The metadata decides, not the file extension."""
     assert not ids(make_package, "<script>this is not xhtml</script>",
                    source="content/manual.pdf", fmt="application/pdf")
+
+
+def test_a_hazard_statement_must_carry_its_signal_word(make_package):
+    """"the iiRDS package MUST always provide the applicable safety alert
+    symbols and signal words" -- B.6, about presence, in the standard's own
+    words rather than a neighbouring standard's."""
+    silent = CLEAN.replace('<p data-role="signalword">Warning:</p>', "")
+    assert "B9" in ids(make_package, silent)
+    assert "B9" not in ids(make_package, CLEAN, name="ok9.iirds")
+
+
+def test_an_alerting_hazard_statement_must_carry_the_symbol(make_package):
+    """The sample packages' shape: a warning with a pictogram in the symbol
+    panel and no safety alert symbol anywhere."""
+    assert "B10" in ids(make_package, NO_SYMBOL)
+    assert "B10" not in ids(make_package, CLEAN, name="ok10.iirds")
+
+
+def test_a_notice_needs_no_safety_alert_symbol(make_package):
+    """"Applicable" is the word the requirement uses. NOTICE alerts to no
+    hazard and takes no safety alert symbol, so there is none applicable to
+    it -- four of the samples' fifteen hazard statements are notices, and
+    reporting them would be inventing a requirement rather than reading one."""
+    notice = NO_SYMBOL.replace('data-role="warning"', 'data-role="notice"')
+    assert "B10" not in ids(make_package, notice, name="notice.iirds")

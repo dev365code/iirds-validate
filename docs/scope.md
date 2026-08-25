@@ -114,8 +114,12 @@ gone wrong.
    Until this rises, "no findings" must never be presented as "conformant".
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
-3. **Three Appendix B rules rest on readings the specification does not
-   settle**, also recorded there. They are the questions to put to tekom.
+3. **Two Appendix B rules rest on readings the specification does not
+   settle**, also recorded there. They are the questions to put to tekom. A
+   third used to sit beside them on a false premise -- that iiRDS never
+   requires a safety alert symbol in terms. It does, in 1.0 and 1.3 alike, and
+   B10 reports its absence; what remains a reading of ours there is the
+   exemption for NOTICE, which reports less rather than more.
 4. **The catalogue couples this project to plusmeta.** Rule ids, priorities,
    version arrays and spec links all come from their file. The version arrays
    are now checked against the vocabulary each release actually carried, which

@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 21,
   "deferred_v1.1": 6,
-  "not_expressible": 38,
+  "not_expressible": 40,
   "noop": 1
  },
  "core_emitted": [
@@ -205,6 +205,8 @@
   "B6": "content: the subject is XHTML files inside the archive",
   "B7": "content: the subject is XHTML files inside the archive",
   "B8": "content: the subject is XHTML files inside the archive",
+  "B9": "content: the subject is XHTML files inside the archive",
+  "B10": "content: the subject is XHTML files inside the archive",
   "S1": "system: the subject is the run itself, not the graph",
   "S2": "system: the subject is the run itself, not the graph",
   "S3": "system: the subject is the run itself, not the graph",

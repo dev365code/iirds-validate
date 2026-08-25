@@ -358,3 +358,74 @@ def b8_safety_alert_symbol(ctx):
             if count > 1:
                 yield Violation("a hazard statement may include only one safety alert symbol",
                                 subject=name, detail="%d in one signal word panel" % count)
+
+
+#: The hazard statement itself is tagged with its level -- there is no
+#: "hazardstatement" role in the table -- so the level is read off the markup
+#: and never off the signal word's text, which is written in the content's own
+#: language.
+HAZARD_ROLES = ("caution", "warning", "danger", "notice")
+
+#: The three that alert to a hazard. NOTICE does not: it flags property damage
+#: or a practice, and takes no safety alert symbol under ANSI Z535 or ISO 3864,
+#: so there is none "applicable" to it in the requirement's own word.
+ALERTING_ROLES = ("caution", "warning", "danger")
+
+
+def _role(element) -> str:
+    return (element.get("data-role") or "").strip()
+
+
+def _hazard_statements(root, roles):
+    return [e for e in root.iter() if _role(e) in roles]
+
+
+def _carries(statement, role) -> bool:
+    return any(_role(e) == role for e in statement.iter())
+
+
+@rule("B9", kind="content", prio="MUST", versions=(), variants=(),
+      title="a hazard statement must carry its signal word",
+       fix="Add a <p data-role=\"signalword\"> inside the signal word panel, holding the word for this hazard level. A hazard statement with a message and no signal word tells a reader something is dangerous without saying how dangerous.")
+def b9_signal_word_present(ctx):
+    """B.6: "If an iiRDS package contains content with hazard statements, then
+    the iiRDS package MUST always provide the applicable safety alert symbols
+    and signal words."
+
+    About presence, and in the standard's own words. B8 governs where the
+    symbol sits and how many there are; nothing asked whether either was there
+    at all, so a hazard statement reduced to a paragraph of text passed.
+    """
+    for name, root in _walk(ctx):
+        for statement in _hazard_statements(root, HAZARD_ROLES):
+            if not _carries(statement, "signalword"):
+                yield Violation("a hazard statement must provide its signal word",
+                                subject=name, detail='data-role=%r' % _role(statement))
+
+
+@rule("B10", kind="content", prio="MUST", versions=(), variants=(),
+      title="a hazard statement that alerts to a hazard must carry the safety alert symbol",
+       fix="Add an <img data-role=\"safety-alert-symbol\"> as a child of the signal word panel, as Example 46 in the specification shows. A pictogram in the symbol panel is an additional hazard symbol by the table's own words, and does not stand in for the alert symbol.")
+def b10_safety_alert_symbol_present(ctx):
+    """The other half of the same sentence, narrowed by the word "applicable".
+
+    Read off the specification twice over: the requirement says a package with
+    hazard statements must always provide the applicable safety alert symbols,
+    and Example 46 -- the one piece of iiRDS XHTML5 the authors of Appendix B
+    wrote themselves -- puts the symbol inside the signal word panel, with the
+    separate symbol-panel holding an untagged pictogram beside it, which the
+    table calls "additional hazard symbols".
+
+    Both Consortium sample packages disagree with that example: fifteen hazard
+    statements between them, a pictogram in the symbol panel of every one, and
+    not a single safety alert symbol. Where the appendix and the samples
+    disagree, the appendix is the specification. docs/divergences.md records
+    the eleven findings that follow, and the narrowing that leaves the four
+    notices alone.
+    """
+    for name, root in _walk(ctx):
+        for statement in _hazard_statements(root, ALERTING_ROLES):
+            if not _carries(statement, "safety-alert-symbol"):
+                yield Violation("a hazard statement at this level must provide its safety "
+                                "alert symbol", subject=name,
+                                detail='data-role=%r' % _role(statement))

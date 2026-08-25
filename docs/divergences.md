@@ -379,12 +379,17 @@ checkable rather than aspirational:
   *runner* assigns the severity, because only it knows the profile. So the
   list above is one item long: L4.
 
-## Content rules: three readings the specification does not settle
+## Content rules: two readings the specification does not settle, and one it does
 
 Appendix B has no counterpart in the reference tool — it reads only
 `META-INF/metadata.rdf` and never opens a content file — so nothing here can be
-cross-validated. These three are interpretation, and are recorded as such
-rather than presented as findings the standard compels.
+cross-validated, which is why every entry below is recorded rather than
+assumed. B4 and B8 are interpretation and are recorded as such rather than
+presented as findings the standard compels. B10 is the opposite case and is in
+this section because it used to be one of the three: the specification does
+settle it, this document said otherwise, and the entry now says so. What
+remains interpretation there is the exemption it grants, not the finding it
+makes.
 
 ### B4 — the attribute whitelist is narrowed to scripting
 
@@ -413,16 +418,45 @@ is the wrong direction for a safety check.
 The per-file reading is available from the words alone. If tekom confirms it,
 one line changes.
 
-### B8 — a missing symbol is not reported
+### B10 — a missing symbol is reported, and the samples fail it
 
-"MUST be included" is read as "at most one, where present". Absence is not
-checked, so a Warning with no safety alert symbol passes.
+This entry used to say the opposite, on a false premise: that iiRDS does not
+require the symbol in terms and that reporting its absence would mean importing
+a requirement from ANSI Z535. iiRDS does say so in terms, in both editions this
+project has read, one paragraph above the table B8 was already built from:
 
-This is a deliberate non-check rather than an oversight, and it is the least
-comfortable row in this document. ANSI Z535 requires the symbol for WARNING and
-DANGER; iiRDS does not say so in terms, and inferring a safety requirement from
-a neighbouring standard is not something a validator should do silently. It is
-recorded here instead, and it is the first of the questions to put to tekom.
+> If an iiRDS package contains content with hazard statements, then the iiRDS
+> package MUST always provide the applicable safety alert symbols and signal
+> words.
+
+and immediately before the table, in 1.0 and 1.3 alike:
+
+> A hazard statement consists of a safety alert symbol, a signal word, a
+> message panel, and a symbol panel.
+
+So B9 reports a hazard statement with no signal word, and B10 reports one at
+caution, warning or danger level with no safety alert symbol.
+
+**The narrowing.** B10 leaves `notice` alone. The requirement says *applicable*
+symbols; NOTICE alerts to no hazard and carries no safety alert symbol under
+ANSI Z535 or ISO 3864, so none is applicable to it. That is the one place a
+neighbouring standard is consulted here, and it is consulted only to report
+less. The hazard level is read from the `data-role` value, never from the
+signal word's text, which is written in the content's language.
+
+**What this costs.** Both Consortium sample packages fail B10 -- six findings in
+sample 1, five in sample 2. Fifteen hazard statements between them, a picture
+in the symbol panel of every one, and not a single tagged safety alert symbol.
+The same table calls the symbol panel "a panel that contains additional hazard
+symbols": additional to the alert symbol, not a substitute for it. Where the
+samples and the specification disagree the specification wins, and this is not
+the first time the two have parted company -- see the M22.1 and M18 rows.
+
+The specification's own material passes: Example 43 in 1.0 and Example 46 in
+1.3 are the same markup, and both put the tagged `img` inside the signal word
+panel with an untagged picture in the symbol panel beside it. That example is
+the one piece of iiRDS XHTML5 the authors of Appendix B wrote themselves, and
+`tests/test_spec_examples.py` runs every B rule against it.
 
 ## Current agreement
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 — 2026-08-25
+
+- **The `iirds` dependency's upper bound moves from `<0.3` to `<1.0`.**
+  The cap was reflexive 0.x caution against a dependency this project
+  authors, releases and tests in the same breath, and it contradicted
+  the SDK's own published promise that what it publishes is intended
+  not to break. Worse, it split one shared container layer in two:
+  nobody could install this validator and the SDK's newer features
+  together. Only 0.2-era API is used here, the pair is exercised on
+  every push, and CI still runs the floor (`iirds==0.2.0`) exactly.
+  No behaviour changes.
+
 ## 0.4.0 — 2026-08-24
 
 - **The container layer is shared with the [`iirds`](https://github.com/dev365code/iirds)

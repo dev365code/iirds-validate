@@ -37,7 +37,8 @@ def _wrap(text: str, width: int):
 
 #: Past this many findings of one rule, the report stops repeating itself:
 #: the remedy is printed once and the subjects are listed, natural-sorted so
-#: file2 comes before file10. Everything is always in --format json.
+#: file2 comes before file10. Every finding kept is in --format json, and the
+#: listing is bounded per rule -- `summary.findingsNotListed` says by how many.
 GROUP_FROM = 3
 GROUP_SHOWN = 5
 
@@ -109,7 +110,7 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             for finding in group:
                 show(finding)
             continue
-        _show_group(group, paint, stream)
+        _show_group(group, report.total_for(group[0].rule.id), paint, stream)
 
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
@@ -126,14 +127,20 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
     print(paint(tail, _DIM), file=stream)
 
 
-def _show_group(group, paint, stream) -> None:
+def _show_group(group, total, paint, stream) -> None:
     """A run of one rule, told once: headline with the count, the first few
-    subjects natural-sorted, the remedy a single time."""
+    subjects natural-sorted, the remedy a single time.
+
+    `total` rather than `len(group)`, because the listing is bounded per rule
+    and the group holds only what was kept. A headline reading the length of
+    the list would say a hundred where there were twenty thousand -- and it
+    is the one number in the line a reader acts on.
+    """
     first = group[0]
     mark = paint(_MARK[first.severity], _COLOURS[first.severity])
     messages = {finding.violation.message for finding in group}
     headline = first.violation.message if len(messages) == 1 else first.rule.title
-    print("  %s %-9s %s   ×%d" % (mark, first.rule.id, headline, len(group)), file=stream)
+    print("  %s %-9s %s   ×%d" % (mark, first.rule.id, headline, total), file=stream)
 
     ordered = sorted(group, key=lambda g: _natural(g.violation.subject or ""))
     for finding in ordered[:GROUP_SHOWN]:
@@ -141,9 +148,13 @@ def _show_group(group, paint, stream) -> None:
         if finding.violation.detail:
             line += "  (%s)" % finding.violation.detail
         print(paint("                      %s" % line[:100], _DIM), file=stream)
-    if len(group) > GROUP_SHOWN:
-        print(paint("                      … and %d more; every one is in --format json"
-                    % (len(group) - GROUP_SHOWN), _DIM), file=stream)
+    if total > GROUP_SHOWN:
+        if total > len(group):
+            note = ("… and %d more; listed to %d per rule, counted in full above"
+                    % (total - GROUP_SHOWN, len(group)))
+        else:
+            note = "… and %d more; every one is in --format json" % (total - GROUP_SHOWN)
+        print(paint("                      %s" % note, _DIM), file=stream)
     if first.fix:
         for line in _wrap(first.fix, 74):
             print(paint("                    → %s" % line, _DIM), file=stream)

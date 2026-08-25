@@ -12,6 +12,13 @@
 
 ### Fixed
 
+- **One rule could produce a finding per element with nothing bounding the
+  listing.** 20,000 repetitions of one violation in a 51 KB archive made
+  17 MB of JSON and 143 MB resident. Findings now enter a report through
+  one gateway that lists at most 100 per rule and counts all of them, so
+  the summary, `ok` and the exit code are exactly what they were; the
+  report and the JSON say how many were left out.
+
 - The container boundary joins the parse boundary: an entry name whose bytes
   are not the encoding its flag declares raised out of `zipfile` and ended the
   run with a traceback. It is a C1 finding now, like every other way an

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import enum
+import heapq
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Tuple
@@ -230,20 +231,118 @@ class Finding:
         }
 
 
+#: How many findings of one rule reach the listing. One rule can have as many
+#: findings as the document has elements, and a metadata file repeating a
+#: violation costs a few bytes per repetition and produces a finding per
+#: repetition: 20,000 of them in a 51 KB archive made 17 MB of JSON and 143 MB
+#: resident, linear all the way. Nobody reads the twenty-thousandth line and
+#: nothing downstream needs it -- the count does, and the count is not bounded.
+MAX_LISTED_PER_RULE = 100
+
+
+class _Latest:
+    """Orders a finding by how *late* it sorts, so a heap's root is the one to drop.
+
+    A bounded listing has to keep the findings that sort first, not the ones
+    that happened to arrive first: which arrive first is graph order, and graph
+    order is a fact about this process. Inverting the comparison lets one heap
+    hold the survivors and hand back the loser in log time.
+    """
+
+    __slots__ = ("key",)
+
+    def __init__(self, finding):
+        self.key = finding.reading_order
+
+    def __lt__(self, other) -> bool:
+        return self.key > other.key
+
+
 @dataclass
 class Report:
     path: str
     version: Optional[str] = None            # as declared by the package, if it did
     effective_version: Optional[str] = None  # what the rules were actually run against
     variant: str = "unrestricted"
-    findings: list = field(default_factory=list)
     checked: int = 0                 # rules actually executed
     skipped: int = 0                 # rules not applicable to this version/variant
     unimplemented: int = 0           # catalogued but not yet implemented here
     notes: list = field(default_factory=list)
+    #: rule id -> how many of its findings were counted but not listed.
+    suppressed: dict = field(default_factory=dict)
+    _kept: dict = field(default_factory=dict, repr=False)
+    _unlisted_severity: dict = field(default_factory=dict, repr=False)
+    _order: list = field(default_factory=lambda: [0], repr=False)
+    _flat: Optional[list] = field(default=None, repr=False)
+
+    @property
+    def findings(self) -> list:
+        """Every finding kept, in the order a person reads them.
+
+        Derived rather than stored, because what is kept is decided per rule
+        and the decision is revisited as findings arrive: a rule at its limit
+        keeps the new finding and drops its own latest-sorting one. Ordering
+        here rather than in the caller means a report cannot be read before it
+        is ordered, which it could when the sort lived at one call site and
+        the early return skipped it.
+        """
+        if self._flat is None:
+            self._flat = sorted((finding for bucket in self._kept.values()
+                                 for _, _, finding in bucket),
+                                key=lambda f: f.reading_order)
+        return self._flat
+
+    def add(self, finding) -> None:
+        """The one way a finding enters a report.
+
+        A gateway rather than a bound at each caller, because the callers are
+        four today and the next one is the one that forgets. What it bounds is
+        the listing; `count` below reads the suppressed tally too, so the
+        summary, `ok` and the exit code are computed over every finding
+        whether or not it was kept.
+
+        Which ones are kept is the whole difficulty. Keeping the first hundred
+        to arrive keeps a hundred chosen by graph order -- and rdflib's store
+        iterates in an order this process's hash seed and this parse's
+        blank-node labels perturb, so the same package listed a different
+        hundred every run. The hundred that sort first are the same hundred
+        every run, and are also the hundred a reader would have wanted.
+        """
+        self._flat = None
+        bucket = self._kept.setdefault(finding.rule.id, [])
+        self._order[0] += 1
+        entry = (_Latest(finding), self._order[0], finding)
+        if len(bucket) < MAX_LISTED_PER_RULE:
+            heapq.heappush(bucket, entry)
+            return
+        _latest, _seq, dropped = heapq.heappushpop(bucket, entry)
+        self.suppressed[finding.rule.id] = self.suppressed.get(finding.rule.id, 0) + 1
+        severity = dropped.severity
+        self._unlisted_severity[severity] = self._unlisted_severity.get(severity, 0) + 1
+
+    def drop(self, rule_ids) -> None:
+        """Forget a rule entirely -- listing, tally and all.
+
+        `--fragment` suspends the rules a snippet cannot satisfy, and a rule
+        removed from the listing while its suppressed tally stayed behind
+        would leave a summary counting findings the report does not contain.
+        """
+        rule_ids = set(rule_ids)
+        for rule_id in rule_ids & set(self._kept):
+            severity = self._kept[rule_id][0][2].severity
+            if rule_id in self.suppressed:
+                self._unlisted_severity[severity] = max(
+                    0, self._unlisted_severity.get(severity, 0) - self.suppressed.pop(rule_id))
+            del self._kept[rule_id]
+        self._flat = None
+
+    def total_for(self, rule_id: str) -> int:
+        """How many findings that rule produced, listed or not."""
+        return len(self._kept.get(rule_id, ())) + self.suppressed.get(rule_id, 0)
 
     def count(self, sev: Severity) -> int:
-        return sum(1 for f in self.findings if f.severity is sev)
+        return (sum(1 for f in self.findings if f.severity is sev)
+                + self._unlisted_severity.get(sev, 0))
 
     @property
     def ok(self) -> bool:
@@ -264,7 +363,13 @@ class Report:
                 "rulesChecked": self.checked,
                 "rulesSkipped": self.skipped,
                 "rulesNotImplemented": self.unimplemented,
+                "findingsNotListed": sum(self.suppressed.values()),
             },
             "notes": self.notes,
+            #: What the listing left out, per rule and in total. A stored
+            #: report has to be readable as a whole thing later, so it says
+            #: this rather than leaving a reader to infer it from a summary
+            #: that does not match the list beneath it.
+            "suppressed": dict(self.suppressed),
             "findings": [f.as_dict() for f in self.findings],
         }

@@ -96,7 +96,7 @@ def run_fragment(path, kinds, version=None):
 
     report.path = str(source)
     suspended = sorted({f.rule.id for f in report.findings} & FRAGMENT_SUSPENDED)
-    report.findings = [f for f in report.findings if f.rule.id not in FRAGMENT_SUSPENDED]
+    report.drop(FRAGMENT_SUSPENDED)
     report.notes.append(
         "fragment mode: validated inside a throwaway container; "
         "package-level rules suspended (%s)"
@@ -116,7 +116,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
         # C1 for both left S1 unable to fire at all while its own docstring
         # claimed this was where it came from.
         unreadable = isinstance(exc, UnreadablePath)
-        report.findings.append(Finding(
+        report.add(Finding(
             _emitted("S1", "system") if unreadable else _emitted("C1", "container"),
             Violation("cannot read container" if unreadable else "cannot open container",
                       subject=str(path), detail=str(exc))))
@@ -128,7 +128,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
     # Ordered for a reader rather than for the registry: what caused the rest
     # first, what only follows from it last. Rule-id order put the finding that
     # explains a report behind three that mislead.
-    report.findings.sort(key=lambda f: f.reading_order)
+    # (ordering moved into Report.findings, so no path can read an unordered one)
     return report
 
 
@@ -178,15 +178,15 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             for violation in rule.fn(ctx) or ():
                 if rule.severity is Severity.INFO and not include_info:
                     continue
-                report.findings.append(
-                    Finding(rule, violation,
-                            demoted_to=severity_override(rule, ctx.variant)))
+                report.add(Finding(rule, violation,
+                                   demoted_to=severity_override(rule, ctx.variant)))
         except Exception as exc:                      # a broken rule must not hide the rest
-            report.findings.append(Finding(
+            report.add(Finding(
                 _emitted("S3"),
                 Violation("rule %s raised %s" % (rule.id, type(exc).__name__), detail=str(exc))))
 
-    report.findings.extend(_metadata_findings(ctx, kinds))
+    for finding in _metadata_findings(ctx, kinds):
+        report.add(finding)
 
     implemented = {r.id for r in all_rules()}
     report.unimplemented = sum(

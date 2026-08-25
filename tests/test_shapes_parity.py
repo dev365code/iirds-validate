@@ -733,6 +733,39 @@ def test_m15_5_counts_a_proprietary_information_object_subclass(tmp_path):
     assert "M15.5" not in fired
 
 
+def test_m15_11a_sees_a_topic_typed_with_a_package_subclass(tmp_path):
+    """The profile excludes topics because a receiving system should not have
+    to understand them. Section 7 says an instance of a package's own subclass
+    of iirds:Topic is a Topic, so exact typing let the excluded thing in by
+    the one route the standard explicitly sanctions."""
+    subclassed = HANDOVER.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="urn:acme:HowTo">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:howto1">
+    <rdf:type rdf:resource="urn:acme:HowTo"/>
+    <iirds:title>How to change the filter</iirds:title>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M15.11a" in _h_parity(tmp_path, "subtopic.iirds", subclassed)
+
+
+def test_m19_4_accepts_a_proprietary_identity_domain_subclass(tmp_path):
+    """The mirror image: a type test that demands the parent verbatim reports
+    a package for doing what section 7 sanctions."""
+    subclassed = MINIMAL_RDF.replace("</rdf:RDF>", '''  <rdf:Description rdf:about="urn:acme:PlantDomain">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#IdentityDomain"/>
+  </rdf:Description>
+  <iirds:Identity rdf:about="urn:test:identity1">
+    <iirds:identifier>X1</iirds:identifier>
+    <iirds:has-identity-domain rdf:resource="urn:test:domain1"/>
+  </iirds:Identity>
+  <rdf:Description rdf:about="urn:test:domain1">
+    <rdf:type rdf:resource="urn:acme:PlantDomain"/>
+  </rdf:Description>
+</rdf:RDF>''')
+    assert "M19.4" not in assert_parity(tmp_path, "subdomain.iirds", subclassed)
+
+
 # ---------------------------------------------------------------------------
 # 6e. The five named-party MUSTs and their softening.
 #

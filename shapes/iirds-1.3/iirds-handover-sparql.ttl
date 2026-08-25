@@ -96,7 +96,8 @@ ivs:M15.11a a sh:NodeShape ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.11a ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value a ?t . FILTER (?t IN (<http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Topic>, <http://iirds.tekom.de/iirds#Fragment>)) }""" ] .
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?t .
+  FILTER (?t IN (<http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Topic>, <http://iirds.tekom.de/iirds#Fragment>)) }""" ] .
 
 ivs:M15.7b a sh:NodeShape ;
   rdfs:label "The iirds:IdentityDomain of the Instance Identity (ObjectInstanceURI/ObjectTypeURI/SerialNumber) MUST relate to an iirds:Party with iirds:has-party-role iirds:Manufacturer. This Party MUST relate via iirds:relates-to-vcard to a vcard:Organization which states vcard:organization-name." ;

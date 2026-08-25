@@ -327,8 +327,14 @@ SPARQL_FORMS = {
   FILTER NOT EXISTS { ?value a <%(rdfs)sClass> } }"""]),
     "M1": ("fixed", ["""SELECT $this ?value WHERE { ?value a <%(ii)sInformationUnit> }"""]),
     "M12": ("fixed", ["""SELECT $this ?value WHERE { ?value a <%(ii)sSelector> }"""]),
+    # rdf:type/rdfs:subClassOf*, like M3 and the named-party five: a package's
+    # own subclass of iirds:Topic is a Topic under section 7, and the profile
+    # excludes topics so a receiving system need not understand them. M1 and
+    # M12 below stay on exact typing on purpose -- their sentence is "you used
+    # the parent class directly", which a subclass instance has not done.
     "M15.11a": ("fixed", ["""SELECT $this ?value WHERE {
-  ?value a ?t . FILTER (?t IN (<%(ii)sInformationUnit>, <%(ii)sTopic>, <%(ii)sFragment>)) }"""]),
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?t .
+  FILTER (?t IN (<%(ii)sInformationUnit>, <%(ii)sTopic>, <%(ii)sFragment>)) }"""]),
     "L10": ("fixed", ["""SELECT $this ?value WHERE { ?value a ?t . FILTER (?t IN (%(abstract)s)) }"""]),
     # rdflib keeps a non-empty relative rdf:about RELATIVE (only "" resolves
     # to the base), so the honest test is the one Python makes: no scheme.
@@ -355,7 +361,8 @@ SPARQL_FORMS = {
     "M19.4": ("subjects", "iirds:has-identity-domain", ["""SELECT $this ?value WHERE {
   $this <%(ii)shas-identity-domain> ?value .
   FILTER EXISTS { ?value ?p2 ?o2 }
-  FILTER NOT EXISTS { ?value a <%(ii)sIdentityDomain> } }"""]),
+  FILTER NOT EXISTS {
+    ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sIdentityDomain> } }"""]),
     # Python exempts a role that is (a) an instance of PartyRole under the
     # closure, (b) any term the bundled ontology defines, or (c) undescribed
     # (L1's business). The old namespace-prefix exemption approximated (b)

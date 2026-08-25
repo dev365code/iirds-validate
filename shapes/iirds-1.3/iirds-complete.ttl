@@ -1836,7 +1836,8 @@ ivs:M19.4 a sh:NodeShape ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
   FILTER EXISTS { ?value ?p2 ?o2 }
-  FILTER NOT EXISTS { ?value a <http://iirds.tekom.de/iirds#IdentityDomain> } }""" ] .
+  FILTER NOT EXISTS {
+    ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#IdentityDomain> } }""" ] .
 
 ivs:M22.2 a sh:NodeShape ;
   rdfs:label "An iirds:Party MUST have a related iirds:PartyRole that is assigned by the property iirds:has-party-role, such as author, supplier or manufacturer." ;

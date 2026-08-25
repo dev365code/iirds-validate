@@ -268,8 +268,13 @@ def m15_10_information_object_creator(ctx):
 @rule("M15.11a",
        fix="Retype the information unit as iirds:Document or iirds:Package, or take it out of the handover package. iiRDS/H deliberately restricts the shapes a receiving system has to understand, and that restriction is the profile's whole value.")
 def m15_11a_documents_only(ctx):
+    # instances_of, not typed_exactly: the profile excludes topics so that a
+    # receiving system need not understand them, and section 7 says an
+    # instance of a package's own subclass of iirds:Topic is a Topic. Exact
+    # typing let the excluded thing in by the one route the standard
+    # explicitly sanctions.
     for cls in (T.Topic, T.Fragment):
-        for unit in ctx.typed_exactly(cls):
+        for unit in ctx.instances_of(cls):
             yield Violation("iiRDS/H packages must contain only iirds:Document and "
                             "iirds:Package information units",
                             subject=ctx.ref(unit), detail=ctx.ref(cls).split("#")[-1])

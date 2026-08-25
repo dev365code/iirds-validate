@@ -616,10 +616,17 @@ def m94_administrative_metadata_relation_not_direct(ctx):
 @rule("M19.4",
        fix="Type the target of iirds:has-identity-domain as iirds:IdentityDomain. Pointing at something else leaves a consumer unable to tell which scheme the identifier is in.")
 def m19_4_identity_domain_is_typed(ctx):
+    # The whole closure, not the package's own half: everything beneath
+    # iirds:IdentityDomain is an identity domain, and this rule asks what a
+    # node *is* rather than demanding something of a population -- the
+    # direction where a wider reading can only make it quieter. Asking for the
+    # parent type verbatim reported a package for doing what section 7
+    # sanctions and L5 recommends.
+    domains = set(ctx.instances_of(T.IdentityDomain))
     for identity, domain in ctx.graph.subject_objects(T.has_identity_domain):
         if (domain, None, None) not in ctx.graph:
             continue          # not described here at all; L1 reports the dangling reference
-        if T.IdentityDomain not in ctx.values(domain, T.RDF_TYPE):
+        if domain not in domains:
             yield Violation("the object of iirds:has-identity-domain must be an instance of "
                             "iirds:IdentityDomain",
                             subject=ctx.ref(identity), detail=ctx.ref(domain))

@@ -12,6 +12,7 @@ without one.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,8 @@ from iirds_validate import terms as T
 from iirds_validate.model import HOV, IIRDS, MACH, SW
 from iirds_validate.ontology import load
 from iirds_validate.registry import CATALOG, all_rules
+
+ROOT = Path(__file__).resolve().parents[1]
 
 RULES = all_rules()
 
@@ -91,18 +94,28 @@ def test_a_violation_may_override_its_rule(make_package):
 #: spells a term the way the specification does.
 PREFIXES = {"iirds": IIRDS, "iirdsHov": HOV, "iirdsMch": MACH, "iirdsSft": SW}
 
-_TERM = re.compile(r"\b(iirds|iirdsHov|iirdsMch|iirdsSft):([A-Za-z][A-Za-z0-9-]*)")
+#: Greedy on purpose, past the characters an iiRDS name may contain. An
+#: earlier form stopped at `.` and `_`, so `iirds:title.value` handed the
+#: resolver `title` -- which exists -- and the invented name went out
+#: unremarked. Trailing sentence punctuation is stripped below; anything
+#: still holding a `.` or `_` is not a name this vocabulary can spell.
+_TERM = re.compile(r"\b(iirds|iirdsHov|iirdsMch|iirdsSft):([A-Za-z][A-Za-z0-9._-]*)")
 
 #: Terms the specification uses that the ontology files never declare. Taken
 #: from the same list test_terms.py exempts, rather than a second one that
-#: could drift away from it.
-UNDECLARED = {str(T.TERMS[name]).split("#")[-1] for name in T.NOT_IN_ONTOLOGY}
+#: could drift away from it -- and held as full IRIs, because all three live
+#: in the core namespace and a local name alone exempts `iirdsMch:iiRDSVersion`,
+#: which names nothing at all.
+UNDECLARED = {T.TERMS[name] for name in T.NOT_IN_ONTOLOGY}
 
 
 def _named_terms(text):
     for prefix, local in _TERM.findall(text or ""):
-        if local not in UNDECLARED:
-            yield prefix, local, PREFIXES[prefix][local]
+        local = local.rstrip(".,;:)")
+        iri = PREFIXES[prefix][local]
+        if iri in UNDECLARED:
+            continue
+        yield prefix, local, iri
 
 
 @pytest.mark.parametrize("rule", RULES, ids=[r.id for r in RULES])
@@ -130,3 +143,27 @@ def test_our_own_titles_name_terms_that_exist(rule):
         assert load().is_defined(iri), (
             "%s: the title names %s:%s, which the bundled ontology does not define"
             % (rule.id, prefix, local))
+
+
+def test_no_remedy_reaches_a_reader_without_passing_this_gate():
+    """A tripwire, because the gate above reads only the rule's own advice.
+
+    `Finding.fix` is `violation.fix or rule.fix`, so a rule may override its
+    standing remedy per finding -- and that override is a string this gate
+    never sees. No rule does it today. The day one does, this fails and says
+    where to widen, rather than letting the first per-instance remedy be the
+    one nobody checks.
+    """
+    import ast
+
+    overrides = []
+    for path in sorted((ROOT / "src" / "iirds_validate" / "rules").glob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text("utf-8"))):
+            if (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Violation"
+                    and any(kw.arg == "fix" for kw in node.keywords)):
+                overrides.append("%s:%d" % (path.name, node.lineno))
+
+    assert not overrides, (
+        "these findings carry their own remedy, which test_the_remedy_names_terms_"
+        "that_exist does not read: %s. Widen it to Violation(fix=...) literals, or "
+        "the first per-instance remedy is the first one nobody checks." % overrides)

@@ -98,16 +98,30 @@ def _must_have_iri(prefix: str, class_name: str):
     cls = NAMESPACES[prefix][class_name]
 
     def check(ctx):
-        # The package's own subclasses, never the ontology's. Section 7 lets a
-        # package subclass an iiRDS class and requires consumers to process the
-        # instance as the parent, so exact typing was looking at a smaller
-        # population than the standard gives — and a smaller one than this
-        # rule's own SHACL shape, which has always seen the wider set because
-        # sh:targetClass follows the data graph's rdfs:subClassOf. The
-        # ontology's hierarchy stays out: iirdsDomainEntity sits above nearly
-        # everything, and pulling its descendants in would report every
-        # blank-node Rendition in a good package under one grouping rule.
-        for subject in ctx.typed_as(cls):
+        # How far this rule reaches is decided by what the ontology says about
+        # the class, not by the shape of the table.
+        #
+        # Where Appendix A states "IRI: required", section 7 applies: a package
+        # may subclass the class, a consumer must process the instance as the
+        # parent, and the standard asks that instance for an IRI. Exact typing
+        # there sees a smaller population than the standard gives, and a
+        # smaller one than the rule's own shape, whose sh:targetClass follows
+        # the data graph's rdfs:subClassOf.
+        #
+        # Where the ontology asks for no IRI — ten of these classes say nothing
+        # about one, and iirds:PlanningTime says "IRI: optional" — the rule is
+        # here because the reference tool asserts that elements of the class
+        # carry rdf:about. That tool reads the XML tree, so the population it
+        # can see is what is typed with the class itself, and reaching past it
+        # would report the extension section 7 exists to allow: two packages
+        # differing only in whether an anonymous node is typed with the
+        # standard's own subclass or the package's, one passing and one not.
+        #
+        # The ontology's own hierarchy stays out either way: iirdsDomainEntity
+        # sits above nearly everything, and pulling its descendants in would
+        # report every blank-node Rendition in a good package.
+        reach = ctx.typed_as if ctx.ontology.requires_an_iri(cls) else ctx.typed_exactly
+        for subject in reach(cls):
             if not is_named(subject):
                 yield Violation("instances of %s must have an absolute IRI" % class_name,
                                 subject=ctx.ref(subject))

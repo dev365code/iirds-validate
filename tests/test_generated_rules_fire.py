@@ -98,8 +98,63 @@ def _subclassed(tmp_path, rule_id, class_iri, about=""):
                          metadata=metadata)
 
 
-@pytest.mark.parametrize("rule_id,prefix,class_name", MUST_HAVE_IRI,
-                         ids=[r[0] for r in MUST_HAVE_IRI])
+def _iri_is_required(prefix, class_name) -> bool:
+    """Does the ontology say instances of this class need an IRI?
+
+    Read at run time from the bundled ontology, so a change there moves the
+    population instead of leaving a hand list to rot. Fifty rows say "IRI:
+    required"; ten say nothing about IRIs at all, and iirds:PlanningTime says
+    "IRI: optional" outright.
+    """
+    from rdflib import URIRef
+
+    from iirds_validate.ontology import Ontology
+    described = URIRef("http://iirds.tekom.de/iirds#description")
+    for _s, _p, text in Ontology().graph.triples(
+            (URIRef(str(NAMESPACES[prefix][class_name])), described, None)):
+        if "IRI:" in str(text):
+            tail = str(text)[str(text).index("IRI:"):].lower()
+            return "required" in tail
+    return False
+
+
+#: The two populations these rules divide into, and the reason they must.
+REQUIRED = [r for r in MUST_HAVE_IRI if _iri_is_required(r[1], r[2])]
+UNSTATED = [r for r in MUST_HAVE_IRI if not _iri_is_required(r[1], r[2])]
+
+
+def test_the_two_populations_are_both_real():
+    """A split that put everything on one side would make one of the two
+    parametrisations below vacuous, and a vacuous parametrisation is green."""
+    assert (len(REQUIRED), len(UNSTATED)) == (56, 5)
+    assert len(REQUIRED) + len(UNSTATED) == len(MUST_HAVE_IRI)
+    # The five: four whose ontology entry says nothing about an IRI, and
+    # iirds:PlanningTime, which says "IRI: optional" in as many words.
+    assert sorted(r[0] for r in UNSTATED) == ["M82", "M83", "M84", "M85", "M88"]
+
+
+@pytest.mark.parametrize("rule_id,prefix,class_name", UNSTATED,
+                         ids=[r[0] for r in UNSTATED])
+def test_a_declared_subclass_is_left_alone_where_no_iri_is_asked_for(
+        rule_id, prefix, class_name, tmp_path):
+    """Section 7's whole point, and the population these rules must not reach.
+
+    These rows exist because the reference tool asserts that elements of the
+    class carry rdf:about. It reads the XML tree, so the population it can see
+    is the one typed with the class itself, and the ontology never asks for an
+    IRI here -- one entry says "IRI: optional" in as many words. Reaching past
+    that turns a package's own subclass, the construct section 7 exists to
+    allow, into an error the standard's own text does not ask for.
+    """
+    package = _subclassed(tmp_path, rule_id, str(NAMESPACES[prefix][class_name]))
+    version = RULES[rule_id].versions[-1] if RULES[rule_id].versions else None
+    report = runner.run(package, runner.CONFORMANCE_KINDS, version=version)
+
+    assert rule_id not in {f.rule.id for f in report.findings}
+
+
+@pytest.mark.parametrize("rule_id,prefix,class_name", REQUIRED,
+                         ids=[r[0] for r in REQUIRED])
 def test_it_fires_on_an_anonymous_instance_of_a_declared_subclass(
         rule_id, prefix, class_name, tmp_path):
     """The branch the other two never drove.
@@ -128,3 +183,4 @@ def test_it_stays_quiet_when_that_subclassed_instance_is_named(
     report = runner.run(package, runner.CONFORMANCE_KINDS, version=version)
 
     assert rule_id not in {f.rule.id for f in report.findings}
+

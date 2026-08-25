@@ -24,6 +24,10 @@ ONTOLOGIES = "ontologies"
 DEFAULT_FILES = ("iirds-core.rdf", "iirds-machinery.rdf", "iirds-software.rdf", "iirds-handover.rdf")
 
 
+#: Appendix A's per-class prose, which is where "IRI: required" lives.
+DESCRIBED = URIRef("http://iirds.tekom.de/iirds#description")
+
+
 class Ontology:
     def __init__(self, version: str = LATEST_VERSION, files: Iterable[str] = DEFAULT_FILES):
         self.version = version
@@ -66,6 +70,22 @@ class Ontology:
         if self._defined is None:
             self._defined = frozenset(s for s in self.graph.subjects() if isinstance(s, URIRef))
         return self._defined
+
+    def requires_an_iri(self, cls: URIRef) -> bool:
+        """Does the standard say instances of this class must be named?
+
+        Appendix A's row for a class is carried in the ontology as an
+        iirds:description, and where it settles the question it says so in one
+        of two words. Fifty of the generated rules' classes say "IRI:
+        required"; ten say nothing about IRIs at all, and iirds:PlanningTime
+        says "IRI: optional" -- which decides how far a rule about that class
+        may reach, so it is read from the ontology rather than listed by hand.
+        """
+        for _s, _p, text in self.graph.triples((cls, DESCRIBED, None)):
+            marker = str(text).find("IRI:")
+            if marker >= 0:
+                return "required" in str(text)[marker:].lower()
+        return False
 
     def is_iirds_term(self, iri) -> bool:
         return isinstance(iri, URIRef) and str(iri).startswith(IIRDS_NAMESPACES)

@@ -77,8 +77,17 @@ def check() -> int:
     if not BASELINE.exists():
         print("no baseline; run --write-baseline", file=sys.stderr)
         return 2
-    recorded = set(json.loads(BASELINE.read_text("utf-8"))["never_fires"])
+    baseline = json.loads(BASELINE.read_text("utf-8"))
+    recorded = set(baseline["never_fires"])
     rules, never, fired = _state()
+
+    # The two numbers this tool writes are read back here, because for three
+    # count changes they were not: the file said 185 and 184 while the suite
+    # printed 188 and 187, and comparing only the never-fires set kept that
+    # green. A generated file no gate reads is a claim without a gate.
+    stale = [(name, baseline.get(name), live)
+             for name, live in (("rules", len(rules)), ("exercised", len(fired)))
+             if baseline.get(name) != live]
 
     regressed = sorted(set(never) - recorded)      # used to fire, now does not
     newly_covered = sorted(recorded - set(never))  # good news, but update the file
@@ -91,6 +100,12 @@ def check() -> int:
     if regressed:
         print("\n%d rule(s) stopped being exercised. Either a test was removed, or a rule "
               "went dead." % len(regressed), file=sys.stderr)
+        return 1
+    if stale:
+        for name, was, now in stale:
+            print("  %-9s baseline says %s, the suite says %d"
+                  % (name, "nothing" if was is None else was, now), file=sys.stderr)
+        print("\nbaseline is stale — rerun --write-baseline", file=sys.stderr)
         return 1
     if newly_covered:
         print("\nbaseline is stale: %d rule(s) are now exercised." % len(newly_covered),

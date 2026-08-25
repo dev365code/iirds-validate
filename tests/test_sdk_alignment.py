@@ -22,6 +22,13 @@ from iirds_validate import context, model
 
 ROOT = Path(__file__).resolve().parents[1]
 
+#: The name of the variable that names an SDK checkout. One thing in two
+#: files, so it is spelled once here and the Makefile is required to use the
+#: same word: two literals could be renamed apart, and the direction that
+#: fails quietly is the Makefile honouring a variable nobody sets while the
+#: test guarding it skips for ever.
+SDK_SRC_VAR = "IIRDS_SRC"
+
 
 def test_the_shared_constants_are_the_same_objects():
     assert context.MAX_METADATA_BYTES is iirds.MAX_METADATA_BYTES
@@ -86,6 +93,20 @@ def test_the_sdk_under_test_satisfies_what_this_project_declares():
         % (iirds.__version__, iirds.__file__))
 
 
+@pytest.mark.parametrize("lower,higher", [
+    ("0.1.0", "0.2.0"), ("0.2.0", "0.3.0"), ("0.9.0", "0.10.0"), ("1.2.9", "1.10.0"),
+])
+def test_versions_compare_as_numbers_and_not_as_text(lower, higher):
+    """The comparison above is a tuple compare, and it had to be.
+
+    "0.10.0" sorts below "0.2.0" as text and above it as a release, so a
+    string comparison would report an environment as below the floor when it
+    is two minor versions past it. The choice was mutation-checked by hand
+    once; a hand check that leaves no gate is a hand check nobody repeats.
+    """
+    assert _version(lower) < _version(higher)
+
+
 def test_a_chosen_sdk_checkout_is_the_one_that_gets_imported():
     """`IIRDS_SRC=/path/to/iirds/src make check` must mean it.
 
@@ -99,7 +120,7 @@ def test_a_chosen_sdk_checkout_is_the_one_that_gets_imported():
     Skipped when no checkout is named, which is the ordinary case -- then the
     installed release is under test and the assertion above is what holds.
     """
-    chosen = os.environ.get("IIRDS_SRC")
+    chosen = os.environ.get(SDK_SRC_VAR)
     if not chosen:
         pytest.skip("no SDK checkout named; the installed release is under test")
     chosen = Path(chosen).resolve()
@@ -118,6 +139,6 @@ def test_the_makefile_still_builds_pythonpath_from_that_variable():
     anybody deciding to remove it.
     """
     makefile = (ROOT / "Makefile").read_text("utf-8")
-    assert "$(IIRDS_SRC)" in makefile, (
-        "the Makefile no longer builds PYTHONPATH from IIRDS_SRC, so the test "
-        "above would skip for ever instead of checking anything")
+    assert "$(%s)" % SDK_SRC_VAR in makefile, (
+        "the Makefile no longer builds PYTHONPATH from %s, so the test above "
+        "would skip for ever instead of checking anything" % SDK_SRC_VAR)

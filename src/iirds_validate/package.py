@@ -108,9 +108,16 @@ class Package:
         report then passed. Reading in chunks costs the chunk.
 
         The limit is on what is read, not on what is claimed, so a declared
-        size cannot switch a gate off. A truncating read is not a loss: the
-        declared size is what every conformant reader gets, so bytes past it
-        are unreachable to a consumer as much as to this.
+        size cannot switch a gate off in either direction.
+
+        What it does not fix, and what a first draft of this sentence claimed
+        it did: `zipfile` truncates to the size in the *central directory*,
+        and a consumer that streams the archive reads the *local* header
+        instead. Where the two disagree the two see different documents, and
+        this sees the shorter one -- so a member can be blessed here and
+        arrive longer somewhere else. Refusing that is a rule about the
+        archive rather than a bound on a read, and there is no rule for it
+        yet; docs/scope.md carries it as open.
         """
         out = bytearray()
         with self._zip.open(name) as handle:

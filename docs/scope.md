@@ -128,6 +128,16 @@ gone wrong.
    against the 1.0 text ([divergences.md](divergences.md)). Their schemas now
    feed the version inventory too, so no edition is unchecked.
 
+6. **A ZIP whose local headers and central directory disagree is not
+   detected.** `zipfile` reads the central directory, so that is the document
+   this tool judges; a consumer that streams the archive reads the local
+   header and can receive a longer member than the one checked here. Nothing
+   in the specification forbids the divergence because nothing anticipated
+   it, and no rule reports it — so a package can be blessed on a benign
+   prefix. Found by a review against the size gates, recorded
+   rather than fixed: it wants a container rule of its own, not a wider
+   bound on a read.
+
 ## Checking any of this yourself
 
 Nothing above is asserted where it could be run.

@@ -4,6 +4,7 @@ from __future__ import annotations
 from conftest import MIMETYPE, MINIMAL_RDF
 from iirds_validate import runner
 from iirds_validate.model import METADATA_RDF
+from iirds_validate.model import MIMETYPE_FILE as MIMETYPE_NAME
 
 
 def ids(report):
@@ -114,6 +115,44 @@ def test_an_undecodable_entry_name_is_reported_not_crashed(tmp_path):
     """
     report = runner.check(_entry_name_that_is_not_utf8(tmp_path))
     assert "C1" in ids(report), sorted(ids(report))
+    assert not report.ok
+
+
+def test_a_metadata_entry_that_will_not_decompress_is_reported_not_crashed(tmp_path):
+    """The read is inside the contract, not only the parse.
+
+    A repair that made the size gates measure what came back hoisted the read
+    out of the try that had been covering it -- the read had been an argument
+    to the guarded call, and pulling it into its own statement moved it. So a
+    metadata entry whose CRC is wrong, or whose declared compression method
+    nothing implements, ended the run with a traceback again: the invariant
+    two earlier commits established, undone by a third that was not about it.
+    """
+    import io
+    import struct
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as archive:
+        info = zipfile.ZipInfo(MIMETYPE_NAME)
+        info.compress_type = zipfile.ZIP_STORED
+        archive.writestr(info, MIMETYPE)
+        archive.writestr(METADATA_RDF, MINIMAL_RDF)
+    raw = bytearray(buf.getvalue())
+    at = 0
+    while True:
+        at = raw.find(b"PK\x01\x02", at)
+        if at < 0:
+            break
+        length = struct.unpack_from("<H", raw, at + 28)[0]
+        if bytes(raw[at + 46:at + 46 + length]) == METADATA_RDF.encode():
+            struct.pack_into("<I", raw, at + 16, 0xDEADBEEF)      # a CRC nothing matches
+        at += 4
+    path = tmp_path / "badcrc.iirds"
+    path.write_bytes(bytes(raw))
+
+    report = runner.run(path, runner.ALL_KINDS)
+    assert "C16.1" in ids(report)
     assert not report.ok
 
 

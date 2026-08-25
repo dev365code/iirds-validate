@@ -193,13 +193,12 @@ def build_graph(package: Package):
         # this and cost the hundred megabytes, and one claiming a gigabyte
         # over nothing was refused unread. `read_bounded` stops at the limit
         # whatever the entry claims, and the verdict is about what came back.
-        raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
-        if oversize:
-            errors.append("%s: refused: over the %d byte limit uncompressed"
-                          % (name, MAX_METADATA_BYTES))
-            continue
-
         try:
+            raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
+            if oversize:
+                errors.append("%s: refused: over the %d byte limit uncompressed"
+                              % (name, MAX_METADATA_BYTES))
+                continue
             single, error = parse_metadata(name, raw, base=PACKAGE_BASE)
         except Exception as exc:
             # The reader's contract is (graph, None) or (None, error), and a
@@ -211,6 +210,11 @@ def build_graph(package: Package):
             # Observed on iirds 0.2.0, which raised UnicodeDecodeError out of
             # parse_metadata for metadata truncated mid code unit -- a
             # container under a kilobyte, and a traceback instead of a report.
+            # The read is inside this, not only the parse: it was an argument
+            # to the guarded call until a later change gave it a statement of
+            # its own, and a wrong CRC or an unimplemented compression method
+            # walked straight back out. Whatever fails between opening the
+            # entry and having a graph is a finding.
             errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
             continue
         if error is not None:

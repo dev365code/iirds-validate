@@ -50,6 +50,16 @@ class Package:
             raise PackageError(str(exc)) from exc
         except OSError as exc:
             raise UnreadablePath(str(exc)) from exc
+        except Exception as exc:
+            # Everything else the central directory can do to a reader. An
+            # entry name whose bytes are not the encoding its flag declares
+            # raises UnicodeDecodeError from inside zipfile, and a supplier
+            # sets that flag, not us. This class promises the caller two
+            # exception types and the runner turns exactly those into
+            # findings, so a third ends the run before any rule exists to
+            # report it -- which is the failure this class was written to
+            # prevent, arriving through the one door it does not watch.
+            raise PackageError("%s: %s" % (type(exc).__name__, exc)) from exc
         self.infos: List[zipfile.ZipInfo] = self._zip.infolist()
         self.names: List[str] = [i.filename for i in self.infos]
         # Lookup tables. `info()` was a linear scan and `has()` a list

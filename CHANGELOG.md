@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.4.2 — unreleased
+
+### Security
+
+- **A metadata.jsonld whose `@context` named no scheme was read out of the
+  operator's working directory.** The refusal is the reader's, and arrives
+  with `iirds` 0.3.1; this release carries the reporting half — C16.2 stops
+  calling a refused document invalid, SECURITY.md describes the filesystem
+  half of the threat as well as the network half, and a version-gated test
+  watches a package fail to pick up a decoy from the working directory.
+
+### Fixed
+
+- The container boundary joins the parse boundary: an entry name whose bytes
+  are not the encoding its flag declares raised out of `zipfile` and ended the
+  run with a traceback. It is a C1 finding now, like every other way an
+  archive can be unusable.
+- A reader that breaks its contract no longer ends a run before any rule has
+  looked at the package. This project declares a dependency floor rather than
+  a pin, so it will be paired with readers it was never tested against.
+- Eleven remedies named terms the standard does not have — six machinery
+  classes spelled `iirds:` rather than `iirdsMch:`, `iirds:relates-to-Party`
+  for `relates-to-party`, a handover property that does not exist, and a
+  relation that never existed. A gate resolves every iiRDS term a remedy names.
+- M2.6's remedy asked authors to write what its own shape rejects, reported
+  from outside in this project's first issue. The constraint is unchanged and
+  the open question is recorded in `docs/divergences.md`.
+- C16.1, C16.2 and S3 stop describing the wrong failure: a refused document is
+  not invalid syntax, and a rule that crashed is not a metadata parse error.
+
 ## 0.4.1 — 2026-08-25
 
 - **The `iirds` dependency loses its upper bound** (`>=0.2.0,<0.3` →

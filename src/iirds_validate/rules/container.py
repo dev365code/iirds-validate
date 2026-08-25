@@ -291,5 +291,10 @@ def c16_2_jsonld(ctx):
         yield Violation("iiRDS/H packages must contain META-INF/metadata.jsonld")
     for err in ctx.parse_errors:
         if err.startswith(METADATA_JSONLD):
-            yield Violation("metadata.jsonld is not valid JSON-LD 1.1",
+            # Same correction as C16.1 twenty lines up, for the same reason:
+            # the reader refuses on size, on a context that names something to
+            # fetch, and on an @import, none of which is a syntax error. A
+            # refused document is perfectly valid JSON-LD 1.1. The detail says
+            # which refusal it was; the message must stop contradicting it.
+            yield Violation("metadata.jsonld could not be read as JSON-LD 1.1",
                             subject=METADATA_JSONLD, detail=err.split(": ", 1)[-1])

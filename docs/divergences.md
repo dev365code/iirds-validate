@@ -155,7 +155,7 @@ The iiRDS Sample Content (2019-10-31, behind free registration at iirds.org)
 contains the only two complete packages the standard's authors have published:
 `iirds-sample-1.iirds` and `iirds-sample-2.iirds`, both declaring iiRDS 1.0,
 variant A. The first genuine 1.0 material this project has seen — 159 rules
-ran, 26 correctly stood down for the version and profile.
+ran, 29 correctly stood down for the version and profile.
 
 Every error was verified against the 1.0 specification text (2018-04-18)
 before being called a defect:
@@ -164,6 +164,7 @@ before being called a defect:
 |---|---|---|
 | sample 1, **M22.1** (error) | **defect in the official sample** | "An iirds:Party MUST have a related iirds:Role that is assigned by the property iirds:has-party-role" — the reviewer Party carries only a vcard |
 | sample 2, **M18** (error) | **defect in the official sample** | "As product variants are a proprietary iiRDS extension, they MUST be present in the metadata.rdf of the iiRDS package" — verbatim in 1.0 and 1.3; the package relates to `pifan#X5-DH2` and declares no ProductVariant |
+| both samples, **B10** (error ×11) | **defect in the official samples** | "If an iiRDS package contains content with hazard statements, then the iiRDS package MUST always provide the applicable safety alert symbols and signal words", and above the table, "A hazard statement consists of a safety alert symbol, a signal word, a message panel, and a symbol panel" — fifteen hazard statements between the two packages, a picture in the symbol panel of every one ("a panel that contains additional hazard symbols"), and no tagged alert symbol anywhere. Six in sample 1, five in sample 2; the four notices are left alone. 1.0's own Example 43 shows the tagged img inside the signal word panel |
 | sample 1, L10 (warning) | correct observation | the package types `mch:EnvironmentalProtectionInstruction` directly as `iirds:InformationSubject`; tekom's own 1.3 machinery vocabulary types that term as an instance of `iirds:Safety` — the warning's advice is the vocabulary's current position |
 | sample 2, L1 (warning) | correct observation | `relates-to-party` names a UUID described only in sample 1; a consumer holding sample 2 alone cannot resolve it |
 | sample 2, L8 ×5 (info) | as designed | references into the external `pifan` vocabulary, which an offline consumer cannot fetch |

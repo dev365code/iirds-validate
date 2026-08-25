@@ -73,6 +73,22 @@ def test_coverage_matches_the_readme():
     assert "plus %d of this project's own" % ours in readme, \
         "the README's count of this project's own rules is stale"
 
+    # The "this project" column, and the same figure in the console block the
+    # README presents as literal output. Reading only the catalogued fractions
+    # let both drift: three rules were added, one sentence moved, and the
+    # column went on summing to three less than the sentence beside it while
+    # this test stayed green. A number a gate does not read is not pinned.
+    for kind in ("container", "schema", "system", "content", "lint"):
+        ours_here = cov[kind]["ours"]
+        assert re.search(r"^%s\s.*\+%d of its own$" % (kind, ours_here), readme, re.M), \
+            "the console block's '+N of its own' for %s is not %d" % (kind, ours_here)
+
+    rows = re.findall(r"^\| \w+ \(\w\\\*\) \| ([^|]+) \| (\d+) \|$", readme, re.M)
+    assert len(rows) == 5, "the kind table should have five rows, found %d" % len(rows)
+    assert sum(int(n) for _cat, n in rows) == ours, \
+        "the kind table's own-rule column sums to %d, not %d" % (
+            sum(int(n) for _cat, n in rows), ours)
+
 
 def test_every_finding_says_whose_rule_it_is():
     """B*, L* and S4-S8 share a namespace with the catalogue. A stored report

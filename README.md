@@ -217,9 +217,9 @@ a request that passes review at a manufacturer.
 ```console
 $ iirdsv rules
 container  19/19    the ZIP and its layout  +1 of its own
-schema     135/135  the metadata graph  +2 of its own
+schema     135/135  the metadata graph  +3 of its own
 system     3/3      the run itself  +5 of its own
-content    -        iiRDS XHTML5 (Appendix B)  +8 of its own
+content    -        iiRDS XHTML5 (Appendix B)  +10 of its own
 lint       -        will a consumer be able to use it  +12 of its own
 ```
 
@@ -228,9 +228,9 @@ lint       -        will a consumer be able to use it  +12 of its own
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 1 |
-| schema (M\*) | 135 / 135 | 2 |
+| schema (M\*) | 135 / 135 | 3 |
 | system (S\*) | 3 / 3 | 5 |
-| content (B\*) | — | 8 |
+| content (B\*) | — | 10 |
 | interoperability (L\*) | — | 12 |
 
 Coverage of the catalogue is not coverage of the standard. The specification
@@ -275,7 +275,7 @@ the remedy text, severity, spec link and requirement id; every one is
 differentially tested against the Python rules — fire-set equality over the
 reference corpus, severity equality on every mutant and provocation fixture, and a
 closing check that no shape sits the suite out — and [`shapes/MANIFEST.json`](shapes/MANIFEST.json) accounts for
-every rule without a shape, starting with the 38 that can never be one (ZIP
+every rule without a shape, starting with the 40 that can never be one (ZIP
 bytes have no graph), so nobody mistakes shapes for full conformance.
 [`shapes/README.md`](shapes/README.md) has the three conventions that matter
 and the honest caveats.
@@ -387,7 +387,7 @@ the repository.
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 
-**What is not established.** The 28 rules this project invented have no second
+**What is not established.** The 31 rules this project invented have no second
 implementation anywhere to be compared against. They have tests in both
 directions, and those tests were checked by breaking each rule in turn, which is
 weaker evidence than the catalogued rules have.

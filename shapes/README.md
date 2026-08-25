@@ -138,7 +138,7 @@ document defects that ontology-derived shapes would faithfully encode.
 **The caveat that matters: these shapes encode one documented reading of the
 specification.** Where prose underdetermines a rule, the choice made here is
 recorded — with the sentence, the alternative, and the evidence — in
-[docs/divergences.md](../docs/divergences.md). Three of those questions are
+[docs/divergences.md](../docs/divergences.md). Two of those questions are
 currently before the Consortium.
 
 ## What is not here, exactly
@@ -158,8 +158,9 @@ each listed with its reason in `MANIFEST.json`:
   which is itself MUST-level: directory-structure cycle detection). The
   five iiRDS/H MUSTs deferred at first release (M15.7b, M15.7d,
   M15.8–M15.10) have since landed as SPARQL shapes, softenings included:
-  a party whose vCard this package does not describe passes here and is
-  L1's business, exactly as in the Python reading.
+  a party whose vCard this package does not describe passes those five,
+  exactly as in the Python reading, and the pointer itself is reported
+  once by R4 — which is a shape too, so both encodings say it.
 - **2 out of edition** — M16.1 and M16.2 exist only in editions 1.0–1.1;
   a 1.3 shapes set has nothing to say about them.
 - **1 no-op** — M96.4 is a MAY with nothing to violate; it is registered so
@@ -167,7 +168,7 @@ each listed with its reason in `MANIFEST.json`:
 
 ## Why you can trust the translation
 
-Every emitted shape is **differentially tested against the 185-rule Python
+Every emitted shape is **differentially tested against the 188-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

@@ -45,7 +45,7 @@ def test_the_baseline_is_that_these_defects_are_caught(tmp_path):
 
 
 def test_a_dot_xhtml_file_declared_as_something_else_is_reported(tmp_path):
-    """The defect. `text/html` on a file named .xhtml silences all eight B
+    """The defect. `text/html` on a file named .xhtml silences all ten B
     rules, and the report was empty and green.
 
     B6 already checks the converse -- content declared as iiRDS XHTML5 that

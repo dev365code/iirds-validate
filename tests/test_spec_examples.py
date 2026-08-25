@@ -105,7 +105,7 @@ def test_the_hazard_statement_example_passes_the_rules_it_illustrates():
     """Example 46 is not metadata -- it is the Appendix B tagging markup, and
     it is the only piece of iiRDS XHTML5 in this corpus that tekom wrote.
 
-    The eight B rules have no counterpart in any other tool and rest on three
+    The ten B rules have no counterpart in any other tool, and two of them rest on
     readings the specification does not settle, so a conformant sample authored
     by the people who wrote Appendix B is the strongest check available on them.
     A finding here would mean a B rule is too strict.

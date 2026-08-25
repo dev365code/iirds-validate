@@ -122,7 +122,7 @@ def test_media_type_parameters_do_not_disable_the_content_rules(tmp_path):
     """`application/xhtml+xml; charset=utf-8` is that media type, with a parameter.
 
     RFC 2045 says so and nothing in iiRDS says otherwise, so a package declaring
-    the charset — which is good practice — silently skipped all eight B rules.
+    the charset — which is good practice — silently skipped all ten B rules.
     The most conscientious authors got the least checking.
     """
     body = '<script>alert(1)</script><link rel="next" href="x"/>'

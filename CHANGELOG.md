@@ -60,7 +60,7 @@
   an archive refuses was read and parsed whole in the
   check-before-you-zip form — and neither gate, in either form, had
   ever been observed firing by any test. Four tests now watch both;
-  the defect register records the silent pass.
+  this entry records the silent pass.
 - The section-7 class closure's data half is now literally the SDK's
   `subclasses_of`: "the SDK's answer is a subset of the validator's"
   became a property of the code rather than a claim about it.
@@ -161,10 +161,10 @@ First public release.
 
 ### What was found while building it
 
-The evidence lives in the repository rather than in this file:
-the defect register is the register of every defect the
-apparatus caught in its own rules — including a rule that was backwards from
-the day it was written and one no input could reach — and
+The evidence lives in the repository rather than in this file: the regression
+tests cover every defect the apparatus caught in its own rules — including a
+rule that was backwards from the day it was written and one no input could
+reach — and
 [docs/divergences.md](docs/divergences.md) records every disagreement with the
 reference implementation, with the specification text beside each. Seven of
 the catalogue's version arrays were corrected against the Consortium's own

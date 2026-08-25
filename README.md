@@ -329,12 +329,10 @@ with `sha256` rather than taken on trust.
 
 ## Trusting the answer
 
-the defect register is the register of every defect this
-project has found in itself, and which instrument found it. The repository was
-developed privately and published with its full history, deliberately: the
-commits that register points at are real and checkable, which is part of the
-point. It is the argument
-for why there is twice as much test and tool code here as validator.
+Every defect this project has found in itself is recorded where it was fixed:
+in the changelog entry, in the regression test that now covers it, and in the
+commit both point at. That record is the argument for why there is twice as
+much test and tool code here as validator.
 
 [docs/scope.md](docs/scope.md) is the map: what this is, what it deliberately is
 not, where each thing lives, the four ways a validator can be wrong and which

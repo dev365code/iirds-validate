@@ -95,9 +95,8 @@ figure at all.
 That is not a gap in the plan; it is why `docs/divergences.md` exists.
 Publishing a reading is the only way a single author can make it refutable.
 
-Whether that apparatus earns its size is answered in
-the defect register, which lists every defect it has caught and by
-which instrument.
+Whether that apparatus earns its size is answered by the changelog and the
+regression tests, which record every defect it has caught and how.
 
 ## The unresolved list
 

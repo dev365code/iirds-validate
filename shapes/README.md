@@ -178,8 +178,7 @@ check that every emitted shape has fired somewhere in the suite, so a shape
 cannot pass by never engaging. The gate has caught real defects on
 its own runs — an inverted navigation shape (M24.5), and a class-closure gap
 in the Python validator itself (iiRDS section 7 subclasses, found as a
-SHACL-only firing) — each recorded in
-the defect register.
+SHACL-only firing) — each recorded in the changelog.
 
 Three engine realities are encoded rather than worked around, with comments
 in the generator: SHACL-SPARQL forbids `VALUES` in constraints (membership

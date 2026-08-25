@@ -29,9 +29,8 @@ hang, over-read, or worst of all *pass something silently* — please use
 GitHub's private vulnerability reporting on this repository ("Security" →
 "Report a vulnerability") rather than a public issue, and it will be handled
 with priority over everything else. A silent pass on hostile input is the
-most serious bug this project can have; the register in
-the defect register shows that such reports get fixed, tested
-and credited rather than argued with.
+most serious bug this project can have; the changelog shows that such reports
+get fixed, tested and credited rather than argued with.
 
 Supported versions: the latest release. There is no backporting; upgrading is
 copying one file.

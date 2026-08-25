@@ -295,7 +295,7 @@ along three independent axes — and only one of them costs anything:
 Time is linear in graph size. Memory lives in the metadata graph alone —
 roughly a hundred times the size of `metadata.rdf`, because rdflib holds it
 in memory; content files are streamed one at a time and never held. Metadata
-above 64 MiB is refused before parsing, which also caps memory at a few GB
+above 64 MiB is refused at that point rather than parsed, which also caps memory at a few GB
 for the largest metadata the guard admits. Numbers from a laptop; re-derive
 them on yours:
 

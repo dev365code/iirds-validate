@@ -19,6 +19,16 @@ from typing import List, Optional
 
 from .model import METADATA_RDF, MIMETYPE_FILE
 
+#: Read in pieces this big. Large enough that a normal entry costs one or
+#: two calls, small enough that a hostile one cannot make the first call
+#: expensive.
+_CHUNK = 1 << 16
+
+#: The ceiling on any single entry read without one being asked for. Both
+#: gates above this layer refuse at 64 MiB, so nothing legitimate needs more,
+#: and a caller that cares about the boundary asks with `read_bounded`.
+MAX_ENTRY_BYTES = 64 * 1024 * 1024
+
 
 class PackageError(Exception):
     """The path is neither a readable archive nor a package directory."""
@@ -83,8 +93,33 @@ class Package:
     def has(self, name: str) -> bool:
         return name in self._name_set
 
-    def read(self, name: str) -> bytes:
-        return self._zip.read(name)
+    def read(self, name: str, limit: int = MAX_ENTRY_BYTES) -> bytes:
+        return self.read_bounded(name, limit)[0]
+
+    def read_bounded(self, name: str, limit: int):
+        """The entry's bytes, and whether there were more than `limit` of them.
+
+        Never an unbounded read. `ZipFile.read()` with no size decompresses
+        the whole member in a single call and only then truncates it to the
+        size the central directory declares -- a field the sender writes. An
+        entry declaring a hundred bytes over a hundred megabytes of deflate
+        therefore cost the hundred megabytes, resident, before the hundred
+        bytes came back: 100 KB of archive for 450 MB, on a package the
+        report then passed. Reading in chunks costs the chunk.
+
+        The limit is on what is read, not on what is claimed, so a declared
+        size cannot switch a gate off. A truncating read is not a loss: the
+        declared size is what every conformant reader gets, so bytes past it
+        are unreachable to a consumer as much as to this.
+        """
+        out = bytearray()
+        with self._zip.open(name) as handle:
+            while len(out) <= limit:
+                chunk = handle.read(min(_CHUNK, limit + 1 - len(out)))
+                if not chunk:
+                    break
+                out += chunk
+        return bytes(out), len(out) > limit
 
     def text(self, name: str, encoding: str = "utf-8") -> str:
         return self.read(name).decode(encoding, errors="replace")
@@ -163,8 +198,20 @@ class DirectoryPackage:
     def has(self, name: str) -> bool:
         return name in self._name_set
 
-    def read(self, name: str) -> bytes:
-        return (self.path / name).read_bytes()
+    def read(self, name: str, limit: int = MAX_ENTRY_BYTES) -> bytes:
+        return self.read_bounded(name, limit)[0]
+
+    def read_bounded(self, name: str, limit: int):
+        """Same contract as the archive form, and for the same reason.
+
+        Nothing here is lying about a size -- a file on disk is as long as it
+        is -- but the two forms have to answer alike or a gate is on in one
+        and off in the other, which is how both size gates came to be
+        silently disabled for the unpacked form once before.
+        """
+        with (self.path / name).open("rb") as handle:
+            data = handle.read(limit + 1)
+        return data, len(data) > limit
 
     def text(self, name: str, encoding: str = "utf-8") -> str:
         return self.read(name).decode(encoding, errors="replace")

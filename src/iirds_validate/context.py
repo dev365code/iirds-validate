@@ -186,14 +186,21 @@ def build_graph(package: Package):
         if not package.has(name):
             continue
 
-        info = package.info(name)
-        if info is not None and info.file_size > MAX_METADATA_BYTES:
-            errors.append("%s: refused: %d bytes uncompressed, above the %d byte limit"
-                          % (name, info.file_size, MAX_METADATA_BYTES))
+        # Measured, not declared. The uncompressed size in a ZIP's central
+        # directory is written by whoever built the archive, so a gate reading
+        # it is a gate the sender sets -- in either direction: an entry
+        # claiming a hundred bytes over a hundred megabytes of deflate passed
+        # this and cost the hundred megabytes, and one claiming a gigabyte
+        # over nothing was refused unread. `read_bounded` stops at the limit
+        # whatever the entry claims, and the verdict is about what came back.
+        raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
+        if oversize:
+            errors.append("%s: refused: over the %d byte limit uncompressed"
+                          % (name, MAX_METADATA_BYTES))
             continue
 
         try:
-            single, error = parse_metadata(name, package.read(name), base=PACKAGE_BASE)
+            single, error = parse_metadata(name, raw, base=PACKAGE_BASE)
         except Exception as exc:
             # The reader's contract is (graph, None) or (None, error), and a
             # rule that raises already becomes a finding rather than ending

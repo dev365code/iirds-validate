@@ -107,11 +107,13 @@ def _xhtml_renditions(ctx):
 
 def _refusal(ctx, name):
     """Why this file will not be parsed, or None."""
-    info = ctx.package.info(name)
-    if info is not None and info.file_size > MAX_CONTENT_BYTES:
-        return "%d bytes uncompressed, above the %d byte limit" % (
-            info.file_size, MAX_CONTENT_BYTES)
-    if _ENTITY_DECL.search(ctx.package.read(name)):
+    # The same reasoning as the metadata gate: the declared size belongs to
+    # the sender, so the limit is on what is read rather than on what is
+    # claimed, and one read answers both questions.
+    raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
+    if oversize:
+        return "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
+    if _ENTITY_DECL.search(raw):
         return "the document declares XML entities"
     return None
 

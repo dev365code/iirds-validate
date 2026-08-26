@@ -57,9 +57,11 @@ ivs:M3 a sh:NodeShape ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
   FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 .
+                      ?x1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
                       FILTER (!sameTerm(?x1, ?value)) }
   ?p2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
   FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 .
+                      ?x2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
                       FILTER (!sameTerm(?x2, ?p2)) }
   FILTER (?value != ?p2) }""" ] .
 

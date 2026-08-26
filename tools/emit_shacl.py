@@ -296,9 +296,11 @@ SPARQL_FORMS = {
                      """SELECT $this ?value WHERE {
   ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
   FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 .
+                      ?x1 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
                       FILTER (!sameTerm(?x1, ?value)) }
   ?p2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
   FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 .
+                      ?x2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
                       FILTER (!sameTerm(?x2, ?p2)) }
   FILTER (?value != ?p2) }"""]),
     # rdf:type/rdfs:subClassOf*: the same instance test sh:class performs,
@@ -538,15 +540,19 @@ def family_forbidden_property(sid, p):
 
 def family_m8_container_package(sid, p):
     # The enclosing package must not render; a nested one is content and may.
-    # Nested means part of a *different* package (section 6.2 says "another"),
-    # and Core has no way to compare a value node with the focus node it hangs
-    # off -- so this counts instead of comparing. The value nodes of a
-    # zero-or-more path always include the focus node itself, and they are a
-    # set, so two or more of them is exactly "there is one that is not the
-    # focus node". Mirrors rules/schema.py m8 through container_packages.
+    # Nested means part of a different package *this graph describes as one*.
+    # Core cannot compare a value node with the focus node it hangs off, so
+    # this counts instead: the value nodes of a zero-or-ONE path are the focus
+    # node and its direct parents, they are a set so a self-loop does not
+    # double it, and two or more Packages among them is exactly "there is a
+    # Package-valued parent other than me". Zero-or-*more* is wrong here --
+    # it walks the chain, so a focus whose parent is a Topic that is itself
+    # part of a real Package would borrow the grandparent's type and be
+    # exempted. Mirrors rules/schema.py m8 through container_packages.
     return (["sh:targetClass iirds:Package",
-             "sh:or ( [ sh:property [ sh:path [ sh:zeroOrMorePath iirds:is-part-of-package ] ; "
-             "sh:minCount 2 ] ] "
+             "sh:or ( [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; "
+             "sh:qualifiedValueShape [ sh:class iirds:Package ] ; "
+             "sh:qualifiedMinCount 2 ] ] "
              "[ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] )"], [])
 
 

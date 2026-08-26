@@ -49,25 +49,23 @@
   same reading gives M3 back the case it was missing, where a self-looping
   package sits beside a genuine container.
 
+  A parent has to be one. The exemption was granted on the bare presence of
+  `iirds:is-part-of-package`, so an IRI nothing describes, a node typed
+  `iirds:Topic`, a plain literal or an anonymous blank node each bought it —
+  and one of those beside the self-loop re-opened the bypass the paragraph
+  above closes. §6.3.3 asks the nested child's package to "reference exactly
+  one `iirds:Package`", and both of its MUSTs are scoped to the parent
+  container's own `metadata.rdf`, where the parent is required to exist. So a
+  package is a nested child when it is part of a different package this graph
+  describes as one. `docs/divergences.md` carries the reading, what it costs,
+  and the fact that it reverses what that file said one release ago.
+
   M8's shape follows the same reading and stays SHACL Core. Core cannot
   compare a value node with the focus node it hangs off, but it does not need
-  to: the value nodes of a zero-or-more path always include the focus node,
-  and they are a set, so two or more of them is exactly "one of them is not
-  the focus node".
-
-- **The offline archive shipped without this project's own licence.** The
-  `.pyz` is the copy that reaches a machine with no index behind it, and it
-  carried every dependency's terms and none of its own — the wheel and the
-  sdist have always carried them, because `pyproject` declares
-  `license-files` and the packaging reads it, but the archive is staged by a
-  different path that declared nothing. It reads the same declaration now and
-  puts `LICENSE`, `NOTICE` and `THIRD_PARTY.md` at the archive root.
-
-  `THIRD_PARTY.md` opens "everything bundled here" and was missing two of the
-  four distributions the archive carries: `isodate` and `pyparsing` arrive
-  with `rdflib` and had no row anywhere. They have one, and the build now
-  refuses to produce an archive holding a distribution the table does not
-  name.
+  to: the value nodes of a zero-or-one path are the focus node and its direct
+  parents, they are a set so a self-loop does not double them, and counting
+  the Packages among them says "there is a Package-valued parent other than
+  me". M3 reads the same predicate and moved with it.
 
 - **L7 took its exemption away from the packages that use section 7.** A
   package is exempt from "every information unit should have a title", and the

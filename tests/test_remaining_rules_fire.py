@@ -8,6 +8,8 @@ a rule that does not work.
 """
 from __future__ import annotations
 
+import pytest
+
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 
@@ -26,8 +28,10 @@ def ids(tmp_path, name, body, replace=None):
 def test_m8_the_enclosing_package_given_a_rendition(tmp_path):
     """A container does not render. The exemption is iirds:is-part-of-package:
     a *nested* package is content of its parent and may well have one, so the
-    rule keys on the absence of that relation *to another package* to find
-    the enclosing package."""
+    rule keys on the absence of that relation *to another package this
+    document describes* to find the enclosing package -- the outer package is
+    declared below, because §6.3.3 asks the child to reference an
+    iirds:Package and a name nothing describes is not one."""
     given = ids(tmp_path, "m8.iirds", '''
   <rdf:Description rdf:about="urn:test:package">
     <iirds:has-rendition rdf:resource="urn:test:r99"/>
@@ -36,12 +40,77 @@ def test_m8_the_enclosing_package_given_a_rendition(tmp_path):
     assert "M8" in given
 
     nested = ids(tmp_path, "m8b.iirds", '''
+  <iirds:Package rdf:about="urn:test:outer">
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+  </iirds:Package>
   <rdf:Description rdf:about="urn:test:package">
     <iirds:is-part-of-package rdf:resource="urn:test:outer"/>
     <iirds:has-rendition rdf:resource="urn:test:r99"/>
   </rdf:Description>
 ''')
     assert "M8" not in nested, "a nested package is content, and content renders"
+
+
+#: Five ways to name a parent that is not one. §6.3.3 asks the nested child's
+#: package to "reference exactly one iirds:Package", and each of these
+#: references something else -- so none of them makes the package a child.
+NOT_A_PARENT = {
+    "a parent this document does not describe":
+        '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n',
+    "a parent that is not a package":
+        '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n'
+        '  </rdf:Description>\n  <iirds:Topic rdf:about="urn:test:outer"/>\n'
+        '  <rdf:Description rdf:about="urn:test:package">\n',
+    "a parent written as a literal":
+        '    <iirds:is-part-of-package>urn:test:outer</iirds:is-part-of-package>\n',
+    "a parent with no name at all":
+        '    <iirds:is-part-of-package><rdf:Description>'
+        '<rdfs:label>outer</rdfs:label></rdf:Description></iirds:is-part-of-package>\n',
+    "a self-loop beside a parent that is not here":
+        '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n',
+}
+
+#: The control: a parent this document does describe. Example 16's shape.
+A_REAL_PARENT = ('    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n'
+                 '  </rdf:Description>\n'
+                 '  <iirds:Package rdf:about="urn:test:outer">\n'
+                 '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+                 '  </iirds:Package>\n'
+                 '  <rdf:Description rdf:about="urn:test:package">\n')
+
+RENDERS = '    <iirds:has-rendition rdf:resource="urn:test:r99"/>\n'
+
+
+@pytest.mark.parametrize("shape", sorted(NOT_A_PARENT), ids=sorted(NOT_A_PARENT))
+def test_m8_is_not_silenced_by_a_parent_that_is_not_a_package_here(tmp_path, shape):
+    """The exemption §6.3 grants a nested package is for content of another
+    package. Granting it on the bare presence of the predicate meant any
+    object at all bought it -- and the last of these five pairs the self-loop
+    closed one commit ago with one meaningless IRI, which opened it again."""
+    body = '  <rdf:Description rdf:about="urn:test:package">\n' + \
+        NOT_A_PARENT[shape] + RENDERS + "  </rdf:Description>\n"
+    assert "M8" in ids(tmp_path, "m8_%s.iirds" % abs(hash(shape)), body)
+
+
+def test_m8_still_exempts_a_package_this_document_says_is_inside_another(tmp_path):
+    """The control, and the shape of the standard's own Example 16: the parent
+    is here and it is a package, so the child is content and content renders."""
+    body = ('  <rdf:Description rdf:about="urn:test:package">\n'
+            + A_REAL_PARENT + RENDERS + "  </rdf:Description>\n")
+    assert "M8" not in ids(tmp_path, "m8_real.iirds", body)
+
+
+@pytest.mark.parametrize("shape", sorted(NOT_A_PARENT), ids=sorted(NOT_A_PARENT))
+def test_m3_counts_a_package_whose_named_parent_is_not_here(tmp_path, shape):
+    """M3 reads the same predicate, so the same five hid a second package
+    from "exactly one iirds:Package represents this container"."""
+    body = ('  <rdf:Description rdf:about="urn:test:package">\n'
+            + NOT_A_PARENT[shape] + "  </rdf:Description>\n"
+            + '  <iirds:Package rdf:about="urn:test:second">\n'
+            + "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+            + "  </iirds:Package>\n")
+    assert "M3" in ids(tmp_path, "m3_%s.iirds" % abs(hash(shape)), body)
 
 
 def test_m8_is_not_silenced_by_a_package_that_is_part_of_itself(tmp_path):

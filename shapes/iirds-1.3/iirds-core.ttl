@@ -247,7 +247,7 @@ ivs:M8 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iirds%3APackage%20elements%20representing%20the%20enclosing%20iiRDS%20package%20itself%20MUST%20NOT%20be%20subjects%20of%20any%20iirds%3Ahas%2Drendition%20relation.> ;
   ivm:versions "1.1,1.2,1.3" ;
   sh:targetClass iirds:Package ;
-  sh:or ( [ sh:property [ sh:path [ sh:zeroOrMorePath iirds:is-part-of-package ] ; sh:minCount 2 ] ] [ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] ) .
+  sh:or ( [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:qualifiedValueShape [ sh:class iirds:Package ] ; sh:qualifiedMinCount 2 ] ] [ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] ) .
 
 ivs:M9 a sh:NodeShape ;
   rdfs:label "The URL MUST be relative to the root folder of the iiRDS package" ;

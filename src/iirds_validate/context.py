@@ -276,9 +276,18 @@ def container_packages(graph: Graph) -> List:
     silences a MUST NOT: the same package drew M8 without the triple and
     nothing with it.
 
-    The named parent is not required to be present. A nested child validated
-    on its own is still a child, and asking for its parent would report it
-    for being delivered alone.
+    The named parent has to be here, and has to be a package. §6.3.3 asks the
+    child's package to "reference exactly one iirds:Package", and both of its
+    MUSTs are scoped to one document -- "in the metadata.rdf file of the
+    parent iiRDS container" -- where §6.2 requires the parent's own instance
+    to exist. Example 16 prints both files and the child's own metadata.rdf
+    carries no is-part-of-package at all, so a child delivered alone is not
+    supposed to have the triple. Reading it more loosely meant an IRI nothing
+    describes, a Topic, a literal or an anonymous blank node each bought the
+    exemption -- and one of them beside a self-loop re-opened the bypass
+    closed just before this. The population is the graph's own, not the
+    ontology's, because SHACL's sh:class sees only the data graph and the two
+    encodings have to be asking about the same nodes.
 
     M3 and M8 read it here -- one predicate, one place, so a package cannot
     be the container for one rule and a child for the next.
@@ -287,25 +296,7 @@ def container_packages(graph: Graph) -> List:
     "no container package" from "one", and a fallback here would take that
     apart. Choosing what to do about an empty answer belongs to the caller.
     """
-    return [pkg for pkg in package_nodes(graph)
-            if not any(parent != pkg
-                       for parent in graph.objects(pkg, T.is_part_of_package))]
-
-
-def _rooted_here(graph: Graph, packages: List) -> List:
-    """Of `packages`, the ones whose declared parent this document does not
-    carry -- the roots of what is actually present.
-
-    Only consulted when nothing is a container package. A document can hold
-    a child and its parent and stop short of the grandparent, and then the
-    child is still one level below the root of the file: falling straight
-    back to every package let it win on an alphabetical tie-break and set
-    the profile for the package containing it.
-
-    Reads "part of another package" the same way container_packages does --
-    a package naming itself is not below anything. One predicate two ways in
-    one file is how these two would come to disagree about the same node.
-    """
+    packages = package_nodes(graph)
     present = set(packages)
     return [pkg for pkg in packages
             if not any(parent != pkg and parent in present
@@ -322,13 +313,14 @@ def _detect(graph: Graph):
     Which one: the container's, not a nested child's. A child declares its
     own profile, and reading it as the container's turns the handover MUSTs
     on against a package that never claimed to be one. When nesting leaves
-    no container at all -- a child validated on its own, a fragment whose
-    parent is elsewhere -- something still has to answer, because the
+    no container at all, something still has to answer, because the
     alternative is to judge a 1.0 document against 1.3 while its own
-    declaration sits three lines away. Then the roots of what *is* present
-    answer, and only if that is empty too does everything -- which needs
-    packages nested inside each other, since a package part of itself is a
-    container and answers in the first tier.
+    declaration sits three lines away. Then every package answers. Reaching
+    that needs packages nested inside each other: a package part of itself is
+    a container, and so is one whose named parent is not here, so both are
+    answered before the fallback. There was a middle tier for the roots of
+    what is present; under the reading above its predicate became the same
+    one, so it could never contribute and it is gone.
 
     Where several candidates remain the first under the ordering answers.
     That is a fixed choice rather than a meaningful one, and in the fallback
@@ -345,10 +337,7 @@ def _detect(graph: Graph):
     Profiles are not ordered, so where several are declared the first stands
     with nothing to prefer about it.
     """
-    pool = container_packages(graph)
-    if not pool:
-        everything = package_nodes(graph)
-        pool = _rooted_here(graph, everything) or everything
+    pool = container_packages(graph) or package_nodes(graph)
     if not pool:
         return None, "unrestricted"
     pkg = pool[0]

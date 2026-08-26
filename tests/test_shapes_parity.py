@@ -933,8 +933,13 @@ def test_a_self_loop_is_not_nesting_in_either_encoding(tmp_path):
         '  </rdf:Description>\n</rdf:RDF>')
     assert "M8" in assert_parity(tmp_path, "self_m8.iirds", self_loop)
 
-    nested = self_loop.replace('rdf:resource="urn:test:package"/>',
-                               'rdf:resource="urn:test:outer"/>', 1)
+    nested = self_loop.replace(
+        'rdf:resource="urn:test:package"/>',
+        'rdf:resource="urn:test:outer"/>', 1).replace(
+        "</rdf:RDF>",
+        '  <iirds:Package rdf:about="urn:test:outer">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n</rdf:RDF>')
     assert "M8" not in assert_parity(tmp_path, "nested_m8.iirds", nested), (
         "a package that really is part of another one is content, and content "
         "renders")
@@ -957,3 +962,65 @@ def test_a_self_loop_beside_a_real_package_is_two_containers_in_both_encodings(t
                         'rdf:resource="urn:test:second"/>', 1)
     assert "M3" not in assert_parity(tmp_path, "child_m3.iirds", child), (
         "one package inside the other leaves one representing this container")
+
+
+#: The same five ways of naming a parent that is not one, as metadata bodies.
+NOT_A_PARENT_SHAPES = {
+    "absent": '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n',
+    "a-topic": '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n',
+    "a-literal": '    <iirds:is-part-of-package>urn:test:outer</iirds:is-part-of-package>\n',
+    "a-blank-node": '    <iirds:is-part-of-package><rdf:Description/></iirds:is-part-of-package>\n',
+    "self-and-absent": '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n'
+                       '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n',
+}
+EXTRA = {"a-topic": '  <iirds:Topic rdf:about="urn:test:outer"/>\n'}
+
+
+def _with_parent(shape, tail=""):
+    return MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n" + NOT_A_PARENT_SHAPES[shape]
+    ).replace("</rdf:RDF>", EXTRA.get(shape, "") + tail + "</rdf:RDF>")
+
+
+RENDERS = ('  <rdf:Description rdf:about="urn:test:package">\n'
+           '    <iirds:has-rendition rdf:resource="urn:test:elsewhere"/>\n'
+           '  </rdf:Description>\n')
+SECOND = ('  <iirds:Package rdf:about="urn:test:second">\n'
+          '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+          '  </iirds:Package>\n')
+
+
+@pytest.mark.parametrize("shape", sorted(NOT_A_PARENT_SHAPES), ids=sorted(NOT_A_PARENT_SHAPES))
+def test_a_parent_that_is_not_a_package_exempts_nothing_in_either_encoding(tmp_path, shape):
+    """Both encodings read the predicate, so both granted the exemption to any
+    object at all -- and agreeing about it is why the gate saw nothing."""
+    assert "M8" in assert_parity(tmp_path, "np8_%s.iirds" % shape,
+                                 _with_parent(shape, RENDERS))
+
+
+@pytest.mark.parametrize("shape", sorted(NOT_A_PARENT_SHAPES), ids=sorted(NOT_A_PARENT_SHAPES))
+def test_a_parent_that_is_not_a_package_leaves_two_containers_in_either_encoding(tmp_path, shape):
+    """M3 reads the same predicate. This is the pair that catches its SPARQL
+    being left behind when the Python moves."""
+    assert "M3" in assert_parity(tmp_path, "np3_%s.iirds" % shape,
+                                 _with_parent(shape, SECOND))
+
+
+def test_a_parent_that_is_not_a_package_does_not_borrow_its_own_parents_type(tmp_path):
+    """The operator pin. The focus is a Package that renders; its parent is an
+    iirds:Topic; that Topic is itself part of a real Package. §6.3.3 asks the
+    child to reference an iirds:Package -- one hop, not a chain. A zero-or-more
+    path walks the chain, finds two Packages among the value nodes and exempts
+    the focus, while the rule reports it. Zero-or-one is what makes the two
+    agree, and this graph is the only thing in the suite that can tell them
+    apart."""
+    chain = _with_parent("a-topic", RENDERS).replace(
+        '  <iirds:Topic rdf:about="urn:test:outer"/>\n',
+        '  <iirds:Topic rdf:about="urn:test:outer">\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:grand"/>\n'
+        '  </iirds:Topic>\n'
+        '  <iirds:Package rdf:about="urn:test:grand">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n')
+    assert "M8" in assert_parity(tmp_path, "chain_m8.iirds", chain)

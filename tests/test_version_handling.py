@@ -225,9 +225,13 @@ def test_the_published_versions_sort_as_numbers_under_a_plain_sort():
 
 
 def test_a_child_whose_parent_is_absent_still_declares_itself(make_package):
-    """The nesting filter leaves nothing here. Falling back to every package
-    keeps the declaration that is three lines away; refusing to would
-    validate a 1.0 document against 1.3 in silence."""
+    """A parent this document does not carry is not a parent. §6.3.3 licenses
+    the nesting triple only "in the metadata.rdf file of the parent iiRDS
+    container", where §6.2 requires the parent's own instance to be present --
+    and Example 16 prints the child's own metadata.rdf with no
+    is-part-of-package at all. So this package is not below anything: it is
+    what this container is about, and the primary reading answers it. L1
+    reports the dangling reference on the same run."""
     report = runner.run(make_package(metadata=ORPHAN_CHILD), runner.ALL_KINDS)
 
     assert (report.version, report.variant) == ("1.0", "A")
@@ -339,12 +343,11 @@ NESTED_CHAIN = MINIMAL_RDF.replace(
 
 
 def test_a_grandchild_does_not_set_the_profile_of_what_contains_it(make_package):
-    """The nesting filter closes the ordinary contamination and the fallback
-    behind it re-opened this one: with no container package present, every
-    package went back in the pool and the grandchild won on an alphabetical
-    tie-break that means nothing. Its handover profile then switched on
-    seventeen MUSTs against a package that never claimed one -- the same
-    defect the filter exists to prevent, one level further down."""
+    """The grandchild is inside a package this document carries, so it is not
+    the container. The middle one names a parent that is not here, so it is.
+    Before the filter read the predicate this way the grandchild could win on
+    an alphabetical tie-break and switch seventeen handover MUSTs on against
+    a package that never claimed one -- the false-reject direction."""
     report = runner.run(make_package(metadata=NESTED_CHAIN), runner.ALL_KINDS)
 
     assert report.variant == "unrestricted", (
@@ -392,22 +395,41 @@ MUTUAL_NESTING = MINIMAL_RDF.replace(
 
 
 def test_two_packages_nested_inside_each_other_still_declare_themselves(make_package):
-    """The last fallback, which the self-loop used to be the only thing to
-    reach. A path nothing exercises is a path nobody knows works, and this
-    one now needs a graph that could not occur by accident: each package
-    declared part of the other, so neither is a container and neither is a
-    root. Whatever the tie-break picks, the document still says 1.0 and it
-    is judged as 1.0."""
-    report = runner.run(make_package(metadata=MUTUAL_NESTING), runner.ALL_KINDS)
+    """The last fallback, and the only graph that reaches it: each package is
+    part of the other and both are here, so neither represents this container
+    while there are still declarations that have to be read.
 
+    The version alone did not say which route produced it -- ("1.0",
+    "unrestricted") is what the primary reading would answer too, so the test
+    passed whichever ran and pinned only that the fallback existed. The
+    precondition is what pins the route."""
+    from iirds_validate.context import container_packages, package_nodes
+
+    package = make_package(metadata=MUTUAL_NESTING)
+    ctx = runner.load(package)
+
+    assert container_packages(ctx.graph) == [], (
+        "nothing represents this container, which is what sends the answer to "
+        "the fallback")
+    assert len(package_nodes(ctx.graph)) == 2, (
+        "and there are still packages to read, or the fallback would answer "
+        "nothing either")
+
+    report = runner.run(package, runner.ALL_KINDS)
     assert (report.version, report.variant) == ("1.0", "unrestricted")
+    assert "M3" not in _ids(report), (
+        "M3 asks about container packages and there are none; that silence is "
+        "the fallback's premise rather than an oversight")
 
 
 def test_a_self_loop_does_not_push_a_package_below_the_root(make_package):
-    """The same predicate, read the same way in both places. A package that
-    names itself and a parent this document does not carry is a root of what
-    is present -- and reading the self-loop as "below something" handed the
-    profile to a package beside it instead."""
+    """The same predicate, read the same way in one place. A package that
+    names itself and a parent this document does not carry is not below
+    anything: it is the container. There used to be a second reading of the
+    predicate fourteen lines down, for "the roots of what is present"; under
+    this reading its answer became identical, so it could never contribute
+    and it is gone. One predicate, one place, and now literally one
+    function."""
     both = MINIMAL_RDF.replace(
         '  <iirds:Package rdf:about="urn:test:package">\n'
         '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'

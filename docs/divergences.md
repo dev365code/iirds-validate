@@ -284,9 +284,54 @@ nothing. A MUST NOT was switched off by a statement that cannot be true. The
 same reading hid M3 as well — one self-looping package beside one genuine
 container drew no "more than one package represents this container".
 
-The named parent is deliberately **not** required to be present. A nested child
+**This reverses the paragraph that stood here one commit ago.** It said the
+named parent was deliberately not required to be present — "a nested child
 delivered on its own is still a child, and asking for its parent would report
-it for being delivered alone.
+it for being delivered alone". The premise is wrong, and the standard's own
+example says so.
+
+Example 16 prints *two* files. In the parent's `metadata.rdf` the nested
+package carries `<iirds:is-part-of-package rdf:resource="…iiRDS-parent"/>`
+beside the parent's own `iirds:Package`. In **the nested child's own**
+`metadata.rdf` the same package appears with `iiRDSVersion` and
+`formatRestriction` and **no `iirds:is-part-of-package` at all**. A child
+delivered alone is not supposed to carry the triple, so refusing to require
+the parent was protecting a document the specification does not describe.
+
+Two sentences say why. §5.3: "A nested iiRDS package MUST NOT contain metadata
+about the outer iiRDS package." And §6.2, about the container being validated:
+"The corresponding `iirds:Package` instance of an iiRDS package MUST NOT be a
+member of another iiRDS package expressed by the property
+`iirds:is-part-of-package`."
+
+Both §6.3.3 MUSTs are scoped to one document — "In the `metadata.rdf` file of
+the parent iiRDS container" — and in that document the parent's own
+`iirds:Package` is required to exist, by §6.2's "exactly one corresponding
+`iirds:Package` instance" and by §6.3.3's "an `iirds:Package` MUST be present
+in the metadata of the parent iiRDS container". Requiring the parent to be
+here is not an extra demand; it is the scope the sentence already carries.
+
+So: **a package is a nested child when it is part of a different package that
+this graph describes as an `iirds:Package`.** An IRI nothing describes, a node
+typed `iirds:Topic`, a plain literal, an anonymous blank node — none of them
+makes one, and each of them used to. The fifth shape re-opened the self-loop
+bypass closed the commit before, by pairing the self-loop with any one of the
+other four.
+
+What this does **not** do is report the child that carries the triple. §5.3's
+two prohibitions are `x5-3-nested-iirds-packages#2` and `#3`, and
+`tests/test_requirement_coverage.py` pins both as known gaps. This stops the
+gap from buying an exemption; it does not close it.
+
+The cost, named: a parent's `metadata.rdf` that misspells its own package's
+IRI in the child's reference now draws M8 on the child. That graph already
+breaks §6.3.3's "MUST reference exactly one `iirds:Package`" — it references
+zero — so the defect is real and only the rule id is approximate. L1 reports
+the dangling reference on the same run.
+
+The population is the graph's own subclass closure, not the ontology's,
+because SHACL's `sh:class` sees only the data graph — the two encodings have
+to be asking about the same nodes.
 
 **What the standard does not settle is what the self-loop itself is.** §6.2
 forbids only membership in another package. §6.3.3 forbids a *referenced
@@ -308,12 +353,23 @@ move.
 M8's shape stays SHACL Core, by counting rather than comparing. Core cannot
 ask whether a value node differs from the focus node it hangs off — the
 comparison components all compare one path's values against another path's at
-the same focus. It does not have to: the value nodes of a zero-or-more path
-always include the focus node itself, and they are a set, so `sh:minCount 2`
-on `sh:zeroOrMorePath iirds:is-part-of-package` says exactly "there is a value
-that is not the focus node". The first attempt at this moved the rule to
-`sh:sparql` on the belief that Core could not express it, which would have
-cost a Core-only engine a MUST NOT for nothing.
+the same focus. It does not have to: the value nodes of a **zero-or-one** path
+are the focus node and its direct parents, they are a set so a self-loop does
+not double it, and `sh:qualifiedValueShape [ sh:class iirds:Package ]` with
+`sh:qualifiedMinCount 2` says exactly "there is a Package-valued parent other
+than me".
+
+Zero-or-*more* is wrong here, and only one graph in the suite can tell them
+apart: a focus whose parent is an `iirds:Topic` that is itself part of a real
+Package. The chain walk finds two Packages among the value nodes and exempts
+the focus; §6.3.3 asks the child to reference an `iirds:Package`, one hop, not
+a chain. That graph is pinned.
+
+An earlier attempt moved the rule to `sh:sparql` on the belief that Core could
+not express any of this, which would have cost a Core-only engine a MUST NOT
+for nothing. M3 reads the same predicate through `sh:sparql`, and both of its
+`FILTER NOT EXISTS` blocks carry the class test now — without it the two
+encodings disagreed on every one of the five shapes above.
 
 ### M22.1 and M22.2 — one sentence, two checks, one fixture
 

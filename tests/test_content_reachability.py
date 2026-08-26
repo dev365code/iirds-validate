@@ -14,6 +14,8 @@ The answer is not to check it anyway. It is to say that nothing checked it.
 """
 from __future__ import annotations
 
+import pytest
+
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 
@@ -99,3 +101,44 @@ def test_a_rendition_with_no_format_at_all_is_m11s_business(tmp_path):
     found = _ids(package)
     assert "M11" in found
     assert "L11" not in found
+
+
+#: One value, spelled the ways a real package spells it. The names differ; the
+#: file they name is the same file.
+SPELLINGS = {
+    "plain": "content/topic1.xhtml",
+    "backslash": "content\\topic1.xhtml",
+    "percent": "content/%74opic1.xhtml",
+    "percent-space": "content/%74opic1.xhtml",
+    "double-slash": "//content/topic1.xhtml",
+    "dot-prefix": "./content/topic1.xhtml",
+}
+
+SCRIPTED = ('<?xml version="1.0" encoding="UTF-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>t</title></head>'
+            '<body><script>alert(1)</script></body></html>')
+
+
+@pytest.mark.parametrize("spelling", sorted(SPELLINGS), ids=sorted(SPELLINGS))
+def test_a_file_that_resolves_is_a_file_that_gets_read(make_package, spelling):
+    """Whatever the container is judged to contain, the content rules read.
+
+    Three layers each resolved `iirds:source` their own way. L2 parsed it as a
+    URL and percent-decoded; the content rules normalised the raw string; the
+    reader in the SDK folded backslashes. So one value could be *present* to
+    the rule that looks for missing files and *absent* to the rules that would
+    open it -- and a topic carrying a script drew no finding at all, while a
+    consumer holding the same package read the file without trouble.
+
+    The property is not which spelling is right. It is that one answer is
+    given: a source either names a file in the container, in which case the
+    rules that read files read it, or it does not, in which case L2 says so.
+    Never neither.
+    """
+    metadata = MINIMAL_RDF.replace("<iirds:source>content/topic1.xhtml</iirds:source>",
+                                   "<iirds:source>%s</iirds:source>" % SPELLINGS[spelling])
+    package = make_package(metadata=metadata, content=(),
+                           extra=(("content/topic1.xhtml", SCRIPTED),))
+    fired = {f.rule.id for f in runner.check(package).findings}
+    assert "L2" in fired or "B2" in fired, (
+        "the source neither resolved nor was read: %s" % sorted(fired))

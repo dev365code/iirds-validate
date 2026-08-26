@@ -13,13 +13,13 @@ going to work.
 from __future__ import annotations
 
 import posixpath
-from urllib.parse import unquote, urlparse
 
 from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
 from ..model import DCTERMS, OWL, VCARD, VERSIONS, Violation
+from ..package import entry_named
 from ..registry import rule
 
 #: Interoperability rules are not version-specific. Take the list from model
@@ -158,13 +158,10 @@ def l2_missing_content_files(ctx):
     for rend in ctx.instances_of(T.Rendition):
         for src in ctx.values(rend, T.source):
             raw = str(src)
-            path = unquote(urlparse(raw).path)
-            if not path or "://" in raw:
+            if "://" in raw:
                 continue      # absolute URL: out of scope for this check
-            # `lstrip` takes a character set, not a prefix: ".config/a.xhtml"
-            # would become "config/a.xhtml" and be reported as missing.
-            candidate = posixpath.normpath(path.lstrip("/"))
-            if candidate.startswith(".."):
+            candidate = entry_named(raw)
+            if candidate is None:
                 yield Violation("iirds:source escapes the package root",
                                 subject=ctx.ref(rend), detail=raw)
                 continue

@@ -17,13 +17,13 @@ package itself claims is iiRDS XHTML5.
 """
 from __future__ import annotations
 
-import posixpath
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
 
 from .. import terms as T
 from ..model import Violation
+from ..package import entry_named
 from ..registry import rule
 
 XHTML_FORMAT = "application/xhtml+xml"
@@ -151,8 +151,11 @@ def _xhtml_renditions(ctx):
         if XHTML_FORMAT not in [_media_type(f) for f in ctx.values(rendition, T.fmt)]:
             continue
         for source in ctx.values(rendition, T.source):
-            name = posixpath.normpath(str(source).lstrip("/"))
-            if name not in seen and ctx.package.has(name):
+            # The container layer decides what a source names, for every rule
+            # that asks. Deciding it here as well is how a file came to be
+            # present to L2 and absent to these.
+            name = entry_named(str(source))
+            if name and name not in seen and ctx.package.has(name):
                 seen.add(name)
                 yield name
 

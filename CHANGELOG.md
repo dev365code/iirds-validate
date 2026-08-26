@@ -23,6 +23,17 @@
 
 ### Changed
 
+- **A file the container is judged to contain is now a file the content rules
+  read.** Two layers resolved `iirds:source` separately and disagreed, so one
+  value could be present to the rule that reports missing files and absent to
+  the rules that would open it — a topic carrying a script drew no finding at
+  all, while a reader holding the same package opened the file without
+  trouble. One resolution answers for both. It follows the specification in
+  calling the value a URL, so percent-encoding means what it says; it folds
+  backslashes, because that is what a reader does with them; and it no longer
+  reads `//content/a.xhtml` as naming a host called `content`, which had been
+  resolving that value to a different file.
+
 - **A document that described an entity declaration is no longer refused for
   making one.** The refusal matched the token anywhere in the bytes, and the
   grammar allows a declaration in one place only, so a topic explaining XML

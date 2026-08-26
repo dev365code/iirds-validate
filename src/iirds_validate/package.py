@@ -13,6 +13,7 @@ and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations
 
+import posixpath
 import zipfile
 from pathlib import Path
 from typing import List, Optional
@@ -28,6 +29,49 @@ _CHUNK = 1 << 16
 #: gates above this layer refuse at 64 MiB, so nothing legitimate needs more,
 #: and a caller that cares about the boundary asks with `read_bounded`.
 MAX_ENTRY_BYTES = 64 * 1024 * 1024
+
+
+#: What `iirds:source` names, decided once.
+#:
+#: Three layers used to decide it separately and disagreed, which is worse
+#: than any one of them being wrong: a value could be *present* to the rule
+#: that reports missing files and *absent* to the rules that would open it, so
+#: a topic carrying a script drew no finding at all while a consumer holding
+#: the same package read the file without trouble. The verdict has to be about
+#: the package a consumer gets.
+#:
+#: The specification calls the value a URL -- "iirds:source MUST relate the
+#: rendition to the URL of the physical file" -- so it is parsed as one and
+#: percent-decoded: a space in a filename is written `%20` and means a space.
+#: Backslashes fold to slashes because that is what a reader does with them,
+#: and a Windows-shaped path naming a file that is plainly in the container
+#: should be judged on what it contains rather than only on how it is spelled.
+#: A value that still points outside after normalising names nothing here.
+
+
+def entry_named(source: str) -> Optional[str]:
+    """The container entry this `iirds:source` names, or None.
+
+    None means "not a name in this container": an absolute URL, an empty
+    value, or a path that climbs out of the package. The caller decides what
+    to say about that -- this answers only what the value points at.
+    """
+    from urllib.parse import unquote
+
+    if "://" in source:
+        return None                          # somewhere else entirely
+    # Query and fragment cut by hand rather than through a URL parser: a value
+    # here is a path inside the container, and a parser reads `//content/a` as
+    # an authority named `content`, which turned that value into `a` -- a
+    # different file, silently.
+    path = source.split("#", 1)[0].split("?", 1)[0]
+    path = unquote(path).replace("\\", "/")
+    # lstrip takes a character set rather than a prefix, so a leading dot
+    # would be eaten: ".config/a.xhtml" must not become "config/a.xhtml".
+    name = posixpath.normpath(path.lstrip("/"))
+    if not path or name in (".", "..") or name.startswith("../"):
+        return None
+    return name
 
 
 class PackageError(Exception):

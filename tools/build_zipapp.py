@@ -93,8 +93,27 @@ def dependencies() -> list:
     return re.findall(r'"([^"]+)"', block)
 
 
+#: What travels beside the code, read from the same declaration the wheel is
+#: built from so the two artefacts cannot carry different terms. Apache-2.0
+#: asks that a copy of the licence and the NOTICE go with the work, and the
+#: .pyz is the copy that reaches a machine with no index behind it to look
+#: anything up in -- every dependency's dist-info is kept here for exactly
+#: that reason, and this project's own terms were the ones left behind.
+REDISTRIBUTED = tuple(re.findall(
+    r'"([^"]+)"',
+    re.search(r"^license-files = \[(.*?)\]",
+              (ROOT / "pyproject.toml").read_text("utf-8"), re.M | re.S).group(1)))
+
+
+def copy_licences(target: Path) -> None:
+    """Put them at the root of the archive, where `unzip -l` shows them."""
+    for name in REDISTRIBUTED:
+        shutil.copy2(ROOT / name, target / name)
+
+
 def stage(target: Path) -> None:
     shutil.copytree(SOURCE, target / "iirds_validate")
+    copy_licences(target)
     subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
                     "--target", str(target), *dependencies()], check=True)
     (target / "__main__.py").write_text(MAIN, "utf-8")
@@ -107,6 +126,7 @@ def stage(target: Path) -> None:
     # would drop the terms they are redistributed under with it.
     kept = sorted(p.name for p in target.glob("*.dist-info"))
     print("bundled: %s" % ", ".join(kept))
+    print("licences: %s" % ", ".join(REDISTRIBUTED))
 
 
 def smoke(pyz: Path) -> int:

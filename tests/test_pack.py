@@ -10,6 +10,7 @@ rules this project would fail somebody else for breaking".
 from __future__ import annotations
 
 import hashlib
+import re
 import zipfile
 
 import pytest
@@ -140,3 +141,60 @@ def test_the_pyz_bundles_what_pyproject_declares():
     names = sorted(spec.split(">")[0].split("=")[0].split("<")[0]
                    for spec in build_zipapp.dependencies())
     assert names == ["iirds", "rdflib"]
+
+
+# ---------------------------------------------------------------------------
+# What the offline artefact carries besides code
+#
+# The .pyz is the copy that goes onto a locked-down machine on a USB stick,
+# and it is the one copy with no index behind it to look anything up in. The
+# wheel and the sdist carry this project's licence because pyproject declares
+# `license-files`; the .pyz is built by a different path and declared nothing.
+# ---------------------------------------------------------------------------
+
+def declared_licence_files():
+    """What `pyproject.toml` says ships beside the code."""
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text("utf-8")
+    block = re.search(r"^license-files = \[(.*?)\]", text, re.M | re.S)
+    assert block, "pyproject.toml no longer declares license-files"
+    return re.findall(r'"([^"]+)"', block.group(1))
+
+
+def test_the_pyz_carries_the_same_licence_files_the_wheel_does():
+    """Apache-2.0 asks that a copy of the licence and the NOTICE travel with
+    the work. Every dependency's terms were kept here deliberately -- the
+    dist-info is preserved for exactly that reason -- and this project's own
+    were the ones left behind."""
+    import build_zipapp
+
+    assert sorted(build_zipapp.REDISTRIBUTED) == sorted(declared_licence_files()), (
+        "the .pyz and the wheel would carry different licence files: %s vs %s"
+        % (sorted(build_zipapp.REDISTRIBUTED), sorted(declared_licence_files())))
+
+
+def test_staging_puts_them_where_someone_opening_the_archive_finds_them(tmp_path):
+    import build_zipapp
+
+    build_zipapp.copy_licences(tmp_path)
+    for name in build_zipapp.REDISTRIBUTED:
+        carried = tmp_path / name
+        assert carried.is_file(), "%s is not in the archive" % name
+        assert carried.read_text("utf-8").strip(), "%s is in the archive and empty" % name
+
+
+def test_every_dependency_the_archive_bundles_has_a_row_in_third_party():
+    """The table says it lists everything bundled here. The SDK became a
+    runtime dependency and the table did not hear about it, so the .pyz
+    redistributed a second package with no row saying under what terms."""
+    from pathlib import Path
+
+    import build_zipapp
+
+    table = (Path(__file__).resolve().parents[1] / "THIRD_PARTY.md").read_text("utf-8")
+    names = sorted(spec.split(">")[0].split("=")[0].split("<")[0]
+                   for spec in build_zipapp.dependencies())
+    missing = [name for name in names if ("`%s`" % name) not in table]
+    assert missing == [], (
+        "bundled with no row in THIRD_PARTY.md: %s" % missing)

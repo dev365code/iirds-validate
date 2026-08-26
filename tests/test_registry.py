@@ -112,3 +112,30 @@ def test_the_named_party_rules_do_not_quote_the_document_sentence():
     for rule in all_rules():
         if rule.id in ("M15.7b", "M15.7d", "M15.9", "M15.10"):
             assert rule.spec and ":~:text=" not in rule.spec, rule.id
+
+
+def test_the_readme_headline_figures_are_the_counts():
+    """Every number this project publishes is supposed to be read by a test.
+    Four were not: the rule count in the badge line, the shape count, "All N
+    rules carry one imperative sentence", and how many of them have ever
+    fired. Each moved by hand when the last rule landed and each would have
+    rotted at the next one -- the same figures one file down, in
+    shapes/README.md, were already read by a test, which is exactly what made
+    the omission hard to see."""
+    import json
+    import pathlib
+
+    from iirds_validate.registry import all_rules
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text("utf-8")
+    rules = len(all_rules())
+    manifest = json.loads((root / "shapes" / "MANIFEST.json").read_text("utf-8"))
+    shapes = len(manifest["core_emitted"]) + len(manifest["sparql_emitted"])
+    coverage = json.loads((root / "docs" / "rule-coverage.json").read_text("utf-8"))
+
+    for phrase in ("**At a glance** — %d rules" % rules,
+                   "%d SHACL shapes" % shapes,
+                   "All %d rules carry one imperative" % rules,
+                   "%d of the %d have" % (coverage["exercised"], coverage["rules"])):
+        assert phrase in readme, "README.md no longer says %r" % phrase

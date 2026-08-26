@@ -994,6 +994,17 @@ SECOND = ('  <iirds:Package rdf:about="urn:test:second">\n'
           '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
           '  </iirds:Package>\n')
 
+#: The same, except the second package also names a parent that is not one.
+#: M3's query asks for two container packages and tests each side separately,
+#: so a *clean* second package satisfies either side on its own and neither
+#: class test is pinned by it. Here every package carries a bogus parent, so
+#: dropping either test empties the set that side selects and the finding
+#: disappears -- which is what makes both of them load-bearing.
+SECOND_ALSO_BOGUS = ('  <iirds:Package rdf:about="urn:test:second">\n'
+                     '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+                     '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n'
+                     '  </iirds:Package>\n')
+
 
 @pytest.mark.parametrize("shape", sorted(NOT_A_PARENT_SHAPES), ids=sorted(NOT_A_PARENT_SHAPES))
 def test_a_parent_that_is_not_a_package_exempts_nothing_in_either_encoding(tmp_path, shape):
@@ -1028,3 +1039,13 @@ def test_a_parent_that_is_not_a_package_does_not_borrow_its_own_parents_type(tmp
         '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
         '  </iirds:Package>\n')
     assert "M8" in assert_parity(tmp_path, "chain_m8.iirds", chain)
+
+
+@pytest.mark.parametrize("shape", sorted(NOT_A_PARENT_SHAPES), ids=sorted(NOT_A_PARENT_SHAPES))
+def test_both_of_m3s_class_tests_are_load_bearing(tmp_path, shape):
+    """Every package here names a parent that is not one, so M3's query has
+    to apply the class test on both sides to find its pair. With a clean
+    second package -- the fixture above -- either side alone suffices and
+    neither test is held."""
+    assert "M3" in assert_parity(tmp_path, "m3both_%s.iirds" % shape,
+                                 _with_parent(shape, SECOND_ALSO_BOGUS))

@@ -287,10 +287,18 @@ container drew no "more than one package represents this container".
 **This reverses the paragraph that stood here one commit ago.** It said the
 named parent was deliberately not required to be present — "a nested child
 delivered on its own is still a child, and asking for its parent would report
-it for being delivered alone". The premise is wrong, and the standard's own
-example says so.
+it for being delivered alone". The premise is wrong.
 
-Example 16 prints *two* files. In the parent's `metadata.rdf` the nested
+What settles it is normative and does not need the example. §6.3.3 asks the
+child's package to "reference exactly one `iirds:Package`", Appendix A gives
+`iirds:is-part-of-package` the range `iirds:Package`, and §6.2 forbids the
+container's own instance from being "a member of another iiRDS package
+expressed by the property `iirds:is-part-of-package`" — which, read per
+document, is broken by a standalone child whose own metadata carries the
+triple.
+
+Example 16 corroborates and is **not** the argument: §1 puts examples outside
+the normative text. It prints *two* files. In the parent's `metadata.rdf` the nested
 package carries `<iirds:is-part-of-package rdf:resource="…iiRDS-parent"/>`
 beside the parent's own `iirds:Package`. In **the nested child's own**
 `metadata.rdf` the same package appears with `iiRDSVersion` and
@@ -304,12 +312,12 @@ about the outer iiRDS package." And §6.2, about the container being validated:
 member of another iiRDS package expressed by the property
 `iirds:is-part-of-package`."
 
-Both §6.3.3 MUSTs are scoped to one document — "In the `metadata.rdf` file of
-the parent iiRDS container" — and in that document the parent's own
-`iirds:Package` is required to exist, by §6.2's "exactly one corresponding
-`iirds:Package` instance" and by §6.3.3's "an `iirds:Package` MUST be present
-in the metadata of the parent iiRDS container". Requiring the parent to be
-here is not an extra demand; it is the scope the sentence already carries.
+Two of §6.3.3's four MUSTs are scoped to one document — "In the
+`metadata.rdf` file of the parent iiRDS container" — which is where the
+nesting triple belongs. A scope clause does not by itself forbid the triple
+elsewhere; §6.2 is what does that. (§6.3.3's first MUST is about the *child's*
+`iirds:Package` being present in the parent's metadata, not the parent's, and
+is not evidence here.)
 
 So: **a package is a nested child when it is part of a different package that
 this graph describes as an `iirds:Package`.** An IRI nothing describes, a node
@@ -324,10 +332,17 @@ two prohibitions are `x5-3-nested-iirds-packages#2` and `#3`, and
 gap from buying an exemption; it does not close it.
 
 The cost, named: a parent's `metadata.rdf` that misspells its own package's
-IRI in the child's reference now draws M8 on the child. That graph already
-breaks §6.3.3's "MUST reference exactly one `iirds:Package`" — it references
-zero — so the defect is real and only the rule id is approximate. L1 reports
-the dangling reference on the same run.
+IRI in the child's reference now draws M8 **and M3** on the child — M3 because
+two packages are then representing this container. That graph already breaks
+§6.3.3's "MUST reference exactly one `iirds:Package`" — it references zero —
+so the defect is real and only the rule ids are approximate. A rule for that
+sentence would retire the approximation; there is none yet, and §6.3.3 is at
+1 of 4.
+
+What does *not* accompany it: `iirdsv check` runs the conformance rules only,
+and L1 — "relation points at an IRI that is never described in this package" —
+is a lint rule. Under `iirdsv lint` it reports the dangling reference; under
+the default subcommand nothing does.
 
 The population is the graph's own subclass closure, not the ontology's,
 because SHACL's `sh:class` sees only the data graph — the two encodings have

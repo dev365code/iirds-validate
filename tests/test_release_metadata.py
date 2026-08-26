@@ -95,12 +95,13 @@ def _outside_fences(changelog: str) -> str:
     out, fence = [], None
     for line in changelog.split("\n"):
         marker = re.match(r"^[ \t]{0,3}(`{3,}|~{3,})", line)
+        blank = " " * len(line)          # same length, or the offsets shift
         if fence is None and marker:
             fence = marker.group(1)[0]
-            out.append("")
+            out.append(blank)
             continue
         if fence is not None:
-            out.append("")
+            out.append(blank)
             if marker and marker.group(1)[0] == fence:
                 fence = None
             continue
@@ -338,6 +339,22 @@ def test_a_release_documented_inside_a_code_fence_is_not_an_entry():
     documented = GOOD.replace(
         "### Added\n", "### Added\n\n```markdown\n## 9.9.9 — 2030-01-01\n```\n")
     assert problems_with(documented, "0.4.2") == []
+
+
+def test_a_fence_does_not_disarm_the_checks_below_it():
+    """The fence is blanked line for line so that the offsets still line up:
+    the headings are found in the blanked text and the bodies are sliced out
+    of the original. Dropping the characters instead of replacing them shifts
+    every offset after the fence, and each entry's body becomes whatever text
+    happens to sit that far along -- non-empty, so the check for an entry
+    with nothing under it stops firing, quietly, for the whole file."""
+    fenced = GOOD.replace(
+        "### Added\n", "### Added\n\n```markdown\n## 9.9.9 — 2030-01-01\n```\n")
+    hollow = fenced.replace("### Fixed\n\n- something older.\n", "")
+
+    problems = problems_with(hollow, "0.4.2")
+    assert any("0.4.1 says nothing" in problem for problem in problems), (
+        "a fence above it hid the empty entry: %s" % problems)
 
 
 @pytest.mark.parametrize("text", ["", "unreleased", "1.0+local", "v1.0", "1!1.0"])

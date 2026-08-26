@@ -504,3 +504,66 @@ def test_a_package_declaring_no_version_ranks_as_the_newest(make_package):
     assert report.version is None
     assert report.effective_version == "1.3"
     assert "M8" in _ids(report)
+
+
+def _two_containers(decoy_iri, decoy_version):
+    """A decoy package beside one declaring 1.3 and the handover profile."""
+    declared = ("    <iirds:iiRDSVersion>%s</iirds:iiRDSVersion>\n" % decoy_version
+                if decoy_version else "")
+    return MINIMAL_RDF.replace(
+        '  <iirds:Package rdf:about="urn:test:package">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:title>Test package</iirds:title>\n'
+        '  </iirds:Package>\n',
+        '  <iirds:Package rdf:about="%s">\n%s  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:real">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:formatRestriction>H</iirds:formatRestriction>\n'
+        '  </iirds:Package>\n' % (decoy_iri, declared))
+
+
+@pytest.mark.parametrize("decoy_iri,decoy_version", [
+    ("urn:test:zzz", "banana"),
+    ("urn:test:zzz", "9.9"),
+    ("urn:test:aaa", "banana"),
+    ("urn:test:aaa", None),
+    ("urn:test:zzz", None),
+], ids=["unreadable-after", "unpublished-after", "unreadable-before",
+        "silent-before", "silent-after"])
+def test_a_package_saying_less_does_not_speak_for_the_container(
+        make_package, decoy_iri, decoy_version):
+    """Ranking by the raw declaration handed the container to whichever
+    package said the strangest thing: an unreadable version sorts after every
+    number, so `banana` beat 1.3; an unpublished 9.9 did too. And a package
+    declaring nothing ranks as the newest -- correctly -- which ties it with
+    a real 1.3 package and hands the decision back to IRI order, the very
+    tie-break this was meant to replace.
+
+    The profile rides on the same choice, so all of it came out as
+    `unrestricted` and seventeen handover MUSTs stood down. Rank by the
+    version the run will actually be judged against, and prefer the package
+    that says which profile it is: more is looked for, not less."""
+    report = runner.run(make_package(metadata=_two_containers(decoy_iri, decoy_version)),
+                        runner.ALL_KINDS)
+
+    assert report.effective_version == "1.3"
+    assert report.variant == "H", (
+        "the package declaring a profile lost to one that declares less")
+    assert "M3" in _ids(report), "two packages represent this container"
+
+
+def test_a_profile_with_no_name_is_no_profile(make_package):
+    """A profile is a name. A blank node names nothing, and its label is
+    minted per parse -- so letting one through put a fresh identifier in the
+    report every run and called it the package's profile. The value is still
+    wrong and S5 still says so; what it is not is the answer to "which
+    profile is this package"."""
+    blank = MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:formatRestriction><rdf:Description/></iirds:formatRestriction>\n")
+    report = runner.run(make_package(metadata=blank), runner.ALL_KINDS)
+
+    assert report.variant == "unrestricted", (
+        "a node with no name was reported as the profile: %r" % report.variant)
+    assert not report.variant.startswith("N"), report.variant

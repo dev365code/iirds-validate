@@ -303,6 +303,18 @@ def container_packages(graph: Graph) -> List:
                        for parent in graph.objects(pkg, T.is_part_of_package))]
 
 
+def _named_profiles(graph: Graph, pkg):
+    """The formatRestriction values that name something, in a fixed order.
+
+    A profile is a name, and a blank node names nothing -- its label is
+    minted per parse, so letting one through put a different identifier in
+    the report on every run and called it the package's profile. Skipped
+    here; S5 still reports the value as one the standard does not publish.
+    """
+    return sorted(str(v).strip() for v in graph.objects(pkg, T.formatRestriction)
+                  if not isinstance(v, BNode) and str(v).strip())
+
+
 def _declared_rank(graph: Graph, pkg):
     """How new the version this package declares is, for choosing between
     packages that both claim to represent the container.
@@ -319,10 +331,27 @@ def _declared_rank(graph: Graph, pkg):
     because that is already what "no declaration" means eight lines down.
     Ranking it lowest would let a declared 1.0 beat it and switch off rules
     that a missing version leaves on.
+
+    Ranked by the version the run will be *judged against*, not by the string
+    declared. `_version_key` sorts what it cannot read after every number,
+    which is right inside one package -- a typo beside a real version wins
+    and falls back to the newest, so the typo gets reported. Across packages
+    it was wrong in a way that cost rules: a decoy declaring `banana` or an
+    unpublished `9.9` outranked a real 1.3, and the profile comes off the
+    same node, so the handover MUSTs stood down. Anything the run cannot use
+    is the newest here too, which puts it level rather than on top.
+
+    That leaves ties, and the tie is broken towards saying more: a package
+    that names its profile is preferred over one that does not, because the
+    named profile is the one that adds rules. Without it the tie fell back to
+    IRI order -- the tie-break this exists to replace -- and a silent decoy
+    beside a real iiRDS/H package took seventeen rules with it.
     """
     declared = sorted((str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion)),
                       key=_version_key)
-    return _version_key(declared[-1] if declared else LATEST_VERSION)
+    newest = declared[-1] if declared else LATEST_VERSION
+    effective = newest if newest in VERSIONS else LATEST_VERSION
+    return (_version_key(effective), bool(_named_profiles(graph, pkg)))
 
 
 def _detect(graph: Graph):
@@ -366,7 +395,7 @@ def _detect(graph: Graph):
     pkg = pool[0]
     versions = sorted((str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion)),
                       key=_version_key)
-    variants = sorted(str(v).strip() for v in graph.objects(pkg, T.formatRestriction))
+    variants = _named_profiles(graph, pkg)
     # `or "unrestricted"` rather than a default: an empty formatRestriction is
     # not a restriction, and S5 is silent about one in both encodings.
     return (versions[-1] if versions else None), (variants[0] if variants else "") or "unrestricted"

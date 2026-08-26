@@ -305,15 +305,15 @@ carries no `iirds:has-rendition`, and it declares iiRDS 1.0, where M8 does not
 apply. No catalogue pair names that file, so `docs/agreement.json` does not
 move.
 
-One consequence reaches the published shapes. M8's exemption asks for a value
-of `iirds:is-part-of-package` that is not the focus node, and SHACL Core has no
-way to say that — `sh:equals` and its siblings compare one path's values
-against another path's at the same focus, and `sh:qualifiedValueShape`
-re-focuses onto the value and loses the way back. The one Core shape that
-avoids the comparison, exempting a package only when some parent is itself a
-root, was written and measured: it fires on a package nested two levels down,
-which the rule exempts. So M8 became a `sh:sparql` shape, and a Core-only
-engine no longer carries it.
+M8's shape stays SHACL Core, by counting rather than comparing. Core cannot
+ask whether a value node differs from the focus node it hangs off — the
+comparison components all compare one path's values against another path's at
+the same focus. It does not have to: the value nodes of a zero-or-more path
+always include the focus node itself, and they are a set, so `sh:minCount 2`
+on `sh:zeroOrMorePath iirds:is-part-of-package` says exactly "there is a value
+that is not the focus node". The first attempt at this moved the rule to
+`sh:sparql` on the belief that Core could not express it, which would have
+cost a Core-only engine a MUST NOT for nothing.
 
 ### M22.1 and M22.2 — one sentence, two checks, one fixture
 

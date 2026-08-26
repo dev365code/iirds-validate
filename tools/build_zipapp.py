@@ -99,16 +99,38 @@ def dependencies() -> list:
 #: .pyz is the copy that reaches a machine with no index behind it to look
 #: anything up in -- every dependency's dist-info is kept here for exactly
 #: that reason, and this project's own terms were the ones left behind.
-REDISTRIBUTED = tuple(re.findall(
-    r'"([^"]+)"',
-    re.search(r"^license-files = \[(.*?)\]",
-              (ROOT / "pyproject.toml").read_text("utf-8"), re.M | re.S).group(1)))
+def _licence_files() -> tuple:
+    block = re.search(r"^license-files = \[(.*?)\]",
+                      (ROOT / "pyproject.toml").read_text("utf-8"), re.M | re.S)
+    names = tuple(re.findall(r"""["']([^"']+)["']""", block.group(1))) if block else ()
+    # Empty is not "nothing to carry", it is "this stopped being able to read
+    # the declaration" -- a glob or a quote style it does not parse leaves an
+    # archive with no licence in it and every check about them agreeing green,
+    # because they would be agreeing about an empty list.
+    assert names, ("pyproject.toml no longer declares license-files in a shape "
+                   "this can read; the archive would ship without them")
+    return names
+
+
+REDISTRIBUTED = _licence_files()
 
 
 def copy_licences(target: Path) -> None:
     """Put them at the root of the archive, where `unzip -l` shows them."""
     for name in REDISTRIBUTED:
         shutil.copy2(ROOT / name, target / name)
+
+
+def unattributed(distributions) -> list:
+    """Of these, the ones THIRD_PARTY.md has no row for.
+
+    Asked of what was actually staged, not of what pyproject declares: pip
+    brings a dependency's dependencies too, and the table says it lists
+    "everything bundled here". Reading the declared list would only ever
+    confirm the names somebody had already thought of.
+    """
+    table = (ROOT / "THIRD_PARTY.md").read_text("utf-8")
+    return sorted(name for name in distributions if ("`%s`" % name) not in table)
 
 
 def stage(target: Path) -> None:
@@ -127,6 +149,13 @@ def stage(target: Path) -> None:
     kept = sorted(p.name for p in target.glob("*.dist-info"))
     print("bundled: %s" % ", ".join(kept))
     print("licences: %s" % ", ".join(REDISTRIBUTED))
+
+    # The build is the only place that knows what is really in the archive.
+    missing = unattributed(name.rsplit("-", 1)[0] for name in kept)
+    if missing:
+        raise SystemExit(
+            "THIRD_PARTY.md has no row for %s, and this archive redistributes "
+            "them" % ", ".join(missing))
 
 
 def smoke(pyz: Path) -> int:

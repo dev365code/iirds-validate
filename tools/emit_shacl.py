@@ -187,6 +187,7 @@ CORE_FORMS["M19.2"] = ("nonempty_min1", {"targets": ("iirds:Identity",),
                                          "path": "iirds:identifier"})
 CORE_FORMS["M96.3"] = ("nonempty_values", {"targets": ("iirds:ExternalClassification",),
                                            "path": "iirds:classificationIdentifier"})
+CORE_FORMS["M8"] = ("m8_container_package", {})
 CORE_FORMS["M9"] = ("no_absolute_source", {"targets": ("iirds:Rendition",),
                                            "path": "iirds:source"})
 
@@ -377,19 +378,6 @@ SPARQL_FORMS = {
   FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
 }
 
-# M8 is SPARQL rather than Core because the exemption needs a value of
-# iirds:is-part-of-package that is *not the focus node*, and SHACL Core has no
-# way to say that: sh:equals and its siblings compare a path's values against
-# another path's at the same focus, and sh:qualifiedValueShape re-focuses onto
-# the value and loses the way back. The one Core shape that avoids the
-# comparison -- exempt only if some parent is itself a root -- was measured
-# and rejected: it fires on a package nested two levels down, which Python
-# exempts. sh:targetClass keeps the section 7 subclass closure, and DISTINCT
-# gives one result per package rather than one per rendition.
-SPARQL_FORMS["M8"] = ("class", "iirds:Package", ["""SELECT DISTINCT $this WHERE {
-  $this <%(ii)shas-rendition> ?rendition .
-  FILTER NOT EXISTS { $this <%(ii)sis-part-of-package> ?parent .
-                      FILTER (!sameTerm(?parent, $this)) } }"""])
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
 SPARQL_FORMS["M15.9"] = ("fixed", [_named_party_query("Package", "Creator")])
 SPARQL_FORMS["M15.10"] = ("fixed", [_named_party_query("InformationObject", "Creator")])
@@ -546,6 +534,20 @@ def family_forbidden_property(sid, p):
     pid = sid + "-p"
     return (["sh:targetSubjectsOf %s" % p["path"], "sh:property %s" % pid],
             _prop(pid, p["path"], "sh:maxCount 0"))
+
+
+def family_m8_container_package(sid, p):
+    # The enclosing package must not render; a nested one is content and may.
+    # Nested means part of a *different* package (section 6.2 says "another"),
+    # and Core has no way to compare a value node with the focus node it hangs
+    # off -- so this counts instead of comparing. The value nodes of a
+    # zero-or-more path always include the focus node itself, and they are a
+    # set, so two or more of them is exactly "there is one that is not the
+    # focus node". Mirrors rules/schema.py m8 through container_packages.
+    return (["sh:targetClass iirds:Package",
+             "sh:or ( [ sh:property [ sh:path [ sh:zeroOrMorePath iirds:is-part-of-package ] ; "
+             "sh:minCount 2 ] ] "
+             "[ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] )"], [])
 
 
 def family_selector_value(sid, p):
@@ -763,9 +765,7 @@ def build() -> dict:
             lines.append("  sh:targetNode %s ;" % sid)
             queries = form[1]
         else:
-            lines.append("  %s %s ;"
-                         % ({"subjects": "sh:targetSubjectsOf",
-                             "class": "sh:targetClass"}[form[0]], form[1]))
+            lines.append("  sh:targetSubjectsOf %s ;" % form[1])
             queries = form[2]
         for query in queries:
             lines.append('  sh:sparql [ sh:select """%s""" ] ;' % (query % subst))

@@ -32,7 +32,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def version_tuple(text: str):
     """A release as numbers, so 0.10.0 sorts above 0.2.0 rather than below it."""
     parts = text.split(".")
-    assert all(part.isdigit() for part in parts), (
+    # isdecimal, not isdigit: `"\u00b2".isdigit()` is true and `int("\u00b2")` raises.
+    assert all(part.isdecimal() for part in parts), (
         "iirds %s is not a plain release; this comparison cannot judge it" % text)
     return tuple(int(part) for part in parts)
 

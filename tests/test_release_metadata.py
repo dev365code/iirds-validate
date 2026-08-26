@@ -14,7 +14,9 @@ happen is *shipping* under that undated heading.
 The checks are functions over changelog text rather than assertions over
 this repository's file, because a gate nobody has run against a bad
 changelog is a gate nobody has tested. The table at the bottom is that
-run: every state below was accepted by the first version of this file.
+run. Six of the nine states in it were accepted by the first version of
+this file; the other three it already refused, and they are pinned so
+that they stay refused.
 """
 import re
 from pathlib import Path
@@ -25,10 +27,14 @@ from iirds_validate import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
 
-#: Every `## ` line, whatever it says. Deliberately loose: a heading this
-#: file cannot read has to reach an assertion that names it, not fall out
-#: of the search and be reported as an entry that is not there.
-HEADING = re.compile(r"^##[ \t]+(?P<text>.*?)[ \t]*$", re.M)
+#: Every `## ` line, whatever it says. Deliberately loose in three ways: a
+#: heading this file cannot read has to reach an assertion that names it
+#: rather than falling out of the search and reading as an entry nobody
+#: wrote; CommonMark allows an ATX heading up to three spaces of indent, and
+#: one indented that way rendered as a heading while this did not see it at
+#: all; and a checkout with CRLF endings leaves a `\r` the anchor would
+#: otherwise carry into the date.
+HEADING = re.compile(r"^[ \t]{0,3}##[ \t]+(?P<text>.*?)[ \t\r]*$", re.M)
 
 #: `0.4.2 — 2026-08-26`, or `0.3.3 — unreleased`. One shape, on purpose.
 ENTRY = re.compile(r"^(?P<release>\S+)[ \t]+[—-][ \t]+(?P<rest>.+)$")
@@ -57,16 +63,49 @@ def release_key(release: str):
     found = RELEASE.match(release)
     if not found:
         return None
-    numbers = tuple(int(part) for part in found.group("numbers").split("."))
-    if found.group("dev") is not None and not (found.group("pre") or found.group("post")):
-        stage = (0, int(found.group("dev")))
-    elif found.group("pre"):
-        stage = (1, _STAGE[found.group("pre")], int(found.group("pren")))
-    elif found.group("post"):
-        stage = (3, int(found.group("post")))
+    numbers = [int(part) for part in found.group("numbers").split(".")]
+    # 1.0 and 1.0.0 are one release, so trailing zeros go -- keeping at least
+    # one component, because an empty tuple would sort below every release.
+    while len(numbers) > 1 and numbers[-1] == 0:
+        numbers.pop()
+    # Four independent components, because the three suffixes are independent:
+    # 1.0rc1.post1 is not 1.0rc1, and a branch chain that stops at the first
+    # one it finds gave them the same key -- which then reported one name
+    # twice while complaining that two entries were out of order.
+    if found.group("pre"):
+        pre = (0, _STAGE[found.group("pre")], int(found.group("pren")))
+    elif found.group("dev") is not None and found.group("post") is None:
+        # A dev release of the final one comes before every pre-release of it:
+        # 1.0.dev0 < 1.0a1 < 1.0 in PEP 440's own worked ordering.
+        pre = (-1,)
     else:
-        stage = (2,)
-    return (numbers, stage)
+        pre = (1,)
+    post = int(found.group("post")) if found.group("post") else -1
+    dev = int(found.group("dev")) if found.group("dev") else float("inf")
+    return (tuple(numbers), pre, post, dev)
+
+
+def _outside_fences(changelog: str) -> str:
+    """The same text with fenced code blocks blanked out, line for line.
+
+    A changelog that documents its own heading shape puts a `## ` line inside
+    a fence, and reading it as an entry reports the file for saying what it
+    is. Blanked rather than removed so that every offset still lines up.
+    """
+    out, fence = [], None
+    for line in changelog.split("\n"):
+        marker = re.match(r"^[ \t]{0,3}(`{3,}|~{3,})", line)
+        if fence is None and marker:
+            fence = marker.group(1)[0]
+            out.append("")
+            continue
+        if fence is not None:
+            out.append("")
+            if marker and marker.group(1)[0] == fence:
+                fence = None
+            continue
+        out.append(line)
+    return "\n".join(out)
 
 
 def entries(changelog: str):
@@ -77,7 +116,7 @@ def entries(changelog: str):
     heading that vanishes here reads downstream as an entry that was
     never written.
     """
-    found = list(HEADING.finditer(changelog))
+    found = list(HEADING.finditer(_outside_fences(changelog)))
     out = []
     for index, match in enumerate(found):
         end = found[index + 1].start() if index + 1 < len(found) else len(changelog)
@@ -168,8 +207,10 @@ def test_the_changelog_records_this_release():
 # ---------------------------------------------------------------------------
 # The gate, run against changelogs that are wrong
 #
-# Every state below was accepted by the first version of this file. They are
-# here because a gate is only known to work where it has been shown to fail.
+# Six of the states below were accepted by the first version of this file;
+# three it already refused. They are all here because a gate is only known to
+# work where it has been shown to fail, and because a state it refuses today
+# is a state it can stop refusing tomorrow.
 # ---------------------------------------------------------------------------
 
 GOOD = """# Changelog
@@ -220,6 +261,18 @@ BAD = {
     "a heading naming no release":
         (GOOD.replace("## 0.5.0 — unreleased", "## Unreleased — unreleased"),
          "can order"),
+    # CommonMark renders an ATX heading indented up to three spaces. One
+    # indented that way was a heading to every reader and invisible here, so
+    # a release left undated behind it read as a file with nothing wrong.
+    "a shipped release left undated under an indented heading":
+        (GOOD.replace("## 0.4.1 — 2026-08-25", "   ## 0.4.1 — unreleased"),
+         "has shipped"),
+    # PEP 440 makes 1.0 and 1.0.0 one release. Read as different ones, the
+    # same release entered twice passed as two.
+    "the same release entered twice under two spellings":
+        (GOOD.replace("## 0.5.0 — unreleased",
+                      "## 0.5.0 — unreleased\n\n- one.\n\n## 0.5 — unreleased"),
+         "descending order"),
 }
 
 
@@ -251,10 +304,31 @@ def test_a_release_python_can_publish_is_a_release_this_gate_can_order(release):
     ("0.4.3a1", "0.4.3b1"),
     ("0.4.3b1", "0.4.3rc1"),
     ("0.4.3.dev1", "0.4.3rc1"),
+    ("0.4.3.dev1", "0.4.3a1"),
+    ("0.4.3a1.dev1", "0.4.3a1"),
+    ("0.4.3.dev1", "0.4.3a1.dev1"),
     ("0.4.3", "0.4.3.post1"),
+    ("0.4.3.post1.dev1", "0.4.3.post1"),
+    ("0.4.3rc1", "0.4.3rc1.post1"),
 ])
 def test_releases_order_the_way_python_orders_them(lower, higher):
+    """Cross-checked pair for pair against `packaging.version.Version` over
+    every combination of these releases; `packaging` is not a dependency of
+    this project, so what it agreed with is pinned here instead of imported.
+
+    The three suffixes are independent, and a first version of this ordered
+    by whichever one it found first -- so 1.0rc1.post1 and 1.0rc1 got the
+    same key, and a file in perfect order was reported as out of order with
+    one release named twice."""
     assert release_key(lower) < release_key(higher)
+
+
+def test_a_release_documented_inside_a_code_fence_is_not_an_entry():
+    """A changelog that shows its own heading shape puts a `## ` line in a
+    fence. Read as an entry it reports the file for saying what it is."""
+    documented = GOOD.replace(
+        "### Added\n", "### Added\n\n```markdown\n## 9.9.9 — 2030-01-01\n```\n")
+    assert problems_with(documented, "0.4.2") == []
 
 
 @pytest.mark.parametrize("text", ["", "unreleased", "1.0+local", "v1.0", "1!1.0"])

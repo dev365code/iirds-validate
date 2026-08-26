@@ -184,17 +184,51 @@ def test_staging_puts_them_where_someone_opening_the_archive_finds_them(tmp_path
         assert carried.read_text("utf-8").strip(), "%s is in the archive and empty" % name
 
 
-def test_every_dependency_the_archive_bundles_has_a_row_in_third_party():
-    """The table says it lists everything bundled here. The SDK became a
-    runtime dependency and the table did not hear about it, so the .pyz
-    redistributed a second package with no row saying under what terms."""
-    from pathlib import Path
-
+def test_the_licence_declaration_cannot_be_read_as_nothing():
+    """The two checks above read `license-files` with the same expression, so
+    an expression that stops matching makes them agree about an empty list and
+    pass with an archive carrying no licence at all. That is the shape of
+    green this project keeps finding, so the parse refuses to answer nothing
+    -- here demonstrated on setuptools' own documented glob syntax, which the
+    expression does not parse."""
     import build_zipapp
 
-    table = (Path(__file__).resolve().parents[1] / "THIRD_PARTY.md").read_text("utf-8")
-    names = sorted(spec.split(">")[0].split("=")[0].split("<")[0]
-                   for spec in build_zipapp.dependencies())
-    missing = [name for name in names if ("`%s`" % name) not in table]
-    assert missing == [], (
-        "bundled with no row in THIRD_PARTY.md: %s" % missing)
+    globbed = 'license-files = ["LICEN[CS]E*", "NOTICE"]'
+    with pytest.raises(AssertionError, match="license-files"):
+        _read_licence_files_from(build_zipapp, globbed)
+
+
+def _read_licence_files_from(build_zipapp, text):
+    """Run the declaration reader against `text` instead of pyproject.toml."""
+    from pathlib import Path
+    from unittest import mock
+
+    original = Path.read_text
+    with mock.patch.object(Path, "read_text",
+                           lambda self, *a, **k: text if self.name == "pyproject.toml"
+                           else original(self, *a, **k)):
+        return build_zipapp._licence_files()
+
+
+def test_every_distribution_the_archive_bundles_has_a_row_in_third_party():
+    """The table opens "everything bundled here", and pip brings a
+    dependency's dependencies too: the archive carries four distributions,
+    not the two this project declares. Asking the declared list would only
+    confirm the names somebody had already thought of -- which is what the
+    first version of this test did, while `isodate` and `pyparsing` sat in
+    the archive with no row anywhere."""
+    import build_zipapp
+
+    assert build_zipapp.unattributed(BUNDLED) == []
+
+
+#: What `pip install --target` actually leaves beside the code. Pinned here
+#: because a test cannot run pip; `stage()` checks the real list at build time
+#: and refuses to build when a row is missing.
+BUNDLED = ("iirds", "isodate", "pyparsing", "rdflib")
+
+
+def test_a_bundled_distribution_nobody_wrote_a_row_for_is_named():
+    import build_zipapp
+
+    assert build_zipapp.unattributed(BUNDLED + ("smuggled",)) == ["smuggled"]

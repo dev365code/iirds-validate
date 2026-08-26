@@ -301,10 +301,15 @@ def _rooted_here(graph: Graph, packages: List) -> List:
     child is still one level below the root of the file: falling straight
     back to every package let it win on an alphabetical tie-break and set
     the profile for the package containing it.
+
+    Reads "part of another package" the same way container_packages does --
+    a package naming itself is not below anything. One predicate two ways in
+    one file is how these two would come to disagree about the same node.
     """
     present = set(packages)
     return [pkg for pkg in packages
-            if not present.intersection(graph.objects(pkg, T.is_part_of_package))]
+            if not any(parent != pkg and parent in present
+                       for parent in graph.objects(pkg, T.is_part_of_package))]
 
 
 def _detect(graph: Graph):
@@ -367,7 +372,11 @@ def _version_key(text: str):
     rather than against the real one with the typo unmentioned.
     """
     parts = text.split(".")
-    if text and all(part.isdigit() for part in parts):
+    # isdecimal, not isdigit: `"\u00b2".isdigit()` is true and `int("\u00b2")` raises, so
+    # the guard passed a value the conversion then refused -- and this runs
+    # before any rule, outside the net where a rule that raises becomes a
+    # finding, so one character ended the whole run.
+    if text and all(part.isdecimal() for part in parts):
         return (0, tuple(int(part) for part in parts))
     return (1, text)
 

@@ -194,12 +194,29 @@ def test_a_second_version_does_not_switch_a_rule_off(make_package):
                                    runner.ALL_KINDS))
 
 
+def test_a_version_python_cannot_count_does_not_take_the_run_down(make_package):
+    """`"²".isdigit()` is true and `int("²")` raises, so a declared version
+    holding one passed the test that guards the conversion and then failed
+    the conversion. Detection runs before any rule, outside the net where a
+    rule that raises becomes a finding -- so one character in one literal
+    ended the whole validation with a traceback."""
+    weird = MINIMAL_RDF.replace("<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+                                "<iirds:iiRDSVersion>1.\u00b2</iirds:iiRDSVersion>")
+    report = runner.check(make_package(metadata=weird))
+
+    assert report.effective_version == "1.3", "an unreadable version falls back"
+    assert any("1.\u00b2" in note for note in report.notes), (
+        "and the run says which value it could not read")
+
+
 def test_the_published_versions_sort_as_numbers_under_a_plain_sort():
-    """Detection picks between several declared versions with sorted(), and
-    this pins the assumption that lets it: over the versions the standard
-    has actually published, text order and number order agree. A 1.10 would
-    break that -- text puts it between 1.1 and 1.2 -- and this turns red on
-    the day one appears rather than the day a package declares two."""
+    """Detection does not rest on this any more -- it sorts by number, and
+    the test above pins that -- but everything else that puts a version in
+    order still uses text, and this says how far that is safe: over the
+    versions the standard has actually published, text order and number
+    order agree. A 1.10 would break it, since text puts it between 1.1 and
+    1.2, and this turns red on the day one appears rather than on the day
+    something depends on it."""
     from conftest import version_tuple
     from iirds_validate.model import VERSIONS
 
@@ -384,3 +401,29 @@ def test_two_packages_nested_inside_each_other_still_declare_themselves(make_pac
     report = runner.run(make_package(metadata=MUTUAL_NESTING), runner.ALL_KINDS)
 
     assert (report.version, report.variant) == ("1.0", "unrestricted")
+
+
+def test_a_self_loop_does_not_push_a_package_below_the_root(make_package):
+    """The same predicate, read the same way in both places. A package that
+    names itself and a parent this document does not carry is a root of what
+    is present -- and reading the self-loop as "below something" handed the
+    profile to a package beside it instead."""
+    both = MINIMAL_RDF.replace(
+        '  <iirds:Package rdf:about="urn:test:package">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:title>Test package</iirds:title>\n'
+        '  </iirds:Package>\n',
+        '  <iirds:Package rdf:about="urn:test:zzz-root">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:zzz-root"/>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:absent"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:aaa-child">\n'
+        '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:zzz-root"/>\n'
+        '  </iirds:Package>\n')
+    report = runner.run(make_package(metadata=both), runner.ALL_KINDS)
+
+    assert report.version == "1.3", (
+        "the root of what is present declares 1.3; the package inside it "
+        "declares 1.0 and does not get to answer")

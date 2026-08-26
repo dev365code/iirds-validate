@@ -159,7 +159,7 @@ def m6_one_information_object(ctx):
 
 
 @rule("M8",
-       fix="Remove the relations whose subject is the Package element for this container. The package cannot be a part of itself, and a consumer following those relations walks in a circle.")
+       fix="Remove the iirds:has-rendition relations whose subject is the iirds:Package element for this container. A rendition is the file an information unit is delivered as, and this package is what the delivery is, not something inside it. A package nested inside another one is content and may have renditions; this one is not nested inside anything.")
 def m8_package_no_rendition(ctx):
     for pkg in container_packages(ctx.graph):
         if ctx.has(pkg, T.has_rendition):

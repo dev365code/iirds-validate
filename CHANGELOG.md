@@ -49,10 +49,11 @@
   same reading gives M3 back the case it was missing, where a self-looping
   package sits beside a genuine container.
 
-  M8's shape moved from SHACL Core to `sh:sparql` to follow, because Core
-  cannot compare a value node to the focus node it hangs off. A Core-only
-  engine no longer carries M8; `shapes/README.md` says so, and the counts
-  move with it — 117 Core and 22 SPARQL, the same 139 in total.
+  M8's shape follows the same reading and stays SHACL Core. Core cannot
+  compare a value node with the focus node it hangs off, but it does not need
+  to: the value nodes of a zero-or-more path always include the focus node,
+  and they are a set, so two or more of them is exactly "one of them is not
+  the focus node".
 
 - **L7 took its exemption away from the packages that use section 7.** A
   package is exempt from "every information unit should have a title", and the

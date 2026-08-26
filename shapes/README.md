@@ -18,8 +18,8 @@ demonstrated.
 |---|---|---|
 | `iirds-1.3/iirds-complete.ttl` | SHACL-AF engine | **start here**: core + SPARQL in one file, for any package that does not declare iiRDS/H |
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
-| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 108 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
-| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 15 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
+| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 109 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
+| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 14 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
 | `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 7 iiRDS/H additions (SPARQL): M15.11a, the five named-party MUSTs, and R4 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
@@ -27,10 +27,7 @@ demonstrated.
 The `-complete` files exist because the pySHACL command line takes **one**
 shapes file: passing the SPARQL file as a second `-s` or via `-e` does not
 run it (`-e` adds to the *data* graph), and a quickstart that silently skips
-fifteen shapes is worse than none. One consequence of the split is worth
-naming: M8 moved from Core to `sh:sparql`, because its exemption asks for a
-value of `iirds:is-part-of-package` that is not the focus node and SHACL Core
-cannot compare the two. A Core-only engine therefore does not carry M8. The split files are for engines or
+fourteen shapes is worse than none. The split files are for engines or
 pipelines that want Core only, or want to select the way the standard
 selects rule sets: base files for every package, handover files added only
 under iiRDS/H. There is no profile switch inside the shapes, because SHACL

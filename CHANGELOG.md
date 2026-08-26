@@ -55,6 +55,20 @@
   and they are a set, so two or more of them is exactly "one of them is not
   the focus node".
 
+- **The offline archive shipped without this project's own licence.** The
+  `.pyz` is the copy that reaches a machine with no index behind it, and it
+  carried every dependency's terms and none of its own — the wheel and the
+  sdist have always carried them, because `pyproject` declares
+  `license-files` and the packaging reads it, but the archive is staged by a
+  different path that declared nothing. It reads the same declaration now and
+  puts `LICENSE`, `NOTICE` and `THIRD_PARTY.md` at the archive root.
+
+  `THIRD_PARTY.md` opens "everything bundled here" and was missing two of the
+  four distributions the archive carries: `isodate` and `pyparsing` arrive
+  with `rdflib` and had no row anywhere. They have one, and the build now
+  refuses to produce an archive holding a distribution the table does not
+  name.
+
 - **L7 took its exemption away from the packages that use section 7.** A
   package is exempt from "every information unit should have a title", and the
   exemption was claimed by comparing types — so a package typed with a

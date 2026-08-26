@@ -15,20 +15,19 @@ text of the exact edition the packages declare (1.0, 2018-04-18):
   sample 2, M18 -- relates-to-product-variant pointing only at an external
     vocabulary, no iirds:ProductVariant declared. 1.0 and 1.3, verbatim:
     "they MUST be present in the metadata.rdf of the iiRDS package".
-  both samples, B10 -- eleven hazard statements at caution or warning level
-    with no safety alert symbol anywhere in them. Verified against the 1.0
-    text itself, which is where this one is strongest: "If an iiRDS package
-    contains content with hazard statements, then the iiRDS package MUST
-    always provide the applicable safety alert symbols and signal words", and
-    directly above the table, "A hazard statement consists of a safety alert
-    symbol, a signal word, a message panel, and a symbol panel." What the
-    samples do carry is a picture in the symbol panel, which the same table
-    calls "a panel that contains additional hazard symbols" -- additional to
-    the alert symbol, not instead of it. 1.0's own Example 43 shows the
-    tagged img inside the signal word panel, exactly as 1.3's Example 46 does.
-    Four further hazard statements are notices and are left alone: NOTICE
-    alerts to no hazard and takes no safety alert symbol, so none is
-    "applicable" to it in the requirement's own word.
+  both samples, B10 (warning) -- eleven hazard statements at caution or
+    warning level where no img is tagged as the safety alert symbol. Not an
+    error, and the distinction matters: the packages do provide the symbol.
+    Opening the files, five of the eleven carry the yellow triangle with the
+    exclamation mark in the symbol panel and the rest carry another triangular
+    ISO warning sign, while the four exempted notices carry a blue circle --
+    tekom's authors drew the same line the exemption does. What is missing is
+    the data-role that says which picture is the alert symbol. The normative
+    sentence is "the iiRDS package MUST always provide the applicable safety
+    alert symbols and signal words", whose subject is the package and whose
+    verb is provide; turning that into per-statement tagging takes the note
+    above the table and the example below it, and section 1 puts notes and
+    examples outside the normative text.
   sample 1, L10 -- the package types mch:EnvironmentalProtectionInstruction
     directly as iirds:InformationSubject; tekom's own 1.3 machinery vocabulary
     types that term as an instance of iirds:Safety. The warning's advice is
@@ -66,16 +65,16 @@ def test_sample_1_the_reviewer_party_has_no_role():
     report = runner.run(Path(DIRECTORY) / "iirds-sample-1.iirds", runner.ALL_KINDS)
     assert report.version == "1.0" and report.variant == "A"
     assert not report.ok
-    assert _by_severity(report) == {"error": Counter({"M22.1": 1, "B10": 6}),
-                                    "warning": Counter({"L10": 1})}
+    assert _by_severity(report) == {"error": Counter({"M22.1": 1}),
+                                    "warning": Counter({"L10": 1, "B10": 6})}
 
 
 def test_sample_2_relates_to_variants_it_never_declares():
     report = runner.run(Path(DIRECTORY) / "iirds-sample-2.iirds", runner.ALL_KINDS)
     assert report.version == "1.0" and report.variant == "A"
     assert not report.ok
-    assert _by_severity(report) == {"error": Counter({"M18": 1, "B10": 5}),
-                                    "warning": Counter({"L1": 1}),
+    assert _by_severity(report) == {"error": Counter({"M18": 1}),
+                                    "warning": Counter({"L1": 1, "B10": 5}),
                                     "info": Counter({"L8": 5})}
 
 

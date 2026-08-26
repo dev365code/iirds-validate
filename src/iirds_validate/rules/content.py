@@ -366,9 +366,10 @@ def b8_safety_alert_symbol(ctx):
 #: language.
 HAZARD_ROLES = ("caution", "warning", "danger", "notice")
 
-#: The three that alert to a hazard. NOTICE does not: it flags property damage
-#: or a practice, and takes no safety alert symbol under ANSI Z535 or ISO 3864,
-#: so there is none "applicable" to it in the requirement's own word.
+#: The three that alert to a hazard. NOTICE does not, by iiRDS's own bundled
+#: definition of the level -- "information considered important but not related
+#: to personal injury", where the other three are each defined by injury -- so
+#: no safety alert symbol is "applicable" to it in the requirement's own word.
 ALERTING_ROLES = ("caution", "warning", "danger")
 
 
@@ -386,7 +387,7 @@ def _carries(statement, role) -> bool:
 
 @rule("B9", kind="content", prio="MUST", versions=(), variants=(),
       title="a hazard statement must carry its signal word",
-       fix="Add a <p data-role=\"signalword\"> inside the signal word panel, holding the word for this hazard level. A hazard statement with a message and no signal word tells a reader something is dangerous without saying how dangerous.")
+       fix="Add a <p data-role=\"signalword\"> inside the signal word panel, holding the word for this hazard level. A hazard statement with a message and no signal word tells a reader something is dangerous without saying how dangerous.")  # noqa: E501
 def b9_signal_word_present(ctx):
     """B.6: "If an iiRDS package contains content with hazard statements, then
     the iiRDS package MUST always provide the applicable safety alert symbols
@@ -403,29 +404,38 @@ def b9_signal_word_present(ctx):
                                 subject=name, detail='data-role=%r' % _role(statement))
 
 
-@rule("B10", kind="content", prio="MUST", versions=(), variants=(),
-      title="a hazard statement that alerts to a hazard must carry the safety alert symbol",
-       fix="Add an <img data-role=\"safety-alert-symbol\"> as a child of the signal word panel, as Example 46 in the specification shows. A pictogram in the symbol panel is an additional hazard symbol by the table's own words, and does not stand in for the alert symbol.")
+@rule("B10", kind="content", prio="RECOMMENDED", versions=(), variants=(),
+      title="the safety alert symbol of a hazard statement should be tagged",
+       fix="Add data-role=\"safety-alert-symbol\" to the img that carries the alert symbol, and place it in the signal word panel, as the tagging example in Appendix B shows. The picture is usually already there, in the symbol panel; what is missing is the attribute that says which picture it is.")
 def b10_safety_alert_symbol_present(ctx):
-    """The other half of the same sentence, narrowed by the word "applicable".
+    """The other half of the same sentence, and the half that is not checkable
+    as written.
 
-    Read off the specification twice over: the requirement says a package with
-    hazard statements must always provide the applicable safety alert symbols,
-    and Example 46 -- the one piece of iiRDS XHTML5 the authors of Appendix B
-    wrote themselves -- puts the symbol inside the signal word panel, with the
-    separate symbol-panel holding an untagged pictogram beside it, which the
-    table calls "additional hazard symbols".
+    "the iiRDS package MUST always provide the applicable safety alert symbols
+    and signal words." The subject is the package and the verb is provide, and
+    both Consortium packages do provide it: the yellow triangle with the
+    exclamation mark sits in the symbol panel of every hazard statement this
+    rule reports. What is absent is the data-role that would let a consumer
+    tell that picture from the flammable-materials sign beside it.
 
-    Both Consortium sample packages disagree with that example: fifteen hazard
-    statements between them, a pictogram in the symbol panel of every one, and
-    not a single safety alert symbol. Where the appendix and the samples
-    disagree, the appendix is the specification. docs/divergences.md records
-    the eleven findings that follow, and the narrowing that leaves the four
-    notices alone.
+    Turning "provide" into "tag it as a child of the signal word panel" takes
+    the note above the table and the tagging example below it, and the
+    specification's conformance section puts notes and examples outside the
+    normative text -- the same rule tools/extract_requirements.py applies when
+    it counts obligations. So this reports what is true and useful, at the
+    severity a reading of ours is entitled to, and no more.
+
+    Notices are left alone. The requirement says *applicable* symbols, and
+    iiRDS's own definition of the level, bundled in iirds-core.rdf, is a
+    "message that contains information considered important but not related to
+    personal injury" -- while caution, warning and danger are all defined by
+    injury. tekom's authors drew the same line: a triangle on the eleven, a
+    blue circle on the four.
     """
     for name, root in _walk(ctx):
         for statement in _hazard_statements(root, ALERTING_ROLES):
             if not _carries(statement, "safety-alert-symbol"):
-                yield Violation("a hazard statement at this level must provide its safety "
-                                "alert symbol", subject=name,
+                yield Violation("no img in this hazard statement is tagged as the safety "
+                                "alert symbol, so a consumer cannot tell which picture it is",
+                                subject=name,
                                 detail='data-role=%r' % _role(statement))

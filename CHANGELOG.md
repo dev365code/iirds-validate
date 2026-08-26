@@ -10,6 +10,38 @@
   invalid, SECURITY.md states the threat, and a version-gated test watches a
   package fail to reach anything outside its own container.
 
+### Added
+
+- **Three rules.** R4 reports an iiRDS/H party pointing at a vCard the package
+  never describes — five MUSTs about naming an organisation deliberately stay
+  quiet about that pointer so it does not arrive five times, and it used to be
+  left to a rule outside the conformance run, so a handover package whose
+  manufacturer, author and creator all pointed at nothing passed in silence.
+  B9 reports a hazard statement with no signal word. B10 reports, as a
+  warning, a hazard statement at caution, warning or danger level where no
+  image is tagged as the safety alert symbol. 185 rules to 188.
+
+### Changed
+
+- **Rules about a class now see the subclasses a package declares**, where
+  Appendix A says instances of that class need an IRI. Section 7 permits such
+  a subclass and requires a consumer to process the instance as the parent, so
+  a package could put an anonymous instance past a rule by naming its own
+  type. Fifty-six rules changed population; the five whose classes the
+  specification never asks for an IRI did not. M15.11a and M19.4 changed the
+  same way. A package that passed 0.4.1 can report new findings for this
+  reason.
+
+- **M25 checks that a level closes**, not merely that the property is present:
+  a last node pointing at something that is neither another directory node nor
+  a terminator left the list open and passed. It also stops reporting the
+  terminator itself when a package declares one.
+
+- **Reports are byte-identical across hash seeds again.** Rules that list what
+  they found were listing whichever values the store yielded first, so the
+  same package produced a different sentence — and, under the listing cap, a
+  different hundred findings — on the next run.
+
 ### Fixed
 
 - **One rule could produce a finding per element with nothing bounding the

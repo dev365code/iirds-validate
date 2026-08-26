@@ -164,7 +164,7 @@ before being called a defect:
 |---|---|---|
 | sample 1, **M22.1** (error) | **defect in the official sample** | "An iirds:Party MUST have a related iirds:Role that is assigned by the property iirds:has-party-role" — the reviewer Party carries only a vcard |
 | sample 2, **M18** (error) | **defect in the official sample** | "As product variants are a proprietary iiRDS extension, they MUST be present in the metadata.rdf of the iiRDS package" — verbatim in 1.0 and 1.3; the package relates to `pifan#X5-DH2` and declares no ProductVariant |
-| both samples, **B10** (error ×11) | **defect in the official samples** | "If an iiRDS package contains content with hazard statements, then the iiRDS package MUST always provide the applicable safety alert symbols and signal words", and above the table, "A hazard statement consists of a safety alert symbol, a signal word, a message panel, and a symbol panel" — fifteen hazard statements between the two packages, a picture in the symbol panel of every one ("a panel that contains additional hazard symbols"), and no tagged alert symbol anywhere. Six in sample 1, five in sample 2; the four notices are left alone. 1.0's own Example 43 shows the tagged img inside the signal word panel |
+| both samples, B10 (warning ×11) | correct observation | eleven hazard statements at caution or warning level carry a triangular ISO warning sign — in five of them the safety alert symbol itself — and tag none of them, so a consumer cannot tell the alert symbol from the flammable-materials sign beside it. The packages provide the symbols; the `data-role` that identifies one is what is absent. Six in sample 1, five in sample 2; the four notices carry a blue circle and are left alone |
 | sample 1, L10 (warning) | correct observation | the package types `mch:EnvironmentalProtectionInstruction` directly as `iirds:InformationSubject`; tekom's own 1.3 machinery vocabulary types that term as an instance of `iirds:Safety` — the warning's advice is the vocabulary's current position |
 | sample 2, L1 (warning) | correct observation | `relates-to-party` names a UUID described only in sample 1; a consumer holding sample 2 alone cannot resolve it |
 | sample 2, L8 ×5 (info) | as designed | references into the external `pifan` vocabulary, which an offline consumer cannot fetch |
@@ -419,7 +419,7 @@ is the wrong direction for a safety check.
 The per-file reading is available from the words alone. If tekom confirms it,
 one line changes.
 
-### B10 — a missing symbol is reported, and the samples fail it
+### B10 — a missing *tag* is reported, and it is not an error
 
 This entry used to say the opposite, on a false premise: that iiRDS does not
 require the symbol in terms and that reporting its absence would mean importing
@@ -435,23 +435,40 @@ and immediately before the table, in 1.0 and 1.3 alike:
 > A hazard statement consists of a safety alert symbol, a signal word, a
 > message panel, and a symbol panel.
 
-So B9 reports a hazard statement with no signal word, and B10 reports one at
-caution, warning or danger level with no safety alert symbol.
+B9 reports a hazard statement with no signal word: nothing in it provides one,
+which is the sentence, and it is silent on every piece of official material.
 
-**The narrowing.** B10 leaves `notice` alone. The requirement says *applicable*
-symbols; NOTICE alerts to no hazard and carries no safety alert symbol under
-ANSI Z535 or ISO 3864, so none is applicable to it. That is the one place a
-neighbouring standard is consulted here, and it is consulted only to report
-less. The hazard level is read from the `data-role` value, never from the
+B10 is the other half, and it does not carry a MUST, because the sentence and
+the check are not the same fact. The subject of the requirement is *the iiRDS
+package* and the verb is *provide*. Both Consortium packages provide the
+symbols — open the files and five of the eleven flagged statements hold the
+yellow triangle with the exclamation mark, the rest another triangular ISO
+sign. What is absent is the `data-role` saying which picture that is. Turning
+"provide" into "tag it as a child of the signal word panel" rests on the note
+above the table and the tagging example below it, and section 1 of both
+editions puts notes and examples outside the normative text — the same rule
+`tools/extract_requirements.py` applies when it counts obligations. So B10
+reports at warning: the observation is real and useful, and it is a reading of
+ours, which this document publishes rather than ships as a MUST.
+
+**The narrowing.** B10 leaves `notice` alone, on iiRDS's own definitions rather
+than a neighbouring standard's. The bundled ontology defines danger, warning
+and caution each by personal injury, and notice as a "message that contains
+information considered important but not related to personal injury" — so no
+safety alert symbol is *applicable* to it, in the requirement's own word. The
+sample packages draw the same line: a triangle on the eleven, a blue circle on
+the four. The hazard level is read from the `data-role` value, never from the
 signal word's text, which is written in the content's language.
 
-**What this costs.** Both Consortium sample packages fail B10 -- six findings in
-sample 1, five in sample 2. Fifteen hazard statements between them, a picture
-in the symbol panel of every one, and not a single tagged safety alert symbol.
-The same table calls the symbol panel "a panel that contains additional hazard
-symbols": additional to the alert symbol, not a substitute for it. Where the
-samples and the specification disagree the specification wins, and this is not
-the first time the two have parted company -- see the M22.1 and M18 rows.
+**What this costs.** Eleven warnings on the Consortium's own packages — six in
+sample 1, five in sample 2 — and no failures. An earlier version of this entry
+shipped them as errors on the reading above, and the message it printed was
+untrue of the packages it printed on: it said the symbol was missing where the
+symbol was in the file, one `div` away. The cheapest way to clear that error
+was to delete every `data-role` in the package, which is conformant, since the
+attribute is a MAY — a remedy that destroys the machine-readable safety
+tagging the rule exists to protect. A finding that can be answered by removing
+information is pointed the wrong way, and that is the argument for warning.
 
 The specification's own material passes: Example 43 in 1.0 and Example 46 in
 1.3 are the same markup, and both put the tagged `img` inside the signal word

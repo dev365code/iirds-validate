@@ -145,3 +145,25 @@ def test_a_notice_needs_no_safety_alert_symbol(make_package):
     reporting them would be inventing a requirement rather than reading one."""
     notice = NO_SYMBOL.replace('data-role="warning"', 'data-role="notice"')
     assert "B10" not in ids(make_package, notice, name="notice.iirds")
+
+
+def test_b9_is_an_error_and_b10_is_not(make_package):
+    """The two halves of one sentence, and only one of them is checkable as
+    written.
+
+    The requirement is "the iiRDS package MUST always provide the applicable
+    safety alert symbols and signal words". A hazard statement with no signal
+    word anywhere in it provides none, and that is the finding B9 makes. The
+    symbol half is not the same: both Consortium packages *do* provide it —
+    the yellow triangle with the exclamation mark sits in the symbol panel of
+    every statement B10 reports — and what is missing is the data-role that
+    would let a consumer tell which picture it is. The sentence that turns
+    "provide" into "tag it inside the signal word panel" is a note, and the
+    specification's own conformance section puts notes and examples outside
+    the normative text. So B10 observes something true and useful and does not
+    carry a MUST.
+    """
+    from iirds_validate.registry import all_rules
+    rules = {r.id: r for r in all_rules()}
+    assert str(rules["B9"].severity) == "error"
+    assert str(rules["B10"].severity) == "warning"

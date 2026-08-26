@@ -23,6 +23,15 @@
 
 ### Changed
 
+- **A document that described an entity declaration is no longer refused for
+  making one.** The refusal matched the token anywhere in the bytes, and the
+  grammar allows a declaration in one place only, so a topic explaining XML
+  syntax -- an ordinary file in a documentation standard -- was turned away,
+  and under iiRDS/A that is an error. The question is now put to the parser,
+  which decides the encoding without being told and knows where a declaration
+  may sit. A doctype naming an external DTD passes: nothing fetches it, so
+  nothing can expand. docs/divergences.md carries both readings.
+
 - **Rules about a class now see the subclasses a package declares**, where
   Appendix A says instances of that class need an IRI. Section 7 permits such
   a subclass and requires a consumer to process the instance as the parent, so

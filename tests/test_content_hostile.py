@@ -189,3 +189,54 @@ def test_hazard_symbols_are_counted_per_statement_not_per_file(tmp_path):
         '<img data-role="safety-alert-symbol" src="b.png"/></div></div>')
     assert "B8" in _b_rules(build_package(tmp_path, "doubled.iirds", content=(),
                                           extra=(("content/topic1.xhtml", doubled),)))
+
+
+#: A passage *about* a declaration, in each of the places the grammar allows
+#: text to sit. None of these declares anything: the token is characters.
+DESCRIBING = {
+    "cdata": lambda d: _document("<p><![CDATA[%s e0 \"x\"> declares an entity]]></p>" % d),
+    "prolog-comment": lambda d: _document("<p>see above</p>",
+                                          doctype="<!-- %s is a declaration -->" % d),
+    "doctype-and-cdata": lambda d: _document("<p><![CDATA[%s e0 \"x\">]]></p>" % d,
+                                             doctype="<!DOCTYPE html>"),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(DESCRIBING), ids=sorted(DESCRIBING))
+@pytest.mark.parametrize("encoding", XML_ENCODINGS)
+def test_a_document_that_describes_a_declaration_is_not_refused(tmp_path, encoding, shape):
+    """iiRDS is a documentation standard, so a topic about XML syntax is an
+    ordinary file rather than a contrived one.
+
+    The refusal searched the whole document for the token. The grammar allows
+    a declaration in one place only -- inside a doctype's internal subset --
+    so a passage quoting it in a CDATA section, or a comment before the
+    doctype, was read as the thing itself. Under iiRDS/A that is an error, and
+    a package fails on a topic documenting the standard it ships with.
+
+    The third shape is the one a check keyed on "is there a doctype" still
+    gets wrong, which is why it is here: the question is not whether the
+    document has a doctype but whether it declares anything.
+    """
+    document = DESCRIBING[shape]("<!" + "ENTITY").encode(encoding)
+    package = build_package(tmp_path, "describes-%s-%s.iirds" % (shape, encoding),
+                            content=(), extra=(("content/topic1.xhtml", document),))
+    report = runner.check(package)
+    refusals = [f for f in report.findings
+                if f.rule.id == "B1" and "entit" in (f.violation.detail or "")]
+    assert refusals == [], refusals[0].violation.detail
+
+
+@pytest.mark.parametrize("encoding", XML_ENCODINGS)
+def test_an_external_dtd_is_not_refused_for_declaring_nothing(tmp_path, encoding):
+    """A doctype naming an external DTD declares nothing this parser will
+    read: it does not fetch, so nothing can expand. Refusing it would report
+    a document for something that cannot happen, and if a parser ever did
+    fetch, that is the offline promise's business and has its own rule."""
+    document = _document("<p>hi</p>",
+                         doctype='<!DOCTYPE html SYSTEM "entities.dtd">').encode(encoding)
+    package = build_package(tmp_path, "external-%s.iirds" % encoding, content=(),
+                            extra=(("content/topic1.xhtml", document),))
+    refusals = [f for f in runner.check(package).findings
+                if f.rule.id == "B1" and "entit" in (f.violation.detail or "")]
+    assert refusals == [], refusals[0].violation.detail

@@ -20,6 +20,7 @@ from __future__ import annotations
 import posixpath
 import re
 import xml.etree.ElementTree as ElementTree
+import xml.parsers.expat as expat
 
 from .. import terms as T
 from ..model import Violation
@@ -33,66 +34,59 @@ XHTML_FORMAT = "application/xhtml+xml"
 #: report came back clean — a silent pass, which is the failure this project
 #: exists to remove.
 MAX_CONTENT_BYTES = 64 * 1024 * 1024
-_ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
 XHTML_NS = "{http://www.w3.org/1999/xhtml}"
 
-#: Byte order marks, longest first, because a UTF-32 mark begins with a
-#: UTF-16 one and the order is what tells them apart.
-_BOMS = ((b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"),
-         (b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"),
-         (b"\xef\xbb\xbf", "utf-8-sig"))
 
-#: An encoding declaration that survived a decode would contradict the bytes
-#: it is attached to, so it goes with the encoding it named.
-_DECLARED_ENCODING = re.compile(r'(<\?xml[^>]*?)\s+encoding\s*=\s*(["\'])[^"\']*\2')
+class _Declared(Exception):
+    """An entity declaration reached the parser."""
 
 
-def _sniff(raw: bytes):
-    """The encoding the parser will take an unmarked document for, or None.
+class _RootReached(Exception):
+    """The prolog is over, and nothing after it can declare an entity."""
 
-    XML requires a byte order mark on a UTF-16 document and the parser does
-    not insist, autodetecting instead — so a content file can be UTF-16 to
-    the parser and opaque bytes to the guard above it. That is how
-    `<!ENTITY` written UTF-16 walked past a pattern that only ever matches
-    UTF-8, and had its declarations expanded by the parser the refusal
-    exists to keep away from them.
 
-    Decided on the *shape* of the first four bytes, not on what they are: a
-    document may open with whitespace, a comment or a processing
-    instruction, so keying on `<` keys on the fixtures. Four bytes and not
-    two, because unmarked UTF-32-LE also begins `3C 00` — taking it for
-    UTF-16 would hand the parser text riddled with nulls while claiming to
-    understand an encoding it refuses.
+def _declares_entities(raw: bytes) -> bool:
+    """Whether the parser will be handed declarations to expand.
+
+    Asked of the parser, not of the bytes. A pattern over bytes has to decide
+    the encoding for itself and then agree with the parser about it, and the
+    two did not: a declaration written UTF-16 walked past a pattern that
+    matches UTF-8. It also has to know where the grammar permits a
+    declaration, and it did not: the token appearing in a CDATA section or in
+    a comment was read as the thing itself, so a topic *about* XML syntax was
+    refused -- which in a documentation standard is an ordinary file, and
+    under iiRDS/A an error that fails the package.
+
+    expat settles both, being the thing that would do the expanding. The
+    handler fires when a declaration is read and before any reference to it
+    is expanded, so raising there is early enough: the billion-laughs shape
+    is refused in microseconds where an unguarded parse of the same bytes
+    runs for seconds and grows with the nesting.
+
+    Stopped at the root element. Declarations live in the DTD, the DTD
+    precedes the root, and an external one is not fetched -- so the prolog
+    answers the question and the body is never read here. An external DTD
+    therefore passes: it declares nothing this parser will see, and if a
+    parser ever did go and get one, that is the offline promise's business
+    and has its own rule.
     """
-    if len(raw) < 4:
-        return None
-    null = tuple(byte == 0 for byte in raw[:4])
-    if null in ((False, True, True, True), (True, True, True, False)):
-        return None                                 # unmarked UTF-32
-    if null == (False, True, False, True):
-        return "utf-16-le"
-    if null == (True, False, True, False):
-        return "utf-16-be"
-    return None
-
-
-def _as_parsed(raw: bytes) -> bytes:
-    """One document as UTF-8, decided the way the parser decides it.
-
-    The guard below reads these bytes. If this disagrees with the parser
-    about what the document says, the guard is inspecting a different
-    document from the one that gets parsed. Bytes that will not decode as
-    the encoding they claim come back untouched: the parser refuses them
-    too, and refusing here instead would invent a verdict.
-    """
-    encoding = next((e for bom, e in _BOMS if raw.startswith(bom)), None) or _sniff(raw)
-    if encoding is None:
-        return raw
+    parser = expat.ParserCreate()
+    parser.EntityDeclHandler = lambda *_args: _raise(_Declared)
+    parser.StartElementHandler = lambda *_args: _raise(_RootReached)
     try:
-        text = raw.decode(encoding)
-    except UnicodeDecodeError:
-        return raw
-    return _DECLARED_ENCODING.sub(r"\1", text, count=1).encode("utf-8")
+        parser.Parse(raw, True)
+    except _Declared:
+        return True
+    except (_RootReached, expat.ExpatError):
+        # Not well formed is not this guard's finding: B1 parses the document
+        # itself and reports what the parser said about it.
+        return False
+    return False
+
+
+def _raise(exception):
+    raise exception()
+
 
 #: B.5.1 to B.5.9. The complete set, transcribed from the specification rather
 #: than from an HTML5 reference — iiRDS XHTML5 is a subset and the difference
@@ -171,10 +165,7 @@ def _refusal(ctx, name):
     raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
     if oversize:
         return "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
-    # Decoded the way the parser will read it before the pattern reads a byte
-    # of it: the pattern matches UTF-8 and the parser reads UTF-16 as well, so
-    # the same declaration in another encoding went straight past.
-    if _ENTITY_DECL.search(_as_parsed(raw)):
+    if _declares_entities(raw):
         return "the document declares XML entities"
     return None
 

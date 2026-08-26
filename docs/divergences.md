@@ -419,6 +419,34 @@ is the wrong direction for a safety check.
 The per-file reading is available from the words alone. If tekom confirms it,
 one line changes.
 
+### B1 — what counts as declaring an entity, and what an external DTD is
+
+B.3 asks that content be a well-formed XML document, and a document declaring
+entities is refused before it is parsed rather than reported after: the
+billion-laughs shape has nothing invalid about it, so no rule would reject it
+on its merits and the parser has to not meet it at all.
+
+Two readings sit under that, and both are this project's.
+
+**A declaration is what the grammar calls a declaration.** The refusal used to
+search the whole document for the token, which the grammar permits in one
+place only -- inside a doctype's internal subset. iiRDS is a documentation
+standard, so a topic explaining XML syntax is an ordinary file, and a passage
+quoting a declaration in a CDATA section or a comment was read as the thing it
+described. Under iiRDS/A that is an error, so a package failed on a topic
+documenting the format it ships in. The question is now put to the parser,
+which decides the encoding without being told and knows where a declaration
+may sit; the guard and the parser cannot disagree because they are the same
+parser.
+
+**An external DTD is not a declaration.** `<!DOCTYPE html SYSTEM "x.dtd">` may
+name a file that declares entities, and this project does not refuse it. The
+parser does not fetch it, so nothing can expand; and a parser that did fetch
+would be reaching outside the package, which is a different promise with its
+own rule. Refusing it would report a document for something that cannot
+happen here. If a reader is ever met that resolves external DTDs, this is the
+row to revisit.
+
 ### B10 — a missing *tag* is reported, and it is not an error
 
 This entry used to say the opposite, on a false premise: that iiRDS does not

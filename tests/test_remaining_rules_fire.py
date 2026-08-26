@@ -292,3 +292,61 @@ def test_m96_3_an_empty_classification_identifier(tmp_path):
     <iirds:has-classification-domain rdf:resource="urn:test:d1"/>
   </iirds:ExternalClassification>
 ''')
+
+
+#: §6.3.3: "the referenced parent iiRDS container MUST NOT have any outgoing
+#: iirds:is-part-of-package relations." One sentence, three shapes.
+BROKEN_NESTING = {
+    "a package that is part of itself": (
+        '  <iirds:Package rdf:about="urn:test:a">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:a"/>\n'
+        '  </iirds:Package>\n'),
+    "a chain three deep": (
+        '  <iirds:Package rdf:about="urn:test:a">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:b"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:b">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:c"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:c">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n'),
+    "two packages inside each other": (
+        '  <iirds:Package rdf:about="urn:test:a">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:b"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:b">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:a"/>\n'
+        '  </iirds:Package>\n'),
+}
+
+#: The standard's own Example 16: one level, and the parent points at nothing.
+GOOD_NESTING = (
+    '  <iirds:Package rdf:about="urn:test:parent">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package rdf:about="urn:test:nested">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:parent"/>\n'
+    '  </iirds:Package>\n')
+
+
+@pytest.mark.parametrize("shape", sorted(BROKEN_NESTING), ids=sorted(BROKEN_NESTING))
+def test_r5_reports_a_parent_that_is_itself_inside_something(tmp_path, shape):
+    """Nesting is one level deep by construction: §6.3.3 says the package a
+    child names must have no is-part-of-package of its own. Nothing here
+    implemented that sentence, so a package part of itself, a chain and a
+    cycle were each read as ordinary nesting and reported by nobody."""
+    assert "R5" in ids(tmp_path, "r5_%s.iirds" % abs(hash(shape)),
+                       BROKEN_NESTING[shape], replace=HEAD)
+
+
+def test_r5_is_silent_about_the_nesting_the_standard_prints(tmp_path):
+    """Example 16's shape: one child, one parent, and the parent is inside
+    nothing."""
+    assert "R5" not in ids(tmp_path, "r5_good.iirds", GOOD_NESTING, replace=HEAD)

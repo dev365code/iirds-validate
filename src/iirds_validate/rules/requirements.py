@@ -26,6 +26,8 @@ import posixpath
 
 from rdflib import URIRef
 
+from .. import terms as T
+from ..context import package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, Violation, is_named
 from ..registry import rule
 
@@ -130,3 +132,38 @@ def r3_container_is_at_the_archive_root(ctx):
                     detail="found %s -- the other container findings all follow from this one"
                            % ", ".join(sorted("%s/%s" % (folder, n) for n in
                                               sorted({MIMETYPE_FILE, METADATA_RDF} & inside))))
+
+
+@rule("R5", kind="schema", prio="MUST", versions=("1.3",), variants=(),
+      title="a package named as a parent must not itself be inside another package",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#metadata-of-nested-iirds-packages",
+      covers=("x6-3-3-metadata-of-nested-iirds-packages#4",), diagnosis="cause",
+      fix="Remove the iirds:is-part-of-package relation from the package this one names "
+          "as its parent, or point this one at that package's own parent instead. "
+          "Nesting in the parent container's metadata is one level deep: the package a "
+          "child names is the container it sits in, and that container is not itself "
+          "sitting in a third one described here.")
+def r5_a_named_parent_is_not_itself_nested(ctx):
+    """"In the metadata.rdf file of the parent iiRDS container, the referenced
+    parent iiRDS container MUST NOT have any outgoing iirds:is-part-of-package
+    relations." (section 6.3.3)
+
+    One sentence, and it rules out three shapes at once: a package part of
+    itself, a chain of three, and two packages each inside the other. All
+    three used to be read as ordinary nesting, and the first of them was
+    reported here as a deliberate silence -- the container reading stopped it
+    buying an exemption, and stopped short of saying it was wrong. This says
+    it, under the id of the sentence that says it.
+
+    Version-gated to 1.3 because that is the only edition in the cached
+    specification that carries section 6.3.3; 1.0 has no nesting chapter at
+    all, and 1.1 and 1.2 are not on hand to check.
+    """
+    packages = set(package_nodes(ctx.graph))
+    for pkg in package_nodes(ctx.graph):
+        for parent in sorted(ctx.graph.objects(pkg, T.is_part_of_package), key=ctx.ref):
+            if parent in packages and any(ctx.graph.objects(parent, T.is_part_of_package)):
+                yield Violation("this package names a parent that is itself inside "
+                                "another package",
+                                subject=ctx.ref(pkg), detail="parent %s" % ctx.ref(parent))

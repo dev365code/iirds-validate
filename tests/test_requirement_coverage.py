@@ -72,7 +72,7 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 19
+    assert len(COVERED) == 20
     assert len(ABSOLUTE) == 314
 
 

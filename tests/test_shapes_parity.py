@@ -390,6 +390,10 @@ VERSION_GATED_EXTRAS = {
     "M97-1_false.rdf": ["M96.3", "M97.1", "M97.2"],
     "M97-2_false.rdf": ["M96.3"],
     "metadata_iirds_sample-M9_false.rdf": ["M8"],
+    # The corpus's one self-looping package. Section 6.3.3 is 1.3-only in
+    # the cached specification and this file declares 1.0, so the rule
+    # stands down here while the shape, which has no version, does not.
+    "metadata_iirds_sample-M5_false.rdf": ["R5"],
 }
 
 

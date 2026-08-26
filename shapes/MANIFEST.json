@@ -6,7 +6,7 @@
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
  "_note": "Every registered rule appears in exactly one bucket; the emitter refuses to run otherwise. not_expressible reasons are the differential gate's exclusion list — one source, no ad-hoc skips.",
  "counts": {
-  "core_emitted": 118,
+  "core_emitted": 119,
   "version_excluded": 2,
   "sparql_emitted": 21,
   "deferred_v1.1": 6,
@@ -131,7 +131,8 @@
   "M97.1",
   "M97.2",
   "R1",
-  "R2"
+  "R2",
+  "R5"
  ],
  "sparql_emitted": [
   "L10",
@@ -692,6 +693,10 @@
   },
   "R2": {
    "iri": "https://w3id.org/iirds-validate/shapes#R2",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R5": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R5",
    "file": "iirds-1.3/iirds-core.ttl"
   },
   "L10": {

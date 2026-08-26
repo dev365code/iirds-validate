@@ -333,15 +333,18 @@ The population is the graph's own subclass closure, not the ontology's,
 because SHACL's `sh:class` sees only the data graph — the two encodings have
 to be asking about the same nodes.
 
-**What the standard does not settle is what the self-loop itself is.** §6.2
-forbids only membership in another package. §6.3.3 forbids a *referenced
-parent* from having outgoing relations, which a self-loop breaks — but that
-requirement is one of the four in §6.3.3 that no rule here implements, and the
-reference tool has none for it either. So after this repair a self-loop is
-neither exempt from anything nor reported by anything: it is an ordinary
-container package carrying one triple nobody complains about. That silence is
-deliberate and recorded here rather than left to be rediscovered; implementing
-that requirement is a separate change with its own evidence to gather.
+**What the standard leaves to §6.3.3, R5 now says.** §6.2 forbids only
+membership in another package, so it does not make a self-loop a violation.
+§6.3.3 does: "the referenced parent iiRDS container MUST NOT have any outgoing
+`iirds:is-part-of-package` relations", and a package naming itself is its own
+referenced parent with an outgoing relation. That sentence
+(`x6-3-3-metadata-of-nested-iirds-packages#4`) had no rule here and none in the
+reference catalogue, so a self-loop was for one release neither exempt from
+anything nor reported by anything. It is reported now, under the id of the
+sentence that says it, and the same rule catches a chain of three and two
+packages each inside the other. It is version-gated to 1.3, because §6.3.3
+exists in the cached 1.3 and not in the cached 1.0, and 1.1 and 1.2 are not on
+hand to check.
 
 The corpus carries exactly one such package,
 `tests/corpus/plusmeta/files/metadata_iirds_sample-M5_false.rdf`. Its verdict

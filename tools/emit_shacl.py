@@ -188,6 +188,7 @@ CORE_FORMS["M19.2"] = ("nonempty_min1", {"targets": ("iirds:Identity",),
 CORE_FORMS["M96.3"] = ("nonempty_values", {"targets": ("iirds:ExternalClassification",),
                                            "path": "iirds:classificationIdentifier"})
 CORE_FORMS["M8"] = ("m8_container_package", {})
+CORE_FORMS["R5"] = ("r5_named_parent_is_not_nested", {})
 CORE_FORMS["M9"] = ("no_absolute_source", {"targets": ("iirds:Rendition",),
                                            "path": "iirds:source"})
 
@@ -592,6 +593,21 @@ def family_m26_first_child_type(sid, p):
     return (["sh:targetObjectsOf iirds:has-first-child",
              "sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:DirectoryNode ] "
              "[ sh:class iirds:nil ] )"], [])
+
+
+def family_r5_named_parent_is_not_nested(sid, p):
+    # Section 6.3.3: the package a child names as its parent must have no
+    # is-part-of-package of its own. Counted rather than compared -- no value
+    # of this path may itself be a Package that is inside something, which
+    # rules out a self-loop, a chain and a cycle in one constraint.
+    # A named property shape for the same reason as m27 above.
+    pid = sid + "-p"
+    return (["sh:targetClass iirds:Package",
+             "sh:property %s" % pid],
+            _prop(pid, "iirds:is-part-of-package",
+                  "sh:qualifiedValueShape [ sh:class iirds:Package ; "
+                  "sh:property [ sh:path iirds:is-part-of-package ; sh:minCount 1 ] ]",
+                  "sh:qualifiedMaxCount 0"))
 
 
 def family_m27_first_child_is_head(sid, p):

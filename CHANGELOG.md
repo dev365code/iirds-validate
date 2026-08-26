@@ -79,6 +79,15 @@
   L11, a name matching no entry. It went quiet on exactly the packages it
   exists for.
 
+- **A nesting chain, a cycle and a package inside itself are reported.** §6.3.3
+  says the package a child names as its parent "MUST NOT have any outgoing
+  `iirds:is-part-of-package` relations" — nesting in the parent container's
+  metadata is one level deep. No rule here implemented that sentence and the
+  reference catalogue has none for it, so all three shapes read as ordinary
+  nesting and drew nothing. **R5** says it, under the id of the requirement,
+  gated to 1.3 because that is the only edition on hand that carries §6.3.3.
+  189 rules, 140 SHACL shapes.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

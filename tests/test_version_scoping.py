@@ -39,6 +39,10 @@ SCOPED = {
     "M16.2": (("1.0", "1.0.1", "1.1"), "relaxed from MUST to MAY with M16.1"),
     "M49":   (("1.1", "1.2", "1.3"), "iirds:IdentityType arrives in 1.1 with the identity-type system"),
     "M76":   (("1.1", "1.2", "1.3"), "mch:ProtectiveEquipment arrives in 1.1"),
+    "R5":    (("1.3",),
+              "section 6.3.3 exists in the cached 1.3 and not in the cached 1.0; "
+              "1.1 and 1.2 are not on hand, so 1.3 is the only edition this can "
+              "claim the sentence for"),
     "M96.1": (("1.2", "1.3"), "iirds:ExternalClassification arrives in 1.2"),
     "M96.2": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
     "M96.3": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),

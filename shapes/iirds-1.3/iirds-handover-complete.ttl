@@ -1710,6 +1710,28 @@ ivs:R2 a sh:NodeShape ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
 
+ivs:R5 a sh:NodeShape ;
+  rdfs:label "a package named as a parent must not itself be inside another package" ;
+  sh:severity sh:Violation ;
+  sh:message "a package named as a parent must not itself be inside another package" ;
+  ivm:ruleId "R5" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Remove the iirds:is-part-of-package relation from the package this one names as its parent, or point this one at that package's own parent instead. Nesting in the parent container's metadata is one level deep: the package a child names is the container it sits in, and that container is not itself sitting in a third one described here." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-of-nested-iirds-packages> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x6-3-3-metadata-of-nested-iirds-packages#4" ;
+  sh:targetClass iirds:Package ;
+  sh:property ivs:R5-p .
+ivs:R5-p a sh:PropertyShape ;
+  sh:message "a package named as a parent must not itself be inside another package" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R5" ;
+  sh:description "Remove the iirds:is-part-of-package relation from the package this one names as its parent, or point this one at that package's own parent instead. Nesting in the parent container's metadata is one level deep: the package a child names is the container it sits in, and that container is not itself sitting in a third one described here." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-of-nested-iirds-packages> ;
+  sh:path iirds:is-part-of-package ;
+  sh:qualifiedValueShape [ sh:class iirds:Package ; sh:property [ sh:path iirds:is-part-of-package ; sh:minCount 1 ] ] ;
+  sh:qualifiedMaxCount 0 .
+
 ivs:L10 a sh:NodeShape ;
   rdfs:label "abstract iiRDS classes should not be used to type an instance directly" ;
   sh:severity sh:Warning ;

@@ -225,21 +225,52 @@ def test_a_package_that_is_part_of_itself_still_declares_itself(make_package):
     assert "M3" not in _ids(report)
 
 
-def test_detection_needs_no_ontology_because_package_has_no_subclass():
+def vendored_ontologies():
+    """The ontology versions this project actually ships, by directory."""
+    from iirds_validate import resources
+
+    return sorted(name for name in resources.listdir("ontologies")
+                  if resources.exists("ontologies", name, "iirds-core.rdf"))
+
+
+def test_no_ontology_this_project_ships_declares_a_subclass_of_package():
     """The premise the design rests on. Detection runs before the ontology
     is chosen -- it cannot consult one -- so it closes over the subclasses
     the *package* declares and nothing else. That is complete only while the
-    standard itself declares no subclass of iirds:Package. If it ever does,
-    this turns red and the design has to be revisited."""
+    standard declares no subclass of iirds:Package.
+
+    Asked of the directories on disk rather than of VERSIONS: a version with
+    no directory is served the newest one, so looping over VERSIONS asks the
+    same graph five times while its failure message names five different
+    releases. The versions not shipped here cannot be checked offline at
+    all, and the test below is what keeps that from being forgotten."""
     from iirds_validate import ontology as ontology_mod
     from iirds_validate import terms as T
-    from iirds_validate.model import VERSIONS
 
-    for version in VERSIONS:
-        loaded = ontology_mod.load(version)
+    shipped = vendored_ontologies()
+    assert shipped, "no ontology is vendored; this would otherwise pass by having nothing to check"
+    for version in shipped:
+        loaded = ontology_mod.Ontology(version)
         assert set(loaded.subclasses_of(T.Package)) == {T.Package}, (
-            "iiRDS %s declares a subclass of iirds:Package; version detection "
-            "runs before an ontology is loaded and would not see it" % version)
+            "the vendored iiRDS %s declares a subclass of iirds:Package; "
+            "version detection runs before an ontology is loaded and would "
+            "not see it" % version)
+
+
+def test_only_the_newest_ontology_is_vendored():
+    """What makes the test above honest about its own reach. Every other
+    version is served the newest ontology, so nothing here has ever been
+    checked against 1.0's own vocabulary. The day a second one is vendored
+    this turns red, and the check above has to grow to cover it."""
+    from iirds_validate import ontology as ontology_mod
+    from iirds_validate.model import LATEST_VERSION, VERSIONS
+
+    own = {version for version in VERSIONS
+           if ontology_mod.load(version).substituted is None}
+    assert own == {LATEST_VERSION}, (
+        "these versions load an ontology of their own: %s -- the subclass "
+        "check above reads directories, and now has more to read" % sorted(own))
+    assert vendored_ontologies() == [LATEST_VERSION]
 
 
 #: A grandchild, its parent, and a grandparent this document does not carry.

@@ -17,7 +17,7 @@ from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
 from ..model import DCTERMS, OWL, VCARD, VERSIONS, Violation
-from ..package import entry_named
+from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
 
 #: Interoperability rules are not version-specific. Take the list from model
@@ -156,14 +156,19 @@ def l2_missing_content_files(ctx):
     for rend in ctx.instances_of(T.Rendition):
         for src in ctx.values(rend, T.source):
             raw = str(src)
-            if "://" in raw:
-                continue      # absolute URL: out of scope for this check
-            candidate = entry_named(raw)
-            if candidate is None:
+            candidate, reason = entry_or_reason(raw)
+            if reason == ELSEWHERE:
+                # Not a path that went wrong -- not a path. M9 reports that the
+                # URL has to be relative to the package root, and saying it
+                # again here, in the words of a different defect, helps nobody.
+                continue
+            if reason == ESCAPES:
                 yield Violation("iirds:source escapes the package root",
                                 subject=ctx.ref(rend), detail=raw)
-                continue
-            if candidate not in present:
+            elif reason == NOTHING:
+                yield Violation("iirds:source names no file",
+                                subject=ctx.ref(rend), detail=raw)
+            elif candidate not in present:
                 yield Violation("iirds:source does not resolve to a file in the container",
                                 subject=ctx.ref(rend), detail=raw)
 

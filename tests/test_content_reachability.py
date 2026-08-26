@@ -172,3 +172,47 @@ def test_l11_finds_the_file_the_other_rules_find(make_package):
     assert "L11" in fired, (
         "the file is named .xhtml, is in the container, and no content rule "
         "read it -- which is the whole of what L11 says: %s" % sorted(fired))
+
+
+# ---------------------------------------------------------------------------
+# What L2 says, not just that it speaks
+#
+# `entry_named` answers None for three different reasons and L2 printed one
+# sentence for all of them. Nothing pinned the text, so the sentence could go
+# wrong without a test noticing -- and it did, the moment the resolver learned
+# to refuse a value carrying a colon.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("source,expected", [
+    ("content/missing.xhtml", "does not resolve to a file in the container"),
+    ("../../etc/passwd", "escapes the package root"),
+    ("%2e%2e/%2e%2e/etc/passwd", "escapes the package root"),
+    ("", "names no file"),
+], ids=["absent", "escapes", "escapes-encoded", "empty"])
+def test_l2_names_which_silence_it_met(make_package, source, expected):
+    metadata = MINIMAL_RDF.replace("<iirds:source>content/topic1.xhtml</iirds:source>",
+                                   "<iirds:source>%s</iirds:source>" % source)
+    package = make_package(metadata=metadata, content=(),
+                           extra=(("content/topic1.xhtml", SCRIPTED),))
+    said = [f.violation.message for f in runner.run(package, runner.ALL_KINDS).findings
+            if f.rule.id == "L2"]
+    assert said and expected in said[0], (
+        "L2 said %r about %r" % (said, source))
+
+
+@pytest.mark.parametrize("elsewhere", [
+    "http://example.com/topic1.xhtml",
+    "urn:uuid:2c2d4f2e-0000-0000-0000-000000000000",
+    "mailto:someone@example.com",
+], ids=["http", "urn", "mailto"])
+def test_l2_is_silent_about_a_source_that_names_somewhere_else(make_package, elsewhere):
+    """A value naming another host, a URN or a mailbox is not a path that
+    escaped anything -- it is not a path. M9 already reports that the URL
+    must be relative to the package root, and saying it twice, once wrongly,
+    helps nobody."""
+    metadata = MINIMAL_RDF.replace("<iirds:source>content/topic1.xhtml</iirds:source>",
+                                   "<iirds:source>%s</iirds:source>" % elsewhere)
+    package = make_package(metadata=metadata, content=(),
+                           extra=(("content/topic1.xhtml", SCRIPTED),))
+    fired = {f.rule.id for f in runner.run(package, runner.ALL_KINDS).findings}
+    assert "L2" not in fired, "L2 spoke about %r" % elsewhere

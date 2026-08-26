@@ -49,12 +49,31 @@ MAX_ENTRY_BYTES = 64 * 1024 * 1024
 #: A value that still points outside after normalising names nothing here.
 
 
+#: Why `entry_named` answered None. Three different things to tell a reader,
+#: and L2 told them all the same one until a value carrying a colon started
+#: arriving here rather than resolving to a name nothing would match.
+ELSEWHERE = "elsewhere"        # names a place outside this container entirely
+NOTHING = "nothing"            # names nothing at all
+ESCAPES = "escapes"            # climbs out of the container
+
+
 def entry_named(source: str) -> Optional[str]:
     """The container entry this `iirds:source` names, or None.
 
     None means "not a name in this container": an absolute URL, an empty
     value, or a path that climbs out of the package. The caller decides what
-    to say about that -- this answers only what the value points at.
+    to say about that -- this answers only what the value points at. Which of
+    the three it met is `entry_or_reason`.
+    """
+    return entry_or_reason(source)[0]
+
+
+def entry_or_reason(source: str):
+    """`(entry, None)` where the value names one, `(None, reason)` where it
+    does not -- one of ELSEWHERE, NOTHING or ESCAPES.
+
+    One resolution with the reason carried out of it, rather than a second
+    one written beside it to work out why the first said no.
     """
     from urllib.parse import unquote
 
@@ -69,13 +88,15 @@ def entry_named(source: str) -> Optional[str]:
     # out of anything that folds too early or not at all.
     path = unquote(path).replace("\\", "/")
     if ":" in path:
-        return None       # section 5.1.3: not a character a file name carries
+        return None, ELSEWHERE   # section 5.1.3: not a character a name carries
     # lstrip takes a character set rather than a prefix, so a leading dot
     # would be eaten: ".config/a.xhtml" must not become "config/a.xhtml".
     name = posixpath.normpath(path.lstrip("/"))
-    if not path or name in (".", "..") or name.startswith("../"):
-        return None
-    return name
+    if not path or name == ".":
+        return None, NOTHING
+    if name == ".." or name.startswith("../"):
+        return None, ESCAPES
+    return name, None
 
 
 class PackageError(Exception):

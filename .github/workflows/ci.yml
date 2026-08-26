@@ -71,10 +71,11 @@ jobs:
           - { os: ubuntu-latest, python: "3.12" }
           - { os: ubuntu-latest, python: "3.13" }
           # pyproject declares rdflib>=6.0, so 6.x has to be exercised or the
-          # floor is a guess. Same reasoning for the SDK: iirds>=0.2.0 is a
-          # promise about 0.2.0, so 0.2.0 exactly is what its row runs.
+          # floor is a guess. Same reasoning for the SDK: iirds>=0.3.1 is a
+          # promise about 0.3.1, so 0.3.1 exactly is what its row runs. The
+          # floor and this pin move together or the promise is untested.
           - { os: ubuntu-latest, python: "3.11", pin: "rdflib>=6.0,<7", label: "rdflib6" }
-          - { os: ubuntu-latest, python: "3.11", pin: "iirds==0.2.0", label: "iirds floor" }
+          - { os: ubuntu-latest, python: "3.11", pin: "iirds==0.3.1", label: "iirds floor" }
           # Windows is where an unclosed ZIP handle keeps files locked and where
           # the .gitattributes eol=lf setting gets tested.
           - { os: windows-latest, python: "3.11" }

@@ -68,7 +68,7 @@ def test_the_generated_shapes_speak_the_same_base():
 def test_the_sdk_under_test_satisfies_what_this_project_declares():
     """A green run has to be a statement about a version, not about a laptop.
 
-    `pyproject.toml` says `iirds>=0.2.0`, and nothing checked that the copy
+    `pyproject.toml` says `iirds>=0.3.1`, and nothing checked that the copy
     the suite actually imported honours it. CI does pin the floor in one of
     its rows, deliberately; a local run took whatever was installed and said
     nothing about it either way.

@@ -17,7 +17,7 @@ from pathlib import Path
 import iirds
 import pytest
 
-from conftest import declared_sdk_floor, version_tuple
+from conftest import declared_sdk_floor, sdk_version, version_tuple
 from iirds_validate import context, model
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -133,34 +133,59 @@ def test_the_makefile_still_builds_pythonpath_from_that_variable():
 # The one piece of shared logic that is duplicated instead of imported
 #
 # `iirds.source_of` and `iirds_validate.package.entry_named` resolve the same
-# value the same way on purpose, and cannot be the same object yet: this
-# project's floor is an SDK release that does not carry the repaired
-# resolution. So the seam is held by a table instead of by `is`, until the
+# value the same way on purpose, and cannot be the same object yet: the
+# repaired resolution is not in any published `iirds`, so this project's floor
+# cannot name it. The seam is held by a table instead of by `is`, until the
 # floor moves and `entry_named` becomes a call into the SDK.
 #
-# The difference the table allows is the documented one: a reader refuses to
-# resolve a value that escapes the package, and a validator answers None and
-# reports it. The *name* either resolves to must be identical.
+# The table is in two halves, and the split is the honest one: twelve
+# spellings the two projects have always answered alike, asserted for every
+# reader; fifteen that need the repair, gated on the reader actually under
+# test. Gated with a strict xfail rather than a skip -- green against a
+# reader that does not carry the repair, red the day it regresses, and red
+# the day a reader carries it and the two still disagree. A skip would be
+# none of those things.
+#
+# Gated on what the reader *does*, not on its version, because the version
+# cannot answer: a reader keeps the version of its last release until the
+# day it ships, so the worktree this project is developed against carries
+# the repair while still calling itself the release before it. The probe
+# asks one spelling; the table then holds all fifteen, so a reader that
+# half-carries the repair is caught rather than excused.
+#
+# The difference the table allows either way is the documented one: a reader
+# refuses to resolve a value that escapes the package, and a validator answers
+# None and reports it. The *name* either resolves to must be identical.
 # ---------------------------------------------------------------------------
 
-#: Every shape the two have ever answered differently, plus the ordinary ones.
-SPELLINGS = (
+#: The reader release that first publishes the shared resolution.
+RESOLVED_ALIKE_FROM = (0, 3, 3)
+
+#: Spellings the two have always answered alike.
+SETTLED_SPELLINGS = (
     "content/topic1.xhtml", "/content/topic1.xhtml", "./content/topic1.xhtml",
     "content//topic1.xhtml", "content/extra/../topic1.xhtml", ".config/a.xhtml",
+    "//content/topic1.xhtml", "", "   ", "..", "../outside.xhtml",
+    "..\\..\\etc\\passwd",
+)
+
+#: Spellings that need the repair: percent-encoding, a fragment, a query, or a
+#: value carrying a colon that section 5.1.3 excludes from a file name.
+REPAIRED_SPELLINGS = (
     "content/a%20b.xhtml", "content/a%23b.xhtml", "content/%74opic1.xhtml",
     "content/topic1.xhtml#section-2", "content/topic1.xhtml?revision=2",
-    "content/topic1.xhtml?revision=2#section-2", "//content/topic1.xhtml",
+    "content/topic1.xhtml?revision=2#section-2",
     "http://example.com/a.xhtml", "https://example.com/a.xhtml",
     "file:///etc/passwd", "mailto:someone@example.com",
     "urn:uuid:2c2d4f2e-0000-0000-0000-000000000000", "content/a%3Ab.xhtml",
-    "", "   ", "..", "../outside.xhtml", "..\\..\\etc\\passwd",
     "content/%2e%2e/%2e%2e/etc/passwd", "%2e%2e/%2e%2e/etc/passwd",
     "content/%2e%2e/topic1.xhtml",
 )
 
 
-@pytest.mark.parametrize("spelling", SPELLINGS, ids=range(len(SPELLINGS)))
-def test_the_two_resolvers_answer_the_same_name(spelling):
+def _both_answer(spelling):
+    """(what the SDK names, what this project names) -- the SDK's refusal to
+    resolve an escaping value read as None, which is the one difference."""
     from rdflib import Graph, Literal, URIRef
 
     from iirds_validate.package import entry_named
@@ -171,7 +196,50 @@ def test_the_two_resolvers_answer_the_same_name(spelling):
     try:
         theirs = iirds.source_of(graph, node)
     except iirds.IirdsError:
-        theirs = None                 # the layer difference, and the only one
-    assert theirs == entry_named(spelling), (
+        theirs = None
+    return theirs, entry_named(spelling)
+
+
+@pytest.mark.parametrize("spelling", SETTLED_SPELLINGS,
+                         ids=range(len(SETTLED_SPELLINGS)))
+def test_the_two_resolvers_have_always_answered_these_alike(spelling):
+    theirs, ours = _both_answer(spelling)
+    assert theirs == ours, (
         "iirds.source_of and entry_named disagree about %r: %r vs %r"
-        % (spelling, theirs, entry_named(spelling)))
+        % (spelling, theirs, ours))
+
+
+def reader_carries_the_repair():
+    """Does the reader under test decode a percent-encoded name?
+
+    One probe, chosen because it is the plainest thing the repair does. It
+    decides whether the fifteen below are expected to agree; it does not
+    decide whether they do.
+    """
+    theirs, _ = _both_answer("content/a%20b.xhtml")
+    return theirs == "content/a b.xhtml"
+
+
+@pytest.mark.parametrize("spelling", REPAIRED_SPELLINGS,
+                         ids=range(len(REPAIRED_SPELLINGS)))
+@pytest.mark.xfail(not reader_carries_the_repair(), strict=True,
+                   reason="the shared resolution lives in the reader, and this "
+                          "one does not carry it yet; iirds %s publishes it"
+                          % ".".join(map(str, RESOLVED_ALIKE_FROM)))
+def test_the_two_resolvers_answer_the_repaired_spellings_alike(spelling):
+    theirs, ours = _both_answer(spelling)
+    assert theirs == ours, (
+        "iirds.source_of and entry_named disagree about %r: %r vs %r"
+        % (spelling, theirs, ours))
+
+
+def test_the_release_that_publishes_the_repair_actually_carries_it():
+    """The version half of the same question, kept because the probe above
+    cannot ask it: once a reader says it is at or past the release that
+    publishes the shared resolution, not carrying it is a defect in that
+    reader rather than a state this project tolerates."""
+    if sdk_version() >= RESOLVED_ALIKE_FROM:
+        assert reader_carries_the_repair(), (
+            "iirds %s is at or past %s and does not resolve a percent-encoded "
+            "source; the two projects have diverged at the seam"
+            % (iirds.__version__, ".".join(map(str, RESOLVED_ALIKE_FROM))))

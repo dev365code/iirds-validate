@@ -171,32 +171,8 @@ class Context:
         return "_:%s" % self._content_key(node)
 
     def _content_key(self, node, depth: int = 4, seen: frozenset = frozenset()) -> str:
-        """A name for a blank node derived from what it says, not from its id.
-
-        The identifier rdflib gives a blank node is minted per parse -- that is
-        what a blank node is -- so any name built from it changes between runs
-        of the same file. The digest here reads the statements instead, and
-        renders a blank-node object as its own key rather than as its id, so
-        nesting is covered too: a Rendition under a Rendition was the shape
-        that got past the first attempt.
-
-        Bounded and cycle-safe on purpose. Beyond the depth, or back at a node
-        already on the path, the child renders as a placeholder: this is a
-        report label, not a canonicalisation, and a collision costs a reader a
-        moment of ambiguity while instability costs them the diff. The parts
-        are sorted after rendering, so two graphs that say the same thing in a
-        different order agree.
-        """
-        if depth <= 0 or node in seen:
-            return "..."
-        seen = seen | {node}
-        parts = []
-        for predicate, obj in self.graph.predicate_objects(node):
-            rendered = ("_:" + self._content_key(obj, depth - 1, seen)
-                        if isinstance(obj, BNode) else str(obj))
-            parts.append("%s %s" % (predicate, rendered))
-        parts.sort()
-        return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:12]
+        """A short name for a blank node, derived from what it says."""
+        return said_by(self.graph, node, depth, seen)[:12]
 
     def label_of(self, node) -> str:
         """A human name for a node, or the most useful stand-in there is."""
@@ -209,22 +185,59 @@ class Context:
         return self.ref(node)
 
 
+def _field(text: str) -> str:
+    """One field, with its own length in front of it.
+
+    A separator is not a boundary. Joining `predicate value` pairs with a
+    newline let a value holding a newline and the text of a plausible
+    neighbour spell the end of its own field, so two blank nodes saying
+    different things answered to one name -- and a tie puts them back in
+    graph order, which is the hash-seed order this exists to escape.
+    """
+    return "%d:%s" % (len(text), text)
+
+
+def said_by(graph: Graph, node, depth: int = 4, seen: frozenset = frozenset()) -> str:
+    """A name for a blank node derived from what it says, not from its id.
+
+    The identifier rdflib gives a blank node is minted per parse -- that is
+    what a blank node is -- so any name built from it changes between runs of
+    the same file. This reads the statements instead, and renders a
+    blank-node object as its own name rather than as its id, so nesting is
+    covered: a Rendition under a Rendition was the shape that got past the
+    first attempt, and a blank object left out of the digest altogether was
+    the shape that got past the second.
+
+    Bounded and cycle-safe on purpose. Beyond the depth, or back at a node
+    already on the path, the child renders as a placeholder -- a collision
+    there costs a reader a moment of ambiguity, while unbounded recursion
+    costs them the run. The parts are sorted after rendering, so two graphs
+    that say the same thing in a different order agree.
+    """
+    if depth <= 0 or node in seen:
+        return "..."
+    seen = seen | {node}
+    parts = []
+    for predicate, obj in graph.predicate_objects(node):
+        rendered = ("_:" + said_by(graph, obj, depth - 1, seen)
+                    if isinstance(obj, BNode) else str(obj))
+        parts.append(_field(str(predicate)) + _field(rendered))
+    parts.sort()
+    return hashlib.sha256("".join(parts).encode("utf-8")).hexdigest()
+
+
 def _node_key(graph: Graph, node):
     """A total order over package nodes that survives a new process.
 
-    Named nodes sort by IRI. A blank node cannot: rdflib mints its label
-    per parse, so sorting by it picks a different package tomorrow -- the
-    same reason `Context.ref` and `Context._content_key` exist. It sorts by
-    what it says instead, after the named ones. Blank objects are left out
-    of the digest so it cannot reach another minted label; two blank
-    packages saying the same thing therefore tie, and being indistinguishable
-    they answer the same version either way.
+    Named nodes sort by IRI. A blank node cannot: rdflib mints its label per
+    parse, so sorting by it picks a different package tomorrow -- the same
+    reason `Context.ref` exists. It sorts by what it says instead, after the
+    named ones, under the same digest the report labels it with, so a node
+    the report calls two things cannot be one thing to the ordering.
     """
     if isinstance(node, URIRef):
         return (0, str(node))
-    said = sorted("%s %s" % (p, o) for p, o in graph.predicate_objects(node)
-                  if not isinstance(o, BNode))
-    return (1, hashlib.sha256("\n".join(said).encode("utf-8")).hexdigest())
+    return (1, said_by(graph, node))
 
 
 def package_nodes(graph: Graph) -> List:

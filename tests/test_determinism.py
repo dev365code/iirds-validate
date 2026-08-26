@@ -18,6 +18,8 @@ import os
 import re
 from pathlib import Path
 
+import pytest
+
 from conftest import (
     ATTRIBUTE_STYLE_RDF,
     DESCRIPTION_STYLE_RDF,
@@ -229,3 +231,86 @@ def test_the_detected_version_is_the_same_across_hash_seeds(tmp_path):
     assert len(seen) == 1, (
         "%d different verdicts across seven hash seeds: %s"
         % (len(seen), sorted(s.strip() for s in seen)))
+
+
+#: Two blank-node packages. The second says one thing where the first says
+#: two, and spells it so that a digest joining its parts with a separator
+#: cannot tell the difference: the literal holds the separator and then the
+#: exact text of the part it is impersonating.
+FORGED_BOUNDARY = MINIMAL_RDF.replace(
+    '  <iirds:Package rdf:about="urn:test:package">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:title>Test package</iirds:title>\n'
+    '  </iirds:Package>\n',
+    '  <iirds:Package>\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '    <iirds:title>zzz</iirds:title>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package>\n'
+    '    <iirds:iiRDSVersion>1.0\n'
+    'http://iirds.tekom.de/iirds#title zzz</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n')
+
+#: One package reaches a blank node, the other reaches nothing. A digest that
+#: leaves blank objects out entirely cannot tell them apart.
+BLANK_OBJECT = MINIMAL_RDF.replace(
+    '  <iirds:Package rdf:about="urn:test:package">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:title>Test package</iirds:title>\n'
+    '  </iirds:Package>\n',
+    '  <iirds:Package>\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:formatRestriction><rdf:Description/></iirds:formatRestriction>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package>\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n')
+
+
+@pytest.mark.parametrize("metadata", [FORGED_BOUNDARY, BLANK_OBJECT],
+                         ids=["forged-boundary", "blank-object"])
+def test_two_blank_packages_are_told_apart_across_hash_seeds(tmp_path, metadata):
+    """Ordering blank-node packages by what they say only works while two of
+    them that say different things get different names.
+
+    Where they collide, `sorted` keeps graph order -- which is the hash-seed
+    order the ordering exists to escape -- so the same bytes are judged
+    against a different version and a different rule set from one run to the
+    next. Both documents below are shapes a digest built by joining parts
+    with a separator, or by leaving blank objects out, cannot distinguish.
+    """
+    import subprocess
+    import sys
+
+    package = build_package(tmp_path, "collide.iirds", metadata=metadata)
+    script = (
+        "import json, sys;"
+        "sys.path[:0] = [%r];"
+        "from iirds_validate import runner;"
+        "r = runner.check(%r);"
+        "print(json.dumps([r.version, r.variant, r.checked, len(r.findings)]))"
+        % (str(ROOT / "src"), str(package)))
+
+    seen = set()
+    for seed in ("0", "1", "2", "3", "4", "5", "6", "7"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        out = subprocess.run([sys.executable, "-c", script], env=env,
+                             capture_output=True, text=True, check=True).stdout
+        assert out.strip().startswith("["), out
+        seen.add(out)
+    assert len(seen) == 1, (
+        "%d different verdicts across eight hash seeds: %s"
+        % (len(seen), sorted(s.strip() for s in seen)))
+
+
+def test_a_report_does_not_give_two_nodes_the_same_name(tmp_path):
+    """The same digest names blank nodes in the report. Two packages that
+    say different things printed as one name reads as the tool contradicting
+    itself: `M3` complaining of two packages and naming one, twice."""
+    package = build_package(tmp_path, "labels.iirds", metadata=FORGED_BOUNDARY)
+    report = runner.run(package, runner.ALL_KINDS)
+    for finding in report.findings:
+        names = (finding.violation.detail or "").split(", ")
+        assert len(names) == len(set(names)), (
+            "%s names the same node twice: %s"
+            % (finding.rule.id, finding.violation.detail))

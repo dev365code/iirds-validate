@@ -243,7 +243,7 @@ ivs:M8 a sh:NodeShape ;
   sh:message "iirds:Package elements representing the enclosing iiRDS package itself MUST NOT be subjects of any iirds:has-rendition relation." ;
   ivm:ruleId "M8" ;
   ivm:ruleSource "catalogue" ;
-  sh:description "Remove the relations whose subject is the Package element for this container. The package cannot be a part of itself, and a consumer following those relations walks in a circle." ;
+  sh:description "Remove the iirds:has-rendition relations whose subject is the iirds:Package element for this container. A rendition is the file an information unit is delivered as, and this package is what the delivery is, not something inside it. A package nested inside another one is content and may have renditions; this one is not nested inside anything." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iirds%3APackage%20elements%20representing%20the%20enclosing%20iiRDS%20package%20itself%20MUST%20NOT%20be%20subjects%20of%20any%20iirds%3Ahas%2Drendition%20relation.> ;
   ivm:versions "1.1,1.2,1.3" ;
   sh:targetClass iirds:Package ;

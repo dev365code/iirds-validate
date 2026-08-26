@@ -219,16 +219,95 @@ def test_every_distribution_the_archive_bundles_has_a_row_in_third_party():
     the archive with no row anywhere."""
     import build_zipapp
 
-    assert build_zipapp.unattributed(BUNDLED) == []
+    assert build_zipapp.unattributed(bundled()) == []
 
 
-#: What `pip install --target` actually leaves beside the code. Pinned here
-#: because a test cannot run pip; `stage()` checks the real list at build time
-#: and refuses to build when a row is missing.
-BUNDLED = ("iirds", "isodate", "pyparsing", "rdflib")
+#: The directories `pip install --target` actually leaves beside the code.
+#: The *directory* names, not the distribution names, because the step that
+#: turns one into the other is the part a hand-written list never exercises
+#: -- and it was wrong: splitting on the last hyphen first left
+#: `rdflib-7.6.0.dist`, which matches no row in any table.
+BUNDLED_DIRS = ("iirds-0.3.2.dist-info", "isodate-0.7.2.dist-info",
+                "pyparsing-3.3.2.dist-info", "rdflib-7.6.0.dist-info")
+
+
+def bundled():
+    import build_zipapp
+
+    return tuple(build_zipapp.distribution_name(d) for d in BUNDLED_DIRS)
+
+
+def test_a_dist_info_directory_gives_up_its_distribution_name():
+    import build_zipapp
+
+    assert bundled() == ("iirds", "isodate", "pyparsing", "rdflib")
+    assert build_zipapp.distribution_name("zope.interface-5.0.dist-info") == "zope.interface"
 
 
 def test_a_bundled_distribution_nobody_wrote_a_row_for_is_named():
     import build_zipapp
 
-    assert build_zipapp.unattributed(BUNDLED + ("smuggled",)) == ["smuggled"]
+    assert build_zipapp.unattributed(bundled() + ("smuggled",)) == ["smuggled"]
+
+
+# ---------------------------------------------------------------------------
+# The reproducible-build stamp has to be a stamp a ZIP can hold
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("epoch", ["0", "1", "315532799", "99999999999999", "-1"],
+                         ids=["unix-epoch", "one-second", "just-before-1980",
+                              "far-future", "negative"])
+def test_a_source_date_epoch_a_zip_cannot_hold_does_not_kill_the_build(monkeypatch, epoch):
+    """`SOURCE_DATE_EPOCH=0` is the commonest value a reproducible build is
+    given, and a ZIP cannot carry a date before 1980 -- so the archive this
+    project ships to air-gapped sites could not be built the standard way at
+    all. The guard caught a bad *string*; it did not catch a good string
+    naming a date the format has no room for."""
+    import zipfile
+
+    import build_zipapp
+
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", epoch)
+    stamp = build_zipapp._timestamp()
+    zipfile.ZipInfo("anything", date_time=stamp)      # must not raise
+    assert 1980 <= stamp[0] <= 2107, stamp
+
+
+def test_the_same_epoch_still_gives_the_same_stamp(monkeypatch):
+    """Clamping must not cost determinism: the point of the variable is that
+    two builds of one tree agree."""
+    import build_zipapp
+
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "0")
+    assert build_zipapp._timestamp() == build_zipapp._timestamp()
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+    assert build_zipapp._timestamp() == (2023, 11, 14, 22, 13, 20)
+
+
+def test_the_archive_itself_is_asked_whether_the_terms_are_in_it(tmp_path):
+    """Every other check here reads the staging directory, which is what was
+    meant to be written. This one opens what ships. Built by hand rather than
+    by pip, because a test cannot reach an index -- what is exercised is the
+    reading, and the build runs the same reading over the real archive."""
+    import zipfile
+
+    import build_zipapp
+
+    good = tmp_path / "good.pyz"
+    with zipfile.ZipFile(good, "w") as archive:
+        for name in build_zipapp.REDISTRIBUTED:
+            archive.writestr(name, "terms\n")
+    assert build_zipapp.inspect(good) == []
+
+    short = tmp_path / "short.pyz"
+    with zipfile.ZipFile(short, "w") as archive:
+        for name in build_zipapp.REDISTRIBUTED[1:]:
+            archive.writestr(name, "terms\n")
+        archive.writestr(build_zipapp.REDISTRIBUTED[0], "   \n")
+    assert build_zipapp.inspect(short) == [
+        "%s is in the archive and empty" % build_zipapp.REDISTRIBUTED[0]]
+
+    bare = tmp_path / "bare.pyz"
+    with zipfile.ZipFile(bare, "w") as archive:
+        archive.writestr("__main__.py", "")
+    assert len(build_zipapp.inspect(bare)) == len(build_zipapp.REDISTRIBUTED)

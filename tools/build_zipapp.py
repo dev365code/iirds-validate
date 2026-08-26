@@ -56,14 +56,26 @@ SHEBANG = b"#!/usr/bin/env python3\n"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
+#: What a ZIP entry can carry. The format keeps the year as an offset from
+#: 1980 in seven bits, so anything outside this is not a stamp it can hold --
+#: and `SOURCE_DATE_EPOCH=0`, the commonest value a reproducible build is
+#: given, is outside it. Clamping keeps the promise the variable makes (two
+#: builds of one tree agree) where refusing would break the build instead.
+ZIP_EARLIEST = (1980, 1, 1, 0, 0, 0)
+ZIP_LATEST = (2107, 12, 31, 23, 59, 58)
+
+
 def _timestamp():
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if not epoch:
         return FIXED_TIMESTAMP
     try:
-        return time.gmtime(int(epoch))[:6]
-    except (ValueError, OSError):
+        stamp = time.gmtime(int(epoch))[:6]
+    except (ValueError, OSError, OverflowError):
+        # OverflowError is neither of the other two and used to escape: a
+        # value large enough gave a year in the millions rather than a stamp.
         return FIXED_TIMESTAMP
+    return min(max(stamp, ZIP_EARLIEST), ZIP_LATEST)
 
 
 def create_archive(source: Path, target: Path) -> None:
@@ -121,6 +133,18 @@ def copy_licences(target: Path) -> None:
         shutil.copy2(ROOT / name, target / name)
 
 
+def distribution_name(dist_info: str) -> str:
+    """`rdflib-7.6.0.dist-info` -> `rdflib`.
+
+    The suffix comes off before the version does. Splitting on the last
+    hyphen first leaves `rdflib-7.6.0.dist`, which matches no row in any
+    table -- and the test that would have caught it was reading a list of
+    names written by hand, so it never ran this at all.
+    """
+    stem = dist_info[:-len(".dist-info")] if dist_info.endswith(".dist-info") else dist_info
+    return stem.rsplit("-", 1)[0]
+
+
 def unattributed(distributions) -> list:
     """Of these, the ones THIRD_PARTY.md has no row for.
 
@@ -151,15 +175,37 @@ def stage(target: Path) -> None:
     print("licences: %s" % ", ".join(REDISTRIBUTED))
 
     # The build is the only place that knows what is really in the archive.
-    missing = unattributed(name.rsplit("-", 1)[0] for name in kept)
+    missing = unattributed(distribution_name(name) for name in kept)
     if missing:
         raise SystemExit(
             "THIRD_PARTY.md has no row for %s, and this archive redistributes "
             "them" % ", ".join(missing))
 
 
+def inspect(pyz: Path) -> list:
+    """What is wrong with the archive as built, read out of the archive.
+
+    Everything else here checks the staging directory, which is a proxy: it
+    is what was *meant* to be written. This opens the file that ships and
+    asks the two questions a recipient of it can ask -- are the terms it is
+    redistributed under in here, and are they where opening it shows them.
+    """
+    with zipfile.ZipFile(pyz) as archive:
+        names = set(archive.namelist())
+        empty = {name for name in REDISTRIBUTED
+                 if name in names and not archive.read(name).strip()}
+    missing = sorted(name for name in REDISTRIBUTED if name not in names)
+    return ([f"{name} is not in the archive" for name in missing]
+            + [f"{name} is in the archive and empty" for name in sorted(empty)])
+
+
 def smoke(pyz: Path) -> int:
     """Run it the way a locked-down machine would: no site-packages, no path."""
+    problems = inspect(pyz)
+    for problem in problems:
+        print("archive: %s" % problem, file=sys.stderr)
+    if problems:
+        return 1
     fixture = Path(tempfile.mkdtemp()) / "smoke.iirds"
     sys.path.insert(0, str(ROOT / "tools"))
     from make_fixture_package import build_package

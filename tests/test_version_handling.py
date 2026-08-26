@@ -449,3 +449,58 @@ def test_a_self_loop_does_not_push_a_package_below_the_root(make_package):
     assert report.version == "1.3", (
         "the root of what is present declares 1.3; the package inside it "
         "declares 1.0 and does not get to answer")
+
+
+#: Two packages representing this container, the newer one breaking a MUST
+#: that only exists from 1.1. M3 reports the pair; the question is which
+#: declaration the rest of the run is judged against.
+TIED_CONTAINERS = MINIMAL_RDF.replace(
+    '  <iirds:Package rdf:about="urn:test:package">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:title>Test package</iirds:title>\n'
+    '  </iirds:Package>\n',
+    '  <iirds:Package rdf:about="urn:test:aaa-old">\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package rdf:about="urn:test:zzz-new">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:has-rendition rdf:resource="urn:test:r"/>\n'
+    '  </iirds:Package>\n')
+
+#: The same, with the older package declaring nothing at all.
+UNDECLARED_BESIDE_OLD = TIED_CONTAINERS.replace(
+    "  <iirds:Package rdf:about=\"urn:test:aaa-old\">\n"
+    "    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n"
+    "  </iirds:Package>\n",
+    "  <iirds:Package rdf:about=\"urn:test:aaa-old\"/>\n").replace(
+    "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+    "    <iirds:has-rendition", "    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n"
+    "    <iirds:has-rendition")
+
+
+def test_where_two_packages_claim_the_container_the_newer_one_answers(make_package):
+    """M3 reports the pair, so the package does not pass either way -- what is
+    at stake is whether the *other* defects in it are looked for. Picking by
+    IRI let a package declaring 1.0 win an alphabetical tie-break and switch
+    every 1.1+ rule off, so a plain §6.3 violation beside it went unreported.
+    The same reasoning as two versions on one package, and as no version at
+    all: nothing passes by silence."""
+    report = runner.run(make_package(metadata=TIED_CONTAINERS), runner.ALL_KINDS)
+
+    assert report.version == "1.3"
+    assert "M3" in _ids(report), "two packages represent this container"
+    assert "M8" in _ids(report), (
+        "the package that renders is judged, rather than standing down "
+        "because an alphabetically earlier one declared an older version")
+
+
+def test_a_package_declaring_no_version_ranks_as_the_newest(make_package):
+    """"No declaration" already means "judged against the newest" eight lines
+    down in load_context, so it has to mean the same thing when the question
+    is which package answers. Ranking it lowest would have made a declared
+    1.0 beat it and switched rules off that a missing version leaves on."""
+    report = runner.run(make_package(metadata=UNDECLARED_BESIDE_OLD), runner.ALL_KINDS)
+
+    assert report.version is None
+    assert report.effective_version == "1.3"
+    assert "M8" in _ids(report)

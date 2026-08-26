@@ -303,6 +303,28 @@ def container_packages(graph: Graph) -> List:
                        for parent in graph.objects(pkg, T.is_part_of_package))]
 
 
+def _declared_rank(graph: Graph, pkg):
+    """How new the version this package declares is, for choosing between
+    packages that both claim to represent the container.
+
+    Where several claim it M3 reports the pair, so no choice makes the package
+    pass -- what the choice decides is whether the *other* defects in it are
+    looked for. Taking whichever sorted first let a package declaring 1.0 win
+    an alphabetical tie-break and stand every 1.1+ rule down, so a plain §6.3
+    violation beside it went unreported. The newest answers, for the same
+    reason two versions on one package resolve to the newer and a missing one
+    falls back to the newest: nothing passes by silence.
+
+    A package declaring nothing ranks as the newest rather than as the oldest,
+    because that is already what "no declaration" means eight lines down.
+    Ranking it lowest would let a declared 1.0 beat it and switch off rules
+    that a missing version leaves on.
+    """
+    declared = sorted((str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion)),
+                      key=_version_key)
+    return _version_key(declared[-1] if declared else LATEST_VERSION)
+
+
 def _detect(graph: Graph):
     """Read iirds:iiRDSVersion / iirds:formatRestriction off one package.
 
@@ -340,6 +362,7 @@ def _detect(graph: Graph):
     pool = container_packages(graph) or package_nodes(graph)
     if not pool:
         return None, "unrestricted"
+    pool = sorted(pool, key=lambda node: _declared_rank(graph, node), reverse=True)
     pkg = pool[0]
     versions = sorted((str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion)),
                       key=_version_key)

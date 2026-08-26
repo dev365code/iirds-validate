@@ -81,6 +81,14 @@
 
 ### Changed
 
+- **Where two packages both represent the container, the one declaring the
+  newer version answers.** M3 reports the pair either way, so the package does
+  not pass — what the choice decided was whether the *other* defects in it
+  were looked for, and taking whichever sorted first let a package declaring
+  1.0 win an alphabetical tie-break and stand every 1.1+ rule down. A plain
+  §6.3 violation beside it went unreported. A package declaring nothing ranks
+  as the newest, because that is already what a missing version means.
+
 - **A package declaring two versions is judged against the newest of them**,
   not the lowest. M4 reports the pair either way; what the newer reading keeps
   is the finding. A 1.3 package breaking a 1.1+ MUST could otherwise silence

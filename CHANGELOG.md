@@ -4,12 +4,11 @@
 
 ### Security
 
-- **A metadata.jsonld whose `@context` named no scheme was read out of the
-  operator's working directory.** The refusal is the reader's, and arrives
-  with `iirds` 0.3.1; this release carries the reporting half — C16.2 stops
-  calling a refused document invalid, SECURITY.md describes the filesystem
-  half of the threat as well as the network half, and a version-gated test
-  watches a package fail to pick up a decoy from the working directory.
+- **A JSON-LD `@context` could send the reader outside the package.** The
+  refusal is the reader's and arrives with `iirds` 0.3.1; this release
+  carries the reporting half — C16.2 stops calling a refused document
+  invalid, SECURITY.md states the threat, and a version-gated test watches a
+  package fail to reach anything outside its own container.
 
 ### Fixed
 

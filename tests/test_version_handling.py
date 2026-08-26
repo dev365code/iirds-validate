@@ -1,6 +1,8 @@
 """Version detection must never turn into a silent pass."""
 from __future__ import annotations
 
+import pytest
+
 from conftest import MINIMAL_RDF
 from iirds_validate import runner
 
@@ -158,15 +160,51 @@ def test_the_version_and_the_profile_come_off_one_package(make_package):
     assert "M3" in _ids(report), "and two container packages is itself a finding"
 
 
-def test_a_package_declaring_two_versions_is_judged_against_the_lower(make_package):
-    """M4 reports the pair, so no choice makes this package pass. The lower
-    version is the one that cannot hold it to rules it may never have been
-    subject to."""
+def test_a_package_declaring_two_versions_is_judged_against_the_newer(make_package):
+    """The same rule the missing-version case follows, eight lines down in
+    context.py: nothing passes by silence. Taking the lower one read as the
+    kinder choice and was not -- a 1.3 package with a second declaration of
+    1.0 stopped being checked by nine rules, and a genuine violation of one
+    of them left the report while M4 arrived in its place. M4 reports the
+    pair either way; what the newer reading keeps is the finding."""
     report = runner.run(make_package(metadata=TWO_VERSIONS), runner.ALL_KINDS)
 
-    assert report.version == "1.0"
-    assert report.effective_version == "1.0"
+    assert report.version == "1.3"
+    assert report.effective_version == "1.3"
     assert "M4" in _ids(report)
+
+
+def test_a_second_version_does_not_switch_a_rule_off(make_package):
+    """The concrete cost of the choice above. M8 is 1.1+, and the package
+    below breaks it: adding an older version declaration must not be a way
+    to make that finding go away."""
+    broken = MINIMAL_RDF.replace(
+        "</rdf:RDF>",
+        '  <rdf:Description rdf:about="urn:test:package">\n'
+        '    <iirds:has-rendition rdf:resource="urn:test:elsewhere"/>\n'
+        '  </rdf:Description>\n</rdf:RDF>')
+    both = broken.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n")
+
+    assert "M8" in _ids(runner.run(make_package(name="one.iirds", metadata=broken),
+                                   runner.ALL_KINDS))
+    assert "M8" in _ids(runner.run(make_package(name="two.iirds", metadata=both),
+                                   runner.ALL_KINDS))
+
+
+def test_the_published_versions_sort_as_numbers_under_a_plain_sort():
+    """Detection picks between several declared versions with sorted(), and
+    this pins the assumption that lets it: over the versions the standard
+    has actually published, text order and number order agree. A 1.10 would
+    break that -- text puts it between 1.1 and 1.2 -- and this turns red on
+    the day one appears rather than the day a package declares two."""
+    from conftest import version_tuple
+    from iirds_validate.model import VERSIONS
+
+    assert sorted(VERSIONS) == sorted(VERSIONS, key=version_tuple), (
+        "iiRDS %s no longer sorts the same as text and as numbers" % (VERSIONS,))
 
 
 def test_a_child_whose_parent_is_absent_still_declares_itself(make_package):
@@ -202,3 +240,58 @@ def test_detection_needs_no_ontology_because_package_has_no_subclass():
         assert set(loaded.subclasses_of(T.Package)) == {T.Package}, (
             "iiRDS %s declares a subclass of iirds:Package; version detection "
             "runs before an ontology is loaded and would not see it" % version)
+
+
+#: A grandchild, its parent, and a grandparent this document does not carry.
+#: Nothing here is a container package, so nesting cannot pick the answer --
+#: but the grandchild is two levels down and the middle package is one, and
+#: only one of them is the root of what is present.
+NESTED_CHAIN = MINIMAL_RDF.replace(
+    '  <iirds:Package rdf:about="urn:test:package">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:title>Test package</iirds:title>\n'
+    '  </iirds:Package>\n',
+    '  <iirds:Package rdf:about="urn:test:aaa-grandchild">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:formatRestriction>H</iirds:formatRestriction>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:zzz-middle"/>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package rdf:about="urn:test:zzz-middle">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:absent"/>\n'
+    '  </iirds:Package>\n')
+
+
+def test_a_grandchild_does_not_set_the_profile_of_what_contains_it(make_package):
+    """The nesting filter closes the ordinary contamination and the fallback
+    behind it re-opened this one: with no container package present, every
+    package went back in the pool and the grandchild won on an alphabetical
+    tie-break that means nothing. Its handover profile then switched on
+    seventeen MUSTs against a package that never claimed one -- the same
+    defect the filter exists to prevent, one level further down."""
+    report = runner.run(make_package(metadata=NESTED_CHAIN), runner.ALL_KINDS)
+
+    assert report.variant == "unrestricted", (
+        "the profile came off a package nested inside another package that "
+        "is itself present")
+    assert "M15.11a" not in _ids(report)
+
+
+@pytest.mark.parametrize("declared,expected", [
+    (["1.0", "1.3"], "1.3"),
+    (["1.3", "1.0"], "1.3"),
+    (["1.1", "1.10"], "1.10"),          # text order would answer 1.1
+    (["1.2", "1.10", "1.3"], "1.10"),
+    (["1.3", "9.9.9"], "9.9.9"),
+    (["1.3", "not-a-version"], "not-a-version"),
+])
+def test_the_newest_declared_version_is_found_by_number(declared, expected):
+    """The ordering detection uses, on its own. Every version the standard
+    has published sorts the same as text and as numbers, so nothing in the
+    corpus can exercise this -- and that is exactly why it is here rather
+    than left to a fixture. A value that is not a version sorts last: it
+    falls back to the newest and is reported, where sorting it away would
+    leave the typo unmentioned."""
+    from iirds_validate.context import _version_key
+
+    assert sorted(declared, key=_version_key)[-1] == expected

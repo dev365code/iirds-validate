@@ -280,6 +280,21 @@ def container_packages(graph: Graph) -> List:
             if not any(graph.objects(pkg, T.is_part_of_package))]
 
 
+def _rooted_here(graph: Graph, packages: List) -> List:
+    """Of `packages`, the ones whose declared parent this document does not
+    carry -- the roots of what is actually present.
+
+    Only consulted when nothing is a container package. A document can hold
+    a child and its parent and stop short of the grandparent, and then the
+    child is still one level below the root of the file: falling straight
+    back to every package let it win on an alphabetical tie-break and set
+    the profile for the package containing it.
+    """
+    present = set(packages)
+    return [pkg for pkg in packages
+            if not present.intersection(graph.objects(pkg, T.is_part_of_package))]
+
+
 def _detect(graph: Graph):
     """Read iirds:iiRDSVersion / iirds:formatRestriction off one package.
 
@@ -290,26 +305,59 @@ def _detect(graph: Graph):
     Which one: the container's, not a nested child's. A child declares its
     own profile, and reading it as the container's turns the handover MUSTs
     on against a package that never claimed to be one. When nesting leaves
-    nothing -- a child validated on its own, or a fragment whose parent is
-    elsewhere -- every package is back in the pool, because the alternative
-    is to judge a 1.0 document against 1.3 while its own declaration sits
-    three lines away. That fallback is also why a package declared part of
-    itself needs no special case.
+    no container at all -- a child validated on its own, a fragment whose
+    parent is elsewhere -- something still has to answer, because the
+    alternative is to judge a 1.0 document against 1.3 while its own
+    declaration sits three lines away. Then the roots of what *is* present
+    answer, and only if that is empty too does everything: a package
+    declared part of itself lands there, which is why the self-loop needs no
+    case of its own.
 
-    Where several remain, M3 reports the ambiguity and this takes the first;
-    where one package declares several versions, M4 reports that and this
-    takes the lowest, which cannot hold a package to rules it may never have
-    been subject to.
+    Where several candidates remain the first under the ordering answers.
+    That is a fixed choice rather than a meaningful one, and in the fallback
+    branches M3 is not reporting the ambiguity either -- it asks about
+    container packages, and there are none. The report names the version and
+    profile it used, which is where a reader sees which package won.
+
+    Where one package declares several versions, M4 reports that and the
+    newest answers. The lower one read as the kinder choice and is not: it
+    switches rules off, so a package that breaks one of them can silence the
+    finding by declaring an older version beside its own. Eight lines down,
+    a missing version falls back to the newest for exactly that reason --
+    nothing passes by silence -- and these two cannot be different rules.
+    Profiles are not ordered, so where several are declared the first stands
+    with nothing to prefer about it.
     """
-    pool = container_packages(graph) or package_nodes(graph)
+    pool = container_packages(graph)
+    if not pool:
+        everything = package_nodes(graph)
+        pool = _rooted_here(graph, everything) or everything
     if not pool:
         return None, "unrestricted"
     pkg = pool[0]
-    versions = sorted(str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion))
+    versions = sorted((str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion)),
+                      key=_version_key)
     variants = sorted(str(v).strip() for v in graph.objects(pkg, T.formatRestriction))
     # `or "unrestricted"` rather than a default: an empty formatRestriction is
     # not a restriction, and S5 is silent about one in both encodings.
-    return (versions[0] if versions else None), (variants[0] if variants else "") or "unrestricted"
+    return (versions[-1] if versions else None), (variants[0] if variants else "") or "unrestricted"
+
+
+def _version_key(text: str):
+    """A declared version as numbers where it is one, and after every number
+    where it is not.
+
+    Plain text order happens to be right for every version the standard has
+    published -- tests/test_version_handling.py pins that -- but it is right
+    by luck: a 1.10 would sort between 1.1 and 1.2. Anything unparseable
+    sorts last so that a package declaring a real version beside a typo is
+    judged against the typo, which falls back to the newest and reports it,
+    rather than against the real one with the typo unmentioned.
+    """
+    parts = text.split(".")
+    if text and all(part.isdigit() for part in parts):
+        return (0, tuple(int(part) for part in parts))
+    return (1, text)
 
 
 

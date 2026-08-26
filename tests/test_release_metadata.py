@@ -164,12 +164,17 @@ def problems_with(changelog: str, release: str):
     if not ours:
         found.append("the changelog carries no entry for %s" % release)
     else:
-        _, rest, body = ours[0]
+        _, rest, _body = ours[0]
         if not DATE.match(rest):
             found.append("the entry for %s is headed %r; a release that ships "
                          "carries a date" % (release, rest))
+
+    # Every entry, not only this release's: a heading with nothing under it is
+    # a release whose notes were never written, and it stays that way for ever
+    # once a later one is added above it.
+    for name, _rest, body in said:
         if not body.strip():
-            found.append("the entry for %s says nothing under its heading" % release)
+            found.append("the entry for %s says nothing under its heading" % name)
 
     for name, rest, _ in said:
         if release_key(name) <= mine and not DATE.match(rest):
@@ -246,6 +251,10 @@ BAD = {
          "no entry for 0.4.2"),
     "the entry says nothing":
         (GOOD.replace("### Fixed\n\n- something.\n", ""), "says nothing"),
+    # And the same for one that shipped long ago: it stays empty for ever
+    # once a later entry is added above it.
+    "an older entry says nothing":
+        (GOOD.replace("### Fixed\n\n- something older.\n", ""), "0.4.1 says nothing"),
     "the same release entered twice":
         (GOOD.replace("## 0.4.1 — 2026-08-25", "## 0.4.2 — 2026-08-26"),
          "descending order"),

@@ -208,7 +208,7 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
 # ---------------------------------------------------------------------------
 # The emitted set, pinned by name.
 #
-# Round 2 demonstrated the census counting was gameable: move a rule from
+# The census counting was gameable: move a rule from
 # CORE_FORMS to the deferred bucket, adjust three integers, and an iiRDS/H
 # MUST vanishes from the shapes with every test green. Cardinality cannot
 # see *which* rules are covered; this list can, and shrinking it now requires
@@ -263,7 +263,7 @@ def test_the_complete_files_are_exactly_their_parts():
 
 
 def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
-    """The README's dcterms:source claim drifted three review rounds in a
+    """The README's dcterms:source claim drifted three times in a
     row (all → all-but-four → the measured truth). Claims about coverage
     live here now, where drift turns red instead of stale."""
     from rdflib import Graph, Namespace

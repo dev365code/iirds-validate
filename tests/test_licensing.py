@@ -122,9 +122,9 @@ def test_the_shapes_copy_no_ontology_content():
     from iirds_validate.ontology import Ontology
 
     # Three readings of the same bytes: raw, percent-decoded, and with
-    # Turtle string escapes undone. Round 3 proved the raw reading alone
-    # certifies a boundary it does not check -- the round-2 prose was still
-    # shipping, percent-encoded inside dcterms:source text fragments.
+    # Turtle string escapes undone. The raw reading alone certifies a
+    # boundary it does not check: the evicted prose was still shipping,
+    # percent-encoded inside dcterms:source text fragments.
     readings = (
         " ".join(ttl_text.split()),
         " ".join(unquote(ttl_text).split()),

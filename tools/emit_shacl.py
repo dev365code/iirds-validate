@@ -21,7 +21,7 @@ anything. Skipping a rule is a syntax error here, never a silence.
 Licence discipline: the shapes are this project's Apache-2.0 artifact. They
 reference iiRDS term IRIs (facts) and must never copy ontology triples or
 prose (CC BY-ND) — tests/test_licensing.py enforces both vectors, structural
-and textual, after round 2 caught the catalogue's `en` field smuggling
+and textual, after the catalogue's `en` field was found smuggling
 ontology descriptions in as titles. Catalogue-sourced rules carry the
 catalogue's own message wording where the registry kept it (MIT, plusmeta,
 with notices in shapes/); remedy texts are this project's throughout. That
@@ -93,8 +93,8 @@ ABSTRACT_CLASSES = tuple(sorted(
 
 #: Catalogue spec links end in a text fragment quoting the sentence they
 #: point at. For M78-M94 that quoted sentence is the ontology's own
-#: description -- the prose round 2 evicted from sh:message, found riding
-#: back in percent-encoded by round 3. Those links keep their section anchor
+#: description -- the prose evicted from sh:message, which came back
+#: riding in percent-encoded. Those links keep their section anchor
 #: and lose the quotation; every other fragment quotes the specification
 #: sentence it cites, which is the feature worth keeping.
 _ONTOLOGY_PROSE = tuple(
@@ -227,8 +227,8 @@ II = "http://iirds.tekom.de/iirds#"
 RDFS_ = "http://www.w3.org/2000/01/rdf-schema#"
 RDF_ = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
-#: Python's is_iirds_term tests four exact namespaces; a red-team pass proved
-#: the broad prefix "http://iirds.tekom.de/" disagrees with it in both
+#: Python's is_iirds_term tests four exact namespaces, and the broad prefix
+#: "http://iirds.tekom.de/" was measured to disagree with it in both
 #: directions (a squatter at .../custom# fooled one encoding each way). The
 #: SPARQL mirror is the same four, spelled out.
 
@@ -289,8 +289,8 @@ SPARQL_FORMS = {
     # rdf:type/rdfs:subClassOf*, not bare rdf:type: a package typed only
     # with its own declared subclass of iirds:Package is a Package (section
     # 7). The five named-party MUSTs, M17, M18, M24.6 and M22.2 all got this
-    # repair; M3 was the straggler the round-4 verifier caught -- in the
-    # false-reject direction, the worst one.
+    # repair; M3 was the straggler, caught later -- in the false-reject
+    # direction, the worst one.
     "M3": ("fixed", ["""SELECT $this WHERE {
   FILTER NOT EXISTS { ?p <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }""",
                      """SELECT $this ?value WHERE {
@@ -301,7 +301,7 @@ SPARQL_FORMS = {
   FILTER (?value != ?p2) }"""]),
     # rdf:type/rdfs:subClassOf*: the same instance test sh:class performs,
     # so a package-declared subclass of Component satisfies the "declares one
-    # of its own" escape in both encodings (round 2, section 7 again).
+    # of its own" escape in both encodings (section 7 again).
     "M17": ("fixed", ["""SELECT $this ?value WHERE {
   ?value <%(ii)srelates-to-component> ?o .
   FILTER NOT EXISTS { ?c <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sComponent> } }"""]),
@@ -338,10 +338,10 @@ SPARQL_FORMS = {
   FILTER (!REGEX(STR(?value), "^[A-Za-z][A-Za-z0-9+.-]*:")
           || STR(?value) = "urn:iirds:package:") }"""]),
     # Python compares str(value).strip(), so "1.3"@en and " 1.3 " are valid
-    # there; sh:in is RDF term equality and disagreed on both (red-team). The
+    # there; sh:in is RDF term equality and disagreed on both. The
     # mirror is a whitespace-tolerant regex over STR(), which drops the tag.
     # \\s, not a literal space: pretty-printers pad with tabs and newlines,
-    # and round 2 proved " *" rejects a conformant package. pySHACL evaluates
+    # and " *" was measured to reject a conformant package. pySHACL evaluates
     # REGEX with Python-re semantics, where \\s also covers NBSP, matching
     # str.strip(); XPath-strict engines are narrower there, which the README's
     # "tested on pySHACL 0.40" already prices in. S5's group is optional
@@ -360,7 +360,7 @@ SPARQL_FORMS = {
     # closure, (b) any term the bundled ontology defines, or (c) undescribed
     # (L1's business). The old namespace-prefix exemption approximated (b)
     # and thereby hid misspelled terms inside the real namespace -- the exact
-    # defect this rule exists to catch (round 2). (b) is now the literal
+    # defect this rule exists to catch. (b) is now the literal
     # list, generated from the same ontology Python reads.
     "M22.2": ("subjects", "iirds:has-party-role", ["""SELECT $this ?value WHERE {
   $this <%(ii)shas-party-role> ?value .
@@ -486,7 +486,7 @@ def family_nonempty_values(sid, p):
 def family_no_absolute_source(sid, p):
     # Python fires on '"://" in value or value.startswith("/")' — not on every
     # RFC-3986 scheme. urn:... and mailto:... are M5/L8's business, not this
-    # rule's (red-team, disagreements in both directions). Mirror exactly.
+    # rule's (disagreements in both directions). Mirror exactly.
     pid = sid + "-p"
     return (["%s" % _targets(p["targets"]), "sh:property %s" % pid],
             _prop(pid, p["path"], 'sh:not [ sh:pattern "(://|^/)" ]'))
@@ -538,7 +538,7 @@ def family_selector_value(sid, p):
 #: The bundled ontology says nil ⊑ DirectoryNode, so Python's ontology-closure
 #: instances_of(DirectoryNode) includes anything typed `a iirds:nil` — a
 #: closure the data graph cannot give SHACL. Everywhere a shape asks "is this
-#: a DirectoryNode", it must ask "DirectoryNode or nil" (red-team, five rules).
+#: a DirectoryNode", it must ask "DirectoryNode or nil" (five rules).
 DIRNODE_OR_NIL = "[ sh:or ( [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ]"
 
 
@@ -559,7 +559,7 @@ def family_m26_first_child_type(sid, p):
 def family_m27_first_child_is_head(sid, p):
     # A level's first child heads its sibling list: nothing points at it via
     # has-next-sibling. No nil exemption: Python's m27 has none, and the gate
-    # holds the two encodings to the same reading (red-team).
+    # holds the two encodings to the same reading.
     # A named property shape, not an inline blank one: pySHACL attributes the
     # violation to the property shape it fails in, and a blank node there is a
     # result nobody can map back to a rule id.
@@ -770,7 +770,7 @@ def build() -> dict:
 
     # One-file forms, because pySHACL's CLI takes a single shapes file and
     # silently keeps only the last -s: the documented quickstart must be a
-    # command that actually runs every shape (red-team F1).
+    # command that actually runs every shape.
     outputs["iirds-complete.ttl"] = (
         header("iirds-complete.ttl",
                "everything for a non-handover package: core + SPARQL in one file "

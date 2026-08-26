@@ -92,8 +92,8 @@
   its blank nodes**: two isomorphic sources now merge as one graph, so an
   inline IdentityDomain is one domain, not "2 domains". Genuinely divergent
   sources still union — their disagreement is L9's finding, and hiding
-  either side would hide the evidence. Found by the round-4 hostile
-  pass, where the single-file SHACL shapes were the side that was right.
+  either side would hide the evidence. Found before release, where the
+  single-file SHACL shapes were the side that was right.
 - **`--fragment`**: validate a bare metadata file — a spec example, a
   snippet under an editor's hands — inside a throwaway container, with the
   four rules a fragment cannot satisfy (M3, M4, L2, S6) suspended and named

@@ -34,9 +34,9 @@ SH = Namespace("http://www.w3.org/ns/shacl#")
 MANIFEST = json.loads((ROOT / "shapes" / "MANIFEST.json").read_text("utf-8"))
 EMITTED = set(MANIFEST["core_emitted"]) | set(MANIFEST["sparql_emitted"])
 
-#: Every shape id pySHACL ever reports across this whole file. The red team
-#: neutered seven shapes and the suite stayed green: set-equality per fixture
-#: cannot see a shape that fires nowhere. The final test in this file closes
+#: Every shape id pySHACL ever reports across this whole file. Seven shapes
+#: were neutered and the suite stayed green: set-equality per fixture cannot
+#: see a shape that fires nowhere. The final test in this file closes
 #: that hole by demanding the residue EMITTED - fired be empty.
 SH_FIRED_EVER: set = set()
 
@@ -445,7 +445,7 @@ def test_the_whole_corpus_agrees_between_encodings(tmp_path):
 
     assert checked == 114, checked   # 117 parsable - the 3 pinned rejects
     # Named, not merely bounded: "<= 5" would let two more files drop out of
-    # the comparison without anyone saying so (round 2). These three trip an
+    # the comparison without anyone saying so. These three trip an
     # rdflib RDF/XML error path; the Python side still validates them because
     # build_graph reports the parse failure as a finding.
     assert sorted(rdflib_rejects) == [
@@ -610,7 +610,7 @@ def test_a_proprietary_subclass_is_its_parent_in_both_encodings(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 6d. Round-2 divergences, pinned. The first repair fixed eighteen instances;
+# 6d. Divergences, pinned. The first repair fixed eighteen instances;
 # a later review found the *classes* those instances belonged to
 # still alive elsewhere. Each case here disagreed between encodings on
 # 2026-08-21 and now must agree forever.
@@ -753,7 +753,7 @@ def test_an_undescribed_vcard_soft_passes_the_named_party_musts(tmp_path):
 
 def test_any_card_semantics_one_named_one_nameless_stays_silent(tmp_path):
     # An "all cards must be named" mis-encoding survives the other pins;
-    # this one kills it (round-4 verifier, finding 2).
+    # this one kills it.
     extra = HANDOVER.replace(
         '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
         '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n'
@@ -789,8 +789,8 @@ def test_a_described_vcard_without_a_name_fails_them_in_both_encodings(tmp_path)
 
 
 def test_m3_sees_a_subclass_typed_package_in_both_directions(tmp_path):
-    # The round-4 verifier caught M3 still testing bare rdf:type after five
-    # sibling rules got the section-7 repair -- and in the false-reject
+    # M3 was still testing bare rdf:type after five sibling rules got the
+    # section-7 repair -- and in the false-reject
     # direction: a conformant package typed via its own declared subclass
     # failed SHACL-only. Both directions pinned.
     subclass_decl = '''  <rdf:Description rdf:about="urn:acme:DeliveryPackage">

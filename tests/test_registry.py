@@ -89,7 +89,7 @@ def test_the_named_party_rules_do_not_quote_the_document_sentence():
     fragment quoting "The following metadata is mandatory for each
     iirds:Document" — while the rules govern Package, InformationObject
     and IdentityDomain. A reader following the link lands on a sentence
-    about the wrong class (round-4 review, finding 5). The registry keeps
+    about the wrong class. The registry keeps
     the section anchor and drops the misleading quotation."""
     from iirds_validate.registry import all_rules
 

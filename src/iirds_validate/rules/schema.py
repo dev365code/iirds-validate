@@ -36,10 +36,10 @@ def _at_most_one(ctx, cls, prop, label):
     for subj in ctx.instances_of(cls):
         values = ctx.values(subj, prop)
         if len(values) > 1:
-            # Sorted before the slice, or the four named are whichever four the
-            # store yielded first -- which differs between processes, so the
-            # same package reported a different four on the next run.
-            listed = sorted(str(v) for v in values)[:4]
+            # ctx.ref, then sorted, then sliced. Sorting alone still named the
+            # four by their minted identifiers when the values were blank
+            # nodes, so the same package reported a different four next run.
+            listed = sorted(ctx.ref(v) for v in values)[:4]
             yield Violation("more than one %s" % label,
                             subject=ctx.ref(subj),
                             detail="%d values: %s" % (len(values),
@@ -127,7 +127,7 @@ def m3_exactly_one_package(ctx):
         yield Violation("metadata declares no iirds:Package for this container")
     elif len(own) > 1:
         yield Violation("more than one iirds:Package represents this container",
-                        detail=", ".join(sorted(str(p) for p in own)[:5]))
+                        detail=", ".join(sorted(ctx.ref(p) for p in own)[:5]))
 
 
 @rule("M4",
@@ -446,8 +446,8 @@ def m25_lists_are_closed(ctx):
     """
     closers = _closes_a_level(ctx)
     nodes = set(ctx.instances_of(T.DirectoryNode))
-    for node in sorted((_linked_nodes(ctx) & nodes) - closers, key=str):
-        siblings = sorted(ctx.values(node, T.has_next_sibling), key=str)
+    for node in sorted((_linked_nodes(ctx) & nodes) - closers, key=ctx.ref):
+        siblings = sorted(ctx.values(node, T.has_next_sibling), key=ctx.ref)
         if not siblings:
             yield Violation("the last node in a list level must have iirds:has-next-sibling "
                             "relating to iirds:nil",

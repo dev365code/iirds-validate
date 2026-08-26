@@ -94,15 +94,21 @@ def _described(ctx, node) -> bool:
 
 def _undescribed_references(ctx):
     """IRIs an iiRDS relation points at that the package never describes."""
-    seen = set()
+    # One finding per target, and the subject named in it is the smallest of
+    # those that point at it -- not whichever the store happened to yield
+    # first, which named a different real thing on the next run of the same
+    # file. The targets are walked in the same order for the same reason.
+    routes = {}
     for subj, pred, obj in ctx.graph:
         if not isinstance(obj, URIRef) or not ctx.ontology.is_iirds_term(pred):
             continue
         if ctx.ontology.is_iirds_term(obj) or ctx.ontology.is_defined(obj):
             continue                      # a term from the standard vocabulary
-        if str(obj).startswith(WELL_KNOWN) or _described(ctx, obj) or obj in seen:
+        if str(obj).startswith(WELL_KNOWN) or _described(ctx, obj):
             continue
-        seen.add(obj)
+        routes.setdefault(obj, []).append((subj, pred))
+    for obj in sorted(routes, key=str):
+        subj, pred = min(routes[obj], key=lambda sp: (ctx.ref(sp[0]), str(sp[1])))
         yield subj, pred, obj
 
 
@@ -182,7 +188,7 @@ def l3_orphan_directory_nodes(ctx):
             continue
         reachable.add(node)
         stack.extend(_children(ctx, node))
-    for node in sorted(nodes - reachable, key=str):
+    for node in sorted(nodes - reachable, key=ctx.ref):
         yield Violation("directory node is not reachable from any root node",
                         subject=ctx.ref(node), detail=ctx.label_of(node))
 
@@ -218,7 +224,7 @@ def l4_directory_cycles(ctx):
                     loop = trail[trail.index(node):] + [node] if node in trail else [node]
                     yield Violation("cycle in the directory structure",
                                     subject=ctx.ref(node),
-                                    detail=" -> ".join(str(n).split("/")[-1] for n in loop))
+                                    detail=" -> ".join(ctx.ref(n).split("/")[-1] for n in loop))
                 continue
             state[node] = "open"
             stack.append((_CLOSE, node))
@@ -279,7 +285,7 @@ def l6_unlabelled_concepts(ctx):
                 T.DirectoryNode, T.Identity):
         structural.update(ctx.instances_of(cls))
 
-    for subj in sorted(ctx.iirds_subjects(), key=str):
+    for subj in sorted(ctx.iirds_subjects(), key=ctx.ref):
         if isinstance(subj, BNode) or subj in units or subj in structural:
             continue
         if ctx.ontology.is_iirds_term(subj) or str(subj).startswith(WELL_KNOWN):
@@ -415,7 +421,7 @@ def l11_content_hidden_from_the_content_rules(ctx):
     # nor reported, which is worse than the defect being fixed here.
     from .content import XHTML_FORMAT, _media_type
 
-    for rendition in sorted(ctx.instances_of(T.Rendition), key=str):
+    for rendition in sorted(ctx.instances_of(T.Rendition), key=ctx.ref):
         declared = [_media_type(f) for f in ctx.values(rendition, T.fmt)]
         if not declared or XHTML_FORMAT in declared:
             continue          # no format at all is M11's finding, not a second one here

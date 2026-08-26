@@ -163,20 +163,50 @@ class Context:
         """
         if not isinstance(node, BNode):
             return str(node)
-        for subject, predicate in sorted(self.graph.subject_predicates(node), key=str):
-            if not isinstance(subject, BNode):
-                return "%s %s" % (subject, str(predicate).split("#")[-1].split("/")[-1])
-        digest = hashlib.sha256()
-        for predicate, obj in sorted(self.graph.predicate_objects(node), key=str):
-            digest.update(("%s %s\n" % (predicate, obj)).encode("utf-8"))
-        return "_:%s" % digest.hexdigest()[:12]
+        named = sorted((str(s), str(p)) for s, p in self.graph.subject_predicates(node)
+                       if not isinstance(s, BNode))
+        if named:
+            subject, predicate = named[0]
+            return "%s %s" % (subject, predicate.split("#")[-1].split("/")[-1])
+        return "_:%s" % self._content_key(node)
+
+    def _content_key(self, node, depth: int = 4, seen: frozenset = frozenset()) -> str:
+        """A name for a blank node derived from what it says, not from its id.
+
+        The identifier rdflib gives a blank node is minted per parse -- that is
+        what a blank node is -- so any name built from it changes between runs
+        of the same file. The digest here reads the statements instead, and
+        renders a blank-node object as its own key rather than as its id, so
+        nesting is covered too: a Rendition under a Rendition was the shape
+        that got past the first attempt.
+
+        Bounded and cycle-safe on purpose. Beyond the depth, or back at a node
+        already on the path, the child renders as a placeholder: this is a
+        report label, not a canonicalisation, and a collision costs a reader a
+        moment of ambiguity while instability costs them the diff. The parts
+        are sorted after rendering, so two graphs that say the same thing in a
+        different order agree.
+        """
+        if depth <= 0 or node in seen:
+            return "..."
+        seen = seen | {node}
+        parts = []
+        for predicate, obj in self.graph.predicate_objects(node):
+            rendered = ("_:" + self._content_key(obj, depth - 1, seen)
+                        if isinstance(obj, BNode) else str(obj))
+            parts.append("%s %s" % (predicate, rendered))
+        parts.sort()
+        return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:12]
 
     def label_of(self, node) -> str:
+        """A human name for a node, or the most useful stand-in there is."""
         for p in (RDFS.label, T.title):
             v = self.one(node, p)
             if v is not None:
                 return str(v)
-        return str(node)
+        # ref, not str: an unlabelled blank node printed its minted identifier
+        # here, and this one line feeds the detail of nine rules.
+        return self.ref(node)
 
 
 def _detect(graph: Graph):

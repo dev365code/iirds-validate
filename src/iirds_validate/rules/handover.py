@@ -113,7 +113,7 @@ def r4_party_vcard_is_described(ctx):
     a cause, which is what the five findings would have been consequences of.
     """
     cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)}
-    for card in sorted((c for c in cards if not _describes(ctx, c)), key=str):
+    for card in sorted((c for c in cards if not _describes(ctx, c)), key=ctx.ref):
         users = sorted(ctx.ref(p) for p in ctx.graph.subjects(T.relates_to_vcard, card))
         yield Violation("iiRDS/H: iirds:relates-to-vcard points at a vcard this package "
                         "never describes, so no party using it names an organisation",

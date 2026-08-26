@@ -37,10 +37,17 @@
   a terminator left the list open and passed. It also stops reporting the
   terminator itself when a package declares one.
 
-- **Reports are byte-identical across hash seeds again.** Rules that list what
-  they found were listing whichever values the store yielded first, so the
-  same package produced a different sentence — and, under the listing cap, a
-  different hundred findings — on the next run.
+- **The same package now produces the same report, every run.** It did not.
+  A blank node has no identifier of its own -- the one it appears to have is
+  minted afresh each time the file is read -- and three places let that reach
+  the page: the fallback name for an unlabelled node, the digest meant to
+  replace it, and rules that listed values or walked references in whatever
+  order the store offered. One of the Consortium's own sample packages gave
+  three different reports from three runs of 0.4.1, and two rules named a
+  different real thing each time. A blank node is named from what it says
+  now, nested nodes included, and every listing that reaches a report is
+  ordered by that name. Details that mentioned a blank node will read
+  differently from 0.4.1, and identically to each other.
 
 ### Fixed
 

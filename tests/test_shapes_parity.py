@@ -21,11 +21,11 @@ from pathlib import Path
 import pytest
 from rdflib import Graph, Namespace
 
-from conftest import MINIMAL_RDF, build_package
+from conftest import MINIMAL_RDF, build_package, shacl_or_skip
 from iirds_validate import runner
 from iirds_validate.model import PACKAGE_BASE
 
-pyshacl = pytest.importorskip("pyshacl")
+pyshacl = shacl_or_skip()
 
 ROOT = Path(__file__).resolve().parents[1]
 SHAPE_DIR = ROOT / "shapes" / "iirds-1.3"

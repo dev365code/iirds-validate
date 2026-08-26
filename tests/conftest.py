@@ -29,6 +29,35 @@ __all__ = ["ATTRIBUTE_STYLE_RDF", "DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def shacl_or_skip():
+    """pyshacl, or a skip -- unless this run was told it must have it.
+
+    The differential gate is the strongest cross-check this project has, and
+    an importorskip at module scope turns all of it off without a word.
+    `pip install -e ".[dev]"` does not bring pyshacl, so a local `make check`
+    could report the tree good while the gate that compares two independent
+    implementations of every rule was not running at all -- and say nothing,
+    because a skip is not a failure.
+
+    Under `make` the absence is a failure, because the Makefile is what
+    claims to run what CI runs. A bare `pytest` still skips politely.
+    """
+    import os
+
+    try:
+        import pyshacl
+    except ImportError:
+        if os.environ.get("IIRDS_REQUIRE_SHACL"):
+            pytest.fail("this run requires pyshacl and does not have it; the "
+                        "differential gate is thirty-three tests and skipping "
+                        "them is not the same as passing them. "
+                        "`pip install -e \".[shacl]\"`, or `make dev`.")
+        pytest.skip("pyshacl is not installed; the differential gate does not "
+                    "run. `make check` refuses this, a bare pytest does not.",
+                    allow_module_level=True)
+    return pyshacl
+
+
 def version_tuple(text: str):
     """A release as numbers, so 0.10.0 sorts above 0.2.0 rather than below it."""
     parts = text.split(".")

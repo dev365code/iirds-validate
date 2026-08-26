@@ -75,3 +75,33 @@ def test_ci_runs_everything_make_check_runs(target, command):
         pytest.skip(LOCAL_ONLY[command])
     assert command in _normalise(WORKFLOW), \
         "`make %s` runs %r and no CI job does" % (target, command)
+
+
+# ---------------------------------------------------------------------------
+# The platforms the README names are the platforms CI runs
+#
+# The same shape of mistake one level out: a claim that exists in one place and
+# a check that exists in another. The badge line names three operating systems
+# and the matrix ran two, and nothing said so -- the tool does work on the
+# third, which is exactly why nobody would have noticed it going wrong.
+# ---------------------------------------------------------------------------
+
+#: What a runner label calls each of them.
+RUNNERS = {"Linux": "ubuntu", "macOS": "macos", "Windows": "windows"}
+
+
+def claimed_platforms():
+    """The operating systems README.md tells a reader this runs on."""
+    badge = re.search(r"(?m)^&nbsp;\*\*Apache-2\.0\*\*.*$",
+                      (ROOT / "README.md").read_text("utf-8"))
+    assert badge, "README.md no longer carries the badge line in the expected shape"
+    return sorted(name for name in RUNNERS if name in badge.group(0))
+
+
+def test_the_readme_names_the_platforms_ci_actually_runs():
+    named = claimed_platforms()
+    assert named, "the badge line names no operating system at all"
+    missing = sorted(name for name in named if RUNNERS[name] not in WORKFLOW)
+    assert missing == [], (
+        "README.md says this runs on %s and no CI row does: a claim nobody "
+        "checks is a claim that goes wrong quietly" % ", ".join(missing))

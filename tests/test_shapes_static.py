@@ -17,6 +17,7 @@ import pytest
 from rdflib import RDF, Graph, Namespace, URIRef
 
 import emit_shacl
+from conftest import shacl_or_skip
 from iirds_validate.model import PACKAGE_BASE
 from iirds_validate.registry import all_rules
 
@@ -105,10 +106,11 @@ def test_version_excluded_rules_have_no_shape_in_the_1_3_set():
 
 
 # ---------------------------------------------------------------------------
-# Live smoke — needs pySHACL (dev extra); skips where absent (rdflib 6 rows).
+# Live smoke — needs pySHACL. Under make its absence is a failure; a bare
+# pytest still skips (the rdflib 6 rows in CI are such a run).
 # ---------------------------------------------------------------------------
 
-pyshacl = pytest.importorskip("pyshacl")
+pyshacl = shacl_or_skip()
 
 
 def _core_only():

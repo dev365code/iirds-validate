@@ -206,7 +206,6 @@ CORE_FORMS["M15.11b"] = ("class_forbidden", {"targets": ("iirds:DirectoryNode", 
 CORE_FORMS["M15.11c"] = ("class_forbidden", {"targets": SELECTOR_CLOSURE})
 
 CORE_FORMS["M94"] = ("forbidden_property", {"path": "iirds:relates-to-administrative-metadata"})
-CORE_FORMS["M8"] = ("m8_container_package", {})
 CORE_FORMS["M13.1"] = ("selector_value", {"path": "rdf:value"})
 CORE_FORMS["M13.2"] = ("selector_value", {"path": "<http://purl.org/dc/terms/conformsTo>"})
 CORE_FORMS["M25"] = ("m25_closed_list", {})
@@ -215,7 +214,7 @@ CORE_FORMS["M27"] = ("m27_first_child_is_head", {})
 CORE_FORMS["M24.5"] = ("m24_5_root_has_type", {})
 CORE_FORMS["L7"] = ("l7_title_with_package_exempt", {})
 
-#: The SPARQL-expressible thirteen. Absolute IRIs inline; VALUES is forbidden
+#: The SPARQL-expressible ones. Absolute IRIs inline; VALUES is forbidden
 #: inside SHACL-SPARQL constraints (pre-binding restrictions), so membership
 #: tests use FILTER IN. Graph-global rules use the fixed-node idiom —
 #: sh:targetNode pointing at the shape itself, so the constraint runs once per
@@ -295,9 +294,11 @@ SPARQL_FORMS = {
   FILTER NOT EXISTS { ?p <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }""",
                      """SELECT $this ?value WHERE {
   ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-  FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 }
+  FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 .
+                      FILTER (!sameTerm(?x1, ?value)) }
   ?p2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-  FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 }
+  FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 .
+                      FILTER (!sameTerm(?x2, ?p2)) }
   FILTER (?value != ?p2) }"""]),
     # rdf:type/rdfs:subClassOf*: the same instance test sh:class performs,
     # so a package-declared subclass of Component satisfies the "declares one
@@ -376,6 +377,19 @@ SPARQL_FORMS = {
   FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
 }
 
+# M8 is SPARQL rather than Core because the exemption needs a value of
+# iirds:is-part-of-package that is *not the focus node*, and SHACL Core has no
+# way to say that: sh:equals and its siblings compare a path's values against
+# another path's at the same focus, and sh:qualifiedValueShape re-focuses onto
+# the value and loses the way back. The one Core shape that avoids the
+# comparison -- exempt only if some parent is itself a root -- was measured
+# and rejected: it fires on a package nested two levels down, which Python
+# exempts. sh:targetClass keeps the section 7 subclass closure, and DISTINCT
+# gives one result per package rather than one per rendition.
+SPARQL_FORMS["M8"] = ("class", "iirds:Package", ["""SELECT DISTINCT $this WHERE {
+  $this <%(ii)shas-rendition> ?rendition .
+  FILTER NOT EXISTS { $this <%(ii)sis-part-of-package> ?parent .
+                      FILTER (!sameTerm(?parent, $this)) } }"""])
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
 SPARQL_FORMS["M15.9"] = ("fixed", [_named_party_query("Package", "Creator")])
 SPARQL_FORMS["M15.10"] = ("fixed", [_named_party_query("InformationObject", "Creator")])
@@ -532,14 +546,6 @@ def family_forbidden_property(sid, p):
     pid = sid + "-p"
     return (["sh:targetSubjectsOf %s" % p["path"], "sh:property %s" % pid],
             _prop(pid, p["path"], "sh:maxCount 0"))
-
-
-def family_m8_container_package(sid, p):
-    # The enclosing package must not render; a nested one (is-part-of-package)
-    # is content and may. Mirrors rules/schema.py m8.
-    return (["sh:targetClass iirds:Package",
-             "sh:or ( [ sh:property [ sh:path iirds:is-part-of-package ; sh:minCount 1 ] ] "
-             "[ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] )"], [])
 
 
 def family_selector_value(sid, p):
@@ -757,7 +763,9 @@ def build() -> dict:
             lines.append("  sh:targetNode %s ;" % sid)
             queries = form[1]
         else:
-            lines.append("  sh:targetSubjectsOf %s ;" % form[1])
+            lines.append("  %s %s ;"
+                         % ({"subjects": "sh:targetSubjectsOf",
+                             "class": "sh:targetClass"}[form[0]], form[1]))
             queries = form[2]
         for query in queries:
             lines.append('  sh:sparql [ sh:select """%s""" ] ;' % (query % subst))

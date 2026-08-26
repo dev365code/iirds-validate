@@ -261,6 +261,60 @@ catalogue whose spec link names an edition the rule does not apply to.
 Three rules whose disposition no amount of cross-validation will decide,
 recorded so that "unresolved" does not quietly become "fine".
 
+### `is-part-of-package` pointing at its own subject — nesting, or nothing?
+
+Two sentences decide who the container is.
+
+> The corresponding `iirds:Package` instance of an iiRDS package MUST NOT be a
+> member of **another** iiRDS package expressed by the property
+> `iirds:is-part-of-package`. (§6.2, and the same sentence in 1.0)
+
+> In the `metadata.rdf` file of the parent iiRDS container, the referenced
+> parent iiRDS container MUST NOT have any outgoing `iirds:is-part-of-package`
+> relations. (§6.3.3, 1.3 only)
+
+A package naming *itself* is not a member of another package, so the first
+sentence does not make it a nested child. This project reads it that way: **a
+package is a nested child when it is part of a different package.** Before
+that, the bare presence of the predicate meant nesting, and one triple a
+package cannot legally carry bought the exemption §6.3 grants to children.
+Measured: an `iirds:Package` carrying `iirds:has-rendition` reported `M8`; the
+same package plus `<iirds:is-part-of-package rdf:resource="…itself"/>` reported
+nothing. A MUST NOT was switched off by a statement that cannot be true. The
+same reading hid M3 as well — one self-looping package beside one genuine
+container drew no "more than one package represents this container".
+
+The named parent is deliberately **not** required to be present. A nested child
+delivered on its own is still a child, and asking for its parent would report
+it for being delivered alone.
+
+**What the standard does not settle is what the self-loop itself is.** §6.2
+forbids only membership in another package. §6.3.3 forbids a *referenced
+parent* from having outgoing relations, which a self-loop breaks — but that
+requirement is one of the four in §6.3.3 that no rule here implements, and the
+reference tool has none for it either. So after this repair a self-loop is
+neither exempt from anything nor reported by anything: it is an ordinary
+container package carrying one triple nobody complains about. That silence is
+deliberate and recorded here rather than left to be rediscovered; implementing
+that requirement is a separate change with its own evidence to gather.
+
+The corpus carries exactly one such package,
+`tests/corpus/plusmeta/files/metadata_iirds_sample-M5_false.rdf`. Its verdict
+is unchanged in both directions: it is the only package in the file, it
+carries no `iirds:has-rendition`, and it declares iiRDS 1.0, where M8 does not
+apply. No catalogue pair names that file, so `docs/agreement.json` does not
+move.
+
+One consequence reaches the published shapes. M8's exemption asks for a value
+of `iirds:is-part-of-package` that is not the focus node, and SHACL Core has no
+way to say that — `sh:equals` and its siblings compare one path's values
+against another path's at the same focus, and `sh:qualifiedValueShape`
+re-focuses onto the value and loses the way back. The one Core shape that
+avoids the comparison, exempting a package only when some parent is itself a
+root, was written and measured: it fires on a package nested two levels down,
+which the rule exempts. So M8 became a `sh:sparql` shape, and a Core-only
+engine no longer carries it.
+
 ### M22.1 and M22.2 — one sentence, two checks, one fixture
 
 > An `iirds:Party` MUST have a related `iirds:PartyRole` that is assigned by the

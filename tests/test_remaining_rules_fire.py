@@ -26,7 +26,8 @@ def ids(tmp_path, name, body, replace=None):
 def test_m8_the_enclosing_package_given_a_rendition(tmp_path):
     """A container does not render. The exemption is iirds:is-part-of-package:
     a *nested* package is content of its parent and may well have one, so the
-    rule keys on the absence of that relation to find the enclosing package."""
+    rule keys on the absence of that relation *to another package* to find
+    the enclosing package."""
     given = ids(tmp_path, "m8.iirds", '''
   <rdf:Description rdf:about="urn:test:package">
     <iirds:has-rendition rdf:resource="urn:test:r99"/>
@@ -41,6 +42,21 @@ def test_m8_the_enclosing_package_given_a_rendition(tmp_path):
   </rdf:Description>
 ''')
     assert "M8" not in nested, "a nested package is content, and content renders"
+
+
+def test_m8_is_not_silenced_by_a_package_that_is_part_of_itself(tmp_path):
+    """§6.2 draws the line with one word: the container's own instance "MUST
+    NOT be a member of *another* iiRDS package expressed by the property
+    iirds:is-part-of-package". A package naming itself is not a member of
+    another package and is content of nothing, so it keeps the MUST NOT that
+    §6.3 puts on the container. Read as the bare presence of the predicate,
+    one triple a package cannot legally carry made the finding disappear."""
+    assert "M8" in ids(tmp_path, "m8c.iirds", '''
+  <rdf:Description rdf:about="urn:test:package">
+    <iirds:is-part-of-package rdf:resource="urn:test:package"/>
+    <iirds:has-rendition rdf:resource="urn:test:r99"/>
+  </rdf:Description>
+''')
 
 
 def test_m9_a_source_that_points_outside_the_package(tmp_path):

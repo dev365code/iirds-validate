@@ -37,6 +37,23 @@
   reaching a blank node and a package reaching nothing were one name too. A
   report could complain of two packages and name one of them twice.
 
+- **A package declared part of itself claimed the exemption meant for nested
+  children.** §6.3 says the package representing the enclosing container must
+  not be the subject of `iirds:has-rendition`, and a package inside another
+  package is exempt because it is content. That exemption was granted on the
+  bare presence of `iirds:is-part-of-package`, so adding one triple pointing
+  at the package's own identifier made the finding disappear — a MUST NOT
+  switched off by a statement that cannot be true. §6.2 draws the line with a
+  word: the container's instance must not be a member of *another* package.
+  A package is a nested child when it is part of a different one now, and the
+  same reading gives M3 back the case it was missing, where a self-looping
+  package sits beside a genuine container.
+
+  M8's shape moved from SHACL Core to `sh:sparql` to follow, because Core
+  cannot compare a value node to the focus node it hangs off. A Core-only
+  engine no longer carries M8; `shapes/README.md` says so, and the counts
+  move with it — 117 Core and 22 SPARQL, the same 139 in total.
+
 - **L7 took its exemption away from the packages that use section 7.** A
   package is exempt from "every information unit should have a title", and the
   exemption was claimed by comparing types — so a package typed with a

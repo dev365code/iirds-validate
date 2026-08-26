@@ -228,7 +228,7 @@ def test_the_anchor_under_profile_a_is_silent_in_both_encodings(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 5. The SPARQL thirteen — a defect and its repair for every one.
+# 5. The SPARQL shapes — a defect and its repair for every one.
 # ---------------------------------------------------------------------------
 
 HEAD_ = MINIMAL_RDF.replace("</rdf:RDF>", "")
@@ -906,3 +906,54 @@ def test_m25_accepts_a_terminator_the_package_mints(tmp_path):
         "</rdf:RDF>", '''  <iirds:nil rdf:about="urn:test:end"/>
 </rdf:RDF>''')
     assert "M25" not in assert_parity(tmp_path, "minted.iirds", minted)
+
+
+# ---------------------------------------------------------------------------
+# The archetype set-equality cannot catch
+#
+# Both encodings read the bare presence of iirds:is-part-of-package as
+# nesting, so both granted the exemption and this gate saw nothing: it
+# compares the two against each other, and two readings that are wrong the
+# same way agree. What it can catch is the two drifting apart while that is
+# repaired, which is what these fixtures are for -- there was no fixture
+# anywhere combining a self-loop with anything else.
+# ---------------------------------------------------------------------------
+
+def test_a_self_loop_is_not_nesting_in_either_encoding(tmp_path):
+    """§6.2: the container's instance "MUST NOT be a member of *another*
+    iiRDS package". Naming itself is not membership in another package, so
+    the exemption §6.3 grants a nested child does not reach it."""
+    self_loop = MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n').replace(
+        "</rdf:RDF>",
+        '  <rdf:Description rdf:about="urn:test:package">\n'
+        '    <iirds:has-rendition rdf:resource="urn:test:elsewhere"/>\n'
+        '  </rdf:Description>\n</rdf:RDF>')
+    assert "M8" in assert_parity(tmp_path, "self_m8.iirds", self_loop)
+
+    nested = self_loop.replace('rdf:resource="urn:test:package"/>',
+                               'rdf:resource="urn:test:outer"/>', 1)
+    assert "M8" not in assert_parity(tmp_path, "nested_m8.iirds", nested), (
+        "a package that really is part of another one is content, and content "
+        "renders")
+
+
+def test_a_self_loop_beside_a_real_package_is_two_containers_in_both_encodings(tmp_path):
+    """The other rule reading the same predicate. One self-looping package
+    and one ordinary one are two packages representing this container."""
+    two = MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n').replace(
+        "</rdf:RDF>",
+        '  <iirds:Package rdf:about="urn:test:second">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n</rdf:RDF>')
+    assert "M3" in assert_parity(tmp_path, "self_m3.iirds", two)
+
+    child = two.replace('rdf:resource="urn:test:package"/>',
+                        'rdf:resource="urn:test:second"/>', 1)
+    assert "M3" not in assert_parity(tmp_path, "child_m3.iirds", child), (
+        "one package inside the other leaves one representing this container")

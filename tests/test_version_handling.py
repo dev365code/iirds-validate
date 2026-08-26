@@ -216,9 +216,37 @@ def test_a_child_whose_parent_is_absent_still_declares_itself(make_package):
     assert (report.version, report.variant) == ("1.0", "A")
 
 
+#: The same shape with a second, ordinary package beside it. Two packages
+#: represent this container, and the self-loop is not what makes one of them
+#: a nested child.
+SELF_LOOP_AND_SIBLING = SELF_LOOP.replace(
+    "</rdf:RDF>",
+    '  <iirds:Package rdf:about="urn:test:second">\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n</rdf:RDF>')
+
+
+def test_a_package_that_is_part_of_itself_is_still_this_container(make_package):
+    """A package cannot be a part of itself, and §6.2 forbids only membership
+    in *another* package -- so a self-loop does not make one. Two packages
+    then represent this container, which is exactly what M3 is for. Read as
+    the bare presence of the predicate, one of them dropped out of the count
+    and the finding never arrived."""
+    report = runner.run(make_package(metadata=SELF_LOOP_AND_SIBLING), runner.ALL_KINDS)
+
+    assert "M3" in _ids(report), (
+        "a package that is part of itself is nested inside nothing, so two "
+        "packages represent this container and that is the finding")
+
+
 def test_a_package_that_is_part_of_itself_still_declares_itself(make_package):
-    """Why the filter needs no special case for the self-loop: the fallback
-    already answers it. The corpus carries exactly one such package."""
+    """A package that is part of itself is nested inside nothing, so it *is*
+    this container and the primary reading answers it -- no fallback tier
+    involved. Both assertions below held before that was true, for the other
+    reason: nothing was a container package, everything went back in the
+    pool, and M3 says nothing about a count of zero. The test above is the
+    one that tells the two apart. The corpus carries exactly one such
+    package, `metadata_iirds_sample-M5_false.rdf`."""
     report = runner.run(make_package(metadata=SELF_LOOP), runner.ALL_KINDS)
 
     assert (report.version, report.variant) == ("1.0", "A")
@@ -326,3 +354,33 @@ def test_the_newest_declared_version_is_found_by_number(declared, expected):
     from iirds_validate.context import _version_key
 
     assert sorted(declared, key=_version_key)[-1] == expected
+
+
+#: Two packages each declared part of the other. Neither is a container and
+#: neither is a root of what is present, so nothing is left to choose from --
+#: the shape that reaches the last fallback now that a self-loop does not.
+MUTUAL_NESTING = MINIMAL_RDF.replace(
+    '  <iirds:Package rdf:about="urn:test:package">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:title>Test package</iirds:title>\n'
+    '  </iirds:Package>\n',
+    '  <iirds:Package rdf:about="urn:test:aaa">\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:bbb"/>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package rdf:about="urn:test:bbb">\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:aaa"/>\n'
+    '  </iirds:Package>\n')
+
+
+def test_two_packages_nested_inside_each_other_still_declare_themselves(make_package):
+    """The last fallback, which the self-loop used to be the only thing to
+    reach. A path nothing exercises is a path nobody knows works, and this
+    one now needs a graph that could not occur by accident: each package
+    declared part of the other, so neither is a container and neither is a
+    root. Whatever the tie-break picks, the document still says 1.0 and it
+    is judged as 1.0."""
+    report = runner.run(make_package(metadata=MUTUAL_NESTING), runner.ALL_KINDS)
+
+    assert (report.version, report.variant) == ("1.0", "unrestricted")

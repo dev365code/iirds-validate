@@ -267,9 +267,20 @@ def package_nodes(graph: Graph) -> List:
 def container_packages(graph: Graph) -> List:
     """The packages that represent this container, in a fixed order.
 
-    A nested child is referenced by iirds:is-part-of-package; only a package
-    that is not part of another one stands for the container itself. M3 and
-    M8 read it the same way -- one predicate, one place, so a package cannot
+    A nested child is part of a *different* package. §6.2 draws the line with
+    that word -- the container's own instance "MUST NOT be a member of
+    another iiRDS package expressed by the property iirds:is-part-of-package"
+    -- and the same sentence stands unchanged in 1.0. Reading the bare
+    presence of the predicate as nesting let a package declared part of
+    itself claim the exemption §6.3 grants to a child, and that exemption
+    silences a MUST NOT: the same package drew M8 without the triple and
+    nothing with it.
+
+    The named parent is not required to be present. A nested child validated
+    on its own is still a child, and asking for its parent would report it
+    for being delivered alone.
+
+    M3 and M8 read it here -- one predicate, one place, so a package cannot
     be the container for one rule and a child for the next.
 
     Returns what it finds, including nothing: M3 has to be able to tell
@@ -277,7 +288,8 @@ def container_packages(graph: Graph) -> List:
     apart. Choosing what to do about an empty answer belongs to the caller.
     """
     return [pkg for pkg in package_nodes(graph)
-            if not any(graph.objects(pkg, T.is_part_of_package))]
+            if not any(parent != pkg
+                       for parent in graph.objects(pkg, T.is_part_of_package))]
 
 
 def _rooted_here(graph: Graph, packages: List) -> List:
@@ -309,9 +321,9 @@ def _detect(graph: Graph):
     parent is elsewhere -- something still has to answer, because the
     alternative is to judge a 1.0 document against 1.3 while its own
     declaration sits three lines away. Then the roots of what *is* present
-    answer, and only if that is empty too does everything: a package
-    declared part of itself lands there, which is why the self-loop needs no
-    case of its own.
+    answer, and only if that is empty too does everything -- which needs
+    packages nested inside each other, since a package part of itself is a
+    container and answers in the first tier.
 
     Where several candidates remain the first under the ordering answers.
     That is a fixed choice rather than a meaningful one, and in the fallback

@@ -127,3 +127,51 @@ def test_the_makefile_still_builds_pythonpath_from_that_variable():
     assert "$(%s)" % SDK_SRC_VAR in makefile, (
         "the Makefile no longer builds PYTHONPATH from %s, so the test above "
         "would skip for ever instead of checking anything" % SDK_SRC_VAR)
+
+
+# ---------------------------------------------------------------------------
+# The one piece of shared logic that is duplicated instead of imported
+#
+# `iirds.source_of` and `iirds_validate.package.entry_named` resolve the same
+# value the same way on purpose, and cannot be the same object yet: this
+# project's floor is an SDK release that does not carry the repaired
+# resolution. So the seam is held by a table instead of by `is`, until the
+# floor moves and `entry_named` becomes a call into the SDK.
+#
+# The difference the table allows is the documented one: a reader refuses to
+# resolve a value that escapes the package, and a validator answers None and
+# reports it. The *name* either resolves to must be identical.
+# ---------------------------------------------------------------------------
+
+#: Every shape the two have ever answered differently, plus the ordinary ones.
+SPELLINGS = (
+    "content/topic1.xhtml", "/content/topic1.xhtml", "./content/topic1.xhtml",
+    "content//topic1.xhtml", "content/extra/../topic1.xhtml", ".config/a.xhtml",
+    "content/a%20b.xhtml", "content/a%23b.xhtml", "content/%74opic1.xhtml",
+    "content/topic1.xhtml#section-2", "content/topic1.xhtml?revision=2",
+    "content/topic1.xhtml?revision=2#section-2", "//content/topic1.xhtml",
+    "http://example.com/a.xhtml", "https://example.com/a.xhtml",
+    "file:///etc/passwd", "mailto:someone@example.com",
+    "urn:uuid:2c2d4f2e-0000-0000-0000-000000000000", "content/a%3Ab.xhtml",
+    "", "   ", "..", "../outside.xhtml", "..\\..\\etc\\passwd",
+    "content/%2e%2e/%2e%2e/etc/passwd", "%2e%2e/%2e%2e/etc/passwd",
+    "content/%2e%2e/topic1.xhtml",
+)
+
+
+@pytest.mark.parametrize("spelling", SPELLINGS, ids=range(len(SPELLINGS)))
+def test_the_two_resolvers_answer_the_same_name(spelling):
+    from rdflib import Graph, Literal, URIRef
+
+    from iirds_validate.package import entry_named
+
+    node = URIRef("urn:test:rendition")
+    graph = Graph()
+    graph.add((node, iirds.IIRDS["source"], Literal(spelling)))
+    try:
+        theirs = iirds.source_of(graph, node)
+    except iirds.IirdsError:
+        theirs = None                 # the layer difference, and the only one
+    assert theirs == entry_named(spelling), (
+        "iirds.source_of and entry_named disagree about %r: %r vs %r"
+        % (spelling, theirs, entry_named(spelling)))

@@ -58,14 +58,18 @@ def entry_named(source: str) -> Optional[str]:
     """
     from urllib.parse import unquote
 
-    if "://" in source:
-        return None                          # somewhere else entirely
-    # Query and fragment cut by hand rather than through a URL parser: a value
-    # here is a path inside the container, and a parser reads `//content/a` as
-    # an authority named `content`, which turned that value into `a` -- a
-    # different file, silently.
+    # Query and fragment cut by hand rather than through a URL parser: a
+    # parser reads `//content/a` as an authority named `content`, which turns
+    # that value into `a` -- a different file, silently. That leaves `//`
+    # read as a path where the rest is read as a URL; docs/divergences.md
+    # records the whole reading and that deliberate seam in it.
     path = source.split("#", 1)[0].split("?", 1)[0]
+    # Decode before folding: `%5c` is a backslash, and posixpath.normpath
+    # leaves `..\..\` intact, so the oldest zip-slip spelling walks straight
+    # out of anything that folds too early or not at all.
     path = unquote(path).replace("\\", "/")
+    if ":" in path:
+        return None       # section 5.1.3: not a character a file name carries
     # lstrip takes a character set rather than a prefix, so a leading dot
     # would be eaten: ".config/a.xhtml" must not become "config/a.xhtml".
     name = posixpath.normpath(path.lstrip("/"))

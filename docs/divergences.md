@@ -380,6 +380,88 @@ checkable rather than aspirational:
   *runner* assigns the severity, because only it knows the profile. So the
   list above is one item long: L4.
 
+## `iirds:source` — a URL or a path? The standard says both, normatively
+
+
+This is the reading behind `package.entry_named()`, which every rule that
+looks for a file in the container goes through. It is a choice between two
+normative sentences, and it costs something either way, so it is written
+down here rather than left in a docstring.
+
+**For "URL".** §6.3, the only place the standard says what the value *is*,
+says it twice in one sentence, both MUSTs:
+
+> To identify the physical file, the property `iirds:source` MUST relate the
+> rendition to the **URL** of the physical file. The **URL** MUST be relative
+> to the root folder of the iiRDS package.
+
+And iiRDS 1.0 wrote two of its own examples as
+`<iirds:source rdf:resource="rendition/intro.mpeg"/>`. `rdf:resource` holds
+an RDF URI reference, so there the standard is putting the value in IRI
+space itself — where a space in a file name has to be `%20`, because a
+literal space cannot appear there at all. Both forms are gone from 1.3,
+without comment.
+
+**For "path".** Appendix A is normative too — §1 exempts only §2 and §4 —
+and it defines the same property as the
+
+> relative **path** of a file in an iiRDS package that contains the content
+> of a rendition
+
+with `Has Range: rdfs:Literal`. §5.1.3 calls the same object a path again.
+A plain literal has no encoding layer: a producer with a file named
+`a b.xhtml` writes `a b.xhtml`, because nothing in literal syntax asks for
+anything else.
+
+**What the corpus says: nothing.** Across the 130 vendored metadata
+documents and the packages under `fixtures/`, **1,395 `iirds:source` values
+carry no `%`, `#`, `?`, space or backslash** — and neither do the spec's own
+examples in either release. Every real value available is spelled the same
+under both readings. The corpus cannot decide this and neither can
+cross-validation: the reference tool never resolves the value against an
+archive at all.
+
+**The reading taken here is "URL"**, on the strength of §6.3 being the only
+sentence that says what the value is. So the value is percent-decoded and
+its fragment and query are cut before it is matched against the container.
+
+**What that costs.** §5.1.3 lists the characters a file or directory name
+may not contain — `/,”*:<>\` — and `%` and `#` are not among them. So:
+
+| character | legal in a name? | consequence of the URL reading |
+|---|---|---|
+| `:` | no | refusing a value that still holds one costs nothing |
+| `\` | no | folding backslashes costs nothing |
+| `%` | **yes** | a file named `a%20b.xhtml` cannot be addressed |
+| `#` | **yes** | a file named `a#b.xhtml` cannot be addressed |
+| `?` | yes as written | same, though the list is plainly a garbled Windows-reserved set and `?` is likely meant to be in it |
+
+The quietest case is a directory legally named `%2e%2e`: the value
+`content/%2e%2e/topic.xhtml` decodes to `content/../topic.xhtml` and names
+a *different* file without complaining. `iirds`'s own test suite records
+these three costs so they are not discovered by a user.
+
+**What the fragment cut is not.** A rendition that addresses part of a file
+does not put a fragment in `iirds:source`. §6.3.1 gives it
+`iirds:has-selector`, and the worked example (1.3 Example 15, 1.0
+Example 12) carries a whole-file `iirds:source` beside an
+`iirds:FragmentSelector` holding `xpointer(...)`. The fragment is cut
+because a URL's fragment is not part of its path, and for no other reason.
+
+**One place this is neither reading.** A value beginning `//` is treated as
+a path: `//content/a.xhtml` names `content/a.xhtml`. Under the URL reading
+`//content` is an authority and the value would name `a.xhtml` — a
+different file, silently. The authority is cut by hand rather than through
+a URL parser precisely to avoid that, so the value is read as a URL
+everywhere except the one place where doing so would resolve to the wrong
+file.
+
+**Not a security boundary.** Refusing a decoded `%2e%2e` escape aligns the
+guard with the reading; it closes nothing. `iirds.Package.open()` tests
+membership in the archive's entry list, and `DirectoryPackage` tests
+membership in a set built by walking under its own root, so a value that
+escapes never reaches a filesystem join in either project — encoded or not.
+
 ## Content rules: two readings the specification does not settle, and one it does
 
 Appendix B has no counterpart in the reference tool — it reads only

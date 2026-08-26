@@ -109,9 +109,11 @@ SPELLINGS = {
     "plain": "content/topic1.xhtml",
     "backslash": "content\\topic1.xhtml",
     "percent": "content/%74opic1.xhtml",
-    "percent-space": "content/%74opic1.xhtml",
+    "percent-twice": "content/%74opic%31.xhtml",
     "double-slash": "//content/topic1.xhtml",
     "dot-prefix": "./content/topic1.xhtml",
+    "fragment": "content/topic1.xhtml#top",
+    "query": "content/topic1.xhtml?revision=2",
 }
 
 SCRIPTED = ('<?xml version="1.0" encoding="UTF-8"?>'
@@ -140,5 +142,33 @@ def test_a_file_that_resolves_is_a_file_that_gets_read(make_package, spelling):
     package = make_package(metadata=metadata, content=(),
                            extra=(("content/topic1.xhtml", SCRIPTED),))
     fired = {f.rule.id for f in runner.check(package).findings}
-    assert "L2" in fired or "B2" in fired, (
-        "the source neither resolved nor was read: %s" % sorted(fired))
+    # Every spelling above names a file that is present, so the resolving
+    # branch is the one that has to be taken: B2 is the script in that file
+    # being seen. `L2 in fired or B2 in fired` was the first shape of this
+    # assertion, and it was weak twice over -- it passes on "the file is
+    # missing", which is the wrong answer rather than the other right one,
+    # and L2 is a lint rule that check() does not run at all, so that arm
+    # could never have been the one that carried it.
+    assert "B2" in fired, (
+        "the file this names is in the container and was not read: %s"
+        % sorted(fired))
+
+
+def test_l11_finds_the_file_the_other_rules_find(make_package):
+    """L11 reports a `.xhtml` file that no content rule examined, so it is
+    the last line against a file going both unchecked and unreported. It
+    resolved `iirds:source` its own way -- normalise the raw string, and
+    nothing else -- so a spelling the other layers resolve was, to L11, a
+    name matching no entry, and it went silent on exactly the packages it
+    exists for."""
+    metadata = MINIMAL_RDF.replace(
+        "<iirds:format>application/xhtml+xml</iirds:format>",
+        "<iirds:format>text/html</iirds:format>").replace(
+        "<iirds:source>content/topic1.xhtml</iirds:source>",
+        "<iirds:source>content\\%74opic1.xhtml</iirds:source>")
+    package = make_package(metadata=metadata, content=(),
+                           extra=(("content/topic1.xhtml", SCRIPTED),))
+    fired = _ids(package)
+    assert "L11" in fired, (
+        "the file is named .xhtml, is in the container, and no content rule "
+        "read it -- which is the whole of what L11 says: %s" % sorted(fired))

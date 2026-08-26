@@ -12,8 +12,6 @@ going to work.
 """
 from __future__ import annotations
 
-import posixpath
-
 from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
@@ -427,8 +425,12 @@ def l11_content_hidden_from_the_content_rules(ctx):
         if not declared or XHTML_FORMAT in declared:
             continue          # no format at all is M11's finding, not a second one here
         for source in ctx.values(rendition, T.source):
-            name = posixpath.normpath(str(source).lstrip("/"))
-            if name.lower().endswith(".xhtml") and ctx.package.has(name):
+            # entry_named, not a fourth normalisation: this rule exists to
+            # catch a file that no content rule read, so resolving the value
+            # differently from those rules is how it goes quiet on exactly
+            # the packages it is for.
+            name = entry_named(str(source))
+            if name and name.lower().endswith(".xhtml") and ctx.package.has(name):
                 yield Violation("this file is named .xhtml but is not declared as iiRDS "
                                 "XHTML5, so none of the content rules examined it",
                                 subject=name,

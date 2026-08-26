@@ -177,3 +177,55 @@ def test_the_report_is_byte_identical_across_hash_seeds(tmp_path):
         assert '"findings"' in out, out
         reports.add(out)
     assert len(reports) == 1, "%d distinct reports across five seeds" % len(reports)
+
+
+#: Two container packages side by side -- neither nested, so both survive
+#: into the pool and the choice between them is what has to be stable. M3
+#: reports the pair; detection still has to answer, and answer the same way
+#: twice. Plain RDF/XML: the instability is not a property of the encoding.
+SIBLING_PACKAGES = MINIMAL_RDF.replace(
+    "</rdf:RDF>",
+    '  <iirds:Package rdf:about="urn:test:aaa-other">\n'
+    '    <iirds:iiRDSVersion>1.0</iirds:iiRDSVersion>\n'
+    '    <iirds:formatRestriction>H</iirds:formatRestriction>\n'
+    '  </iirds:Package>\n</rdf:RDF>')
+
+
+def test_the_detected_version_is_the_same_across_hash_seeds(tmp_path):
+    """The axis above this one reaches the report; this one reaches the
+    *rule set*, which is chosen before any rule runs.
+
+    Detection reads a package off the graph, and graph order is not stable
+    between processes. Measured on the graph below: a parsed graph answers
+    an indexed lookup in document order, but copying it does not carry that
+    order over -- the copy is filled by iterating the original, which is not
+    ordered, and the copy then answers the same lookup in whatever order it
+    was filled. Every run copies, because merging the sources is how the one
+    graph is built, so nothing downstream may rely on graph order at all.
+
+    What that costs when detection does rely on it: the same bytes were
+    judged 1.3/H against one rule set and 1.0/H against another, and the
+    profile and the version came off two different packages.
+    """
+    import subprocess
+    import sys
+
+    package = build_package(tmp_path, "detect.iirds", metadata=SIBLING_PACKAGES)
+    script = (
+        "import json, sys;"
+        "sys.path[:0] = [%r];"
+        "from iirds_validate import runner;"
+        "r = runner.check(%r);"
+        "print(json.dumps([r.version, r.variant, r.checked, r.skipped]))"
+        % (str(ROOT / "src"), str(package)))
+
+    seen = set()
+    for seed in ("0", "1", "2", "3", "4", "5", "6"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        out = subprocess.run([sys.executable, "-c", script], env=env,
+                             capture_output=True, text=True, check=True).stdout
+        assert out.strip().startswith("["), out
+        seen.add(out)
+    assert len(seen) == 1, (
+        "%d different verdicts across seven hash seeds: %s"
+        % (len(seen), sorted(s.strip() for s in seen)))

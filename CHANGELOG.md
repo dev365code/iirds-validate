@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.4.3 — unreleased
+
+### Fixed
+
+- **Which package the version and the profile were read off.** That pair
+  chooses the ontology and the applicable rules, so reading it from the wrong
+  node changes what "valid" means for the whole run — before any rule runs.
+  Three things were wrong at once and each of them moved a verdict.
+
+  A package typed with a subclass it declares itself was not seen as a package
+  at all, so it had no version and no profile, and every handover rule stood
+  down: a package that fails one of them was reported clean. Section 7 permits
+  exactly that typing and asks a consumer to treat the instance as its parent
+  class, which the rules themselves already do.
+
+  A package *inside* the package set the container's profile. A nested child
+  declaring the handover profile switched seventeen handover MUSTs on against
+  a container that never claimed to be one.
+
+  And the answer changed between runs. Graph order is not stable across
+  processes, and detection took whichever package came first, so the same
+  bytes were judged against two different rule sets depending on the run. The
+  version and the profile were also accumulated separately, so a run could
+  answer with a pair no package in the container had ever declared.
+
+  Detection now reads both properties off one package, chosen the way M3 and
+  M8 already choose it — the one that is not part of another — under a fixed
+  order, closing over the subclasses the package declares. Where nesting
+  leaves nothing to choose from, every package is back in the pool: a package
+  validated on its own, or a fragment whose parent is elsewhere, still gets
+  its own declaration read rather than being judged against the newest
+  version in silence.
+
+### Changed
+
+- A package declaring two versions is now judged against the lower of them
+  rather than against whichever came first. M4 still reports the pair, so the
+  package does not pass either way; the lower one is the one that cannot hold
+  it to rules it may never have been subject to.
+
+- One vendored fixture is now reported with no declared version instead of
+  `1.0`. Its first package deliberately omits the property — its own comment
+  says so — and the `1.0` came from a second package beside it. The findings
+  are the same at either version.
+
 ## 0.4.2 — 2026-08-26
 
 ### Security

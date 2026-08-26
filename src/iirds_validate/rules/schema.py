@@ -11,6 +11,7 @@ from rdflib import URIRef
 from rdflib.namespace import RDF, RDFS
 
 from .. import terms as T
+from ..context import container_packages, package_nodes
 from ..model import DCTERMS, PACKAGE_BASE, Violation, is_absolute_iri, is_named
 from ..registry import rule
 
@@ -119,10 +120,11 @@ def m2_9(ctx):
 @rule("M3",
        fix="Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous.")
 def m3_exactly_one_package(ctx):
-    packages = ctx.instances_of(T.Package)
-    # A nested child package is referenced by iirds:is-part-of-package; only the
-    # package that is not part of another one represents this container.
-    own = [p for p in packages if not ctx.has(p, T.is_part_of_package)]
+    # One reading of "the package that represents this container", shared with
+    # M8 and with version detection, so a node cannot be the container for one
+    # of them and a nested child for the next.
+    packages = package_nodes(ctx.graph)
+    own = container_packages(ctx.graph)
     if not packages:
         yield Violation("metadata declares no iirds:Package for this container")
     elif len(own) > 1:
@@ -159,9 +161,7 @@ def m6_one_information_object(ctx):
 @rule("M8",
        fix="Remove the relations whose subject is the Package element for this container. The package cannot be a part of itself, and a consumer following those relations walks in a circle.")
 def m8_package_no_rendition(ctx):
-    for pkg in ctx.instances_of(T.Package):
-        if ctx.has(pkg, T.is_part_of_package):
-            continue
+    for pkg in container_packages(ctx.graph):
         if ctx.has(pkg, T.has_rendition):
             yield Violation("the iirds:Package representing this container must not be the "
                             "subject of iirds:has-rendition",

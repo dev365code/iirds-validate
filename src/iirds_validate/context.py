@@ -209,17 +209,94 @@ class Context:
         return self.ref(node)
 
 
+def _node_key(graph: Graph, node):
+    """A total order over package nodes that survives a new process.
+
+    Named nodes sort by IRI. A blank node cannot: rdflib mints its label
+    per parse, so sorting by it picks a different package tomorrow -- the
+    same reason `Context.ref` and `Context._content_key` exist. It sorts by
+    what it says instead, after the named ones. Blank objects are left out
+    of the digest so it cannot reach another minted label; two blank
+    packages saying the same thing therefore tie, and being indistinguishable
+    they answer the same version either way.
+    """
+    if isinstance(node, URIRef):
+        return (0, str(node))
+    said = sorted("%s %s" % (p, o) for p, o in graph.predicate_objects(node)
+                  if not isinstance(o, BNode))
+    return (1, hashlib.sha256("\n".join(said).encode("utf-8")).hexdigest())
+
+
+def package_nodes(graph: Graph) -> List:
+    """Every iirds:Package in the graph, in a fixed order.
+
+    Closes over the subclasses the package declares, because §7 lets a
+    package subclass an iiRDS class and requires a consumer to treat the
+    instance as its parent. The ontology is deliberately not consulted:
+    this runs before one is chosen, and tests/test_version_handling.py pins
+    the premise that makes that complete -- the standard declares no
+    subclass of iirds:Package.
+
+    Ordered because graph order is not stable between processes. A parsed
+    graph answers an indexed lookup in document order, but the merge that
+    builds this graph fills a fresh one by iterating the parse, which is
+    not ordered, so the order that reaches here changes with the hash seed.
+    """
+    out, seen = [], set()
+    for cls in sorted(subclasses_of(graph, T.Package), key=str):
+        for subject in graph.subjects(RDF.type, cls):
+            if subject not in seen:
+                seen.add(subject)
+                out.append(subject)
+    return sorted(out, key=lambda node: _node_key(graph, node))
+
+
+def container_packages(graph: Graph) -> List:
+    """The packages that represent this container, in a fixed order.
+
+    A nested child is referenced by iirds:is-part-of-package; only a package
+    that is not part of another one stands for the container itself. M3 and
+    M8 read it the same way -- one predicate, one place, so a package cannot
+    be the container for one rule and a child for the next.
+
+    Returns what it finds, including nothing: M3 has to be able to tell
+    "no container package" from "one", and a fallback here would take that
+    apart. Choosing what to do about an empty answer belongs to the caller.
+    """
+    return [pkg for pkg in package_nodes(graph)
+            if not any(graph.objects(pkg, T.is_part_of_package))]
+
+
 def _detect(graph: Graph):
-    """Read iirds:iiRDSVersion / iirds:formatRestriction off the package node."""
-    declared, variant = None, None
-    for pkg in graph.subjects(RDF.type, T.Package):
-        v = graph.value(pkg, T.iiRDSVersion)
-        if v is not None and declared is None:
-            declared = str(v).strip()
-        r = graph.value(pkg, T.formatRestriction)
-        if r is not None and variant is None:
-            variant = str(r).strip()
-    return declared, (variant or "unrestricted")
+    """Read iirds:iiRDSVersion / iirds:formatRestriction off one package.
+
+    One package: read with an accumulator each, a run could answer with a
+    version off one package and a profile off another -- a pair no package
+    in the container ever declared.
+
+    Which one: the container's, not a nested child's. A child declares its
+    own profile, and reading it as the container's turns the handover MUSTs
+    on against a package that never claimed to be one. When nesting leaves
+    nothing -- a child validated on its own, or a fragment whose parent is
+    elsewhere -- every package is back in the pool, because the alternative
+    is to judge a 1.0 document against 1.3 while its own declaration sits
+    three lines away. That fallback is also why a package declared part of
+    itself needs no special case.
+
+    Where several remain, M3 reports the ambiguity and this takes the first;
+    where one package declares several versions, M4 reports that and this
+    takes the lowest, which cannot hold a package to rules it may never have
+    been subject to.
+    """
+    pool = container_packages(graph) or package_nodes(graph)
+    if not pool:
+        return None, "unrestricted"
+    pkg = pool[0]
+    versions = sorted(str(v).strip() for v in graph.objects(pkg, T.iiRDSVersion))
+    variants = sorted(str(v).strip() for v in graph.objects(pkg, T.formatRestriction))
+    # `or "unrestricted"` rather than a default: an empty formatRestriction is
+    # not a restriction, and S5 is silent about one in both encodings.
+    return (versions[0] if versions else None), (variants[0] if variants else "") or "unrestricted"
 
 
 

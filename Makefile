@@ -22,6 +22,13 @@ PYTHON       ?= python3
 # one, which is the same accident this exists to remove.
 export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests$(if $(IIRDS_SRC),:$(IIRDS_SRC))
 
+# The differential gate is an opt-in extra and silent when absent, so a run
+# without it can report the tree good while the strongest cross-check here --
+# two independent implementations of every rule, compared -- was switched off.
+# Under make it is not optional. tests/test_ci_parity.py checks this line
+# exists, because a gate whose switch nobody checks is a gate that is off.
+export IIRDS_REQUIRE_SHACL := 1
+
 .PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean
 
 help:
@@ -101,7 +108,7 @@ fixtures/bad.iirds:
 	$(PYTHON) tools/make_fixture_package.py $@ --broken missing-format
 
 dev:
-	$(PYTHON) -m pip install --quiet ruff==$(RUFF_VERSION) pytest
+	$(PYTHON) -m pip install --quiet ruff==$(RUFF_VERSION) pytest "pyshacl==0.40.*"
 
 clean:
 	rm -rf fixtures dist build .pytest_cache

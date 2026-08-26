@@ -105,3 +105,19 @@ def test_the_readme_names_the_platforms_ci_actually_runs():
     assert missing == [], (
         "README.md says this runs on %s and no CI row does: a claim nobody "
         "checks is a claim that goes wrong quietly" % ", ".join(missing))
+
+
+def test_make_actually_switches_the_differential_gate_on():
+    """conftest.shacl_or_skip reads IIRDS_REQUIRE_SHACL and turns a missing
+    pyshacl from a skip into a failure. It was read in one place and set in
+    none: the commit that added it said "under make the absence is now a
+    failure", and it was not. A gate whose switch nobody checks is a gate
+    that is off, so the switch is checked here."""
+    assert re.search(r"(?m)^export IIRDS_REQUIRE_SHACL\s*:?=\s*1\s*$", MAKEFILE), (
+        "the Makefile does not export IIRDS_REQUIRE_SHACL, so `make check` "
+        "skips the differential gate in silence when pyshacl is absent")
+
+
+def test_make_dev_installs_what_make_check_requires():
+    """Requiring it is only reasonable if `make dev` provides it."""
+    assert "pyshacl" in MAKEFILE, "make dev does not install pyshacl"

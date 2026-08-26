@@ -7,7 +7,6 @@
 - **Which package the version and the profile were read off.** That pair
   chooses the ontology and the applicable rules, so reading it from the wrong
   node changes what "valid" means for the whole run — before any rule runs.
-  Three things were wrong at once and each of them moved a verdict.
 
   A package typed with a subclass it declares itself was not seen as a package
   at all, so it had no version and no profile, and every handover rule stood
@@ -15,30 +14,55 @@
   exactly that typing and asks a consumer to treat the instance as its parent
   class, which the rules themselves already do.
 
-  A package *inside* the package set the container's profile. A nested child
+  A package *inside* the package set the container's profile — a nested child
   declaring the handover profile switched seventeen handover MUSTs on against
-  a container that never claimed to be one.
+  a container that never claimed to be one. That holds however deep the
+  nesting goes: where a document carries a child and its parent but not the
+  grandparent, the root of what is present answers, not whichever package
+  sorts first.
 
   And the answer changed between runs. Graph order is not stable across
-  processes, and detection took whichever package came first, so the same
-  bytes were judged against two different rule sets depending on the run. The
-  version and the profile were also accumulated separately, so a run could
-  answer with a pair no package in the container had ever declared.
+  processes, so the same bytes were judged against two different rule sets
+  depending on the run. The version and the profile were also accumulated
+  separately, so a run could answer with a pair no package in the container
+  had ever declared. Both properties now come off one package, chosen under a
+  fixed order.
 
-  Detection now reads both properties off one package, chosen the way M3 and
-  M8 already choose it — the one that is not part of another — under a fixed
-  order, closing over the subclasses the package declares. Where nesting
-  leaves nothing to choose from, every package is back in the pool: a package
-  validated on its own, or a fragment whose parent is elsewhere, still gets
-  its own declaration read rather than being judged against the newest
-  version in silence.
+- **Two blank nodes that said different things could be given one name.** The
+  name is a digest of what the node says, and the digest joined its parts with
+  a separator — so a value holding that separator and the text of a plausible
+  neighbour spelled the end of its own field. Two packages then tied, and a
+  tie left them in graph order, which is the order the naming exists to
+  escape. The digest also left blank-node objects out entirely, so a package
+  reaching a blank node and a package reaching nothing were one name too. A
+  report could complain of two packages and name one of them twice.
+
+- **L7 took its exemption away from the packages that use section 7.** A
+  package is exempt from "every information unit should have a title", and the
+  exemption was claimed by comparing types — so a package typed with a
+  subclass it declares itself lost it and was reported for having no title,
+  while the published shapes stayed silent.
+
+- **L11 could not find the file every other rule found.** It reports a file
+  named `.xhtml` that no content rule examined, and it resolved
+  `iirds:source` its own way, so a spelling the other rules resolve was, to
+  L11, a name matching no entry. It went quiet on exactly the packages it
+  exists for.
 
 ### Changed
 
-- A package declaring two versions is now judged against the lower of them
-  rather than against whichever came first. M4 still reports the pair, so the
-  package does not pass either way; the lower one is the one that cannot hold
-  it to rules it may never have been subject to.
+- **A package declaring two versions is judged against the newest of them**,
+  not the lowest. M4 reports the pair either way; what the newer reading keeps
+  is the finding. A 1.3 package breaking a 1.1+ MUST could otherwise silence
+  that finding by declaring 1.0 beside its own version, and a missing version
+  already falls back to the newest for the same reason — nothing passes by
+  silence. Versions are compared as numbers rather than as text.
+
+- **L2 says which of three silences it met.** A source naming somewhere
+  outside the container, one naming nothing, and one climbing out of the
+  package are different things, and all three were reported as "escapes the
+  package root". L2 now stays quiet about the first — that is M9's finding,
+  and it is not a path that went wrong — and names the other two.
 
 - One vendored fixture is now reported with no declared version instead of
   `1.0`. Its first package deliberately omits the property — its own comment

@@ -413,9 +413,9 @@ A plain literal has no encoding layer: a producer with a file named
 `a b.xhtml` writes `a b.xhtml`, because nothing in literal syntax asks for
 anything else.
 
-**What the corpus says: nothing.** Across the 130 vendored metadata
-documents and the packages under `fixtures/`, **1,395 `iirds:source` values
-carry no `%`, `#`, `?`, space or backslash** — and neither do the spec's own
+**What the corpus says: nothing.** Across the 97 that parse of the 130
+vendored metadata documents, plus the three packages under `fixtures/`,
+**1,395 `iirds:source` values carry no `%`, `#`, `?`, space or backslash** — and neither do the spec's own
 examples in either release. Every real value available is spelled the same
 under both readings. The corpus cannot decide this and neither can
 cross-validation: the reference tool never resolves the value against an

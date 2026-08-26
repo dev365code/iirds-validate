@@ -36,6 +36,64 @@ MAX_CONTENT_BYTES = 64 * 1024 * 1024
 _ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
 XHTML_NS = "{http://www.w3.org/1999/xhtml}"
 
+#: Byte order marks, longest first, because a UTF-32 mark begins with a
+#: UTF-16 one and the order is what tells them apart.
+_BOMS = ((b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"),
+         (b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"),
+         (b"\xef\xbb\xbf", "utf-8-sig"))
+
+#: An encoding declaration that survived a decode would contradict the bytes
+#: it is attached to, so it goes with the encoding it named.
+_DECLARED_ENCODING = re.compile(r'(<\?xml[^>]*?)\s+encoding\s*=\s*(["\'])[^"\']*\2')
+
+
+def _sniff(raw: bytes):
+    """The encoding the parser will take an unmarked document for, or None.
+
+    XML requires a byte order mark on a UTF-16 document and the parser does
+    not insist, autodetecting instead — so a content file can be UTF-16 to
+    the parser and opaque bytes to the guard above it. That is how
+    `<!ENTITY` written UTF-16 walked past a pattern that only ever matches
+    UTF-8, and had its declarations expanded by the parser the refusal
+    exists to keep away from them.
+
+    Decided on the *shape* of the first four bytes, not on what they are: a
+    document may open with whitespace, a comment or a processing
+    instruction, so keying on `<` keys on the fixtures. Four bytes and not
+    two, because unmarked UTF-32-LE also begins `3C 00` — taking it for
+    UTF-16 would hand the parser text riddled with nulls while claiming to
+    understand an encoding it refuses.
+    """
+    if len(raw) < 4:
+        return None
+    null = tuple(byte == 0 for byte in raw[:4])
+    if null in ((False, True, True, True), (True, True, True, False)):
+        return None                                 # unmarked UTF-32
+    if null == (False, True, False, True):
+        return "utf-16-le"
+    if null == (True, False, True, False):
+        return "utf-16-be"
+    return None
+
+
+def _as_parsed(raw: bytes) -> bytes:
+    """One document as UTF-8, decided the way the parser decides it.
+
+    The guard below reads these bytes. If this disagrees with the parser
+    about what the document says, the guard is inspecting a different
+    document from the one that gets parsed. Bytes that will not decode as
+    the encoding they claim come back untouched: the parser refuses them
+    too, and refusing here instead would invent a verdict.
+    """
+    encoding = next((e for bom, e in _BOMS if raw.startswith(bom)), None) or _sniff(raw)
+    if encoding is None:
+        return raw
+    try:
+        text = raw.decode(encoding)
+    except UnicodeDecodeError:
+        return raw
+    return _DECLARED_ENCODING.sub(r"\1", text, count=1).encode("utf-8")
+
 #: B.5.1 to B.5.9. The complete set, transcribed from the specification rather
 #: than from an HTML5 reference — iiRDS XHTML5 is a subset and the difference
 #: is the point.
@@ -113,7 +171,10 @@ def _refusal(ctx, name):
     raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
     if oversize:
         return "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
-    if _ENTITY_DECL.search(raw):
+    # Decoded the way the parser will read it before the pattern reads a byte
+    # of it: the pattern matches UTF-8 and the parser reads UTF-16 as well, so
+    # the same declaration in another encoding went straight past.
+    if _ENTITY_DECL.search(_as_parsed(raw)):
         return "the document declares XML entities"
     return None
 

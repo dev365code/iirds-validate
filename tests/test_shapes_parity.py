@@ -609,6 +609,29 @@ def test_a_proprietary_subclass_is_its_parent_in_both_encodings(tmp_path):
     assert "L7" in assert_parity(tmp_path, "subclass.iirds", subclassed)
 
 
+def test_a_proprietary_package_is_exempt_in_both_encodings(tmp_path):
+    # The other direction of the same reading, and the one the test above
+    # cannot reach. L7 exempts iirds:Package -- a package is not a thing
+    # with a title in the sense the rule means -- and SHACL gets that
+    # exemption by definition too, because sh:class follows the data
+    # graph's rdfs:subClassOf. Python compared rdf:type values, so a
+    # package typed with a subclass it declares itself lost the exemption
+    # and was reported for having no title while the shapes stayed silent.
+    subclassed = MINIMAL_RDF.replace(
+        '  <iirds:Package rdf:about="urn:test:package">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:title>Test package</iirds:title>\n'
+        '  </iirds:Package>\n',
+        '  <rdf:Description rdf:about="urn:acme:DeliveryPackage">\n'
+        '    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Package"/>\n'
+        '  </rdf:Description>\n'
+        '  <rdf:Description rdf:about="urn:test:package">\n'
+        '    <rdf:type rdf:resource="urn:acme:DeliveryPackage"/>\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </rdf:Description>\n')
+    assert "L7" not in assert_parity(tmp_path, "pkgsubclass.iirds", subclassed)
+
+
 # ---------------------------------------------------------------------------
 # 6d. Divergences, pinned. The first repair fixed eighteen instances;
 # a later review found the *classes* those instances belonged to

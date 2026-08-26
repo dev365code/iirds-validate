@@ -303,8 +303,12 @@ def l7_untitled_information_units(ctx):
     """Valid without one, unusable without one."""
     for unit in ctx.information_units():
         # iirds:Package is itself a subclass of iirds:InformationUnit, but a
-        # package is not a thing with a title in the same sense.
-        if T.Package in ctx.values(unit, RDF.type):
+        # package is not a thing with a title in the same sense. Asked as a
+        # closure, not as a type comparison: section 7 lets a package declare
+        # its own subclass of iirds:Package, and comparing rdf:type values
+        # took the exemption away from exactly the packages that used it --
+        # while the shape kept it, because sh:class follows subClassOf.
+        if ctx.is_instance(unit, T.Package):
             continue
         if not ctx.has(unit, T.title):
             types = sorted(str(t).split("#")[-1] for t in ctx.values(unit, RDF.type))

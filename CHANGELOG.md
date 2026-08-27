@@ -136,7 +136,16 @@
   holding any sixteen bytes would otherwise answer it and read as evidence.
   The cost of one reading of "highest level" is named in
   `docs/divergences.md`.
-  192 rules, 142 SHACL shapes. Coverage of the standard: 23 of 314.
+
+- **A handover package that nests is refused.** Two sentences said it and no
+  rule claimed either: "an iiRDS/H package MUST NOT contain another iiRDS ZIP
+  archive" (§8.3.1.2) and "iiRDS/H packages MUST use this variant of hierarchy
+  formation and MUST NOT contain nested packages" (§6.7.3). **R9** reports
+  both sides this validator can see — a nested container in the archive, and a
+  nested package declared in the metadata — because a package can breach
+  either alone. Unrestricted packages are untouched: §8.3.1.2 opens by
+  permitting nesting for them by name.
+  193 rules, 142 SHACL shapes. Coverage of the standard: 25 of 314.
 
 - **The sentence no single container can decide is recorded as such.** The
   other §5.3 prohibition — a nested package must not carry metadata about the

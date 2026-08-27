@@ -549,3 +549,56 @@ def test_r8_is_silent_when_nothing_is_declared_nested(tmp_path):
     """A container carrying no nesting declaration owes no nested container,
     and one carrying a stray .iirds is not thereby a parent."""
     assert "R8" not in with_nested(tmp_path, "r8_none.iirds", "")
+
+
+#: The container's own package declaring the handover profile, so the run is
+#: read as iiRDS/H. Nothing else about the handover profile matters here.
+HANDOVER_HEAD = HEAD.replace(
+    "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+    "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+    "    <iirds:formatRestriction>H</iirds:formatRestriction>\n")
+
+#: One nested child declared the way §6.3.3 asks, which is legal in an
+#: unrestricted package and forbidden in a handover one.
+A_NESTED_CHILD = ('  <iirds:Package rdf:about="urn:test:nested">\n'
+                  '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+                  '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n'
+                  '  </iirds:Package>\n')
+
+
+def handover_ids(tmp_path, name, body, entries=()):
+    metadata = (HANDOVER_HEAD + body + "</rdf:RDF>\n").replace(
+        'xmlns:iirds=', EXTRA_NS + ' xmlns:iirds=', 1)
+    package = build_package(tmp_path, name, metadata=metadata, extra=entries)
+    return {f.rule.id for f in runner.check(package).findings}
+
+
+def test_r9_refuses_a_nested_package_declared_in_a_handover_package(tmp_path):
+    """§6.7.3: "iiRDS/H packages MUST use this variant of hierarchy formation
+    and MUST NOT contain nested packages." Component trees are the handover
+    profile's way of saying what is inside what, and nesting is the thing it
+    replaces. Neither this sentence nor §8.3.1.2's was claimed by any rule."""
+    assert "R9" in handover_ids(tmp_path, "r9_declared.iirds", A_NESTED_CHILD)
+
+
+def test_r9_refuses_a_nested_archive_in_a_handover_package(tmp_path):
+    """§8.3.1.2: "an iiRDS/H package MUST NOT contain another iiRDS ZIP
+    archive." The other half, and the archive half: a handover container
+    carrying a nested container is refused even when its metadata declares
+    nothing, because the sentence is about the archive."""
+    where = tmp_path / "inner9"
+    where.mkdir(parents=True, exist_ok=True)
+    inner = build_package(where, "inner.iirds").read_bytes()
+    assert "R9" in handover_ids(tmp_path, "r9_archive.iirds", "",
+                                entries=(("content/inner.iirds", inner),))
+
+
+def test_r9_leaves_an_unrestricted_package_alone(tmp_path):
+    """§8.3.1.2 opens by permitting exactly this: "While unrestricted iiRDS
+    packages MAY be nested by nesting iiRDS ZIP archives in each other for
+    compatibility reasons". The prohibition is the handover profile's."""
+    assert "R9" not in with_nested(tmp_path, "r9_unrestricted.iirds", A_NESTED_CHILD)
+
+
+def test_r9_is_silent_about_a_handover_package_that_nests_nothing(tmp_path):
+    assert "R9" not in handover_ids(tmp_path, "r9_plain.iirds", "")

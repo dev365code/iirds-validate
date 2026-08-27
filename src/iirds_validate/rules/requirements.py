@@ -366,3 +366,54 @@ def r8_a_declared_nested_package_is_in_the_archive(ctx):
                         subject=ctx.ref(pkg),
                         detail="no entry named *.iirds opens the way section 5.2 says "
                                "an iiRDS ZIP archive opens")
+
+
+@rule("R9", kind="container", prio="MUST NOT", versions=("1.3",), variants=("H",),
+      title="a handover package must not nest another package",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#nesting-of-packages",
+      covers=("x8-3-1-2-nesting-of-packages#2",
+              "x6-7-3-packages-related-to-component-trees#5"),
+      diagnosis="cause",
+      fix="Remove the nested container from the archive and the iirds:Package that "
+          "declares it, and model the hierarchy with a component tree instead: relate "
+          "the information units to iirds:Component instances and link those with "
+          "iirds:relates-to-component, which is what the handover profile uses to say "
+          "what is inside what. If nesting is really needed, the package is not an "
+          "iiRDS/H package and must not declare that restriction.")
+def r9_a_handover_package_does_not_nest(ctx):
+    """"an iiRDS/H package MUST NOT contain another iiRDS ZIP archive"
+    (section 8.3.1.2), and "iiRDS/H packages MUST use this variant of
+    hierarchy formation and MUST NOT contain nested packages" (section 6.7.3).
+
+    Two sentences saying one thing from the two sides this validator can see,
+    so both are reported here and both branches run: the archive may carry no
+    nested container, and the metadata may declare none. A package can breach
+    either alone -- an archive with a nested container whose metadata says
+    nothing, or metadata declaring a child that was never packed -- so neither
+    branch stands in for the other.
+
+    The opening clause of section 8.3.1.2 is why this is variant-gated rather
+    than general: "While unrestricted iiRDS packages MAY be nested by nesting
+    iiRDS ZIP archives in each other for compatibility reasons". Nesting is
+    permitted by name outside the handover profile.
+
+    Version-gated to 1.3 because the cached 1.0 release has no handover
+    profile at all -- the string iiRDS/H does not occur in it.
+
+    What this does not reach: a container whose own package does not declare
+    the restriction is not read as a handover package, so a document that
+    hides its profile on a package it also says is nested is judged
+    unrestricted and this stands down. That is the container reading, and it
+    is answered by R8 rather than here.
+    """
+    for name in nested_containers(ctx.package):
+        yield Violation("a handover package must not contain another iiRDS ZIP archive",
+                        subject=name,
+                        detail="section 8.3.1.2; use a component tree for the hierarchy")
+    declared = set(package_nodes(ctx.graph)).difference(container_packages(ctx.graph))
+    for pkg in sorted(declared, key=ctx.ref):
+        yield Violation("a handover package must not declare a nested package",
+                        subject=ctx.ref(pkg),
+                        detail="section 6.7.3; the handover profile forms hierarchies "
+                               "with component trees instead")

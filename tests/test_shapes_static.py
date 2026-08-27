@@ -52,7 +52,7 @@ def test_the_census_numbers_hold():
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 21
     assert counts["deferred_v1.1"] == 6
-    assert counts["not_expressible"] == 41
+    assert counts["not_expressible"] == 42
     assert counts["noop"] == 1
 
 
@@ -193,12 +193,12 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
     assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
     rules = len(all_rules())
-    assert "41 of the %d rules" % rules in readme
-    assert str(len(MANIFEST["not_expressible"])) == "41"
+    assert "42 of the %d rules" % rules in readme
+    assert str(len(MANIFEST["not_expressible"])) == "42"
     # The 52-rule remainder is broken out by category, and the five deferred
     # iiRDS/H MUSTs are named -- a reader under H must know to keep the
     # Python validator in the loop.
-    assert "50 of the %d" % rules in readme
+    assert "51 of the %d" % rules in readme
     assert len(MANIFEST["deferred_v1.1"]) == 6
     # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
     # that once demanded they be named as missing now demands the opposite.

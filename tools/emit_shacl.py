@@ -422,7 +422,7 @@ for _rid in ("S1", "S2", "S3"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
 for _rid in ("S6", "S7", "S8"):
     NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records"
-for _rid in ("L2", "L11", "L12", "R8"):
+for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
 

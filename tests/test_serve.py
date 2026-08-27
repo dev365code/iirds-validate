@@ -732,3 +732,100 @@ def test_a_boundary_split_across_two_chunks_is_still_seen_whole(tmp_path, server
             len(seen["bytes"]), len(payload),
             next((i for i, (a, b) in enumerate(zip(seen["bytes"], payload)) if a != b),
                  min(len(seen["bytes"]), len(payload)))))
+
+
+# ---------------------------------------------------------------------------
+# How many drops the process will check at once.
+# ---------------------------------------------------------------------------
+
+def test_the_process_checks_a_bounded_number_of_drops_at_once(tmp_path, monkeypatch):
+    """A thread per request with nothing above it: measured, thirty-two posts
+    left forty-six threads standing, each one a whole validation run. The
+    same-origin check keeps other pages out, but the page's own reader can
+    drop a folder of files at once, and a folder is not an attack.
+
+    Counted from inside the handler rather than with `threading.active_count()`,
+    which also counts this test's own client threads -- and with every
+    request held open until all have arrived, because a peak polled from
+    outside is only as real as the polling window: the first version of this
+    measurement saw two threads for eight posts that had simply finished
+    between two samples.
+    """
+    import threading as _threading
+
+    gate = _threading.Event()
+    inside = {"now": 0, "peak": 0}
+    lock = _threading.Lock()
+
+    def slow(name, payload):
+        with lock:
+            inside["now"] += 1
+            inside["peak"] = max(inside["peak"], inside["now"])
+        gate.wait(timeout=30)
+        with lock:
+            inside["now"] -= 1
+        return "held\n", 0, {"package": name}
+
+    monkeypatch.setattr(serve, "verdict", slow)
+    httpd = serve.build_server("127.0.0.1", 0)
+    _threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = "http://127.0.0.1:%d" % httpd.server_address[1]
+    package = build_package(tmp_path, "many.iirds").read_bytes()
+
+    waves = serve.MAX_CONCURRENT_CHECKS + 8
+    clients = [_threading.Thread(target=_post, args=(base + "/check", "many.iirds", package))
+               for _ in range(waves)]
+    try:
+        for client in clients:
+            client.start()
+        deadline = _threading.Event()
+        deadline.wait(timeout=2)          # let every request arrive and queue
+        assert inside["peak"] <= serve.MAX_CONCURRENT_CHECKS, inside
+        assert inside["peak"] >= 1, "nothing reached the checker at all"
+    finally:
+        gate.set()
+        for client in clients:
+            client.join(timeout=30)
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_a_drop_that_crashes_the_checker_gives_its_slot_back(tmp_path, monkeypatch):
+    """The slot is held with `with`, so a checker that raises releases it.
+    Stated as a test rather than trusted, because the alternative failure is
+    quiet: one bad drop would eat a slot for the life of the process, and
+    after as many bad drops as there are slots every good one would wait for
+    ever with nothing in the log to say why."""
+    import threading as _threading
+
+    calls = {"n": 0}
+
+    def crashing(name, payload):
+        calls["n"] += 1
+        raise RuntimeError("the checker fell over")
+
+    monkeypatch.setattr(serve, "verdict", crashing)
+    httpd = serve.build_server("127.0.0.1", 0)
+    _threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = "http://127.0.0.1:%d" % httpd.server_address[1]
+    package = build_package(tmp_path, "crash.iirds").read_bytes()
+    try:
+        for _ in range(serve.MAX_CONCURRENT_CHECKS + 2):
+            status, body = _post(base + "/check", "crash.iirds", package)
+            assert status == 200 and json.loads(body)["exit"] == 2
+        assert calls["n"] == serve.MAX_CONCURRENT_CHECKS + 2, calls
+
+        # Every slot has been through a crash. A drop that works must still
+        # get one, promptly -- a leaked slot shows up here as a timeout.
+        monkeypatch.setattr(serve, "verdict", lambda n, p: ("fine\n", 0, {"package": n}))
+        finished = _threading.Event()
+
+        def good():
+            _post(base + "/check", "good.iirds", package)
+            finished.set()
+
+        _threading.Thread(target=good, daemon=True).start()
+        assert finished.wait(timeout=10), "a slot was never given back"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

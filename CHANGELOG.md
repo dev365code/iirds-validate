@@ -248,6 +248,16 @@
   thirty-two megabytes as a bandage over the parse, is back at a quarter
   gigabyte.
 
+- **The drop page checks a bounded number of files at once.** A thread per
+  request with nothing above it: measured, thirty-two posts left forty-six
+  threads standing, each a whole validation run. The same-origin check keeps
+  other pages out, but the page's own reader can drop a folder of files, and
+  a folder is not an attack. Four run at a time now and the rest wait for a
+  slot — their bodies are already on disk, which is cheap, and the reader
+  asked for them. A checker that crashes gives its slot back, which is stated
+  as a test rather than trusted: the quiet alternative was one bad drop
+  eating a slot for the life of the process.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

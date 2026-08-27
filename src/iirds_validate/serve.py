@@ -29,6 +29,7 @@ import re
 import secrets
 import socket
 import tempfile
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Tuple
 
@@ -46,6 +47,15 @@ from . import report as report_module
 #: packages. A quarter gigabyte is a real package; the command line has no
 #: limit at all because it opens the file where it lies.
 MAX_UPLOAD_BYTES = 256 * 1024 * 1024
+
+#: How many drops the process will check at once. A thread per request with
+#: nothing above it: measured, thirty-two posts left forty-six threads
+#: standing, each one a whole validation run over the same graph. The
+#: same-origin check keeps other pages out, but this page's own reader can
+#: drop a folder of files, and a folder is not an attack. Excess drops wait
+#: for a slot rather than being refused -- their bodies are already on disk,
+#: which is cheap, and the reader asked for them.
+MAX_CONCURRENT_CHECKS = 4
 
 #: The page is one path and one response, assembled from the files under
 #: data/web/ at request time. Split for editing, not for serving: a stylesheet
@@ -273,7 +283,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._fail(400, "%s\n" % exc)
             return
         try:
-            text, code, machine = verdict(name, spool)
+            with self.server.checks:              # type: ignore[attr-defined]
+                text, code, machine = verdict(name, spool)
         except Exception as exc:                  # a crash is not an answer
             body = json.dumps({"text": "could not read %s: %s\n" % (name, exc),
                                "exit": 2, "report": None}, ensure_ascii=False)
@@ -483,6 +494,10 @@ def build_server(host: str = "127.0.0.1", port: int = 0,
     server = _ServerV6 if ipaddress.ip_address(address).version == 6 else _ServerV4
     httpd = server((address, port), _Handler)
     httpd.verbose = verbose                       # type: ignore[attr-defined]
+    # Bounded, not plain: a release without an acquire is a bug worth an
+    # exception rather than a slot that was never there.
+    httpd.checks = threading.BoundedSemaphore(   # type: ignore[attr-defined]
+        MAX_CONCURRENT_CHECKS)
     return httpd
 
 

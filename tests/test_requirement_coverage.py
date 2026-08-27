@@ -13,6 +13,7 @@ embarrassing and was never coverage of the standard either.
 from __future__ import annotations
 
 import json
+import pathlib
 from pathlib import Path
 
 import pytest
@@ -206,3 +207,42 @@ def test_the_scope_document_publishes_the_coverage_it_has():
     assert int(found.group(2)) == INDEX["absolute"], (
         "docs/scope.md says %s absolute requirements and the index has %d"
         % (found.group(2), INDEX["absolute"]))
+
+
+def test_the_scope_document_counts_the_excused_obligations_correctly():
+    """The sentence shipped saying "Two obligations" and then listed two and
+    one. A count written in words is not read by the gate that reads the
+    coverage figure beside it, which is how it got out; this reads it."""
+    import pathlib
+    import re
+
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE, NOT_DECIDABLE_ALONE
+
+    words = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six"}
+    total = len(NOT_ABOUT_THE_PACKAGE) + len(NOT_DECIDABLE_ALONE)
+    scope = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "scope.md").read_text("utf-8")
+
+    m = re.search(r"^\s*(\w+) obligations sit outside the numerator", scope, re.M)
+    assert m, "docs/scope.md no longer counts the excused obligations"
+    assert m.group(1) == words[total], \
+        "docs/scope.md says %s and the two lists hold %d" % (m.group(1), total)
+    assert words[len(NOT_ABOUT_THE_PACKAGE)] + " are addressed to reading" in scope
+
+
+def test_the_published_command_reports_both_excuse_lists():
+    """docs/scope.md points a reader at tools/requirement_coverage.py and says
+    both lists are there. The tool knew one of them: it went on printing the
+    undecidable sentence as an unmapped gap while the documents beside it
+    called the same id excused, so the two disagreed in public."""
+    import subprocess
+    import sys
+
+    out = subprocess.run(
+        [sys.executable, "tools/requirement_coverage.py",
+         "--section", "x5-3-nested-iirds-packages"],
+        cwd=str(pathlib.Path(__file__).resolve().parents[1]),
+        capture_output=True, text=True, check=True).stdout
+
+    assert "cannot be decided by anything holding one container" in out, out
+    assert "x5-3-nested-iirds-packages#2" not in out, \
+        "the excused sentence is still printed as an unmapped gap:\n%s" % out

@@ -327,9 +327,42 @@ bypass closed the commit before, by pairing the self-loop with any one of the
 other four.
 
 What this does **not** do is report the child that carries the triple. §5.3's
-two prohibitions are `x5-3-nested-iirds-packages#2` and `#3`, and
-`tests/test_requirement_coverage.py` pins both as known gaps. This stops the
-gap from buying an exemption; it does not close it.
+two prohibitions are `x5-3-nested-iirds-packages#2` and `#3`, and both were
+gaps when this was written. They are no longer the same kind of thing.
+
+`#3` — "An iiRDS package that contains a nested iiRDS package MUST NOT contain
+metadata about the content of the nested iiRDS package" — is **R6**. It reports
+a subject that is not an `iirds:Package` and that names a package this document
+declares nested. Every reading of such a document breaks something: the parent's
+reading breaks §5.3, the child's own breaks §6.2 ("MUST NOT be a member of
+*another* iiRDS package"), and a reading in which neither package is this
+container's breaks §5.1.1, which gives `META-INF` to "metadata on the iiRDS
+package and its contents" exclusively. So the finding needs no decision about
+which container is in hand — which is what separates it from a heuristic.
+
+**R6 sees one triple pattern, and §5.3's sentence is wider.** A parent that
+copies the child's units into its own `metadata.rdf` and omits the
+`iirds:is-part-of-package` relations is describing the child's content and is
+not reported. Measured: such a package draws nothing from R6. "Metadata about
+the content" has no other graph form this could key on without guessing which
+units belong to whom, so the rest of the sentence stays uncovered rather than
+approximated.
+
+A package nested inside a nested package is content too — §6.2 lists
+`iirds:Package` among the subclasses of `iirds:InformationUnit` — but R5
+already reports that shape under §6.3.3, and one triple should not draw two
+findings under two requirement ids.
+
+`#2` — "A nested iiRDS package MUST NOT contain metadata about the outer iiRDS
+package" — is recorded as **undecidable from one container**, in a list kept
+separate from the one for obligations addressed to reading applications. Its
+antecedent is "a nested iiRDS package"; §6.2 says a conformant package's own
+instance is not a member of another package, so a document declaring itself
+nested is either the child breaching that sentence or a parent describing its
+child, and the metadata does not distinguish them. Other sentences weigh
+without settling it — §6.3 says the enclosing package is the subject of no
+rendition, which is M8 — and so does the archive, which is a different
+question. Neither list counts toward coverage and both are gated.
 
 The cost, named: a parent's `metadata.rdf` that misspells its own package's
 IRI in the child's reference now draws M8 **and M3** on the child — M3 because

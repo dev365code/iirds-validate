@@ -57,12 +57,14 @@ NOT_DECIDABLE_ALONE = {
     "x5-3-nested-iirds-packages#2":
         "\"A nested iiRDS package MUST NOT contain metadata about the outer iiRDS "
         "package.\" The antecedent is \"a nested iiRDS package\", and section 6.2 says "
-        "a conformant package's own instance is not a member of another package, so "
-        "the only evidence that this container is the nested one is the breach being "
-        "looked for. Deciding it from the metadata alone means assuming what is to "
-        "be shown; the archive can weigh against the parent reading without "
-        "settling it, which is a different question from checking this sentence. "
-        "The neighbouring sentence, which needs no such decision, is R6.",
+        "a conformant package's own instance is not a member of another package, so a "
+        "document declaring itself nested is either the child breaching that sentence "
+        "or a parent describing its child, and the metadata does not distinguish "
+        "them. Deciding it from the metadata alone means assuming what is to be "
+        "shown. Other sentences weigh without settling it -- section 6.3 says the "
+        "enclosing package is the subject of no rendition, which is M8 -- and so does "
+        "the archive, which is a different question from checking this sentence. The "
+        "neighbouring sentence, which needs no such decision, is R6.",
 }
 
 HANDOVER = "http://iirds.tekom.de/iirds/domain/handover#"
@@ -197,7 +199,7 @@ def r5_a_named_parent_is_not_itself_nested(ctx):
           "metadata.rdf. If this file is the nested container's own metadata rather "
           "than its parent's, the repair is the other one: drop the "
           "iirds:is-part-of-package relation from this document's own iirds:Package, "
-          "which a package's own instance must not carry.")
+          "which must not name another package as the one it is inside.")
 def r6_the_content_of_a_nested_package_is_not_described_here(ctx):
     """"An iiRDS package that contains a nested iiRDS package MUST NOT contain
     metadata about the content of the nested iiRDS package." (section 5.3)
@@ -205,25 +207,47 @@ def r6_the_content_of_a_nested_package_is_not_described_here(ctx):
     The neighbouring sentence -- a nested package must not carry metadata
     about the outer one -- cannot be checked from a single container and is
     recorded as such. Its antecedent is "a nested iiRDS package", and section
-    6.2 says a conformant child's own instance carries no
-    iirds:is-part-of-package at all, so the only evidence that this document
-    is the child is the very relation under dispute. Deciding it would mean
-    assuming what is to be shown.
+    6.2 says a conformant package's own instance is not a member of another
+    package, so a document declaring itself nested is either the child
+    breaching that sentence or a parent describing its child. Deciding which
+    would mean assuming what is to be shown.
 
-    This sentence needs no such decision, because both readings of the
-    ambiguous document are prohibited. If this is the parent's metadata, the
-    unit is content of the nested package and section 5.3 is broken. If it is
-    the child's own metadata, then the child's iirds:Package is a member of
-    another package and section 6.2 is broken. The finding is compelled
-    either way, which is what makes it reportable without a heuristic about
-    which container is in hand.
+    This sentence needs no such decision, because every reading of the
+    ambiguous document is prohibited.
+
+    If this is the parent's metadata, the unit is content of the nested
+    package and section 5.3 is broken. If it is the nested child's own
+    metadata, then its iirds:Package names another package as the one it is
+    inside, and section 6.2 is broken. And if neither package is this
+    container's -- a document describing a pair held somewhere else -- then
+    section 5.1.1 is: "An iiRDS container MUST have a directory META-INF. The
+    directory is exclusively used for metadata on the iiRDS package and its
+    contents." A package this container neither is nor contains is neither.
+    Section 6.2's other sentence closes the same door from the other side:
+    "Each iiRDS package MUST have exactly one corresponding iirds:Package
+    instance in the metadata."
+
+    The third branch is the one the first version of this reasoning missed,
+    and it is the reason the two named sections are cited rather than assumed.
+    None of the three is decided here; the finding is compelled under all of
+    them, which is what makes it reportable without a heuristic about which
+    container is in hand.
 
     The relation is split with R5 by the subject: R5 answers for package
-    subjects, this one for everything else. Non-package rather than
-    information-unit on purpose -- section 6.2 gives the relation to
-    information units, so a subject that carries it and is not a package is
-    one whatever else the document does or does not say about its class, and
-    an untyped subject is not a way out.
+    subjects, this one for everything else. Not because a package is not an
+    information unit -- section 6.2 lists iirds:Package among the subclasses
+    of iirds:InformationUnit, so a package nested inside a nested package is
+    its content -- but because R5 already reports that shape under section
+    6.3.3, and one graph should not draw two findings under two requirement
+    ids for one triple. Non-package rather than information-unit on the other
+    side, so that an untyped subject is not a way out.
+
+    What this sees is one triple pattern, and section 5.3's sentence is wider
+    than that. A parent that copies the child's units into its own metadata
+    and simply omits the iirds:is-part-of-package relations describes the
+    child's content and is not reported. That is a gap, not a reading:
+    "metadata about the content" has no other form this could key on without
+    guessing which units belong to whom.
 
     Version-gated to 1.3 for the reason R5 is: the 1.0 release on hand has no
     nesting chapter at all, and 1.1 and 1.2 are not here to check.

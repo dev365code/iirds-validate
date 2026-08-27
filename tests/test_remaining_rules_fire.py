@@ -407,10 +407,44 @@ def test_r6_leaves_a_package_subject_to_r5(tmp_path):
     """The relation is split between two rules by its subject, and this is the
     seam. In a chain the middle package is nested and the outer one points at
     it, so dropping the "not a package" test would have this rule report what
-    R5 already reports, under a section that is not about packages pointing at
-    packages at all. Written because the rule passed its other tests without
-    that test doing anything."""
+    R5 already reports. Written because the rule passed its other tests
+    without that test doing anything.
+
+    Not because a package is outside §5.3's reach: §6.2 lists iirds:Package
+    among the subclasses of iirds:InformationUnit, so a package nested inside
+    a nested package really is the nested package's content, and the first
+    version of this docstring said the opposite. The reason is that one graph
+    should not draw two findings under two requirement ids for one triple,
+    and §6.3.3 -- R5's sentence -- is the one that names this shape."""
     got = ids(tmp_path, "r6_chain.iirds", BROKEN_NESTING["a chain three deep"],
               replace=HEAD)
     assert "R5" in got, "the chain is R5's finding"
-    assert "R6" not in got, "a package is not a unit; section 5.3 is about content"
+    assert "R6" not in got, "reported once, under the requirement that names the shape"
+
+
+def test_r6_does_not_see_the_childs_units_copied_in_without_the_relation(tmp_path):
+    """The boundary of the rule, pinned so that crossing it is deliberate.
+
+    §5.3's sentence is about metadata describing the nested package's content,
+    and the commonest way to break it is not the one this reports: a generator
+    that flattens the child's units into the parent's metadata and simply
+    leaves out the iirds:is-part-of-package relations describes that content
+    and draws nothing. Recorded as a gap in docs/divergences.md rather than
+    approximated, because "metadata about the content" has no other graph form
+    to key on without guessing which units belong to whom.
+    """
+    flattened = (
+        '  <iirds:Package rdf:about="urn:test:outer">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:nested">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Topic rdf:about="urn:test:childs-topic">\n'
+        '    <iirds:title>A topic of the nested package, described here</iirds:title>\n'
+        '  </iirds:Topic>\n')
+    assert "R6" not in ids(tmp_path, "r6_flat.iirds", flattened, replace=HEAD), (
+        "if this starts firing the rule has been widened -- say so in "
+        "docs/divergences.md and in the changelog, because the sentence it "
+        "covers would then be covered further than it was")

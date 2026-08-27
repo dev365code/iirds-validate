@@ -1922,7 +1922,7 @@ ivs:R6 a sh:NodeShape ;
   sh:message "a document that declares a nested package must not describe that package's content" ;
   ivm:ruleId "R6" ;
   ivm:ruleSource "iirds-validate" ;
-  sh:description "Point the information unit at the package this container itself is about, or remove it from this metadata and leave it to the nested container's own metadata.rdf. If this file is the nested container's own metadata rather than its parent's, the repair is the other one: drop the iirds:is-part-of-package relation from this document's own iirds:Package, which a package's own instance must not carry." ;
+  sh:description "Point the information unit at the package this container itself is about, or remove it from this metadata and leave it to the nested container's own metadata.rdf. If this file is the nested container's own metadata rather than its parent's, the repair is the other one: drop the iirds:is-part-of-package relation from this document's own iirds:Package, which must not name another package as the one it is inside." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages> ;
   ivm:versions "1.3" ;
   ivm:covers "x5-3-nested-iirds-packages#3" ;

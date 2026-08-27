@@ -112,13 +112,18 @@ gone wrong.
    it while it is embarrassing: a number that starts honest can be watched.
    "157 of 157" was never embarrassing and was never coverage of the standard.
    Until this rises, "no findings" must never be presented as "conformant".
-   Two obligations sit outside the numerator with a reason rather than a gap:
-   two are addressed to reading applications rather than to packages, and one
-   — a nested package must not carry metadata about the outer one — cannot be
-   decided by anything holding a single container, because the only evidence
-   that this container is the nested one is the breach being looked for. Both
-   lists are in the source and both are gated; "hard to check" is not on
-   either of them.
+   Three obligations sit outside the numerator with a reason rather than a
+   gap. Two are addressed to reading applications rather than to packages: no
+   artefact can satisfy or breach them. The third — a nested package must not
+   carry metadata about the outer one — is about the package, and a validator
+   holding one container cannot decide it. Its antecedent is "a nested iiRDS
+   package", and §6.2 says a conformant package's own instance is not a member
+   of another package, so a document that declares itself nested is either the
+   child breaching that sentence or a parent describing its child; the
+   metadata does not distinguish them. Other sentences weigh without settling
+   it — §6.3 says the enclosing package is the subject of no rendition, which
+   is the rule M8 — and so does the archive. Both lists are in the source and
+   both are gated; "hard to check" is on neither of them.
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Two Appendix B rules rest on readings the specification does not

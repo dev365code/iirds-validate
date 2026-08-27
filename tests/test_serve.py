@@ -634,7 +634,7 @@ def test_what_is_bound_is_what_was_checked(monkeypatch):
 # ---------------------------------------------------------------------------
 
 _MEASURE = r'''
-import resource, sys, threading, urllib.request, uuid
+import sys, threading, tracemalloc, urllib.request, uuid
 from iirds_validate import serve
 size = int(sys.argv[1])
 httpd = serve.build_server("127.0.0.1", 0)
@@ -645,13 +645,13 @@ head = ('--%s\r\nContent-Disposition: form-data; name="package"; '
         'filename="big.iirds"\r\nContent-Type: application/octet-stream\r\n\r\n'
         % b).encode()
 body = head + b"\x00" * size + ("\r\n--%s--\r\n" % b).encode()
-before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 req = urllib.request.Request(url, data=body,
     headers={"Content-Type": "multipart/form-data; boundary=" + b})
+tracemalloc.start()
 urllib.request.urlopen(req, timeout=120).read()
-after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-unit = 1 if sys.platform == "darwin" else 1024
-print((after - before) * unit)
+peak = tracemalloc.get_traced_memory()[1]
+tracemalloc.stop()
+print(peak)
 '''
 
 
@@ -672,14 +672,21 @@ def _peak_delta_for(size):
 def test_a_dropped_file_does_not_cost_the_process_many_times_its_size():
     """The upload was read whole and handed to a MIME parser that copies it
     several times over: measured, a body cost the process eleven to twelve
-    times its own size in resident memory, so a quarter-gigabyte drop asked
-    for nearly three. Capping the size made that survivable and did not make
-    it go away.
+    times its own size, so a quarter-gigabyte drop asked for nearly three.
+    Capping the size made that survivable and did not make it go away.
 
     Streaming the payload to the temporary file as it arrives costs the body
     once on disk and a chunk in memory. Three times the body is the line here
     -- enough headroom for the client's own copy in this same process and the
     interpreter's slack, and a third of what the whole-body parse cost.
+
+    Measured with tracemalloc, the Python heap's own high-water mark. A first
+    version used the resource module's resident-set figure, which Windows does
+    not have, and the row that lacks it failed before measuring anything.
+    The heap is the right instrument regardless: the copies the old parser
+    made were Python bytes, and against that parser this measurement reads
+    eleven times the body -- the same figure -- while against the streaming
+    handler it reads none of it.
     """
     size = 16 * 1024 * 1024
     delta = _peak_delta_for(size)

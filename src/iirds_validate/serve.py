@@ -54,7 +54,11 @@ MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 #: same-origin check keeps other pages out, but this page's own reader can
 #: drop a folder of files, and a folder is not an attack. Excess drops wait
 #: for a slot rather than being refused -- their bodies are already on disk,
-#: which is cheap, and the reader asked for them.
+#: which is cheap, and the reader asked for them. Four because a check holds
+#: a parsed graph for its whole run -- measured at tens of megabytes for an
+#: ordinary package and a few hundred for a large one -- and four of the
+#: large kind is what a laptop can hold without the page being the thing
+#: that made it swap.
 MAX_CONCURRENT_CHECKS = 4
 
 #: The page is one path and one response, assembled from the files under

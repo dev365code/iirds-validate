@@ -136,3 +136,15 @@ def test_the_ci_row_that_has_pyshacl_requires_it():
     assert re.search(r"IIRDS_REQUIRE_SHACL:\s*[\"']?1", job.group(0)), (
         "the job that installs pyshacl does not require it, so a failed "
         "install would skip the gate and pass")
+
+
+def test_make_actually_requires_the_cached_specification():
+    """The other switch of the same shape. The specification is not
+    redistributable, so the checks that hold the published requirement index
+    to the document it was read from can only run where a copy was fetched --
+    and a skip is not a failure. Under make it is one, and the switch is
+    checked here rather than trusted, because the last switch of this shape
+    was read in one place and set in none."""
+    assert re.search(r"(?m)^export IIRDS_REQUIRE_SPEC_CACHE\s*:?=\s*1\s*$", MAKEFILE), (
+        "the Makefile does not export IIRDS_REQUIRE_SPEC_CACHE, so `make check` "
+        "would hold the requirement index to nothing when the cache is absent")

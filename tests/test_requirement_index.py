@@ -11,6 +11,7 @@ showed it was wrong. Not the arithmetic: the scope.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -88,16 +89,45 @@ def test_a_table_requirement_carries_the_row_it_came_from():
     assert all(r["subject"] for r in cells)
 
 
+def spec_cache_or_skip():
+    """The cached specification, or a skip -- unless this run was told it must
+    have it.
+
+    The specification is not redistributable, so `.spec-cache/` is ignored and
+    CI has no copy: everything below can only run where somebody fetched one.
+    Under `make` the absence is a failure, because `make check` is what claims
+    to have checked the tree, and the checks it turns off here are the only
+    ones that hold the published index to the document it was read from.
+    """
+    cache = ROOT / ".spec-cache" / ("%s.html" % extractor.RELEASE)
+    if cache.exists():
+        return cache
+    if os.environ.get("IIRDS_REQUIRE_SPEC_CACHE"):
+        raise AssertionError(
+            "IIRDS_REQUIRE_SPEC_CACHE is set and %s is not here, so the index "
+            "cannot be held to its source; run "
+            "`python tools/extract_requirements.py --refresh`" % cache)
+    pytest.skip("no cached specification; run --refresh")
+
+
 def test_the_extractor_agrees_with_the_committed_index():
     """Re-derived from the cached specification, so a change to the parser that
-    silently moves the count fails here rather than in a document."""
-    cache = ROOT / ".spec-cache" / ("%s.html" % extractor.RELEASE)
-    if not cache.exists():
-        pytest.skip("no cached specification; run --refresh")
+    silently moves the count fails here rather than in a document.
+
+    Every field, not the ids and the counts. Those were all this compared, and
+    a sentence rewritten by hand in the committed index passed the whole suite
+    -- which is exactly what the fingerprint test below says it exists to
+    stop, and did not. The index is the enumeration the coverage figure is a
+    fraction of and the thing every `covers=` claim points at, so a wrong
+    sentence there misattributes an obligation rather than merely reading
+    badly."""
+    cache = spec_cache_or_skip()
     rebuilt = extractor.build(cache.read_text("utf-8"))
     assert rebuilt["counts"] == INDEX["counts"]
     assert rebuilt["absolute"] == INDEX["absolute"]
-    assert [r["id"] for r in rebuilt["requirements"]] == [r["id"] for r in REQUIREMENTS]
+    assert rebuilt["requirements"] == REQUIREMENTS, next(
+        (a["id"] for a, b in zip(rebuilt["requirements"], REQUIREMENTS) if a != b),
+        "the two lists are different lengths")
 
 
 def test_a_definition_scope_never_crosses_a_section():
@@ -123,3 +153,16 @@ def test_a_definition_scope_never_crosses_a_section():
 def test_the_index_records_the_fingerprint_of_its_source():
     """Counts alone would let a hand-edited sentence pass the offline check."""
     assert len(INDEX["_source_sha256"]) == 64
+
+
+def test_the_fingerprint_is_of_the_specification_on_disk():
+    """The sentence above was the whole of this check: the digest was measured
+    for length and compared with nothing. So the index could name a source it
+    had not been built from, which is the one thing a fingerprint is for."""
+    import hashlib
+
+    cache = spec_cache_or_skip()
+    got = hashlib.sha256(cache.read_text("utf-8").encode("utf-8")).hexdigest()
+    assert got == INDEX["_source_sha256"], (
+        "docs/requirements.json says it came from %s and the specification "
+        "here hashes to %s" % (INDEX["_source_sha256"][:16], got[:16]))

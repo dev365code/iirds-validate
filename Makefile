@@ -29,6 +29,14 @@ export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests$(if $(IIRDS_SRC),:$(IIRDS_SRC
 # exists, because a gate whose switch nobody checks is a gate that is off.
 export IIRDS_REQUIRE_SHACL := 1
 
+# The specification is not redistributable, so .spec-cache/ is ignored and CI
+# has no copy: the checks that hold docs/requirements.json to the document it
+# was read from can only run where somebody fetched one. Under make their
+# absence is a failure, for the same reason as the line above -- this is the
+# command that claims to have checked the tree, and a hand-edited sentence in
+# that index passed the whole suite until the checks it turns on existed.
+export IIRDS_REQUIRE_SPEC_CACHE := 1
+
 .PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean
 
 help:

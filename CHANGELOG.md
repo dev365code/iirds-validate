@@ -161,6 +161,19 @@
   cannot hide inside "not about the package". Neither list counts toward
   coverage and both are gated. Coverage of the standard: 21 of 314.
 
+- **A hand-edited sentence in the published requirement index passed the whole
+  suite.** `docs/requirements.json` is the enumeration the coverage figure is
+  a fraction of and the thing every rule's `covers=` points at, so a wrong
+  sentence there misattributes an obligation rather than merely reading badly.
+  The re-derivation compared ids and counts and not the sentences, and the
+  test named "the index records the fingerprint of its source" measured that
+  fingerprint's *length* and compared it with nothing — so the index could
+  name a source it had not been built from, which is the one thing a
+  fingerprint is for. Both are closed, and both forgeries now fail. Because
+  the specification is not redistributable and CI has no copy, `make check`
+  refuses to skip these when the cache is absent, the way it already refuses
+  to skip the differential gate.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

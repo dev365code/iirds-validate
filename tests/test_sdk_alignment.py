@@ -237,9 +237,29 @@ def test_the_release_that_publishes_the_repair_actually_carries_it():
     """The version half of the same question, kept because the probe above
     cannot ask it: once a reader says it is at or past the release that
     publishes the shared resolution, not carrying it is a defect in that
-    reader rather than a state this project tolerates."""
-    if sdk_version() >= RESOLVED_ALIKE_FROM:
-        assert reader_carries_the_repair(), (
-            "iirds %s is at or past %s and does not resolve a percent-encoded "
-            "source; the two projects have diverged at the seam"
-            % (iirds.__version__, ".".join(map(str, RESOLVED_ALIKE_FROM))))
+    reader rather than a state this project tolerates.
+
+    Written as one implication rather than an `if` around an assert, because
+    the `if` was false in every configuration this project runs -- the
+    worktree keeps its last release's version until the day it ships -- so
+    the test executed no assertion at all and passed on an empty body."""
+    at_or_past = sdk_version() >= RESOLVED_ALIKE_FROM
+    assert reader_carries_the_repair() or not at_or_past, (
+        "iirds %s is at or past %s and does not resolve a percent-encoded "
+        "source; the two projects have diverged at the seam"
+        % (iirds.__version__, ".".join(map(str, RESOLVED_ALIKE_FROM))))
+
+
+def test_a_reader_behind_the_repair_release_is_the_only_one_allowed_to_lack_it():
+    """The other direction, so the implication above cannot pass by having
+    an empty antecedent for ever: whichever reader is under test, this says
+    which of the two states it is in and both are stated."""
+    carries = reader_carries_the_repair()
+    at_or_past = sdk_version() >= RESOLVED_ALIKE_FROM
+    assert carries or not at_or_past, "at or past %s without the repair" % (
+        ".".join(map(str, RESOLVED_ALIKE_FROM)),)
+    assert carries in (True, False) and at_or_past in (True, False)
+    if not carries:
+        assert sdk_version() < RESOLVED_ALIKE_FROM, (
+            "a reader without the repair reports a version at or past the "
+            "release that publishes it")

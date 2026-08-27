@@ -41,22 +41,30 @@ FIXTURES = _fixtures()
 
 
 def test_the_corpus_is_actually_there():
-    """A sweep over an empty list is a green test that checks nothing."""
+    """A sweep over an empty list is a green test that checks nothing.
+
+    This counts paths, which is only the number of comparisons because the
+    sweep below no longer turns a failure to build into a skip. It used to:
+    every fixture skipped and the file still exited zero, so anything that
+    made the builder raise -- a new precondition, a changed signature --
+    would have disarmed the whole sweep in silence. No fixture in the corpus
+    reaches that branch today, which is what made it safe to remove and
+    dangerous to keep."""
     assert len(FIXTURES) > 80, len(FIXTURES)
 
 
 @pytest.mark.parametrize("source", FIXTURES, ids=[Path(p).stem[:40] for p in FIXTURES])
 def test_every_corpus_fixture_reports_the_same_thing_every_run(tmp_path, source):
     metadata = Path(source).read_text("utf-8", errors="replace")
-    try:
-        package = build_package(tmp_path, "stable.iirds", metadata=metadata)
-    except Exception as exc:                      # a fixture the builder cannot hold
-        pytest.skip(str(exc)[:80])
+    package = build_package(tmp_path, "stable.iirds", metadata=metadata)
     reports = {_report(package) for _ in range(RUNS)}
     assert len(reports) == 1, "%d distinct reports from %d runs" % (len(reports), RUNS)
 
 
-SAMPLES = sorted(glob.glob(os.path.join(os.environ.get("IIRDS_SAMPLE_CONTENT", ""), "*.iirds")))
+#: An unset variable means "no samples", not "glob the working directory",
+#: which is what os.path.join("", "*.iirds") does.
+_SAMPLE_DIR = os.environ.get("IIRDS_SAMPLE_CONTENT", "")
+SAMPLES = (sorted(glob.glob(os.path.join(_SAMPLE_DIR, "*.iirds"))) if _SAMPLE_DIR else [])
 
 
 @pytest.mark.skipif(not SAMPLES, reason="set IIRDS_SAMPLE_CONTENT to the sample packages")

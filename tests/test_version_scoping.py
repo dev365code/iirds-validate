@@ -43,6 +43,9 @@ SCOPED = {
               "section 6.3.3 exists in the cached 1.3 and not in the cached 1.0; "
               "1.1 and 1.2 are not on hand, so 1.3 is the only edition this can "
               "claim the sentence for"),
+    "R6":    (("1.3",),
+              "section 5.3 has no nesting chapter in the cached 1.0 either, so the "
+              "same edition limit as R5 and for the same reason"),
     "M96.1": (("1.2", "1.3"), "iirds:ExternalClassification arrives in 1.2"),
     "M96.2": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
     "M96.3": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),

@@ -72,7 +72,7 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 20
+    assert len(COVERED) == 21
     assert len(ABSOLUTE) == 314
 
 
@@ -133,6 +133,39 @@ def test_nothing_is_both_covered_and_excused():
     assert COVERED & set(NOT_ABOUT_THE_PACKAGE) == set()
 
 
+def test_a_sentence_no_single_container_can_decide_is_recorded_apart():
+    """A second excuse list, kept separate because it excuses something else.
+    NOT_ABOUT_THE_PACKAGE holds obligations addressed to reading applications:
+    no artefact can satisfy or breach them. This one holds obligations that
+    are squarely about the package and that a validator reading one container
+    cannot decide, because deciding them means knowing something the container
+    does not carry.
+
+    Two lists rather than one, because merging them would let "hard to check"
+    hide inside "not about the package", and that is the excuse this project
+    said it would not make."""
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE, NOT_DECIDABLE_ALONE
+
+    assert set(NOT_ABOUT_THE_PACKAGE) & set(NOT_DECIDABLE_ALONE) == set()
+    assert COVERED & set(NOT_DECIDABLE_ALONE) == set()
+    for rid, reason in NOT_DECIDABLE_ALONE.items():
+        assert rid in BY_ID, rid
+        assert rid in ABSOLUTE, rid
+        assert len(reason) > 40, rid
+
+
+def test_the_undecidable_sentence_is_the_nested_package_one():
+    """Named rather than counted, because a list whose only gate is its size
+    can be filled with anything. This is the sentence: a nested package must
+    not carry metadata about the outer one. Its antecedent follows from section 6.2 --
+    a conformant child's own iirds:Package carries no is-part-of-package at
+    all -- so the only evidence that this container is the nested one is the
+    breach being looked for."""
+    from iirds_validate.rules.requirements import NOT_DECIDABLE_ALONE
+
+    assert sorted(NOT_DECIDABLE_ALONE) == ["x5-3-nested-iirds-packages#2"]
+
+
 def test_chapter_five_is_mapped_apart_from_its_three_gaps():
     """The first section taken end to end. 21 obligations: 16 have a rule, two
     are addressed to consumers, and the rest are things this validator does not
@@ -142,16 +175,18 @@ def test_chapter_five_is_mapped_apart_from_its_three_gaps():
 
     Pinned so the gaps cannot be closed by accident or reopened by one.
     """
-    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE
+    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE, NOT_DECIDABLE_ALONE
 
     chapter = [r for r in INDEX["requirements"]
                if r["absolute"] and r["section"].startswith("x5")]
     assert len(chapter) == 21
 
     gaps = sorted(r["id"] for r in chapter
-                  if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE)
-    assert gaps == ["x5-3-nested-iirds-packages#2", "x5-3-nested-iirds-packages#3"], \
-        "the single-root requirement is R3; the two nested-package prohibitions remain"
+                  if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE
+                  and r["id"] not in NOT_DECIDABLE_ALONE)
+    assert gaps == [], \
+        "the single-root requirement is R3, the outer-must-not-describe-the-child " \
+        "prohibition is R6, and the remaining one is recorded as undecidable"
 
 
 def test_the_scope_document_publishes_the_coverage_it_has():

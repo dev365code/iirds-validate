@@ -203,6 +203,25 @@ ivs:M30 a sh:NodeShape ;
           FILTER (STRSTARTS(STR(?o), "http://iirds.tekom.de/iirds#") || STRSTARTS(STR(?o), "http://iirds.tekom.de/iirds/domain/handover#") || STRSTARTS(STR(?o), "http://iirds.tekom.de/iirds/domain/machinery#") || STRSTARTS(STR(?o), "http://iirds.tekom.de/iirds/domain/software#")) }
   FILTER (STRSTARTS(STR(?value), "http://iirds.tekom.de/iirds#") || STRSTARTS(STR(?value), "http://iirds.tekom.de/iirds/domain/handover#") || STRSTARTS(STR(?value), "http://iirds.tekom.de/iirds/domain/machinery#") || STRSTARTS(STR(?value), "http://iirds.tekom.de/iirds/domain/software#")) }""" ] .
 
+ivs:R6 a sh:NodeShape ;
+  rdfs:label "a document that declares a nested package must not describe that package's content" ;
+  sh:severity sh:Violation ;
+  sh:message "a document that declares a nested package must not describe that package's content" ;
+  ivm:ruleId "R6" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Point the information unit at the package this container itself is about, or remove it from this metadata and leave it to the nested container's own metadata.rdf. If this file is the nested container's own metadata rather than its parent's, the repair is the other one: drop the iirds:is-part-of-package relation from this document's own iirds:Package, which a package's own instance must not carry." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x5-3-nested-iirds-packages#3" ;
+  sh:targetNode ivs:R6 ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?pkg .
+  ?pkg <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  ?pkg <http://iirds.tekom.de/iirds#is-part-of-package> ?outer .
+  ?outer <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER ( ?outer != ?pkg )
+  FILTER NOT EXISTS { ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] .
+
 ivs:S4 a sh:NodeShape ;
   rdfs:label "iirds:iiRDSVersion must name a published version of the standard" ;
   sh:severity sh:Violation ;

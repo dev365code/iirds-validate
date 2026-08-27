@@ -103,7 +103,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 20 of 314.** The denominator is derived in
+1. **Coverage of the standard is 21 of 314.** The denominator is derived in
    `docs/requirements.json`; the numerator is the union of the `covers=`
    declarations on the rules, printed by `tools/requirement_coverage.py`. The
    figure is small because the mapping has barely started, not because the
@@ -112,6 +112,13 @@ gone wrong.
    it while it is embarrassing: a number that starts honest can be watched.
    "157 of 157" was never embarrassing and was never coverage of the standard.
    Until this rises, "no findings" must never be presented as "conformant".
+   Two obligations sit outside the numerator with a reason rather than a gap:
+   two are addressed to reading applications rather than to packages, and one
+   — a nested package must not carry metadata about the outer one — cannot be
+   decided by anything holding a single container, because the only evidence
+   that this container is the nested one is the breach being looked for. Both
+   lists are in the source and both are gated; "hard to check" is not on
+   either of them.
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Two Appendix B rules rest on readings the specification does not

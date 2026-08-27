@@ -86,7 +86,30 @@
   reference catalogue has none for it, so all three shapes read as ordinary
   nesting and drew nothing. **R5** says it, under the id of the requirement,
   gated to 1.3 because that is the only edition on hand that carries §6.3.3.
-  189 rules, 140 SHACL shapes.
+
+- **A document that declares a nested package may not describe that package's
+  content.** §5.3 carries two prohibitions on what a container may say about
+  a package nested inside it, and both were recorded as checkable and
+  unchecked. **R6** implements the second one. Its finding is compelled under
+  both readings of an ambiguous document, which is what lets it be reported
+  without deciding which container is in hand: read the file as the parent's
+  and §5.3 is broken, read it as the nested child's own and §6.2 is broken
+  instead, because a package's own instance must not be a member of another
+  package. The shape is SHACL-SPARQL rather than Core for one clause — a
+  package naming itself is not inside another package, and comparing a value
+  node with the focus node is beyond Core.
+  190 rules, 141 SHACL shapes.
+
+- **The sentence no single container can decide is recorded as such.** The
+  other §5.3 prohibition — a nested package must not carry metadata about the
+  outer one — cannot be decided from the metadata of one container. Its
+  antecedent is "a nested iiRDS package", and §6.2 says a conformant child's
+  own instance carries no `iirds:is-part-of-package` at all, so the only
+  evidence that a document is the child is the relation under dispute. It
+  moves to a second recorded-with-a-reason list, kept apart from the one for
+  obligations addressed to reading applications so that "hard to check"
+  cannot hide inside "not about the package". Neither list counts toward
+  coverage and both are gated. Coverage of the standard: 21 of 314.
 
 ### Changed
 

@@ -27,7 +27,7 @@ import posixpath
 from rdflib import URIRef
 
 from .. import terms as T
-from ..context import package_nodes
+from ..context import container_packages, package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, Violation, is_named
 from ..registry import rule
 
@@ -46,6 +46,23 @@ NOT_ABOUT_THE_PACKAGE = {
     "dfn-iirds-zip-archive#1":
         "\"All processing applications MUST support this implementation\" — the same, "
         "about tools rather than about containers.",
+}
+
+#: Obligations that are squarely about the package and that a validator holding
+#: one container cannot decide, because deciding them means knowing something
+#: the container does not carry. Kept apart from NOT_ABOUT_THE_PACKAGE, which
+#: excuses a different thing -- obligations addressed to reading applications --
+#: so that "hard to check" cannot hide inside "not about the package".
+NOT_DECIDABLE_ALONE = {
+    "x5-3-nested-iirds-packages#2":
+        "\"A nested iiRDS package MUST NOT contain metadata about the outer iiRDS "
+        "package.\" The antecedent is \"a nested iiRDS package\", and section 6.2 says "
+        "a conformant package's own instance is not a member of another package, so "
+        "the only evidence that this container is the nested one is the breach being "
+        "looked for. Deciding it from the metadata alone means assuming what is to "
+        "be shown; the archive can weigh against the parent reading without "
+        "settling it, which is a different question from checking this sentence. "
+        "The neighbouring sentence, which needs no such decision, is R6.",
 }
 
 HANDOVER = "http://iirds.tekom.de/iirds/domain/handover#"
@@ -167,3 +184,63 @@ def r5_a_named_parent_is_not_itself_nested(ctx):
                 yield Violation("this package names a parent that is itself inside "
                                 "another package",
                                 subject=ctx.ref(pkg), detail="parent %s" % ctx.ref(parent))
+
+
+@rule("R6", kind="schema", prio="MUST NOT", versions=("1.3",), variants=(),
+      title="a document that declares a nested package must not describe that "
+            "package's content",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#nested-iirds-packages",
+      covers=("x5-3-nested-iirds-packages#3",), diagnosis="cause",
+      fix="Point the information unit at the package this container itself is about, "
+          "or remove it from this metadata and leave it to the nested container's own "
+          "metadata.rdf. If this file is the nested container's own metadata rather "
+          "than its parent's, the repair is the other one: drop the "
+          "iirds:is-part-of-package relation from this document's own iirds:Package, "
+          "which a package's own instance must not carry.")
+def r6_the_content_of_a_nested_package_is_not_described_here(ctx):
+    """"An iiRDS package that contains a nested iiRDS package MUST NOT contain
+    metadata about the content of the nested iiRDS package." (section 5.3)
+
+    The neighbouring sentence -- a nested package must not carry metadata
+    about the outer one -- cannot be checked from a single container and is
+    recorded as such. Its antecedent is "a nested iiRDS package", and section
+    6.2 says a conformant child's own instance carries no
+    iirds:is-part-of-package at all, so the only evidence that this document
+    is the child is the very relation under dispute. Deciding it would mean
+    assuming what is to be shown.
+
+    This sentence needs no such decision, because both readings of the
+    ambiguous document are prohibited. If this is the parent's metadata, the
+    unit is content of the nested package and section 5.3 is broken. If it is
+    the child's own metadata, then the child's iirds:Package is a member of
+    another package and section 6.2 is broken. The finding is compelled
+    either way, which is what makes it reportable without a heuristic about
+    which container is in hand.
+
+    The relation is split with R5 by the subject: R5 answers for package
+    subjects, this one for everything else. Non-package rather than
+    information-unit on purpose -- section 6.2 gives the relation to
+    information units, so a subject that carries it and is not a package is
+    one whatever else the document does or does not say about its class, and
+    an untyped subject is not a way out.
+
+    Version-gated to 1.3 for the reason R5 is: the 1.0 release on hand has no
+    nesting chapter at all, and 1.1 and 1.2 are not here to check.
+    """
+    # container_packages as it stands, deliberately: this reads the metadata
+    # and nothing else. A pool widened by anything outside the graph would
+    # start reporting the container's own units as somebody else's content.
+    packages = set(package_nodes(ctx.graph))
+    nested = packages.difference(container_packages(ctx.graph))
+    # No de-duplication: a graph is a set of triples, so one subject reaches
+    # one package once however many times the document spells the relation.
+    for unit, pkg in sorted(
+            ((s, o) for s, o in ctx.graph.subject_objects(T.is_part_of_package)
+             if s not in packages and o in nested),
+            key=lambda pair: (ctx.ref(pair[0]), ctx.ref(pair[1]))):
+        yield Violation("this metadata describes something inside a package it says is "
+                        "nested here",
+                        subject=ctx.ref(unit),
+                        detail="belongs to %s, which this document declares nested"
+                               % ctx.ref(pkg))

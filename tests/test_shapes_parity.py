@@ -876,28 +876,6 @@ def test_m3_sees_a_subclass_typed_package_in_both_directions(tmp_path):
     assert "M3" in assert_parity(tmp_path, "two_pkg.iirds", second)
 
 
-# ---------------------------------------------------------------------------
-# 7. No shape may sit out the whole suite.
-#
-# Set-equality per fixture proves agreement on what fires; it proves nothing
-# about a shape that never fires. The review demonstrated exactly
-# that: seven shapes were quietly disabled and every test above stayed green,
-# because no fixture ever provoked them. This test runs last in the file and
-# demands that every emitted shape has been seen firing at least once — a
-# constraint under which a disabled shape turns the gate red by definition.
-# (Same shape as `.rule-coverage.json` on the Python side: observed, not
-# assumed. File-order matters and pytest honours definition order; running
-# this test alone is meaningless and it says so.)
-# ---------------------------------------------------------------------------
-
-def test_every_emitted_shape_has_fired_somewhere_in_this_file():
-    never_fired = EMITTED - SH_FIRED_EVER
-    assert len(SH_FIRED_EVER) > 50, (
-        "the accumulator is empty-ish; this test only means something after "
-        "the whole file has run -- do not run it in isolation")
-    assert never_fired == set(), sorted(never_fired)
-
-
 def test_m25_accepts_a_terminator_the_package_mints(tmp_path):
     """"relating to an instance of the class iirds:nil" is the requirement's
     own wording, and iirds:nil really is a class -- so a package that mints its
@@ -1049,3 +1027,69 @@ def test_both_of_m3s_class_tests_are_load_bearing(tmp_path, shape):
     neither test is held."""
     assert "M3" in assert_parity(tmp_path, "m3both_%s.iirds" % shape,
                                  _with_parent(shape, SECOND_ALSO_BOGUS))
+
+
+def test_the_content_of_a_nested_package_is_not_described_here_in_either_encoding(tmp_path):
+    """§5.3: "An iiRDS package that contains a nested iiRDS package MUST NOT
+    contain metadata about the content of the nested iiRDS package."
+
+    Three graphs, because the third is the one that decides the encoding. A
+    unit pointing at a package that is inside another package is the breach;
+    a unit pointing at the package this container is about is the ordinary
+    shape both Consortium samples use; and a unit pointing at a package that
+    names *itself* is neither, because a self-loop is not membership in
+    another package and container_packages keeps such a package as a root.
+    That last clause is why the shape is SPARQL: comparing the value with the
+    focus node is beyond Core, and without the comparison the shape would
+    report a breach where Python is silent."""
+    parent = ('  <iirds:Package rdf:about="urn:test:outer">\n'
+              '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+              '  </iirds:Package>\n')
+    child = ('  <iirds:Package rdf:about="urn:test:nested">\n'
+             '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+             '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n'
+             '  </iirds:Package>\n')
+
+    def unit(target):
+        return ('  <iirds:Topic rdf:about="urn:test:topic">\n'
+                '    <iirds:title>A unit</iirds:title>\n'
+                '    <iirds:is-part-of-package rdf:resource="%s"/>\n'
+                '  </iirds:Topic>\n' % target)
+
+    def graph(*blocks):
+        return MINIMAL_RDF.replace("</rdf:RDF>", "".join(blocks) + "</rdf:RDF>")
+
+    assert "R6" in assert_parity(
+        tmp_path, "r6_nested.iirds", graph(parent, child, unit("urn:test:nested")))
+    assert "R6" not in assert_parity(
+        tmp_path, "r6_own.iirds", graph(parent, child, unit("urn:test:outer")))
+
+    loop = ('  <iirds:Package rdf:about="urn:test:loop">\n'
+            '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+            '    <iirds:is-part-of-package rdf:resource="urn:test:loop"/>\n'
+            '  </iirds:Package>\n')
+    assert "R6" not in assert_parity(
+        tmp_path, "r6_loop.iirds", graph(loop, unit("urn:test:loop"))), (
+        "a package inside itself is not inside another package; R5 answers for it")
+
+
+# ---------------------------------------------------------------------------
+# 7. No shape may sit out the whole suite.
+#
+# Set-equality per fixture proves agreement on what fires; it proves nothing
+# about a shape that never fires. The review demonstrated exactly
+# that: seven shapes were quietly disabled and every test above stayed green,
+# because no fixture ever provoked them. This test runs last in the file and
+# demands that every emitted shape has been seen firing at least once — a
+# constraint under which a disabled shape turns the gate red by definition.
+# (Same shape as `.rule-coverage.json` on the Python side: observed, not
+# assumed. File-order matters and pytest honours definition order; running
+# this test alone is meaningless and it says so.)
+# ---------------------------------------------------------------------------
+
+def test_every_emitted_shape_has_fired_somewhere_in_this_file():
+    never_fired = EMITTED - SH_FIRED_EVER
+    assert len(SH_FIRED_EVER) > 50, (
+        "the accumulator is empty-ish; this test only means something after "
+        "the whole file has run -- do not run it in isolation")
+    assert never_fired == set(), sorted(never_fired)

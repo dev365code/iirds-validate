@@ -396,6 +396,22 @@ SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   ?party <%(ii)srelates-to-vcard> ?value .
   FILTER NOT EXISTS { ?value ?cp ?co } }"""])
 
+#: Section 5.3: a document that declares a nested package must not describe
+#: that package's content. SPARQL rather than Core for one reason -- "?outer
+#: is not ?pkg" is the clause that keeps a self-loop out of the nested set,
+#: matching context.container_packages, and Core cannot compare a value node
+#: with the focus node. Without it a package inside itself would read as
+#: nested here and not in Python, and the differential gate compares the two.
+#: rdf:type/rdfs:subClassOf* for the reason M3 carries it: a package typed
+#: only with its own declared subclass is still a Package (section 7).
+SPARQL_FORMS["R6"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(ii)sis-part-of-package> ?pkg .
+  ?pkg <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  ?pkg <%(ii)sis-part-of-package> ?outer .
+  ?outer <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  FILTER ( ?outer != ?pkg )
+  FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }"""])
+
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.

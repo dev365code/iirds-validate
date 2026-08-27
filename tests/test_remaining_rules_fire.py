@@ -350,3 +350,67 @@ def test_r5_is_silent_about_the_nesting_the_standard_prints(tmp_path):
     """Example 16's shape: one child, one parent, and the parent is inside
     nothing."""
     assert "R5" not in ids(tmp_path, "r5_good.iirds", GOOD_NESTING, replace=HEAD)
+
+
+#: The parent's file, with a unit of its own pointing at the package this
+#: document says is nested. §5.3 forbids exactly this: "An iiRDS package that
+#: contains a nested iiRDS package MUST NOT contain metadata about the content
+#: of the nested iiRDS package."
+CONTENT_OF_THE_NESTED = (
+    '  <iirds:Package rdf:about="urn:test:parent">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Package rdf:about="urn:test:nested">\n'
+    '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:parent"/>\n'
+    '  </iirds:Package>\n'
+    '  <iirds:Topic rdf:about="urn:test:topic">\n'
+    '    <iirds:title>Borrowed from the child</iirds:title>\n'
+    '    <iirds:is-part-of-package rdf:resource="urn:test:nested"/>\n'
+    '  </iirds:Topic>\n')
+
+#: The same three subjects with the unit pointing where it belongs.
+CONTENT_OF_OUR_OWN = CONTENT_OF_THE_NESTED.replace(
+    '<iirds:is-part-of-package rdf:resource="urn:test:nested"/>\n'
+    '  </iirds:Topic>',
+    '<iirds:is-part-of-package rdf:resource="urn:test:parent"/>\n'
+    '  </iirds:Topic>')
+
+
+def test_r6_reports_a_unit_belonging_to_the_package_this_document_says_is_nested(tmp_path):
+    """The finding is compelled whichever container this turns out to be, which
+    is why it can be reported without deciding. Read this as the parent's file
+    and §5.3 is broken: the outer package is carrying metadata about the
+    content of the nested one. Read it as the child's own file -- someone
+    handing over the inner container -- and §6.2 is broken instead, because a
+    package's own instance must not be a member of another package. There is
+    no reading in which the document is clean, so no disambiguation is
+    needed to say so."""
+    assert "R6" in ids(tmp_path, "r6_bad.iirds", CONTENT_OF_THE_NESTED, replace=HEAD)
+
+
+def test_r6_is_silent_when_the_unit_belongs_to_the_package_this_container_is(tmp_path):
+    """The ordinary shape, and the one both Consortium samples use: every unit
+    points at the package the container itself is about. Nesting is present
+    and the unit is not the nested package's content."""
+    assert "R6" not in ids(tmp_path, "r6_own.iirds", CONTENT_OF_OUR_OWN, replace=HEAD)
+
+
+def test_r6_is_silent_about_the_nesting_the_standard_prints(tmp_path):
+    """Example 16 again: a parent that declares its child and describes none
+    of the child's content. The published shape must stay clean, because the
+    Consortium prints a parent whose whole metadata is one version triple."""
+    assert "R6" not in ids(tmp_path, "r6_example16.iirds", GOOD_NESTING, replace=HEAD)
+
+
+def test_r6_leaves_a_package_subject_to_r5(tmp_path):
+    """The relation is split between two rules by its subject, and this is the
+    seam. In a chain the middle package is nested and the outer one points at
+    it, so dropping the "not a package" test would have this rule report what
+    R5 already reports, under a section that is not about packages pointing at
+    packages at all. Written because the rule passed its other tests without
+    that test doing anything."""
+    got = ids(tmp_path, "r6_chain.iirds", BROKEN_NESTING["a chain three deep"],
+              replace=HEAD)
+    assert "R5" in got, "the chain is R5's finding"
+    assert "R6" not in got, "a package is not a unit; section 5.3 is about content"

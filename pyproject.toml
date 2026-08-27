@@ -49,7 +49,7 @@ license-files = ["LICENSE", "NOTICE", "THIRD_PARTY.md"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-iirds_validate = ["py.typed", "data/*.json", "data/*.html", "data/ontologies/*.txt", "data/ontologies/*.md", "data/ontologies/*/*.rdf"]
+iirds_validate = ["py.typed", "data/*.json", "data/web/*", "data/ontologies/*.txt", "data/ontologies/*.md", "data/ontologies/*/*.rdf"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

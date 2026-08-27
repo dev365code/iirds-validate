@@ -119,16 +119,28 @@ iirdsv serve --no-open  # prints the address instead
 ```
 
 Drag a `.iirds` file onto the page. The file is read by the process you just
-started, on the machine you started it on, and the verdict you see is the
-string `iirdsv <path>` would have printed — literally: the page calls the same
-renderer on the same report object, so there is no second implementation that
-could disagree with the first.
+started, on the machine you started it on. The page runs the same rules and
+the same renderer in the same process as `iirdsv <path>`, so the findings and
+their wording are the command line's — there is no second implementation of
+the report to disagree with the first.
+
+Two things differ, by construction rather than by accident: the page renders
+into a string and so never carries the colour a run at a terminal does, and
+where a finding quotes the container's own path — C1 and S1 do, when the file
+cannot be opened at all — it quotes the copy the handler made. Flags belong to
+the command line: `-v`, `-q`, `-W`, `--format json`, `--fragment`, a directory,
+several packages at once. What the page gives is the default run on one file.
+
+The chrome is offered in English, German, Korean, Japanese and Chinese, and
+follows your browser until you choose otherwise; light and dark follow the
+system until you say otherwise. **The report itself is not translated** — it
+is the command line's output, word for word, and every language says so.
 
 It binds to the loopback interface and refuses any other address. This is a
 window onto a local command, not a service: nothing listens beyond this
-machine, nothing is uploaded, and the page disappears when you stop the
-command. For a network with nothing installed on it, the answer is still the
-single file — see [`docs/offline-install.md`](docs/offline-install.md).
+machine, nothing is uploaded, and the page ends when you stop the command. For
+a network with nothing installed on it, the answer is still the single file —
+see [`docs/offline-install.md`](docs/offline-install.md).
 
 ### In a build
 

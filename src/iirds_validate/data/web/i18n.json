@@ -1,0 +1,74 @@
+{
+  "_note": "Chrome for the drop page only. The report itself is the command line's output, word for word, and is not translated -- every language says so in its own words rather than leaving a reader to discover it.",
+  "order": ["en", "de", "ko", "ja", "zh"],
+  "names": {
+    "en": "English", "de": "Deutsch", "ko": "한국어", "ja": "日本語", "zh": "中文"
+  },
+  "strings": {
+    "en": {
+      "title": "iiRDS package check",
+      "lead": "Drop a .iirds file. It is read by the process that served this page, on this machine, and is not sent anywhere.",
+      "drop": "drop a package here, or click to choose one",
+      "checking": "checking",
+      "save": "download the report as JSON",
+      "reportNote": "The report below is in English: it is the command line's own output, word for word.",
+      "failed": "the page could not reach the checker",
+      "theme": "Theme",
+      "system": "System", "light": "Light", "dark": "Dark",
+      "language": "Language",
+      "footer": "served on the loopback interface of this machine; the page ends when you stop the command"
+    },
+    "de": {
+      "title": "iiRDS-Paketprüfung",
+      "lead": "Legen Sie eine .iirds-Datei ab. Sie wird von dem Prozess gelesen, der diese Seite ausliefert, auf diesem Rechner, und nirgendwohin gesendet.",
+      "drop": "Paket hierher ziehen oder klicken zum Auswählen",
+      "checking": "prüfe",
+      "save": "Bericht als JSON herunterladen",
+      "reportNote": "Der Bericht unten ist auf Englisch: es ist wortwörtlich die Ausgabe der Kommandozeile.",
+      "failed": "die Seite konnte die Prüfung nicht erreichen",
+      "theme": "Darstellung",
+      "system": "System", "light": "Hell", "dark": "Dunkel",
+      "language": "Sprache",
+      "footer": "läuft auf der Loopback-Schnittstelle dieses Rechners; die Seite endet, wenn Sie den Befehl beenden"
+    },
+    "ko": {
+      "title": "iiRDS 패키지 검사",
+      "lead": ".iirds 파일을 끌어다 놓으세요. 이 페이지를 띄운 프로세스가 이 컴퓨터에서 읽으며, 어디로도 전송되지 않습니다.",
+      "drop": "여기에 패키지를 놓거나, 눌러서 고르세요",
+      "checking": "검사 중",
+      "save": "리포트를 JSON으로 내려받기",
+      "reportNote": "아래 리포트는 영어입니다. 명령줄이 출력하는 문장 그대로입니다.",
+      "failed": "페이지가 검사기에 닿지 못했습니다",
+      "theme": "화면",
+      "system": "시스템", "light": "밝게", "dark": "어둡게",
+      "language": "언어",
+      "footer": "이 컴퓨터의 루프백 인터페이스에서 제공됩니다. 명령을 멈추면 페이지도 닫힙니다"
+    },
+    "ja": {
+      "title": "iiRDS パッケージ検査",
+      "lead": ".iirds ファイルをドロップしてください。このページを提供しているプロセスがこの端末で読み取り、どこにも送信されません。",
+      "drop": "ここにパッケージをドロップ、またはクリックして選択",
+      "checking": "検査中",
+      "save": "レポートを JSON でダウンロード",
+      "reportNote": "以下のレポートは英語です。コマンドラインの出力そのままです。",
+      "failed": "ページが検査機能に到達できませんでした",
+      "theme": "表示",
+      "system": "システム", "light": "ライト", "dark": "ダーク",
+      "language": "言語",
+      "footer": "この端末のループバック インターフェースで提供されています。コマンドを停止するとページも終了します"
+    },
+    "zh": {
+      "title": "iiRDS 包检查",
+      "lead": "拖入一个 .iirds 文件。它由提供本页面的进程在本机读取，不会发送到任何地方。",
+      "drop": "将包拖到此处，或点击选择",
+      "checking": "正在检查",
+      "save": "下载 JSON 报告",
+      "reportNote": "下面的报告为英文：与命令行输出逐字相同。",
+      "failed": "页面无法连接到检查程序",
+      "theme": "外观",
+      "system": "系统", "light": "浅色", "dark": "深色",
+      "language": "语言",
+      "footer": "在本机的回环接口上提供；停止命令后页面即关闭"
+    }
+  }
+}

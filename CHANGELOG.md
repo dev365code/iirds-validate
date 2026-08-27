@@ -181,13 +181,47 @@
   shows the verdict `iirdsv <path>` would have printed. Literally that string:
   the handler calls the same renderer on the same report object in the same
   process, so there is no second implementation to keep in step and nothing to
-  prove agreement about. It refuses to bind to any address that is not
-  loopback, logs nothing by default because a request line carries the name of
-  somebody's document, and serves exactly one path — the default handler
-  would have served the working directory. The name the browser sends is
+  prove agreement about. Two things differ by construction and are now stated
+  wherever the claim is: the page renders into a string and so never carries
+  terminal colour, and where a finding quotes the container's own path it
+  quotes the handler's copy. Flags — `-v`, `-q`, `-W`, `--format json`,
+  `--fragment`, directories, several packages — belong to the command line.
+
+  It refuses to bind to any address that is not loopback, refuses a POST that
+  came from another page, logs nothing by default because a request line
+  carries the name of somebody's document, and serves exactly one path.
+  (An earlier version of this entry said the stdlib's default handler would
+  have served the working directory. It would not: `BaseHTTPRequestHandler`
+  has no `do_GET` at all — that is `SimpleHTTPRequestHandler`, which this
+  deliberately is not. Without the check the page simply answers everywhere,
+  which is a lie about what is there rather than a disclosure.)
+  The name the browser sends is
   carried through verbatim, because the rule about the `.iirds` extension
   reads the container's file name and a handler that renamed the copy would
   decide that rule for every package it was handed.
+
+- **The drop page speaks five languages and has a light/dark switch, and its
+  parts live in one folder.** English, German, Korean, Japanese and Chinese
+  for the page's own words, following the browser until the reader chooses;
+  system, light or dark following the operating system until the reader
+  disagrees with it; both remembered in that browser and nowhere else. **The
+  report is not translated** — it is the command line's output word for word,
+  and each language says so in its own words rather than leaving a reader to
+  work it out. `data/web/` holds the page, the stylesheet, the script and the
+  strings; they are assembled into the single response at request time, so
+  splitting them for editing did not add a path to the server.
+
+- **Fixed in the drop page, found by review**: a body whose declared multipart
+  boundary appears nowhere in it crashed the request thread and printed a
+  traceback — reachable from any page the reader had open, because that
+  content type needs no preflight; a POST from another origin was answered
+  instead of refused; a lying `Content-Length` parked a thread for ever with
+  nothing to reap it; the upload limit bounded the body and not the memory,
+  where the parse costs about eleven times what it reads; the policy header
+  permitted inline code in general instead of naming this page's own; the
+  banner volunteered the version; and a name whose trailing space matters
+  reached the extension rule stripped — the page passed a package the command
+  line fails, from the transport's own tidying rather than from the document.
 
 ### Changed
 

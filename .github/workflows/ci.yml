@@ -132,6 +132,10 @@ jobs:
               "iirds_validate/data/ontologies/1.3/iirds-handover.rdf",
               "iirds_validate/data/ontologies/1.3/iirds-machinery.rdf",
               "iirds_validate/data/ontologies/1.3/iirds-software.rdf",
+              "iirds_validate/data/web/page.html",
+              "iirds_validate/data/web/style.css",
+              "iirds_validate/data/web/app.js",
+              "iirds_validate/data/web/i18n.json",
           ]
           missing = [n for n in required if n not in names]
           if missing:

@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import pathlib
+import re
 import socket
 import threading
 import urllib.error
@@ -27,6 +30,8 @@ import pytest
 from conftest import build_package
 from iirds_validate import report as report_module
 from iirds_validate import runner, serve
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _post(url, filename, payload):
@@ -190,19 +195,382 @@ def test_the_handler_opens_no_outbound_connection(tmp_path, monkeypatch):
     assert machine["findings"] == []
 
 
-def test_the_command_line_offers_it_and_refuses_a_public_address(capsys):
+def test_the_command_line_offers_it_and_refuses_a_public_address(capsys,
+                                                                monkeypatch):
     """`iirdsv serve` is the way in. `--host` exists because somebody will
     want ::1, and it is the one flag that can undo the promise, so the refusal
     is part of the command and not only part of the library."""
     from iirds_validate import cli
 
+    # The server constructor is replaced, not build_server: replacing
+    # build_server would remove the refusal this is about. If the refusal
+    # ever regresses, this must fail rather than bind every interface and
+    # block in serve_forever() -- which is what it did before.
+    def never(*a, **k):
+        raise AssertionError("the command line reached a bind for a public address")
+
+    monkeypatch.setattr(serve, "ThreadingHTTPServer", never)
     assert cli.main(["serve", "--host", "0.0.0.0", "--no-open"]) == 2
     assert "loopback" in capsys.readouterr().err.lower()
 
 
 def test_serve_is_in_the_help(capsys):
+    """The word alone appears in the subcommand list whatever the help text
+    says, so this asks for the sentence that tells somebody what it is."""
     from iirds_validate import cli
 
     with pytest.raises(SystemExit):
         cli.main(["--help"])
-    assert "serve" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "serve" in out
+    assert "drop page" in out, out
+
+
+def _cli(directory, name):
+    """The real command line, run where the package is.
+
+    stdout is piped, so no terminal colour is involved -- the page renders
+    into a string and can never colour, and a run at a prompt can, which is
+    the one difference the documents promise and this deliberately excludes.
+
+    The import path is made absolute before it is handed over: it is relative
+    in a plain `pytest` invocation, and this runs with a different working
+    directory, which produced an empty stdout and a failure that said nothing
+    about why.
+    """
+    import subprocess
+    import sys as _sys
+
+    env = dict(os.environ, NO_COLOR="1")
+    env["PYTHONPATH"] = os.pathsep.join(
+        os.path.abspath(entry) for entry in _sys.path
+        if entry and os.path.isdir(entry))
+    done = subprocess.run(
+        [_sys.executable, "-m", "iirds_validate", "all", name],
+        cwd=str(directory), capture_output=True, env=env)
+    assert done.stdout or done.returncode == 0, done.stderr.decode("utf-8")[-800:]
+    return done.stdout.decode("utf-8"), done.returncode
+
+
+@pytest.mark.parametrize("broken", [None, "mimetype", "missing-content"])
+def test_the_page_prints_what_the_real_command_line_prints(tmp_path, server, broken):
+    """Against `python -m iirds_validate`, not against the library function the
+    page itself calls.
+
+    The first version of this compared the page with `render_text` on a
+    package that had no findings at all -- a header and a footer, of a
+    function, against itself. Rendering every finding differently (the
+    renderer takes `verbose`) changed nothing anywhere in the suite. These
+    have findings, and they come from the command line as a user would run it.
+    """
+    kwargs = {}
+    if broken == "mimetype":
+        kwargs["mimetype"] = b"application/zip"
+    elif broken == "missing-content":
+        kwargs["content"] = ()
+    name = "cli-%s.iirds" % (broken or "clean")
+    package = build_package(tmp_path, name, **kwargs)
+
+    expected, expected_code = _cli(tmp_path, name)
+    _, body = _post(server + "/check", name, package.read_bytes())
+    payload = json.loads(body)
+
+    assert payload["text"] == expected
+    assert payload["exit"] == expected_code
+
+
+def test_a_name_the_handler_would_have_tidied_gets_the_command_lines_answer(tmp_path,
+                                                                            server):
+    """`handover.iirds ` -- trailing space, which a content system produces.
+    The extension rule reads the file name, so stripping it in the handler
+    gave the page a PASS where the command line gives a FAIL: opposite
+    verdicts and opposite exit codes, from the handler's own tidying."""
+    package = build_package(tmp_path, "space.iirds")
+    odd = tmp_path / "handover.iirds "
+    odd.write_bytes(package.read_bytes())
+
+    expected, expected_code = _cli(tmp_path, "handover.iirds ")
+    _, body = _post(server + "/check", "handover.iirds ", package.read_bytes())
+    payload = json.loads(body)
+
+    assert expected_code == 1, "the command line should be failing this one"
+    assert "C3" in expected
+    assert payload["exit"] == expected_code
+    assert payload["text"] == expected
+
+
+def test_a_name_that_would_escape_the_directory_is_replaced(tmp_path, server):
+    """Whatever the sender put in the header, nothing is written outside the
+    directory made for it."""
+    for sent in ("../../etc/passwd", "..", ".", "", "dir/sub/real.iirds",
+                 "windows\\dir\\real.iirds"):
+        assert "/" not in serve.dropped_name(sent), sent
+        assert serve.dropped_name(sent) not in ("", ".", ".."), sent
+    assert serve.dropped_name("handover.iirds ") == "handover.iirds "
+    assert serve.dropped_name("../../etc/passwd") == "passwd"
+
+
+def test_the_machine_readable_half_names_the_file_that_was_dropped(tmp_path, server):
+    """Not the temporary copy's path. The JSON is what a writer attaches to a
+    ticket, and a path under /var/folders says nothing about their document."""
+    package = build_package(tmp_path, "ticket.iirds")
+    _, body = _post(server + "/check", "ticket.iirds", package.read_bytes())
+    assert json.loads(body)["report"]["package"] == "ticket.iirds"
+
+
+def test_a_container_that_cannot_be_opened_names_the_copy_and_says_so(tmp_path,
+                                                                      server):
+    """The one divergence the docs promise. C1 puts the container's own path
+    into the finding, and the page's path is the copy it made -- so this is
+    pinned rather than claimed, and the rest of the text still matches."""
+    _, body = _post(server + "/check", "torn.iirds", b"not a zip at all")
+    payload = json.loads(body)
+    assert "C1" in payload["text"]
+    assert "torn.iirds" in payload["text"], payload["text"]
+    assert payload["report"]["package"] == "torn.iirds"
+
+
+def test_the_page_carries_the_version_it_was_served_by():
+    from iirds_validate import __version__
+
+    page = serve.page_html()
+    assert "__VERSION__" not in page
+    assert __version__ in page
+
+
+def test_the_answer_carries_the_headers_that_keep_it_local(server):
+    with urllib.request.urlopen(server + "/", timeout=30) as response:
+        headers = {k.lower(): v for k, v in response.getheaders()}
+    assert "no-store" in headers.get("cache-control", "")
+    assert headers.get("x-frame-options") == "DENY"
+    assert headers.get("x-content-type-options") == "nosniff"
+    policy = headers.get("content-security-policy", "")
+    for directive in ("default-src 'none'", "connect-src 'self'",
+                      "form-action 'none'", "base-uri 'none'"):
+        assert directive in policy, directive
+    assert "access-control-allow-origin" not in headers, headers
+
+
+def test_a_body_larger_than_the_page_will_hold_is_refused_before_it_is_read(server):
+    """Refused on the declared length, so the bytes are never read. The
+    message says the command line has no such limit, because it does not."""
+    boundary = "----%s" % uuid.uuid4().hex
+    request = urllib.request.Request(
+        server + "/check", data=b"x" * 16,
+        headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary,
+                 "Content-Length": str(serve.MAX_UPLOAD_BYTES + 1)})
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        urllib.request.urlopen(request, timeout=30)
+    assert caught.value.code == 400
+    assert b"command line" in caught.value.read()
+
+
+def test_a_post_with_no_file_and_a_post_with_no_body_are_both_refused(server):
+    boundary = "----%s" % uuid.uuid4().hex
+    empty = ('--%s\r\nContent-Disposition: form-data; name="not-a-file"\r\n\r\nx'
+             '\r\n--%s--\r\n' % (boundary, boundary)).encode("utf-8")
+    request = urllib.request.Request(
+        server + "/check", data=empty,
+        headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary})
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        urllib.request.urlopen(request, timeout=30)
+    assert caught.value.code == 400
+
+    plain = urllib.request.Request(server + "/check", data=b"hello",
+                                   headers={"Content-Type": "text/plain"})
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        urllib.request.urlopen(plain, timeout=30)
+    assert caught.value.code == 400
+
+
+def test_requests_are_not_logged_unless_asked_for(tmp_path, capfd):
+    """A request line carries the name of the file that was dropped, and the
+    stdlib handler writes one to stderr for every request."""
+    httpd = serve.build_server("127.0.0.1", 0)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = "http://127.0.0.1:%d" % httpd.server_address[1]
+        package = build_package(tmp_path, "private-name.iirds")
+        _post(base + "/check", "private-name.iirds", package.read_bytes())
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+    assert "private-name.iirds" not in capfd.readouterr().err
+
+
+def test_a_body_with_no_boundary_is_refused_and_does_not_crash_the_thread(server,
+                                                                          capfd):
+    """`iter_parts()` keys on the declared content type, not on whether a
+    boundary was found, so a body without one left the payload a string and
+    the loop walked it a character at a time: an AttributeError in a request
+    thread, no response at all, and a traceback on the operator's terminal.
+    Reachable from any page the user has open, because this content type
+    needs no preflight."""
+    for content_type in ("multipart/form-data",
+                         "multipart/form-data; boundary=nowhere-in-the-body"):
+        request = urllib.request.Request(
+            server + "/check", data=b"this body has no boundary in it",
+            headers={"Content-Type": content_type})
+        with pytest.raises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(request, timeout=30)
+        assert caught.value.code == 400, content_type
+    assert "Traceback" not in capfd.readouterr().err
+
+
+def test_a_post_from_another_page_is_refused(tmp_path, server):
+    """A browser sends Origin on a cross-site POST, and multipart needs no
+    preflight, so any page the user has open can reach this port. It can
+    never read the answer -- nothing here allows an origin -- but it can
+    spend this process's memory and time."""
+    package = build_package(tmp_path, "drive-by.iirds")
+    boundary = "----%s" % uuid.uuid4().hex
+    body = (('--%s\r\nContent-Disposition: form-data; name="package"; '
+             'filename="x.iirds"\r\n\r\n' % boundary).encode()
+            + package.read_bytes() + ("\r\n--%s--\r\n" % boundary).encode())
+    request = urllib.request.Request(
+        server + "/check", data=body,
+        headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary,
+                 "Origin": "https://example.com"})
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        urllib.request.urlopen(request, timeout=30)
+    assert caught.value.code == 403
+
+
+def test_its_own_page_is_not_refused(tmp_path, server):
+    """The check above must not fire on the page this server serves."""
+    package = build_package(tmp_path, "mine.iirds")
+    boundary = "----%s" % uuid.uuid4().hex
+    body = (('--%s\r\nContent-Disposition: form-data; name="package"; '
+             'filename="mine.iirds"\r\n\r\n' % boundary).encode()
+            + package.read_bytes() + ("\r\n--%s--\r\n" % boundary).encode())
+    request = urllib.request.Request(
+        server + "/check", data=body,
+        headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary,
+                 "Origin": server})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        assert response.status == 200
+
+
+def test_the_policy_names_this_page_rather_than_permitting_inline_code(server):
+    """A nonce, not 'unsafe-inline'. There is one author for the bytes served
+    -- the page is assembled per response -- so naming them costs a
+    substitution and nothing has to be kept in step."""
+    with urllib.request.urlopen(server + "/", timeout=30) as response:
+        policy = response.getheader("Content-Security-Policy")
+        page = response.read().decode("utf-8")
+    assert "unsafe-inline" not in policy, policy
+    nonce = re.search(r"script-src 'nonce-([^']+)'", policy)
+    assert nonce, policy
+    assert 'nonce="%s"' % nonce.group(1) in page
+    assert "frame-ancestors 'none'" in policy
+
+
+def test_a_method_nobody_implemented_answers_like_everything_else(server):
+    """The base class writes an HTML error page with no policy headers and a
+    doctype pointing at a URL on the web, which is a strange thing to serve
+    from a tool whose subject is not loading pages."""
+    request = urllib.request.Request(server + "/", method="TRACE")
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        urllib.request.urlopen(request, timeout=30)
+    assert caught.value.code in (400, 501)
+    headers = {k.lower(): v for k, v in caught.value.headers.items()}
+    assert headers.get("content-type", "").startswith("text/plain")
+    assert "content-security-policy" in headers
+    assert b"w3.org" not in caught.value.read()
+
+
+def test_the_banner_does_not_volunteer_the_version(server):
+    with urllib.request.urlopen(server + "/", timeout=30) as response:
+        assert "0." not in (response.getheader("Server") or "")
+
+
+# ---------------------------------------------------------------------------
+# The page itself: assembled from data/web/, translated, and switchable.
+# ---------------------------------------------------------------------------
+
+def _strings():
+    from iirds_validate import resources
+
+    return json.loads(resources.read_text(serve.WEB, serve.STRINGS))
+
+
+def test_the_page_is_assembled_with_nothing_left_to_substitute():
+    page = serve.page_html("test-nonce")
+    for token in ("__STYLE__", "__SCRIPT__", "__VERSION__", "__NONCE__", "__I18N__"):
+        assert token not in page, token
+    assert "#drop" in page, "the stylesheet did not make it in"
+    assert "addEventListener" in page, "the script did not make it in"
+    assert '"iiRDS package check"' in page, "the translations did not make it in"
+
+
+def test_every_language_says_everything_english_says():
+    """A missing key is a page that shows `undefined` to the reader who
+    chose that language, and nobody who ships in English would see it."""
+    data = _strings()
+    expected = set(data["strings"]["en"])
+    assert len(expected) > 8, sorted(expected)
+    for code in data["order"]:
+        assert code in data["strings"], code
+        assert code in data["names"], code
+        assert set(data["strings"][code]) == expected, (
+            code, sorted(expected ^ set(data["strings"][code])))
+        assert all(str(v).strip() for v in data["strings"][code].values()), code
+
+
+def test_every_language_says_the_report_itself_is_not_translated():
+    """The chrome is translated and the verdict is not -- it is the command
+    line's own output, word for word, which is the whole point of it. A
+    reader who picked their own language has to be told that in it."""
+    data = _strings()
+    # Counted low on purpose: a character of Chinese carries what several of
+    # English do, and the Chinese line is exactly twenty. This catches an
+    # empty or stub value; the named words below are what check the meaning.
+    for code in data["order"]:
+        note = data["strings"][code]["reportNote"]
+        assert len(note) >= 10, (code, note)
+    for code, word in (("en", "English"), ("ko", "영어"), ("de", "Englisch"),
+                       ("ja", "英語"), ("zh", "英文")):
+        assert word in data["strings"][code]["reportNote"], (code, word)
+
+
+def test_the_page_offers_the_languages_the_strings_file_has():
+    page = serve.page_html("n")
+    data = _strings()
+    for code in data["order"]:
+        assert data["names"][code] in page, code
+
+
+def test_the_page_offers_a_theme_that_is_not_only_the_systems():
+    """`color-scheme: light dark` alone follows the operating system and
+    gives a reader no way to disagree with it."""
+    page = serve.page_html("n")
+    for value in ('value="system"', 'value="light"', 'value="dark"'):
+        assert value in page, value
+    assert 'data-theme="dark"' in page, "the dark tokens are not defined"
+    assert ':root:not([data-theme="light"])' in page, (
+        "the system default must not override an explicit choice of light")
+
+
+def test_the_page_survives_the_single_file_distribution(tmp_path):
+    """The delivery this project says matters for a closed network.
+
+    Every part of the page is data, and data is exactly what a packaging
+    change drops: the wheel's package-data line and the archive's own copy
+    are two places that have to agree, and neither is read by any other test.
+    The archive is built and opened rather than trusted.
+    """
+    import subprocess
+    import sys as _sys
+    import zipfile
+
+    pyz = tmp_path / "iirds-validate.pyz"
+    built = subprocess.run(
+        [_sys.executable, str(ROOT / "tools" / "build_zipapp.py"), "-o", str(pyz)],
+        capture_output=True, text=True, cwd=str(ROOT))
+    assert pyz.exists(), built.stderr[-800:]
+
+    inside = set(zipfile.ZipFile(pyz).namelist())
+    for part in (serve.PAGE, serve.STYLE, serve.SCRIPT, serve.STRINGS):
+        assert "iirds_validate/data/%s/%s" % (serve.WEB, part) in inside, part

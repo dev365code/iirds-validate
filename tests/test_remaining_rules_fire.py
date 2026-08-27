@@ -448,3 +448,104 @@ def test_r6_does_not_see_the_childs_units_copied_in_without_the_relation(tmp_pat
         "if this starts firing the rule has been widened -- say so in "
         "docs/divergences.md and in the changelog, because the sentence it "
         "covers would then be covered further than it was")
+
+
+def test_r7_reports_the_container_package_naming_a_parent(tmp_path):
+    """§6.2: "The corresponding iirds:Package instance of an iiRDS package
+    MUST NOT be a member of another iiRDS package expressed by the property
+    iirds:is-part-of-package."
+
+    The realistic spelling of the nesting defect, and nothing reported it: a
+    child handed over on its own, whose metadata still names the parent it was
+    packed inside. The parent is not described here, so the package stays the
+    one this container is about -- and carries a relation the sentence above
+    forbids it. R6 cannot see this: it keys on units pointing at a package
+    *this document declares nested*, and nothing here is declared nested."""
+    childs_own = HEAD.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:parent-elsewhere"/>\n')
+    assert "R7" in ids(tmp_path, "r7_childown.iirds", "", replace=childs_own)
+
+
+def test_r7_is_silent_about_a_child_declared_in_its_parents_file(tmp_path):
+    """§6.3.3 asks the parent's metadata to carry exactly this relation on the
+    nested child, so the relation is not the defect -- carrying it on the
+    package that represents *this* container is. Example 16's shape."""
+    assert "R7" not in ids(tmp_path, "r7_example16.iirds", GOOD_NESTING, replace=HEAD)
+
+
+def test_r7_is_silent_about_a_package_inside_itself(tmp_path):
+    """"a member of *another* iiRDS package". Naming itself is not that, and
+    R5 already reports the shape under the sentence that does name it."""
+    got = ids(tmp_path, "r7_loop.iirds", BROKEN_NESTING["a package that is part of itself"],
+              replace=HEAD)
+    assert "R5" in got
+    assert "R7" not in got
+
+
+def test_r6_sees_a_subject_the_document_never_types(tmp_path):
+    """The rule keys on "not a package" rather than "is an information unit",
+    and its reasoning says an untyped subject is therefore not a way out. That
+    sentence was in the docstring and in no test: narrowing the filter to
+    typed information units changed nothing anywhere in the suite."""
+    untyped = CONTENT_OF_THE_NESTED[:CONTENT_OF_THE_NESTED.index(
+        '  <iirds:Topic')] + (
+        '  <rdf:Description rdf:about="urn:test:topic">\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:nested"/>\n'
+        '  </rdf:Description>\n')
+    assert "R6" in ids(tmp_path, "r6_untyped.iirds", untyped, replace=HEAD)
+
+
+def test_r6_names_the_unit_and_not_the_package(tmp_path):
+    """Which node a finding hangs off is what a reader goes and looks at, and
+    both nodes are in the graph, so naming the wrong one is invisible to a
+    test that only counts rule ids."""
+    metadata = (HEAD + CONTENT_OF_THE_NESTED + "</rdf:RDF>\n").replace(
+        'xmlns:iirds=', EXTRA_NS + ' xmlns:iirds=', 1)
+    package = build_package(tmp_path, "r6_subject.iirds", metadata=metadata)
+    subjects = [f.violation.subject for f in runner.check(package).findings
+                if f.rule.id == "R6"]
+    assert subjects == ["urn:test:topic"], subjects
+
+
+def with_nested(tmp_path, name, body, entries=()):
+    metadata = (HEAD + body + "</rdf:RDF>\n").replace(
+        'xmlns:iirds=', EXTRA_NS + ' xmlns:iirds=', 1)
+    package = build_package(tmp_path, name, metadata=metadata, extra=entries)
+    return {f.rule.id for f in runner.check(package).findings}
+
+
+def a_nested_container(tmp_path):
+    where = tmp_path / "inner"
+    where.mkdir(parents=True, exist_ok=True)
+    return build_package(where, "inner.iirds").read_bytes()
+
+
+def test_r8_reports_a_declared_nested_package_that_is_not_in_the_archive(tmp_path):
+    """§6.3.3: "All nested iiRDS containers MUST be included side by side in
+    the iiRDS ZIP archive of the highest level iiRDS package." The metadata
+    declares a nested package and the archive carries none, which no rule
+    said anything about."""
+    assert "R8" in with_nested(tmp_path, "r8_absent.iirds", GOOD_NESTING)
+
+
+def test_r8_is_silent_when_the_nested_container_is_here(tmp_path):
+    assert "R8" not in with_nested(
+        tmp_path, "r8_present.iirds", GOOD_NESTING,
+        entries=(("content/inner.iirds", a_nested_container(tmp_path)),))
+
+
+def test_r8_is_not_satisfied_by_a_file_that_only_ends_in_iirds(tmp_path):
+    """Without the header test this rule is answered by sixteen bytes of
+    anything under a name ending in .iirds, which is a worse state than not
+    having the rule: it would read as evidence."""
+    assert "R8" in with_nested(
+        tmp_path, "r8_decoy.iirds", GOOD_NESTING,
+        entries=(("content/inner.iirds", b"not a zip at all"),))
+
+
+def test_r8_is_silent_when_nothing_is_declared_nested(tmp_path):
+    """A container carrying no nesting declaration owes no nested container,
+    and one carrying a stray .iirds is not thereby a parent."""
+    assert "R8" not in with_nested(tmp_path, "r8_none.iirds", "")

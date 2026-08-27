@@ -1093,3 +1093,35 @@ def test_every_emitted_shape_has_fired_somewhere_in_this_file():
         "the accumulator is empty-ish; this test only means something after "
         "the whole file has run -- do not run it in isolation")
     assert never_fired == set(), sorted(never_fired)
+
+
+def test_the_container_package_is_not_inside_another_in_either_encoding(tmp_path):
+    """§6.2: "The corresponding iirds:Package instance of an iiRDS package
+    MUST NOT be a member of another iiRDS package expressed by the property
+    iirds:is-part-of-package."
+
+    Three graphs again, and the middle one is why this is not a one-line
+    shape: a package that names a parent this document also describes is a
+    nested child declared the way §6.3.3 asks, and it must pass. The third is
+    the self-loop, which is not membership in another package."""
+    named_elsewhere = MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:parent-elsewhere"/>\n')
+    assert "R7" in assert_parity(tmp_path, "r7_elsewhere.iirds", named_elsewhere)
+
+    declared = named_elsewhere.replace("</rdf:RDF>",
+        '  <iirds:Package rdf:about="urn:test:parent-elsewhere">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n</rdf:RDF>')
+    assert "R7" not in assert_parity(tmp_path, "r7_declared.iirds", declared), (
+        "a package whose parent is described here is a nested child, and "
+        "§6.3.3 asks it to carry exactly this relation")
+
+    loop = MINIMAL_RDF.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:package"/>\n')
+    assert "R7" not in assert_parity(tmp_path, "r7_loop.iirds", loop), (
+        "itself is not another package; R5 answers for the self-loop"
+    )

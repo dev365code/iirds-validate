@@ -6,11 +6,11 @@
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
  "_note": "Every registered rule appears in exactly one bucket; the emitter refuses to run otherwise. not_expressible reasons are the differential gate's exclusion list — one source, no ad-hoc skips.",
  "counts": {
-  "core_emitted": 119,
+  "core_emitted": 121,
   "version_excluded": 2,
-  "sparql_emitted": 22,
+  "sparql_emitted": 21,
   "deferred_v1.1": 6,
-  "not_expressible": 40,
+  "not_expressible": 41,
   "noop": 1
  },
  "core_emitted": [
@@ -132,7 +132,9 @@
   "M97.2",
   "R1",
   "R2",
-  "R5"
+  "R5",
+  "R6",
+  "R7"
  ],
  "sparql_emitted": [
   "L10",
@@ -154,7 +156,6 @@
   "M24.6",
   "M30",
   "R4",
-  "R6",
   "S4",
   "S5"
  ],
@@ -218,6 +219,7 @@
   "L2": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L11": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L12": "graph×ZIP join: the verdict depends on which files the archive carries",
+  "R8": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L9": "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
  },
  "noop": {
@@ -700,6 +702,14 @@
    "iri": "https://w3id.org/iirds-validate/shapes#R5",
    "file": "iirds-1.3/iirds-core.ttl"
   },
+  "R6": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R6",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R7": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R7",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
   "L10": {
    "iri": "https://w3id.org/iirds-validate/shapes#L10",
    "file": "iirds-1.3/iirds-sparql.ttl"
@@ -775,10 +785,6 @@
   "R4": {
    "iri": "https://w3id.org/iirds-validate/shapes#R4",
    "file": "iirds-1.3/iirds-handover-sparql.ttl"
-  },
-  "R6": {
-   "iri": "https://w3id.org/iirds-validate/shapes#R6",
-   "file": "iirds-1.3/iirds-sparql.ttl"
   },
   "S4": {
    "iri": "https://w3id.org/iirds-validate/shapes#S4",

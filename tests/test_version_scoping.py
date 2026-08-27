@@ -46,6 +46,9 @@ SCOPED = {
     "R6":    (("1.3",),
               "section 5.3 has no nesting chapter in the cached 1.0 either, so the "
               "same edition limit as R5 and for the same reason"),
+    "R8":    (("1.3",),
+              "section 6.3.3 again, the sentence that puts the nested containers in "
+              "the archive; the cached 1.0 has no nesting chapter"),
     "M96.1": (("1.2", "1.3"), "iirds:ExternalClassification arrives in 1.2"),
     "M96.2": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),
     "M96.3": (("1.2", "1.3"), "iirds:classificationIdentifier arrives in 1.2"),

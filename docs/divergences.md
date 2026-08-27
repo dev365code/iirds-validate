@@ -353,6 +353,29 @@ A package nested inside a nested package is content too — §6.2 lists
 already reports that shape under §6.3.3, and one triple should not draw two
 findings under two requirement ids.
 
+**What the archive settles, and what it costs.** The metadata cannot say which
+container this is, but the archive can weigh in: §5.3 says nested packages "are
+stored as iiRDS ZIP archives", §5.1.2 lists them among the content files below
+the root directory, and §6.3.3 says "All nested iiRDS containers MUST be
+included side by side in the iiRDS ZIP archive of the highest level iiRDS
+package". So a document that declares a nested package while the archive
+carries no nested container is broken whichever container it is: the parent's
+reading breaks §6.3.3, the child's breaks §5.3. **R8** reports that, and its
+evidence is §5.2's own description of an iiRDS ZIP archive read out of the
+first local header — the extension alone is not the test, because a file named
+`nested.iirds` holding sixteen bytes of anything would otherwise answer the
+question and read as evidence.
+
+The cost, named. "Side by side … of the **highest level** iiRDS package" can be
+read as *flattening*: in P ⊃ C ⊃ G, both `C.iirds` and `G.iirds` sit at one
+level inside `P.iirds`, and `C.iirds` on its own then legitimately carries no
+nested archive. §8.3.1.2's "by nesting iiRDS ZIP archives **in each other**"
+reads the other way, and this takes that one. Under the flattening reading R8
+has one false report: a middle container in a chain three deep, validated on
+its own. Nothing in reach has three levels — no corpus fixture, neither
+official sample, no example in the specification — so the reading is a choice
+made without a witness, which is why it is written here rather than assumed.
+
 `#2` — "A nested iiRDS package MUST NOT contain metadata about the outer iiRDS
 package" — is recorded as **undecidable from one container**, in a list kept
 separate from the one for obligations addressed to reading applications. Its
@@ -362,7 +385,10 @@ nested is either the child breaching that sentence or a parent describing its
 child, and the metadata does not distinguish them. Other sentences weigh
 without settling it — §6.3 says the enclosing package is the subject of no
 rendition, which is M8 — and so does the archive, which is a different
-question. Neither list counts toward coverage and both are gated.
+question. Neither list counts toward coverage and both are gated. What the archive
+settles is a different sentence, not this one: R8 answers §6.3.3's "must be in
+the archive", and knowing that a document is wrong somewhere is not knowing
+that it is the nested package.
 
 The cost, named: a parent's `metadata.rdf` that misspells its own package's
 IRI in the child's reference now draws M8 **and M3** on the child — M3 because

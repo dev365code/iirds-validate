@@ -97,9 +97,10 @@
   instead, because a package's own instance must not be a member of *another*
   package; read it as describing a pair held somewhere else and §5.1.1 is,
   which gives `META-INF` to "metadata on the iiRDS package and its contents"
-  exclusively. The shape is SHACL-SPARQL rather than Core for one clause — a
-  package naming itself is not inside another package, and comparing a value
-  node with the focus node is beyond Core.
+  exclusively. The shape is SHACL Core: keeping a package that names *itself*
+  out of the nested set means comparing a value node with the focus node,
+  which Core cannot do — but it can count instead, and two Packages among the
+  values of a zero-or-one path is exactly "a Package parent other than me".
 
   **What it does not see.** R6 reports one triple pattern: a subject that is
   not a package, naming a package this document declares nested. A parent that
@@ -110,7 +111,32 @@
   the sentence, so a 1.1 or 1.2 document with the same defect passes in
   silence; what is known about those editions is that they had the nesting
   mechanism, not that they carried this prohibition.
-  190 rules, 141 SHACL shapes.
+
+- **A container that says it is inside another package is reported.** §6.2:
+  "The corresponding `iirds:Package` instance of an iiRDS package MUST NOT be
+  a member of another iiRDS package expressed by the property
+  `iirds:is-part-of-package`." The sentence stands word for word since 1.0 and
+  no rule here claimed it, so the commonest spelling of the nesting defect —
+  a child container handed over on its own, still naming the parent it was
+  packed inside — passed with **no findings at all**. **R7** reports it, on
+  every edition. A package whose named parent is described in the same
+  metadata is a nested child declared the way §6.3.3 asks and stays silent;
+  so does a package naming itself, which is not another package and which R5
+  already reports under the sentence that names that shape.
+
+- **A declared nested package that is not in the archive is reported.** §6.3.3:
+  "All nested iiRDS containers MUST be included side by side in the iiRDS ZIP
+  archive of the highest level iiRDS package." **R8** is the one nesting
+  question the metadata cannot answer and the archive can, and it needs no
+  decision about which container is in hand either: a document declaring a
+  nested package while the archive carries none is broken under the parent's
+  reading (§6.3.3) and under the child's (§5.3). The evidence is §5.2's own
+  description of an iiRDS ZIP archive, read out of the first local header —
+  the file name alone is not the test, because a file called `nested.iirds`
+  holding any sixteen bytes would otherwise answer it and read as evidence.
+  The cost of one reading of "highest level" is named in
+  `docs/divergences.md`.
+  192 rules, 142 SHACL shapes. Coverage of the standard: 23 of 314.
 
 - **The sentence no single container can decide is recorded as such.** The
   other §5.3 prohibition — a nested package must not carry metadata about the

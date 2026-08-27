@@ -189,6 +189,8 @@ CORE_FORMS["M96.3"] = ("nonempty_values", {"targets": ("iirds:ExternalClassifica
                                            "path": "iirds:classificationIdentifier"})
 CORE_FORMS["M8"] = ("m8_container_package", {})
 CORE_FORMS["R5"] = ("r5_named_parent_is_not_nested", {})
+CORE_FORMS["R6"] = ("r6_content_of_a_nested_package", {})
+CORE_FORMS["R7"] = ("r7_container_package_is_not_inside_another", {})
 CORE_FORMS["M9"] = ("no_absolute_source", {"targets": ("iirds:Rendition",),
                                            "path": "iirds:source"})
 
@@ -396,22 +398,6 @@ SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   ?party <%(ii)srelates-to-vcard> ?value .
   FILTER NOT EXISTS { ?value ?cp ?co } }"""])
 
-#: Section 5.3: a document that declares a nested package must not describe
-#: that package's content. SPARQL rather than Core for one reason -- "?outer
-#: is not ?pkg" is the clause that keeps a self-loop out of the nested set,
-#: matching context.container_packages, and Core cannot compare a value node
-#: with the focus node. Without it a package inside itself would read as
-#: nested here and not in Python, and the differential gate compares the two.
-#: rdf:type/rdfs:subClassOf* for the reason M3 carries it: a package typed
-#: only with its own declared subclass is still a Package (section 7).
-SPARQL_FORMS["R6"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
-  ?value <%(ii)sis-part-of-package> ?pkg .
-  ?pkg <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-  ?pkg <%(ii)sis-part-of-package> ?outer .
-  ?outer <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-  FILTER ( ?outer != ?pkg )
-  FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }"""])
-
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.
@@ -436,7 +422,7 @@ for _rid in ("S1", "S2", "S3"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
 for _rid in ("S6", "S7", "S8"):
     NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records"
-for _rid in ("L2", "L11", "L12"):
+for _rid in ("L2", "L11", "L12", "R8"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
 
@@ -571,6 +557,46 @@ def family_m8_container_package(sid, p):
              "sh:qualifiedValueShape [ sh:class iirds:Package ] ; "
              "sh:qualifiedMinCount 2 ] ] "
              "[ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] )"], [])
+
+
+def family_r6_content_of_a_nested_package(sid, p):
+    # Section 5.3: this document must not describe the content of a package it
+    # says is nested. Focus is anything carrying the relation; a Package focus
+    # is R5's business and passes the first branch.
+    #
+    # "Nested" is the same predicate as m8 above, one level in: count instead
+    # of comparing. The value nodes of a zero-or-ONE path are the node and its
+    # direct parents, they are a set so a self-loop does not double it, and two
+    # or more Packages among them is exactly "there is a Package-valued parent
+    # other than me". The first draft of this shape said Core could not express
+    # it and shipped SPARQL -- the comment on m8 in this same file already had
+    # the answer. Mirrors rules/requirements.py r6 through container_packages.
+    return (["sh:targetSubjectsOf iirds:is-part-of-package",
+             "sh:or ( [ sh:class iirds:Package ] "
+             "[ sh:property [ sh:path iirds:is-part-of-package ; "
+             "sh:qualifiedValueShape [ sh:class iirds:Package ; "
+             "sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; "
+             "sh:qualifiedValueShape [ sh:class iirds:Package ] ; "
+             "sh:qualifiedMinCount 2 ] ] ; "
+             "sh:qualifiedMaxCount 0 ] ] )"], [])
+
+
+def family_r7_container_package_is_not_inside_another(sid, p):
+    # Section 6.2: the package that represents this container must not be a
+    # member of another package. Same counting trick as m8 and r6, used twice
+    # over the same zero-or-ONE path, whose value nodes are the focus node and
+    # its direct parents: two or more of them means "a parent other than me",
+    # and two or more *Packages* among them means "a Package parent other than
+    # me", which is what makes a node a nested child rather than this
+    # container's own. A nested child is allowed the relation -- section 6.3.3
+    # asks for it -- so the shape passes on either of those.
+    # Mirrors rules/requirements.py r7 through container_packages.
+    path = "[ sh:zeroOrOnePath iirds:is-part-of-package ]"
+    return (["sh:targetClass iirds:Package",
+             "sh:or ( [ sh:property [ sh:path %s ; sh:maxCount 1 ] ] "
+             "[ sh:property [ sh:path %s ; "
+             "sh:qualifiedValueShape [ sh:class iirds:Package ] ; "
+             "sh:qualifiedMinCount 2 ] ] )" % (path, path)], [])
 
 
 def family_selector_value(sid, p):

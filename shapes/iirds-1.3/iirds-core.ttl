@@ -1731,3 +1731,28 @@ ivs:R5-p a sh:PropertyShape ;
   sh:path iirds:is-part-of-package ;
   sh:qualifiedValueShape [ sh:class iirds:Package ; sh:property [ sh:path iirds:is-part-of-package ; sh:minCount 1 ] ] ;
   sh:qualifiedMaxCount 0 .
+
+ivs:R6 a sh:NodeShape ;
+  rdfs:label "a document that declares a nested package must not describe that package's content" ;
+  sh:severity sh:Violation ;
+  sh:message "a document that declares a nested package must not describe that package's content" ;
+  ivm:ruleId "R6" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Point the information unit at the package this container itself is about, or remove it from this metadata and leave it to the nested container's own metadata.rdf. If this file is the nested container's own metadata rather than its parent's, the repair is the other one: drop the iirds:is-part-of-package relation from this document's own iirds:Package, which must not name another package as the one it is inside." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x5-3-nested-iirds-packages#3" ;
+  sh:targetSubjectsOf iirds:is-part-of-package ;
+  sh:or ( [ sh:class iirds:Package ] [ sh:property [ sh:path iirds:is-part-of-package ; sh:qualifiedValueShape [ sh:class iirds:Package ; sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:qualifiedValueShape [ sh:class iirds:Package ] ; sh:qualifiedMinCount 2 ] ] ; sh:qualifiedMaxCount 0 ] ] ) .
+
+ivs:R7 a sh:NodeShape ;
+  rdfs:label "the package that represents this container must not name a parent package" ;
+  sh:severity sh:Violation ;
+  sh:message "the package that represents this container must not name a parent package" ;
+  ivm:ruleId "R7" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Remove the iirds:is-part-of-package relation from this container's own iirds:Package. A package's own instance does not record which package it was packed inside; that relation belongs in the parent container's metadata, on the iirds:Package the parent declares for this child. If this file is meant to be the parent's, then the package it names as a parent is missing from this metadata, and the repair is to describe it here." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units> ;
+  ivm:covers "x6-2-information-units#7" ;
+  sh:targetClass iirds:Package ;
+  sh:or ( [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:maxCount 1 ] ] [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:qualifiedValueShape [ sh:class iirds:Package ] ; sh:qualifiedMinCount 2 ] ] ) .

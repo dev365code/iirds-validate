@@ -18,8 +18,8 @@ demonstrated.
 |---|---|---|
 | `iirds-1.3/iirds-complete.ttl` | SHACL-AF engine | **start here**: core + SPARQL in one file, for any package that does not declare iiRDS/H |
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
-| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 110 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
-| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 15 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
+| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 112 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
+| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 14 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
 | `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 7 iiRDS/H additions (SPARQL): M15.11a, the five named-party MUSTs, and R4 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-49 of the 189 catalogued rules have no shape, in four honest categories,
+50 of the 192 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **40 not expressible** — 40 of the 189 rules are about ZIP bytes, content
+- **41 not expressible** — 41 of the 192 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, files present
   in the container. None of that
@@ -168,7 +168,7 @@ each listed with its reason in `MANIFEST.json`:
 
 ## Why you can trust the translation
 
-Every emitted shape is **differentially tested against the 189-rule Python
+Every emitted shape is **differentially tested against the 192-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

@@ -239,27 +239,37 @@ def test_the_release_that_publishes_the_repair_actually_carries_it():
     publishes the shared resolution, not carrying it is a defect in that
     reader rather than a state this project tolerates.
 
-    Written as one implication rather than an `if` around an assert, because
-    the `if` was false in every configuration this project runs -- the
-    worktree keeps its last release's version until the day it ships -- so
-    the test executed no assertion at all and passed on an empty body."""
+    One implication rather than an `if` around an assert. The `if` never
+    executed -- the reader on the path is below that release in every
+    configuration this project runs -- so it also never called the probe, and
+    a probe that raised or regressed said nothing. This calls it every run.
+
+    Be plain about what that does and does not buy. The implication is
+    evaluated but cannot fail while the reader is below the release, so the
+    forbidden combination is a guard for a state no run has yet been in. The
+    rule itself is tested by the table below; this is whichever row the
+    reader on the path happens to be on."""
     at_or_past = sdk_version() >= RESOLVED_ALIKE_FROM
-    assert reader_carries_the_repair() or not at_or_past, (
+    carries = reader_carries_the_repair()
+    assert isinstance(carries, bool), type(carries)
+    assert carries or not at_or_past, (
         "iirds %s is at or past %s and does not resolve a percent-encoded "
         "source; the two projects have diverged at the seam"
         % (iirds.__version__, ".".join(map(str, RESOLVED_ALIKE_FROM))))
 
 
-def test_a_reader_behind_the_repair_release_is_the_only_one_allowed_to_lack_it():
-    """The other direction, so the implication above cannot pass by having
-    an empty antecedent for ever: whichever reader is under test, this says
-    which of the two states it is in and both are stated."""
-    carries = reader_carries_the_repair()
-    at_or_past = sdk_version() >= RESOLVED_ALIKE_FROM
-    assert carries or not at_or_past, "at or past %s without the repair" % (
-        ".".join(map(str, RESOLVED_ALIKE_FROM)),)
-    assert carries in (True, False) and at_or_past in (True, False)
-    if not carries:
-        assert sdk_version() < RESOLVED_ALIKE_FROM, (
-            "a reader without the repair reports a version at or past the "
-            "release that publishes it")
+@pytest.mark.parametrize("carries,at_or_past,allowed", [
+    (True, True, True),      # at the release and carrying it
+    (True, False, True),     # ahead of its own release, which a worktree is
+    (False, False, True),    # below the release and not carrying it yet
+    (False, True, False),    # the one this project does not tolerate
+])
+def test_only_one_combination_of_version_and_repair_is_forbidden(carries, at_or_past,
+                                                                allowed):
+    """The rule the test above applies, as a table, so all four rows are
+    exercised rather than the single row the reader on the path happens to be
+    on. Written after one version of that test asserted a tautology
+    (`x in (True, False)` for a bool) and another put its assertion inside a
+    condition false in every configuration -- both pass without deciding
+    anything, which is the failure this file keeps finding in itself."""
+    assert (carries or not at_or_past) is allowed

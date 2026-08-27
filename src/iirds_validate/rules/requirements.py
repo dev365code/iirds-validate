@@ -29,6 +29,7 @@ from rdflib import URIRef
 from .. import terms as T
 from ..context import container_packages, package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, Violation, is_named
+from ..package import nested_containers
 from ..registry import rule
 
 #: Obligations the standard states that no validator can check on a package,
@@ -268,3 +269,100 @@ def r6_the_content_of_a_nested_package_is_not_described_here(ctx):
                         subject=ctx.ref(unit),
                         detail="belongs to %s, which this document declares nested"
                                % ctx.ref(pkg))
+
+
+@rule("R7", kind="schema", prio="MUST NOT", versions=(), variants=(),
+      title="the package that represents this container must not name a parent package",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#information-units",
+      covers=("x6-2-information-units#7",), diagnosis="cause",
+      fix="Remove the iirds:is-part-of-package relation from this container's own "
+          "iirds:Package. A package's own instance does not record which package it "
+          "was packed inside; that relation belongs in the parent container's "
+          "metadata, on the iirds:Package the parent declares for this child. If this "
+          "file is meant to be the parent's, then the package it names as a parent is "
+          "missing from this metadata, and the repair is to describe it here.")
+def r7_the_container_package_is_not_inside_another(ctx):
+    """"The corresponding iirds:Package instance of an iiRDS package MUST NOT
+    be a member of another iiRDS package expressed by the property
+    iirds:is-part-of-package." (section 6.2, and unchanged since 1.0)
+
+    The realistic spelling of the nesting defect, and nothing reported it. A
+    child container handed over on its own, whose metadata still names the
+    parent it was packed inside, passed with no findings at all: R6 keys on
+    units pointing at a package *this document declares nested*, and a lone
+    child declares nothing nested.
+
+    "The corresponding instance" is the package that represents this
+    container, which is what container_packages answers -- a package naming a
+    parent this document also describes as a package is a nested child
+    declared the way section 6.3.3 asks, not the corresponding instance, and
+    is excluded there. What is left is a package this container is about, with
+    an outgoing relation the sentence forbids it.
+
+    Self-loops are not reported: "another iiRDS package" is not itself, and
+    section 6.3.3 is the sentence that names that shape -- R5 reports it.
+
+    Not version-gated. The sentence stands word for word in the 1.0 release as
+    well as in 1.3, which is the difference between this and R5 and R6.
+    """
+    for pkg in container_packages(ctx.graph):
+        for parent in sorted(ctx.graph.objects(pkg, T.is_part_of_package), key=ctx.ref):
+            if parent == pkg:
+                continue
+            yield Violation("the package this container is about says it is inside "
+                            "another package",
+                            subject=ctx.ref(pkg),
+                            detail="names %s as the package it is part of" % ctx.ref(parent))
+
+
+@rule("R8", kind="container", prio="MUST", versions=("1.3",), variants=(),
+      title="a nested package this metadata declares must be in the archive",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#metadata-of-nested-iirds-packages",
+      covers=("x6-3-3-metadata-of-nested-iirds-packages#2",), diagnosis="cause",
+      fix="Add the nested container to this archive, beside the content, as a file "
+          "whose name ends .iirds and whose own root holds an uncompressed first "
+          "entry named mimetype containing application/iirds+zip. If instead this "
+          "file is the nested container's own metadata rather than its parent's, the "
+          "repair is the other one: drop the description of the outer package and the "
+          "iirds:is-part-of-package relation that names it.")
+def r8_a_declared_nested_package_is_in_the_archive(ctx):
+    """"All nested iiRDS containers MUST be included side by side in the iiRDS
+    ZIP archive of the highest level iiRDS package." (section 6.3.3)
+
+    The one question about nesting that the metadata cannot answer and the
+    archive can. A document declaring a nested package and a document that
+    *is* the nested package are the same graph -- section 6.2 makes them so --
+    and this does not decide between them, because it does not have to: if
+    the declaration is true the container owes a nested archive and has not
+    got one, and if it is false the document is the child breaching section
+    5.3, which forbids it metadata about the outer package. Neither reading is
+    clean, so the finding stands without choosing.
+
+    The name is not the test. A file called content/nested.iirds holding
+    sixteen bytes of anything would otherwise answer this, and answering it
+    falsely is worse than leaving the sentence unchecked -- it would read as
+    evidence. package.nested_containers reads section 5.2's own description of
+    an iiRDS ZIP archive out of the first local header.
+
+    The cost, named: "side by side in the archive of the highest level
+    package" can be read as flattening, and under that reading a middle
+    container in a chain three deep legitimately carries no nested archive of
+    its own and is reported here. Section 8.3.1.2's "by nesting iiRDS ZIP
+    archives in each other" reads the other way, and this takes that one. No
+    fixture, sample or example in reach has three levels; docs/divergences.md
+    carries the trade.
+
+    Version-gated to 1.3 for the reason R5 and R6 are: the 1.0 release on hand
+    has no nesting chapter at all.
+    """
+    declared = set(package_nodes(ctx.graph)).difference(container_packages(ctx.graph))
+    if not declared or nested_containers(ctx.package):
+        return
+    for pkg in sorted(declared, key=ctx.ref):
+        yield Violation("this metadata declares a nested iiRDS package and the archive "
+                        "carries no nested iiRDS container",
+                        subject=ctx.ref(pkg),
+                        detail="no entry named *.iirds opens the way section 5.2 says "
+                               "an iiRDS ZIP archive opens")

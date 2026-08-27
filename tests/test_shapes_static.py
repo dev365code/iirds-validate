@@ -48,11 +48,11 @@ def test_every_rule_is_classified_exactly_once():
 
 def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
-    assert counts["core_emitted"] == 119
+    assert counts["core_emitted"] == 121
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 22
+    assert counts["sparql_emitted"] == 21
     assert counts["deferred_v1.1"] == 6
-    assert counts["not_expressible"] == 40
+    assert counts["not_expressible"] == 41
     assert counts["noop"] == 1
 
 
@@ -192,12 +192,13 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     assert "| %d shapes: graph-global" % per_file["iirds-sparql.ttl"] in readme
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
     assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
-    assert "40 of the 189 rules" in readme
-    assert str(len(MANIFEST["not_expressible"])) == "40"
+    rules = len(all_rules())
+    assert "41 of the %d rules" % rules in readme
+    assert str(len(MANIFEST["not_expressible"])) == "41"
     # The 52-rule remainder is broken out by category, and the five deferred
     # iiRDS/H MUSTs are named -- a reader under H must know to keep the
     # Python validator in the loop.
-    assert "49 of the 189" in readme
+    assert "50 of the %d" % rules in readme
     assert len(MANIFEST["deferred_v1.1"]) == 6
     # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
     # that once demanded they be named as missing now demands the opposite.
@@ -238,8 +239,8 @@ EMITTED_IDS = frozenset((
     "M71", "M72", "M73", "M74", "M75", "M76", "M77", "M78", "M79", "M8",
     "M80", "M81", "M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89",
     "M9", "M90", "M91", "M92", "M93", "M94", "M95", "M96.1", "M96.2",
-    "M96.3", "M97.1", "M97.2", "R1", "R2", "R4", "R5", "R6", "S4",
-    "S5"))
+    "M96.3", "M97.1", "M97.2", "R1", "R2", "R4", "R5", "R6", "R7",
+    "S4", "S5"))
 
 
 def test_the_emitted_rule_set_is_pinned_by_name():

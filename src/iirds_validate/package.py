@@ -18,7 +18,7 @@ import zipfile
 from pathlib import Path
 from typing import List, Optional
 
-from .model import METADATA_RDF, MIMETYPE_FILE
+from .model import METADATA_RDF, MIMETYPE_FILE, MIMETYPE_VALUE
 
 #: Read in pieces this big. Large enough that a normal entry costs one or
 #: two calls, small enough that a hostile one cannot make the first call
@@ -307,6 +307,89 @@ class DirectoryPackage:
 
     def testzip(self):
         return None
+
+
+#: §5.2: "The file name of the iiRDS ZIP archive MUST feature the file name
+#: extension .iirds".
+CONTAINER_SUFFIX = ".iirds"
+
+#: A ZIP local file header is thirty fixed bytes, then the name, then the extra
+#: field, then the data. The fields read here: the signature, the compression
+#: method at 8, the compressed size at 18, the name length at 26 and the extra
+#: length at 28.
+_LOCAL_HEADER = b"PK\x03\x04"
+_HEADER_FIXED = 30
+_STORED = 0
+
+
+def _u16(raw: bytes, at: int) -> int:
+    return int.from_bytes(raw[at:at + 2], "little")
+
+
+def _u32(raw: bytes, at: int) -> int:
+    return int.from_bytes(raw[at:at + 4], "little")
+
+
+def _opens_like_a_container(head: bytes, more) -> bool:
+    """Does this begin the way §5.2 says an iiRDS ZIP archive begins?
+
+    "the root directory of the ZIP file MUST contain a file named mimetype. It
+    MUST contain the following ASCII-encoded text in a single line, without any
+    line delimiters such as CR or LF: application/iirds+zip. The file MUST be
+    the first entry in the ZIP file and it MUST be stored uncompressed."
+
+    Every clause of that is a discriminator, and the name is not one of them:
+    a file called nested.iirds holding any twenty-eight bytes would otherwise
+    answer the question a nesting rule asks. Read from the first *local*
+    header rather than from the central directory, because the directory is
+    written by whoever built the archive and a consumer streaming the file
+    reads the local one; where they disagree this sees what a stream sees.
+
+    `more` is called with the number of bytes needed when the extra field
+    pushes the payload past what was already read.
+    """
+    if len(head) < _HEADER_FIXED or head[:4] != _LOCAL_HEADER:
+        return False
+    if _u16(head, 8) != _STORED:
+        return False
+    name_len, extra_len = _u16(head, 26), _u16(head, 28)
+    payload = MIMETYPE_VALUE.encode("ascii")
+    if name_len != len(MIMETYPE_FILE) or _u32(head, 18) != len(payload):
+        return False
+    if head[_HEADER_FIXED:_HEADER_FIXED + name_len] != MIMETYPE_FILE.encode("ascii"):
+        return False
+    start = _HEADER_FIXED + name_len + extra_len
+    raw = head if len(head) >= start + len(payload) else more(start + len(payload))
+    return raw[start:start + len(payload)] == payload
+
+
+def nested_containers(package) -> List[str]:
+    """Every entry that is a nested iiRDS container, in a fixed order.
+
+    The evidence the metadata cannot give. A document that declares a nested
+    package and a document that *is* the nested package are the same graph --
+    §6.2 says a conformant package's own instance is not a member of another
+    package, so the only metadata evidence for either reading is the relation
+    under dispute. The archive is outside that circle: §5.3 says nested
+    packages "are stored as iiRDS ZIP archives", §5.1.2 lists them among the
+    content files below the root directory, and §6.3.3 says all of them "MUST
+    be included side by side in the iiRDS ZIP archive of the highest level
+    iiRDS package".
+
+    Sorted because entry order is the sender's choice and a report is not.
+    """
+    found = []
+    for name in sorted(package.files):
+        if not name.endswith(CONTAINER_SUFFIX):
+            continue
+        try:
+            head = package.read_bounded(name, _HEADER_FIXED + 256)[0]
+            if _opens_like_a_container(
+                    head, lambda n, _name=name: package.read_bounded(_name, n)[0]):
+                found.append(name)
+        except Exception:                     # unreadable is not nested
+            continue
+    return found
 
 
 def looks_like_a_container(path: Path) -> bool:

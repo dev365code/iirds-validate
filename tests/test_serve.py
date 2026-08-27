@@ -249,7 +249,13 @@ def _cli(directory, name):
         [_sys.executable, "-m", "iirds_validate", "all", name],
         cwd=str(directory), capture_output=True, env=env)
     assert done.stdout or done.returncode == 0, done.stderr.decode("utf-8")[-800:]
-    return done.stdout.decode("utf-8"), done.returncode
+    # Line endings are the platform's, not the report's: text-mode stdout on
+    # Windows writes \r\n where the page, rendering into a string for a
+    # browser, writes \n. Normalised here and named in the documents, because
+    # it is a third thing that differs by construction and the first two were
+    # found by reading rather than by running -- this one was found by
+    # running, on a machine none of the reading happened on.
+    return done.stdout.decode("utf-8").replace("\r\n", "\n"), done.returncode
 
 
 @pytest.mark.parametrize("broken", [None, "mimetype", "missing-content"])

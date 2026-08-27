@@ -181,10 +181,12 @@
   shows the verdict `iirdsv <path>` would have printed. Literally that string:
   the handler calls the same renderer on the same report object in the same
   process, so there is no second implementation to keep in step and nothing to
-  prove agreement about. Two things differ by construction and are now stated
-  wherever the claim is: the page renders into a string and so never carries
-  terminal colour, and where a finding quotes the container's own path it
-  quotes the handler's copy. Flags — `-v`, `-q`, `-W`, `--format json`,
+  prove agreement about. Three things differ by construction and are now
+  stated wherever the claim is: the page renders into a string and so never
+  carries terminal colour; where a finding quotes the container's own path it
+  quotes the handler's copy; and on Windows the command line's line endings
+  are the platform's while the page's are `\n` — which the equivalence test
+  found on a machine none of the reading had happened on. Flags — `-v`, `-q`, `-W`, `--format json`,
   `--fragment`, directories, several packages — belong to the command line.
 
   It refuses to bind to any address that is not loopback, refuses a POST that

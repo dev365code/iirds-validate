@@ -126,10 +126,11 @@ the same renderer in the same process as `iirdsv <path>`, so the findings and
 their wording are the command line's — there is no second implementation of
 the report to disagree with the first.
 
-Two things differ, by construction rather than by accident: the page renders
-into a string and so never carries the colour a run at a terminal does, and
-where a finding quotes the container's own path — C1 and S1 do, when the file
-cannot be opened at all — it quotes the copy the handler made. Flags belong to
+Three things differ, by construction rather than by accident: the page renders
+into a string and so never carries the colour a run at a terminal does; where
+a finding quotes the container's own path — C1 and S1 do, when the file cannot
+be opened at all — it quotes the copy the handler made; and on Windows the
+command line's line endings are the platform's while the page's are `\n`. Flags belong to
 the command line: `-v`, `-q`, `-W`, `--format json`, `--fragment`, a directory,
 several packages at once. What the page gives is the default run on one file.
 

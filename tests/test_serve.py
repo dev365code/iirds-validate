@@ -574,3 +574,44 @@ def test_the_page_survives_the_single_file_distribution(tmp_path):
     inside = set(zipfile.ZipFile(pyz).namelist())
     for part in (serve.PAGE, serve.STYLE, serve.SCRIPT, serve.STRINGS):
         assert "iirds_validate/data/%s/%s" % (serve.WEB, part) in inside, part
+
+
+def test_the_address_it_prints_is_one_a_browser_can_open():
+    """`localhost` resolves to ::1 on a machine with IPv6, and an unbracketed
+    v6 literal is not a URL. The flag exists so somebody can ask for ::1, so
+    this is the ordinary case rather than the exotic one."""
+    assert serve.origin_of("127.0.0.1", 8080) == "http://127.0.0.1:8080"
+    assert serve.origin_of("::1", 8080) == "http://[::1]:8080"
+
+
+def test_the_ipv6_loopback_is_served_not_refused():
+    """It was accepted by the check and then failed to bind, because the
+    server class asks for IPv4 unless told otherwise -- so the one flag that
+    exists for this could not be used for it."""
+    httpd = serve.build_server("::1", 0)
+    try:
+        assert httpd.server_address[0] == "::1"
+        assert httpd.address_family == socket.AF_INET6
+    finally:
+        httpd.server_close()
+
+
+def test_what_is_bound_is_what_was_checked(monkeypatch):
+    """The check resolved the name and the constructor resolved it again, so
+    a record with no time to live could answer differently the second time.
+    The address is carried from one to the other now."""
+    seen = {}
+
+    for name in ("_ServerV4", "_ServerV6"):
+        base = getattr(serve, name)
+
+        class Watching(base):                     # noqa: B903 - a test double
+            def __init__(self, address, handler):
+                seen["address"] = address[0]
+                super().__init__(address, handler)
+
+        monkeypatch.setattr(serve, name, Watching)
+
+    serve.build_server("localhost", 0).server_close()
+    assert seen["address"] != "localhost", "the name reached the constructor"
+    assert serve.loopback_address(seen["address"]) == seen["address"]

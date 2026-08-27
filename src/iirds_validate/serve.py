@@ -32,7 +32,7 @@ import tempfile
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Tuple
+from typing import Optional, Tuple
 
 from . import __version__, resources, runner
 from . import report as report_module
@@ -56,24 +56,47 @@ WEB = "web"
 PAGE, STYLE, SCRIPT, STRINGS = "page.html", "style.css", "app.js", "i18n.json"
 
 
-def _is_loopback(host: str) -> bool:
-    """Whether `host` names this machine and only this machine.
+def origin_of(address: str, port: int) -> str:
+    """`http://host:port`, with an IPv6 literal bracketed.
 
-    By name as well as by address: `localhost` is what a person types, and
-    resolving it is the only honest way to answer for it.
+    `localhost` resolves to ::1 on a machine with IPv6, so this is not the
+    exotic branch it looks like: without the brackets the address the command
+    prints is one a browser cannot open, and the same-origin check compares
+    against a string no browser would ever send.
+    """
+    host = "[%s]" % address if ":" in address else address
+    return "http://%s:%d" % (host, port)
+
+
+def loopback_address(host: str) -> Optional[str]:
+    """The literal `host` resolves to, if every answer is this machine.
+
+    By name as well as by address, because `localhost` is what a person
+    types. It returns the address rather than a yes, and the caller binds
+    what it returns: resolving the name again at bind time would be a second
+    lookup that could answer differently from the one that was checked, and a
+    record with no time to live is enough to make it.
     """
     if not host:
-        return False
+        return None
     try:
-        return ipaddress.ip_address(host).is_loopback
+        return host if ipaddress.ip_address(host).is_loopback else None
     except ValueError:
         pass
     try:
         infos = socket.getaddrinfo(host, None)
     except OSError:
-        return False
-    return bool(infos) and all(
-        ipaddress.ip_address(info[4][0]).is_loopback for info in infos)
+        return None
+    if not infos:
+        return None
+    addresses = [info[4][0] for info in infos]
+    if not all(ipaddress.ip_address(a).is_loopback for a in addresses):
+        return None
+    return addresses[0]
+
+
+def _is_loopback(host: str) -> bool:
+    return loopback_address(host) is not None
 
 
 def page_html(nonce: str = "") -> str:
@@ -199,7 +222,7 @@ class _Handler(BaseHTTPRequestHandler):
         if not origin:
             return True
         host, port = self.server.server_address[:2]
-        return origin.rstrip("/") in ("http://%s:%d" % (host, port),
+        return origin.rstrip("/") in (origin_of(host, port),
                                       "http://localhost:%d" % port)
 
     def send_error(self, code, message=None, explain=None):
@@ -296,6 +319,17 @@ def _sent_filename(part) -> str:
     return quoted.group(1) if quoted else (part.get_filename() or "")
 
 
+class _ServerV4(ThreadingHTTPServer):
+    address_family = socket.AF_INET
+
+
+class _ServerV6(ThreadingHTTPServer):
+    #: The base class asks for IPv4, so ::1 -- which is what `localhost`
+    #: resolves to on a machine with IPv6, and the address the one flag here
+    #: exists to accept -- was approved by the check and then failed to bind.
+    address_family = socket.AF_INET6
+
+
 def build_server(host: str = "127.0.0.1", port: int = 0,
                  verbose: bool = False) -> ThreadingHTTPServer:
     """A server bound to loopback, or a refusal.
@@ -303,11 +337,14 @@ def build_server(host: str = "127.0.0.1", port: int = 0,
     The refusal is the point. Everything else here is a convenience; this is
     the line that keeps the promise on the front of the project.
     """
-    if not _is_loopback(host):
+    address = loopback_address(host)
+    if address is None:
         raise ValueError(
             "%r is not a loopback address: this page serves the machine it "
             "runs on and nothing else" % host)
-    httpd = ThreadingHTTPServer((host, port), _Handler)
+
+    server = _ServerV6 if ipaddress.ip_address(address).version == 6 else _ServerV4
+    httpd = server((address, port), _Handler)
     httpd.verbose = verbose                       # type: ignore[attr-defined]
     return httpd
 
@@ -318,7 +355,7 @@ def serve(host: str = "127.0.0.1", port: int = 0, open_browser: bool = True,
 
     stream = sys.stdout if stream is None else stream
     httpd = build_server(host, port, verbose=verbose)
-    url = "http://%s:%d/" % (httpd.server_address[0], httpd.server_address[1])
+    url = origin_of(httpd.server_address[0], httpd.server_address[1]) + "/"
     print("iirds-validate %s — drop a package at %s" % (__version__, url),
           file=stream, flush=True)
     print("nothing leaves this machine. ctrl-c to stop.", file=stream, flush=True)

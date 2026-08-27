@@ -114,8 +114,10 @@ A path means "check it". No subcommand needed.
 ### A drop page, for people who do not read terminals
 
 ```sh
-iirdsv serve            # opens a browser at 127.0.0.1 on a free port
-iirdsv serve --no-open  # prints the address instead
+iirdsv serve              # opens a browser at 127.0.0.1 on a free port
+iirdsv serve --no-open    # prints the address instead
+iirdsv serve --port 8791  # a port you choose
+iirdsv serve --host ::1   # loopback by any other name; anything else is refused
 ```
 
 Drag a `.iirds` file onto the page. The file is read by the process you just

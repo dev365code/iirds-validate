@@ -134,8 +134,10 @@ def test_the_readme_headline_figures_are_the_counts():
     shapes = len(manifest["core_emitted"]) + len(manifest["sparql_emitted"])
     coverage = json.loads((root / "docs" / "rule-coverage.json").read_text("utf-8"))
 
+    own = rules - len(CATALOG)
     for phrase in ("**At a glance** — %d rules" % rules,
                    "%d SHACL shapes" % shapes,
                    "All %d rules carry one imperative" % rules,
+                   "The %d rules this project invented" % own,
                    "%d of the %d have" % (coverage["exercised"], coverage["rules"])):
         assert phrase in readme, "README.md no longer says %r" % phrase

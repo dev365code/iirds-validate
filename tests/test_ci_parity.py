@@ -121,3 +121,18 @@ def test_make_actually_switches_the_differential_gate_on():
 def test_make_dev_installs_what_make_check_requires():
     """Requiring it is only reasonable if `make dev` provides it."""
     assert "pyshacl" in MAKEFILE, "make dev does not install pyshacl"
+
+
+def test_the_ci_row_that_has_pyshacl_requires_it():
+    """The Makefile exports IIRDS_REQUIRE_SHACL, so a local run refuses to
+    skip the differential gate. CI does not use the Makefile: it runs the
+    commands directly, and the one job that installs pyshacl was not asking
+    for it -- so an install that quietly failed would have left that job
+    green with the gate off. The matrix rows deliberately do not have it and
+    deliberately do skip; this is about the row that is supposed to."""
+    job = re.search(r"(?ms)^      - name: the shapes agree with the Python rules.*?\n(?=      - name:|\n  \w)",
+                    WORKFLOW)
+    assert job, "the differential-gate step is no longer in the expected shape"
+    assert re.search(r"IIRDS_REQUIRE_SHACL:\s*[\"']?1", job.group(0)), (
+        "the job that installs pyshacl does not require it, so a failed "
+        "install would skip the gate and pass")

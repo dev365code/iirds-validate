@@ -108,10 +108,14 @@ def test_version_excluded_rules_have_no_shape_in_the_1_3_set():
 # ---------------------------------------------------------------------------
 # Live smoke — needs pySHACL. Under make its absence is a failure; a bare
 # pytest still skips (the rdflib 6 rows in CI are such a run).
+#
+# Asked for inside the three tests that use it, not at module scope. A
+# module-level skip takes the file with it, and most of this file needs
+# rdflib and JSON only -- the census, the per-shape mirror, the emitted-id
+# set, the constituent-file comparison, the README figures. All of them
+# vanished on a run without pyshacl, and one of them says in its own
+# docstring that it runs "pyshacl present or not".
 # ---------------------------------------------------------------------------
-
-pyshacl = shacl_or_skip()
-
 
 def _core_only():
     graph = Graph()
@@ -123,6 +127,7 @@ CORE_SHAPES = _core_only()
 
 
 def _fired(data_graph):
+    pyshacl = shacl_or_skip()
     _ok, results, _text = pyshacl.validate(
         data_graph, shacl_graph=CORE_SHAPES, advanced=True, inference="none")
     fired = set()

@@ -54,6 +54,12 @@ jobs:
         # corpus in both encodings. Pinned to a minor: the gate's claims are
         # "tested on pySHACL 0.40", and an engine that silently changes under
         # us is the one failure mode a differential gate cannot see.
+        env:
+          # The one row that has pySHACL is the one row where its absence must
+          # be a failure. Without this an install that quietly fails leaves the
+          # differential gate skipping and the job green -- which is the shape
+          # of green this variable exists to remove.
+          IIRDS_REQUIRE_SHACL: "1"
         run: |
           pip install pytest "pyshacl==0.40.*"
           pytest -q tests/test_shapes_static.py tests/test_shapes_parity.py

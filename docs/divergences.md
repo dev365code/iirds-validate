@@ -734,9 +734,9 @@ zero-byte files, which nothing can test. Of the remaining **103 pairs, across
 | | pairs | |
 |---:|---|---|
 | **42** | the expected rule fires here | |
-| 34 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
+| 32 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
 | 9 | silent — the fixture does not parse | 9 pairs, whose fixtures are among the corpus's 11 malformed files; no comparison is possible, and none is repaired — see below |
-| 11 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
+| 13 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
 | 2 | silent — mismatched | the defect is reported, under a different rule id |
 | 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |

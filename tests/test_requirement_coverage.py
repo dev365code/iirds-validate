@@ -152,3 +152,22 @@ def test_chapter_five_is_mapped_apart_from_its_three_gaps():
                   if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE)
     assert gaps == ["x5-3-nested-iirds-packages#2", "x5-3-nested-iirds-packages#3"], \
         "the single-root requirement is R3; the two nested-package prohibitions remain"
+
+
+def test_the_scope_document_publishes_the_coverage_it_has():
+    """docs/scope.md leads with the coverage figure, and it is the number a
+    reader is most likely to quote. It moved by hand when a rule last claimed
+    a requirement and it had already drifted once -- the covers map said 20
+    while the sentence still said 19."""
+    import pathlib
+    import re
+
+    scope = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "scope.md").read_text("utf-8")
+    found = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)
+    assert found, "docs/scope.md no longer states coverage in the expected shape"
+    assert int(found.group(1)) == len(COVERED), (
+        "docs/scope.md says %s requirements are covered and the rules claim %d"
+        % (found.group(1), len(COVERED)))
+    assert int(found.group(2)) == INDEX["absolute"], (
+        "docs/scope.md says %s absolute requirements and the index has %d"
+        % (found.group(2), INDEX["absolute"]))

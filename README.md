@@ -387,7 +387,7 @@ the repository.
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 
-**What is not established.** The 31 rules this project invented have no second
+**What is not established.** The 32 rules this project invented have no second
 implementation anywhere to be compared against. They have tests in both
 directions, and those tests were checked by breaking each rule in turn, which is
 weaker evidence than the catalogued rules have.

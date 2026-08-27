@@ -103,7 +103,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 19 of 314.** The denominator is derived in
+1. **Coverage of the standard is 20 of 314.** The denominator is derived in
    `docs/requirements.json`; the numerator is the union of the `covers=`
    declarations on the rules, printed by `tools/requirement_coverage.py`. The
    figure is small because the mapping has barely started, not because the

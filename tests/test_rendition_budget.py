@@ -97,3 +97,31 @@ def test_the_ceiling_is_the_one_the_environment_names(monkeypatch):
                          text=True, env=env, check=True).stdout.strip()
     assert out == "12345", out
     del importlib
+
+
+def test_both_package_forms_charge_the_same_budget(tmp_path, monkeypatch):
+    """`Package` and `DirectoryPackage` share no base class, and the budget
+    was first given to one of them: an unpacked container then raised where
+    a zipped one refused, and the same bytes gave two answers. The method is
+    kept in step by hand now, and this is what keeps it -- both forms are
+    driven to the same ceiling and must stop at the same byte with the same
+    exception, so that a later edit to one of them shows up here rather than
+    in tests/test_paths.py's diff of two whole reports."""
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 100)
+    zipped = package_module.open_package(build_package(tmp_path, "z.iirds"))
+    unpacked_dir = tmp_path / "unpacked"
+    import zipfile
+    with zipfile.ZipFile(build_package(tmp_path, "src.iirds")) as zf:
+        zf.extractall(unpacked_dir)
+    unpacked = package_module.open_package(unpacked_dir)
+
+    outcomes = []
+    for form in (zipped, unpacked):
+        try:
+            form.charge(60)
+            form.charge(60)
+            outcomes.append(("no raise", form.content_read))
+        except package_module.ContentBudgetExceeded as exc:
+            outcomes.append((type(exc).__name__, exc.read_so_far, exc.limit))
+    assert outcomes[0] == outcomes[1], outcomes
+    assert outcomes[0][0] == "ContentBudgetExceeded", outcomes

@@ -181,6 +181,13 @@ already uses.
 | `-q` | exit code only |
 | `-v` | print the specification link behind each finding |
 
+Two environment variables, both optional:
+
+| | |
+|---|---|
+| `IIRDS_CONTENT_BUDGET` | the most a run will decompress in total, in bytes (default half a gigabyte). Per-entry limits bound each rendition; this bounds their sum, so an archive that compresses to nothing cannot make a run read as much as it declares. When it is reached, **S9** names the first rendition it stopped at and says the rest were not examined |
+| `NO_COLOR` | no terminal colour, whatever the stream is |
+
 ---
 
 ## What makes it different

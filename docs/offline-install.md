@@ -107,3 +107,12 @@ as never loading the page at all.
 This tool takes the question off the table. There is no page to load, no server
 to trust, and no version that changes underneath you: the wheel you carried in
 is the code that runs.
+
+`iirdsv serve` does not reopen it. It is a page served by the command you just
+ran, on the loopback interface of the machine you ran it on, from the code you
+carried in — the same wheel, the same rules, the same renderer. There is no
+origin to approve, no fetch that could leave, and no version that changes
+between uses, because the version is the one you installed. It exists so that
+somebody who writes documentation for a living can drop a file on a page
+instead of typing a path into a terminal, which is a different problem from
+the one above and has a different answer.

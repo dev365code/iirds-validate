@@ -195,6 +195,20 @@ def _cmd_rules(args) -> int:
     return EXIT_OK
 
 
+def _cmd_serve(args) -> int:
+    """The drop page. A refused bind address is an operator error, not a
+    verdict, so it exits 2 the way a missing path does."""
+    from . import serve as serve_module
+
+    try:
+        return serve_module.serve(args.host, args.port,
+                                  open_browser=args.open_browser,
+                                  verbose=args.verbose)
+    except ValueError as exc:
+        print("iirds-validate: %s" % exc, file=sys.stderr)
+        return EXIT_ERROR
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="iirds-validate",
@@ -223,6 +237,17 @@ def main(argv=None) -> int:
     p_pack.add_argument("-q", "--quiet", action="store_true")
     p_pack.add_argument("-W", "--warnings-as-errors", action="store_true")
 
+    p_serve = sub.add_parser(
+        "serve", help="a drop page on this machine, for people who do not read terminals")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="loopback only; anything else is refused")
+    p_serve.add_argument("--port", type=int, default=0,
+                         help="0 picks a free one (default)")
+    p_serve.add_argument("--no-open", dest="open_browser", action="store_false",
+                         help="do not open a browser")
+    p_serve.add_argument("-v", "--verbose", action="store_true",
+                         help="log requests; they carry the name of the file dropped")
+
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
     p_rules.add_argument("ids", nargs="*", metavar="RULE",
                          help="show only these rules, in full (e.g. M11 B8 R3)")
@@ -235,7 +260,8 @@ def main(argv=None) -> int:
     # `iirdsv some/path` with no subcommand means `all`. Typing the verb is
     # friction, and "check it" is what anybody pointing at a package wants.
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"check", "lint", "all", "pack", "rules", "-h", "--help", "--version"}
+    known = {"check", "lint", "all", "pack", "rules", "serve",
+             "-h", "--help", "--version"}
     if argv and argv[0] not in known and not argv[0].startswith("-"):
         argv.insert(0, "all")
 
@@ -261,6 +287,8 @@ def main(argv=None) -> int:
             return _cmd_pack(args)
         if args.command == "rules":
             return _cmd_rules(args)
+        if args.command == "serve":
+            return _cmd_serve(args)
     except KeyboardInterrupt:
         return EXIT_ERROR
     except OSError as exc:

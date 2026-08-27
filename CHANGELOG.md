@@ -174,6 +174,21 @@
   refuses to skip these when the cache is absent, the way it already refuses
   to skip the differential gate.
 
+- **`iirdsv serve` — a drop page on the machine you are already on.** The
+  report has only ever existed as text on a terminal, and the people who build
+  iiRDS packages are technical writers rather than people who read one. This
+  serves one page on the loopback interface, takes a dropped `.iirds`, and
+  shows the verdict `iirdsv <path>` would have printed. Literally that string:
+  the handler calls the same renderer on the same report object in the same
+  process, so there is no second implementation to keep in step and nothing to
+  prove agreement about. It refuses to bind to any address that is not
+  loopback, logs nothing by default because a request line carries the name of
+  somebody's document, and serves exactly one path — the default handler
+  would have served the working directory. The name the browser sends is
+  carried through verbatim, because the rule about the `.iirds` extension
+  reads the container's file name and a handler that renamed the copy would
+  decide that rule for every package it was handed.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

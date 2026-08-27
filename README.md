@@ -109,6 +109,26 @@ A path means "check it". No subcommand needed.
 | `iirdsv check --fragment <file>` | a bare metadata snippet — spec example, editor's draft — with package-level rules suspended and named |
 | `iirdsv pack <dir>` | write a directory as a conformant `.iirds`, then check that |
 | `iirdsv rules` | every rule, one line each; `iirdsv rules M11` or `-v` adds versions, spec link, source and remedy |
+| `iirdsv serve` | a drop page on this machine, for people who do not read terminals — same verdict, same process, nothing on a network |
+
+### A drop page, for people who do not read terminals
+
+```sh
+iirdsv serve            # opens a browser at 127.0.0.1 on a free port
+iirdsv serve --no-open  # prints the address instead
+```
+
+Drag a `.iirds` file onto the page. The file is read by the process you just
+started, on the machine you started it on, and the verdict you see is the
+string `iirdsv <path>` would have printed — literally: the page calls the same
+renderer on the same report object, so there is no second implementation that
+could disagree with the first.
+
+It binds to the loopback interface and refuses any other address. This is a
+window onto a local command, not a service: nothing listens beyond this
+machine, nothing is uploaded, and the page disappears when you stop the
+command. For a network with nothing installed on it, the answer is still the
+single file — see [`docs/offline-install.md`](docs/offline-install.md).
 
 ### In a build
 

@@ -168,6 +168,16 @@ each listed with its reason in `MANIFEST.json`:
 
 ## Why you can trust the translation
 
+**These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
+29 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
+carries, so running them against a package that declares an older edition
+reports rules that edition does not have. The Python validator gates on the
+declared version and stays silent on those. Gating the shapes themselves would
+put an inference about editions inside an artefact whose point is that a SHACL
+engine can run it without this project's code, so the boundary is stated here
+instead — and it is pinned by a test, which measures the divergence rather
+than describing it.
+
 Every emitted shape is **differentially tested against the 193-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every

@@ -390,6 +390,16 @@ settles is a different sentence, not this one: R8 answers §6.3.3's "must be in
 the archive", and knowing that a document is wrong somewhere is not knowing
 that it is the nested package.
 
+**The shapes are the 1.3 rule set and carry no version gate.** Twenty-nine
+emitted shapes encode a rule that only iiRDS 1.3 carries, so running
+`shapes/iirds-1.3/` against a package declaring an older edition reports rules
+that edition does not have; the Python rules gate on the declared version and
+stay silent on those. Gating the shapes would put an inference about editions
+inside an artefact whose point is that a SHACL engine runs it without this
+project's code, so the boundary is stated rather than papered over — and the
+differential gate now measures it on a concrete graph instead of only ever
+feeding itself 1.3 documents, which is why it had never seen this.
+
 **What is left open, and why it is left.** The profile and the version are read
 off the package this container is about, and a package the metadata says is
 nested does not set them — the reason is written in the rule that does the

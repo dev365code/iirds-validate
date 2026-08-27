@@ -1073,6 +1073,53 @@ def test_the_content_of_a_nested_package_is_not_described_here_in_either_encodin
         "a package inside itself is not inside another package; R5 answers for it")
 
 
+def test_an_older_package_is_outside_what_the_shapes_encode(tmp_path):
+    """The boundary of the differential gate, measured rather than described.
+
+    The shapes carry no version gate -- they are the 1.3 rule set, which is
+    what the directory they live in says -- so a package declaring an older
+    edition draws every shape whose rule 1.3 added. The Python rules gate on
+    the declared version and stay silent. Twenty-nine emitted shapes encode a
+    rule that does not apply to every edition, so this is a boundary and not
+    a one-off, and every other test in this file feeds 1.3 graphs, which is
+    why nothing here had ever seen it.
+
+    Pinned rather than repaired: gating a shape on iirds:iiRDSVersion would
+    put an inference about editions inside an artefact whose whole point is
+    that a SHACL engine can run it without this project's code. The repair
+    that belongs here is saying so, which shapes/README.md and
+    docs/divergences.md now do.
+    """
+    chain = MINIMAL_RDF.replace("</rdf:RDF>",
+        '  <iirds:Package rdf:about="urn:test:a">\n'
+        '    <iirds:iiRDSVersion>%(v)s</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:b"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:b">\n'
+        '    <iirds:iiRDSVersion>%(v)s</iirds:iiRDSVersion>\n'
+        '    <iirds:is-part-of-package rdf:resource="urn:test:c"/>\n'
+        '  </iirds:Package>\n'
+        '  <iirds:Package rdf:about="urn:test:c">\n'
+        '    <iirds:iiRDSVersion>%(v)s</iirds:iiRDSVersion>\n'
+        '  </iirds:Package>\n</rdf:RDF>')
+
+    def graph(version):
+        return (chain % {"v": version}).replace(
+            "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+            "<iirds:iiRDSVersion>%s</iirds:iiRDSVersion>" % version, 1)
+
+    assert "R5" in assert_parity(tmp_path, "edition_13.iirds", graph("1.3")), (
+        "the two encodings agree on the edition the shapes are for")
+
+    older = graph("1.2")
+    assert "R5" not in python_fired(tmp_path, "edition_12.iirds", older), (
+        "R5 is gated to 1.3 because that is the only edition on hand carrying "
+        "the sentence")
+    assert "R5" in shacl_fired(older), (
+        "if this stops firing the shapes have grown a version gate, which is "
+        "a change worth noticing rather than a test worth deleting")
+
+
 # ---------------------------------------------------------------------------
 # 7. No shape may sit out the whole suite.
 #

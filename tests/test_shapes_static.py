@@ -299,3 +299,22 @@ def test_the_manifest_version_is_the_package_version():
     from iirds_validate import __version__
 
     assert MANIFEST["_shapes_version"] == __version__
+
+
+def test_the_readme_says_how_many_shapes_are_edition_specific():
+    """The shapes carry no version gate; the Python rules do. So a package
+    declaring an older edition draws every shape whose rule 1.3 added, and
+    stays clean under the rules themselves. That is a boundary a reader has to
+    be told about, and the number of shapes it covers moves whenever an
+    edition-limited rule gains one -- so it is read here rather than typed."""
+    from iirds_validate.registry import all_rules
+
+    every = ("1.0", "1.0.1", "1.1", "1.2", "1.3")
+    emitted = set(MANIFEST["core_emitted"]) | set(MANIFEST["sparql_emitted"])
+    limited = sorted(r.id for r in all_rules()
+                     if r.id in emitted and r.versions and set(r.versions) != set(every))
+    assert limited, "no edition-limited shape at all would be surprising"
+
+    readme = (SHAPE_DIR.parent / "README.md").read_text("utf-8")
+    assert "%d of them encode a rule that iiRDS 1.3 added" % len(limited) in readme, \
+        "shapes/README.md should say %d; it says something else" % len(limited)

@@ -662,3 +662,27 @@ def test_describing_the_outer_package_does_not_buy_a_clean_pass(tmp_path):
     ok, honest = run("bypass_honest.iirds", stubbed,
                      (("content/nested.iirds", real),))
     assert ok, honest
+
+
+def test_r6_and_r7_answer_for_different_documents(tmp_path):
+    """The two nesting sentences divide the ambiguous document between them
+    and must not both claim it. R6 reads a parent's file: a unit of this
+    container pointing at a package the same file says is nested. R7 reads a
+    child's own file: the package this container is about, naming a parent
+    the file does not describe. Neither shape is the other's, and a finding
+    counted twice under two requirement ids would inflate the coverage figure
+    while telling a reader the same thing in two voices."""
+    unit = ('  <iirds:Topic rdf:about="urn:test:topic">\n'
+            '    <iirds:title>A unit</iirds:title>\n'
+            '    <iirds:is-part-of-package rdf:resource="urn:test:nested"/>\n'
+            '  </iirds:Topic>\n')
+    parents_file = GOOD_NESTING.replace("urn:test:parent", "urn:test:package") + unit
+    got = ids(tmp_path, "seam_parent.iirds", parents_file, replace=HEAD)
+    assert "R6" in got and "R7" not in got, got
+
+    childs_own = HEAD.replace(
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+        "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        '    <iirds:is-part-of-package rdf:resource="urn:test:parent-elsewhere"/>\n')
+    got = ids(tmp_path, "seam_child.iirds", "", replace=childs_own)
+    assert "R7" in got and "R6" not in got, got

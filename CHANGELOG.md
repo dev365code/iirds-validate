@@ -236,6 +236,18 @@
   be shown, two characters where it cannot. Reproduced with
   `PYTHONIOENCODING=cp1252` before it was fixed.
 
+- **A dropped file no longer costs the process eleven times its size.** The
+  upload was read whole and handed to a MIME parser that copied it several
+  times over; measured, a sixteen-megabyte body moved the process's peak by
+  a hundred and eighty. The body is streamed to disk as it arrives now, the
+  part headers read and then the payload copied chunk by chunk up to the
+  closing boundary — which can straddle two chunks, so a tail the length of
+  the delimiter is held back from each flush and the scanner is tested at
+  every offset around the chunk edge, byte for byte. The same body now moves
+  the peak by one megabyte. The upload limit, which had been lowered to
+  thirty-two megabytes as a bandage over the parse, is back at a quarter
+  gigabyte.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

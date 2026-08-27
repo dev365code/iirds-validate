@@ -625,3 +625,110 @@ def test_what_is_bound_is_what_was_checked(monkeypatch):
     serve.build_server("localhost", 0).server_close()
     assert seen["address"] != "localhost", "the name reached the constructor"
     assert serve.loopback_address(seen["address"]) == seen["address"]
+
+
+# ---------------------------------------------------------------------------
+# What a dropped file costs the process. Measured in a fresh subprocess,
+# because ru_maxrss is a high-water mark: inside one process only the first
+# request's delta means anything, and the suite has already made requests.
+# ---------------------------------------------------------------------------
+
+_MEASURE = r'''
+import resource, sys, threading, urllib.request, uuid
+from iirds_validate import serve
+size = int(sys.argv[1])
+httpd = serve.build_server("127.0.0.1", 0)
+threading.Thread(target=httpd.serve_forever, daemon=True).start()
+url = "http://127.0.0.1:%d/check" % httpd.server_address[1]
+b = "----%s" % uuid.uuid4().hex
+head = ('--%s\r\nContent-Disposition: form-data; name="package"; '
+        'filename="big.iirds"\r\nContent-Type: application/octet-stream\r\n\r\n'
+        % b).encode()
+body = head + b"\x00" * size + ("\r\n--%s--\r\n" % b).encode()
+before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+req = urllib.request.Request(url, data=body,
+    headers={"Content-Type": "multipart/form-data; boundary=" + b})
+urllib.request.urlopen(req, timeout=120).read()
+after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+unit = 1 if sys.platform == "darwin" else 1024
+print((after - before) * unit)
+'''
+
+
+def _peak_delta_for(size):
+    import subprocess
+    import sys as _sys
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        os.path.abspath(entry) for entry in _sys.path
+        if entry and os.path.isdir(entry))
+    done = subprocess.run([_sys.executable, "-c", _MEASURE, str(size)],
+                          capture_output=True, text=True, env=env, timeout=300)
+    assert done.returncode == 0, done.stderr[-800:]
+    return int(done.stdout.strip())
+
+
+def test_a_dropped_file_does_not_cost_the_process_many_times_its_size():
+    """The upload was read whole and handed to a MIME parser that copies it
+    several times over: measured, a body cost the process eleven to twelve
+    times its own size in resident memory, so a quarter-gigabyte drop asked
+    for nearly three. Capping the size made that survivable and did not make
+    it go away.
+
+    Streaming the payload to the temporary file as it arrives costs the body
+    once on disk and a chunk in memory. Three times the body is the line here
+    -- enough headroom for the client's own copy in this same process and the
+    interpreter's slack, and a third of what the whole-body parse cost.
+    """
+    size = 16 * 1024 * 1024
+    delta = _peak_delta_for(size)
+    assert delta < 3 * size, "peak RSS grew by %.1fx the body" % (delta / size)
+
+
+@pytest.mark.parametrize("straddle", [-3, -1, 0, 1, 7])
+def test_a_boundary_split_across_two_chunks_is_still_seen_whole(tmp_path, server,
+                                                                straddle):
+    """The one hard case in a streaming scanner, and the one the ordinary
+    tests never reach: every other body here is smaller than a single chunk,
+    so the closing boundary has only ever arrived in the same read as the
+    payload. This sizes the payload so the delimiter begins `straddle` bytes
+    before or after the 64 KiB chunk edge, and compares the spooled bytes
+    with the sent bytes exactly -- a scanner that flushed too eagerly would
+    keep a fragment of the delimiter as payload, and one that flushed too
+    late would drop a fragment of the payload.
+    """
+    chunk = serve._Counted.CHUNK
+    boundary = "----%s" % uuid.uuid4().hex
+    head = ('--%s\r\nContent-Disposition: form-data; name="package"; '
+            'filename="edge.iirds"\r\nContent-Type: application/octet-stream\r\n\r\n'
+            % boundary).encode("utf-8")
+    # The delimiter is "\r\n--<boundary>"; place its first byte at
+    # chunk + straddle, counted from the start of the body.
+    payload_len = chunk + straddle - len(head)
+    payload = bytes(i % 251 for i in range(payload_len))
+    body = head + payload + ("\r\n--%s--\r\n" % boundary).encode("utf-8")
+    assert body.find(("\r\n--%s" % boundary).encode()) == chunk + straddle
+
+    seen = {}
+
+    def keep(name, spool):
+        seen["bytes"] = pathlib.Path(spool).read_bytes()
+        return "kept\n", 0, {"package": name}
+
+    original = serve.verdict
+    serve.verdict = keep
+    try:
+        request = urllib.request.Request(
+            server + "/check", data=body,
+            headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            assert response.status == 200
+    finally:
+        serve.verdict = original
+
+    assert seen["bytes"] == payload, (
+        "spooled %d bytes, sent %d; first difference at %d" % (
+            len(seen["bytes"]), len(payload),
+            next((i for i, (a, b) in enumerate(zip(seen["bytes"], payload)) if a != b),
+                 min(len(seen["bytes"]), len(payload)))))

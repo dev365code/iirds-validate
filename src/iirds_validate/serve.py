@@ -29,8 +29,6 @@ import re
 import secrets
 import socket
 import tempfile
-from email.parser import BytesParser
-from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Tuple
 
@@ -40,13 +38,14 @@ from . import report as report_module
 #: Bigger than this and the browser is the wrong tool; the message says so
 #: rather than letting the tab go quiet while the process reads.
 #:
-#: The number is set by what the parse costs, not by what a package might be.
-#: The body is read whole and handed to a MIME parser that copies it several
-#: times over: measured, a declared body costs the process roughly eleven
-#: times its own size in resident memory, so a quarter-gigabyte upload asked
-#: for nearly three. The command line has no such limit because it never
-#: makes a copy -- it opens the file where it lies.
-MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+#: The number is set by what the drop costs, and that is now the body once on
+#: disk plus one chunk in memory: measured, a sixteen-megabyte upload moves
+#: the process's peak by one megabyte. It was thirty-two when the body was
+#: read whole and handed to a MIME parser that copied it eleven times over,
+#: and that limit was a bandage over the parse rather than a fact about
+#: packages. A quarter gigabyte is a real package; the command line has no
+#: limit at all because it opens the file where it lies.
+MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 
 #: The page is one path and one response, assembled from the files under
 #: data/web/ at request time. Split for editing, not for serving: a stylesheet
@@ -145,8 +144,14 @@ def dropped_name(name: str) -> str:
     return candidate
 
 
-def verdict(name: str, payload: bytes) -> Tuple[str, int, dict]:
+def verdict(name: str, payload) -> Tuple[str, int, dict]:
     """The rendered report, the exit code, and the machine-readable form.
+
+    `payload` is bytes, or a path to a file already holding them. The handler
+    passes a path: the upload is streamed to disk as it arrives and never held
+    whole, so this must not ask for it whole either -- measured, a body read
+    into memory and handed to a MIME parser cost the process eleven times its
+    own size. Bytes are accepted for the library caller and the tests.
 
     The renderer is the one the command line calls, on the report the command
     line would have built, so the findings and their wording are the command
@@ -161,8 +166,11 @@ def verdict(name: str, payload: bytes) -> Tuple[str, int, dict]:
     safe = dropped_name(name)
     with tempfile.TemporaryDirectory() as scratch:
         target = os.path.join(scratch, safe)
-        with open(target, "wb") as handle:
-            handle.write(payload)
+        if isinstance(payload, (bytes, bytearray)):
+            with open(target, "wb") as handle:
+                handle.write(payload)
+        else:
+            os.replace(payload, target)
         report = runner.run(target, runner.ALL_KINDS)
         rendered = io.StringIO()
         report_module.render_text(report, stream=rendered)
@@ -258,13 +266,14 @@ class _Handler(BaseHTTPRequestHandler):
             # process's memory and time, and this is the line that stops it.
             self._fail(403, "this page answers the machine it runs on\n")
             return
+        spool = None
         try:
-            name, payload = self._read_upload()
+            name, spool = self._read_upload()
         except ValueError as exc:
             self._fail(400, "%s\n" % exc)
             return
         try:
-            text, code, machine = verdict(name, payload)
+            text, code, machine = verdict(name, spool)
         except Exception as exc:                  # a crash is not an answer
             body = json.dumps({"text": "could not read %s: %s\n" % (name, exc),
                                "exit": 2, "report": None}, ensure_ascii=False)
@@ -274,7 +283,19 @@ class _Handler(BaseHTTPRequestHandler):
                           ensure_ascii=False)
         self._send(200, body.encode("utf-8"), "application/json; charset=utf-8")
 
-    def _read_upload(self) -> Tuple[str, bytes]:
+    def _read_upload(self) -> Tuple[str, str]:
+        """The sent file name, and the path of a spool file holding the bytes.
+
+        Streamed, not parsed. The first version read the whole body and gave
+        it to a MIME parser, which copies it several times over: measured,
+        that cost the process eleven times the body. This reads the part's
+        headers -- a few hundred bytes -- and then copies the payload to disk
+        chunk by chunk, watching for the closing boundary as it goes.
+
+        The one hard case is a boundary straddling two chunks. A tail as long
+        as the boundary is held back from each flush, so the delimiter is
+        always seen whole; the cost is one extra copy of that many bytes.
+        """
         declared = int(self.headers.get("Content-Length") or 0)
         if declared <= 0:
             raise ValueError("no body")
@@ -285,23 +306,139 @@ class _Handler(BaseHTTPRequestHandler):
         content_type = self.headers.get("Content-Type", "")
         if "multipart/form-data" not in content_type:
             raise ValueError("expected multipart/form-data")
-        raw = (b"Content-Type: %s\r\nMIME-Version: 1.0\r\n\r\n"
-               % content_type.encode("utf-8")) + self.rfile.read(declared)
-        message = BytesParser(policy=HTTP).parsebytes(raw)
-        if not message.is_multipart():
-            # iter_parts() keys on the declared content type, not on whether a
-            # boundary was actually found, so a body with none leaves the
-            # payload a string and the loop below walks it one character at a
-            # time -- an AttributeError in a request thread, no response, and
-            # a traceback on the operator's terminal. Reachable from any page
-            # the user has open: this content type needs no preflight.
-            raise ValueError("no multipart boundary in the body")
-        for part in message.iter_parts():
-            if part.get_filename() is None:
-                continue
-            return _sent_filename(part), part.get_payload(decode=True) or b""
-        raise ValueError("no file in the form")
+        boundary = _boundary_of(content_type)
+        if not boundary:
+            raise ValueError("no multipart boundary declared")
 
+        reader = _Counted(self.rfile, declared)
+        delimiter = b"\r\n--" + boundary
+        name = None
+        while name is None:
+            # Skip to the part whose headers name a file. Each part's headers
+            # end at the first blank line; a part without a filename is a
+            # form field and its body is drained up to the next delimiter.
+            headers = reader.read_until(b"\r\n\r\n", limit=64 * 1024)
+            if headers is None:
+                raise ValueError("no multipart boundary in the body")
+            candidate = _filename_in(headers)
+            if candidate is None:
+                if reader.drain_to(delimiter) is None:
+                    raise ValueError("no file in the form")
+                continue
+            name = candidate
+
+        # delete=False because the path outlives this block: verdict() moves
+        # the file into its own directory. On any failure it is removed here,
+        # so a refused upload leaves nothing behind.
+        with tempfile.NamedTemporaryFile(delete=False, prefix="drop-",
+                                         suffix=".spool") as handle:
+            spool = handle.name
+            try:
+                if reader.copy_to(handle, delimiter) is None:
+                    raise ValueError("the upload ended before its closing boundary")
+            except BaseException:
+                handle.close()
+                os.unlink(spool)
+                raise
+        return name, spool
+
+
+def _boundary_of(content_type: str) -> bytes:
+    """The boundary parameter, quoted or bare, as bytes."""
+    found = re.search(r'boundary=(?:"([^"]+)"|([^;\s]+))', content_type)
+    if not found:
+        return b""
+    return (found.group(1) or found.group(2)).encode("latin-1")
+
+
+def _filename_in(headers: bytes):
+    """The file name from a part's headers, or None for a plain field.
+
+    Read off the raw Content-Disposition line rather than through a MIME
+    parser, for the reason `_sent_filename` gives: parameter tidying strips
+    the trailing whitespace a real name can carry, and the extension rule
+    reads that name.
+    """
+    for line in headers.split(b"\r\n"):
+        if line.lower().startswith(b"content-disposition:"):
+            text = line.decode("utf-8", errors="replace")
+            quoted = re.search(r'filename="([^"\\]*)"', text)
+            if quoted:
+                return quoted.group(1)
+            bare = re.search(r"filename=([^;\s]+)", text)
+            if bare:
+                return bare.group(1)
+            return None
+    return None
+
+
+class _Counted:
+    """A reader over exactly `limit` bytes of a stream, in chunks.
+
+    Never asks the socket for more than the body declares, so a client that
+    lied upward cannot make it wait for bytes that will not come; the socket
+    timeout on the handler covers a client that lied downward.
+    """
+    CHUNK = 1 << 16
+
+    def __init__(self, stream, limit: int):
+        self._stream = stream
+        self._left = limit
+        self._buffer = b""
+
+    def _fill(self) -> bool:
+        if self._left <= 0:
+            return False
+        chunk = self._stream.read(min(self.CHUNK, self._left))
+        if not chunk:
+            self._left = 0
+            return False
+        self._left -= len(chunk)
+        self._buffer += chunk
+        return True
+
+    def read_until(self, marker: bytes, limit: int):
+        """Bytes up to and excluding `marker`, or None if it never comes
+        within `limit` bytes. The marker is consumed."""
+        while True:
+            at = self._buffer.find(marker)
+            if at >= 0:
+                out, self._buffer = self._buffer[:at], self._buffer[at + len(marker):]
+                return out
+            if len(self._buffer) > limit or not self._fill():
+                return None
+
+    def drain_to(self, delimiter: bytes):
+        """Discard up to and including `delimiter`; None if it never comes."""
+        return self.copy_to(None, delimiter)
+
+    def copy_to(self, handle, delimiter: bytes):
+        """Copy bytes to `handle` (or nowhere) until `delimiter`, which is
+        consumed along with the rest of its line. Returns the byte count, or
+        None if the stream ended first."""
+        written = 0
+        keep = len(delimiter)
+        while True:
+            at = self._buffer.find(delimiter)
+            if at >= 0:
+                if handle is not None:
+                    handle.write(self._buffer[:at])
+                written += at
+                rest = self._buffer[at + keep:]
+                # The delimiter's own line: "--" closes, "\r\n" continues.
+                nl = rest.find(b"\r\n")
+                self._buffer = rest[nl + 2:] if nl >= 0 else b""
+                return written
+            # Flush all but a delimiter's length, so one that straddles the
+            # next chunk is still seen whole.
+            if len(self._buffer) > keep:
+                cut = len(self._buffer) - keep
+                if handle is not None:
+                    handle.write(self._buffer[:cut])
+                written += cut
+                self._buffer = self._buffer[cut:]
+            if not self._fill():
+                return None
 
 def _sent_filename(part) -> str:
     """The name as it was sent, before parameter tidying.

@@ -13,6 +13,7 @@ and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations
 
+import os
 import posixpath
 import zipfile
 from pathlib import Path
@@ -29,6 +30,25 @@ _CHUNK = 1 << 16
 #: gates above this layer refuse at 64 MiB, so nothing legitimate needs more,
 #: and a caller that cares about the boundary asks with `read_bounded`.
 MAX_ENTRY_BYTES = 64 * 1024 * 1024
+
+#: The ceiling on what one run will decompress in total. Per-entry limits
+#: bound each rendition and nothing bounded their sum, so an archive that
+#: compresses to nothing could make a run decompress as much as it declared:
+#: measured, forty one-megabyte renditions in a package of no size at all made
+#: the run read a hundred and sixty. Reads past this raise, and the rule that
+#: reports it names the number rather than letting memory run out first.
+MAX_CONTENT_TOTAL_BYTES = int(os.environ.get("IIRDS_CONTENT_BUDGET") or 512 * 1024 * 1024)
+#: Read once at import, and named in S9's remedy: a delivery larger than the
+#: default is not wrong, it is large, and the person checking it decides
+#: what their machine can hold rather than this module deciding for them.
+
+
+class ContentBudgetExceeded(Exception):
+    """A run asked to decompress more than MAX_CONTENT_TOTAL_BYTES."""
+
+    def __init__(self, read_so_far: int, limit: int):
+        super().__init__("%d bytes decompressed against a ceiling of %d" % (read_so_far, limit))
+        self.read_so_far, self.limit = read_so_far, limit
 
 
 #: What `iirds:source` names, decided once.
@@ -197,6 +217,21 @@ class Package:
                 out += chunk
         return bytes(out), len(out) > limit
 
+    def charge(self, count: int) -> None:
+        """Add `count` to the run's content-decompression total and stop past
+        the ceiling.
+
+        Called by the content rules and by nothing else. A first version
+        charged every read inside `read_bounded`, which counted the metadata
+        too -- so with a small ceiling the run died reading metadata.rdf, and
+        the death surfaced as a parse error on the metadata rather than as
+        the budget it was. Metadata and mimetype have their own gates; the
+        ceiling is on content, and only content pays into it.
+        """
+        self.content_read = getattr(self, "content_read", 0) + count
+        if self.content_read > MAX_CONTENT_TOTAL_BYTES:
+            raise ContentBudgetExceeded(self.content_read, MAX_CONTENT_TOTAL_BYTES)
+
     def text(self, name: str, encoding: str = "utf-8") -> str:
         return self.read(name).decode(encoding, errors="replace")
 
@@ -276,6 +311,19 @@ class DirectoryPackage:
 
     def read(self, name: str, limit: int = MAX_ENTRY_BYTES) -> bytes:
         return self.read_bounded(name, limit)[0]
+
+    def charge(self, count: int) -> None:
+        """The same budget as the archive form, kept in step by hand.
+
+        The two package types share no base class, and the first version of
+        the budget gave `charge` to the archive only -- so an unpacked
+        container raised where a zipped one refused, and the two forms of one
+        package stopped giving the same answer. tests/test_paths.py holds
+        them to it.
+        """
+        self.content_read = getattr(self, "content_read", 0) + count
+        if self.content_read > MAX_CONTENT_TOTAL_BYTES:
+            raise ContentBudgetExceeded(self.content_read, MAX_CONTENT_TOTAL_BYTES)
 
     def read_bounded(self, name: str, limit: int):
         """Same contract as the archive form, and for the same reason.

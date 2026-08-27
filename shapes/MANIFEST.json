@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 21,
   "deferred_v1.1": 6,
-  "not_expressible": 42,
+  "not_expressible": 43,
   "noop": 1
  },
  "core_emitted": [
@@ -213,6 +213,7 @@
   "S1": "system: the subject is the run itself, not the graph",
   "S2": "system: the subject is the run itself, not the graph",
   "S3": "system: the subject is the run itself, not the graph",
+  "S9": "system: the subject is the run itself, not the graph",
   "S6": "archive: entry names, encryption bits, ZIP64 records",
   "S7": "archive: entry names, encryption bits, ZIP64 records",
   "S8": "archive: entry names, encryption bits, ZIP64 records",

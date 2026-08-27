@@ -418,7 +418,7 @@ for _rid in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11.1
     NOT_EXPRESSIBLE[_rid] = "container: the subject is ZIP bytes and entry metadata; no graph exists yet"
 for _rid in ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10"):
     NOT_EXPRESSIBLE[_rid] = "content: the subject is XHTML files inside the archive"
-for _rid in ("S1", "S2", "S3"):
+for _rid in ("S1", "S2", "S3", "S9"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
 for _rid in ("S6", "S7", "S8"):
     NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records"

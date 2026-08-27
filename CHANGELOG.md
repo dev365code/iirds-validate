@@ -258,6 +258,18 @@
   as a test rather than trusted: the quiet alternative was one bad drop
   eating a slot for the life of the process.
 
+- **A rendition is decompressed once per run, and a run states a ceiling on
+  what it will decompress in total.** Measured: one rendition was read four
+  times — once to refuse or accept it, once to parse it, and the same pair
+  again by a second rule, because the bytes were never kept after the first
+  look. Forty one-megabyte renditions in an archive that compresses to
+  nothing made the run read a hundred and sixty megabytes. The bytes are
+  memoised on the run now, and per-entry limits are joined by a total —
+  half a gigabyte by default, `IIRDS_CONTENT_BUDGET` to change it. **S9**
+  reports the first rendition the ceiling stopped at, with the numbers, and
+  says that the renditions from there on were not examined; a report that
+  fell silent on them would have read as a pass. 194 rules.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

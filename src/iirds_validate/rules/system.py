@@ -195,3 +195,28 @@ def s8_zip64_where_required(ctx):
         return
     yield Violation("archive exceeds the ZIP32 limits but does not use ZIP64",
                     detail="%d entries, largest file %d bytes" % (entries, biggest))
+
+
+@rule("S9", kind="system", prio="MUST", versions=(), variants=(),
+      title="the run stopped decompressing content at its stated ceiling",
+      spec="", covers=(), diagnosis="cause",
+      fix="Nothing in the package is necessarily wrong: the run declined to "
+          "decompress more than its ceiling, and the renditions past that point "
+          "were not examined. Check the package on the command line with a "
+          "larger IIRDS_CONTENT_BUDGET, or split a delivery this large into "
+          "nested packages, which is what nesting is for.")
+def s9_content_budget(ctx):
+    """Per-entry limits bound each rendition and nothing bounded their sum,
+    so an archive that compresses to nothing could make a run decompress as
+    much as it declared: measured, forty one-megabyte renditions in a package
+    of no size at all made the run read a hundred and sixty. The ceiling is a
+    number the report states, and the renditions past it are named as not
+    examined rather than silently passed."""
+    hit = ctx.__dict__.get("content_budget")
+    if hit is None:
+        return
+    read_so_far, limit, first = hit
+    yield Violation("the run stopped decompressing content at its ceiling; renditions "
+                    "from this one on were not examined",
+                    subject=first,
+                    detail="%d bytes decompressed against a budget of %d" % (read_so_far, limit))

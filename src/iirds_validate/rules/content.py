@@ -23,7 +23,7 @@ import xml.parsers.expat as expat
 
 from .. import terms as T
 from ..model import Violation
-from ..package import entry_named
+from ..package import ContentBudgetExceeded, entry_named
 from ..registry import rule
 
 XHTML_FORMAT = "application/xhtml+xml"
@@ -160,12 +160,39 @@ def _xhtml_renditions(ctx):
                 yield name
 
 
+def _bytes_of(ctx, name):
+    """The rendition's bytes and whether it ran over, read once per run.
+
+    Measured before this existed: one rendition was decompressed four times
+    in a run -- B1 read it to refuse or accept it and again to parse it, and
+    the tree cache B2 draws from did the same pair over. The bytes are kept
+    on the context after the first read, so every later question about a
+    rendition is answered from memory already paid for.
+    """
+    memo = ctx.__dict__.get("_content_bytes")
+    if memo is None:
+        memo = ctx.__dict__["_content_bytes"] = {}
+    if name not in memo:
+        try:
+            raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
+            ctx.package.charge(len(raw))
+            memo[name] = (raw, oversize)
+        except ContentBudgetExceeded as exc:
+            # Recorded once, on the context, where S9 reads it. Every later
+            # rendition is refused without a read, so the rules that walk the
+            # renditions stop asking rather than each hitting the ceiling.
+            if "content_budget" not in ctx.__dict__:
+                ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
+            memo[name] = (b"", True)
+    return memo[name]
+
+
 def _refusal(ctx, name):
     """Why this file will not be parsed, or None."""
     # The same reasoning as the metadata gate: the declared size belongs to
     # the sender, so the limit is on what is read rather than on what is
     # claimed, and one read answers both questions.
-    raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
+    raw, oversize = _bytes_of(ctx, name)
     if oversize:
         return "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
     if _declares_entities(raw):
@@ -189,7 +216,7 @@ def _walk(ctx):
             if _refusal(ctx, name):
                 continue
             try:
-                cache[name] = ElementTree.fromstring(ctx.package.read(name))
+                cache[name] = ElementTree.fromstring(_bytes_of(ctx, name)[0])
             except ElementTree.ParseError:
                 continue
     yield from cache.items()
@@ -215,7 +242,7 @@ def b1_well_formed(ctx):
                             subject=name, detail=refused)
             continue
         try:
-            ElementTree.fromstring(ctx.package.read(name))
+            ElementTree.fromstring(_bytes_of(ctx, name)[0])
         except ElementTree.ParseError as exc:
             yield Violation("content declared as iiRDS XHTML5 is not well-formed XML",
                             subject=name, detail=str(exc))

@@ -241,7 +241,11 @@ def _cli(directory, name):
     import subprocess
     import sys as _sys
 
-    env = dict(os.environ, NO_COLOR="1")
+    # UTF-8 on both sides. The page always renders into UTF-8; a console
+    # stdout on Windows defaults to a legacy code page, where the report now
+    # writes "->" for the arrow it cannot encode -- a correct rendering that
+    # is not the page's. The comparison is about the report, not the console.
+    env = dict(os.environ, NO_COLOR="1", PYTHONIOENCODING="utf-8")
     env["PYTHONPATH"] = os.pathsep.join(
         os.path.abspath(entry) for entry in _sys.path
         if entry and os.path.isdir(entry))

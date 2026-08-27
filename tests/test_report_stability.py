@@ -17,6 +17,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -73,3 +74,37 @@ def test_every_consortium_package_reports_the_same_thing_every_run(package):
     """The material this project has least excuse to be unstable on."""
     reports = {_report(package) for _ in range(RUNS)}
     assert len(reports) == 1, "%d distinct reports from %d runs" % (len(reports), RUNS)
+
+
+def test_a_report_survives_a_console_that_cannot_show_its_arrow():
+    """A console that cannot encode U+2192 is the default on a Windows
+    machine outside an English locale, and the remedy marker was written
+    there without asking: the report stopped at the first remedy, mid-run,
+    with a traceback where the rest of the findings should have been. The
+    exit code was still 1, so a build reading only that saw nothing wrong.
+
+    Found by comparing one run against itself through a second surface, on a
+    machine none of the reading had happened on.
+    """
+    import io
+
+    from iirds_validate import report as report_module
+    from iirds_validate import runner
+
+    package = build_package(Path(tempfile.mkdtemp()), "cp1252.iirds",
+                            mimetype=b"application/zip")
+    report = runner.run(str(package), runner.ALL_KINDS)
+    assert report.findings, "this fixture is supposed to have a remedy to print"
+
+    narrow = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", newline="")
+    report_module.render_text(report, stream=narrow)
+    narrow.flush()
+    text = narrow.buffer.getvalue().decode("cp1252")
+    assert "->" in text, text
+    assert "FAIL" in text, "the report stopped before it finished"
+
+    wide = io.TextIOWrapper(io.BytesIO(), encoding="utf-8", newline="")
+    report_module.render_text(report, stream=wide)
+    wide.flush()
+    assert "→" in wide.buffer.getvalue().decode("utf-8"), (
+        "a console that can show the arrow should still get it")

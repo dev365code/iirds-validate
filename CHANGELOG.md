@@ -225,6 +225,17 @@
   reached the extension rule stripped — the page passed a package the command
   line fails, from the transport's own tidying rather than from the document.
 
+- **A report died halfway through on a console that could not show one of its
+  characters.** The remedy lines are marked with an arrow, and writing U+2192
+  to a stream encoded in a legacy code page raises rather than degrades — so
+  on a Windows machine outside an English locale the report stopped at the
+  first remedy, mid-run, with a traceback where the rest of the findings
+  should have been. The exit code was still 1, so a build reading only that
+  saw nothing wrong, and a redirected report was silently truncated. The
+  marker is now chosen by what the stream can encode: the arrow where it can
+  be shown, two characters where it cannot. Reproduced with
+  `PYTHONIOENCODING=cp1252` before it was fixed.
+
 ### Changed
 
 - **Where two packages both represent the container, the one declaring the

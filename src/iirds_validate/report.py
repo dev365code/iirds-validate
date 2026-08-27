@@ -55,12 +55,33 @@ def _use_colour(stream: TextIO) -> bool:
     return hasattr(stream, "isatty") and stream.isatty()
 
 
+def _remedy_marker(stream) -> str:
+    """The arrow, or the two characters that stand for it.
+
+    A console that cannot show U+2192 is not an exotic case: it is the
+    default on a Windows machine outside an English locale, and writing the
+    arrow there raises rather than degrades -- so the report stopped at the
+    first remedy, mid-run, with a traceback where the rest of the findings
+    should have been. Found by comparing a run against itself through a
+    second surface, on a machine none of the reading had happened on.
+    """
+    encoding = getattr(stream, "encoding", None)
+    if not encoding:
+        return "\u2192"
+    try:
+        "\u2192".encode(encoding)
+    except (UnicodeEncodeError, LookupError):
+        return "->"
+    return "\u2192"
+
+
 def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool = False) -> None:
     # Resolved here rather than as a default argument: a default is evaluated
     # once at import, so `stream=sys.stdout` would capture the interpreter's
     # original stdout and keep writing there no matter what a caller redirected.
     stream = sys.stdout if stream is None else stream
     colour = _use_colour(stream)
+    marker = _remedy_marker(stream)
 
     def paint(text: str, code: str) -> str:
         return "%s%s%s" % (code, text, _RESET) if colour else text
@@ -88,7 +109,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
         # report that has told you only that you are in trouble.
         if finding.fix:
             for line in _wrap(finding.fix, 74):
-                print(paint("                    → %s" % line, _DIM), file=stream)
+                print(paint("                    %s %s" % (marker, line), _DIM),
+                      file=stream)
         if verbose and finding.rule.spec:
             print(paint("                      spec: %s" % finding.rule.spec, _DIM), file=stream)
 
@@ -110,7 +132,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             for finding in group:
                 show(finding)
             continue
-        _show_group(group, report.total_for(group[0].rule.id), paint, stream)
+        _show_group(group, report.total_for(group[0].rule.id), paint, stream,
+                    marker)
 
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
@@ -127,7 +150,7 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
     print(paint(tail, _DIM), file=stream)
 
 
-def _show_group(group, total, paint, stream) -> None:
+def _show_group(group, total, paint, stream, marker="\u2192") -> None:
     """A run of one rule, told once: headline with the count, the first few
     subjects natural-sorted, the remedy a single time.
 
@@ -157,7 +180,8 @@ def _show_group(group, total, paint, stream) -> None:
         print(paint("                      %s" % note, _DIM), file=stream)
     if first.fix:
         for line in _wrap(first.fix, 74):
-            print(paint("                    → %s" % line, _DIM), file=stream)
+            print(paint("                    %s %s" % (marker, line), _DIM),
+                  file=stream)
 
 def render_json(report: Report, stream: Optional[TextIO] = None) -> None:
     stream = sys.stdout if stream is None else stream

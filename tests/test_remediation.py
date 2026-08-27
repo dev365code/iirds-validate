@@ -167,3 +167,36 @@ def test_no_remedy_reaches_a_reader_without_passing_this_gate():
         "these findings carry their own remedy, which test_the_remedy_names_terms_"
         "that_exist does not read: %s. Widen it to Violation(fix=...) literals, or "
         "the first per-instance remedy is the first one nobody checks." % overrides)
+
+
+def test_the_term_reader_actually_reads_terms():
+    """Both gates above are `for ... in _named_terms(text)` with the assertion
+    inside. A reader that stopped matching anything would empty every loop and
+    leave both of them green over 193 rules, so it is pinned here against a
+    fixed string rather than only ever exercised through the corpus it is
+    meant to police."""
+    found = list(_named_terms("Give the iirds:Package an iirds:title."))
+    assert [(prefix, name) for prefix, name, _ in found] == [
+        ("iirds", "Package"), ("iirds", "title")]
+    assert all(str(iri).startswith("http") for _, _, iri in found)
+    assert list(_named_terms("no terms here at all")) == []
+    assert list(_named_terms(None)) == []
+
+
+def test_how_much_of_each_gate_is_actually_exercised():
+    """Two loops that look alike and are not. Remedies name terms constantly,
+    so that gate is dense. Titles mostly do not -- five of the ninety-nine
+    this project wrote itself -- so that one asserts something for five rules
+    and nothing for ninety-four, and reads like a gate over all of them.
+
+    Written down rather than left to be discovered, and counted so that a
+    reader who removes the last term-naming title finds out here instead of
+    keeping a gate that can no longer fail."""
+    ours = [r for r in RULES if r.title != CATALOG.get(r.id, {}).get("en")]
+    titled = [r for r in ours if list(_named_terms(r.title))]
+    remedied = [r for r in RULES if list(_named_terms(r.fix))]
+    terms_in_remedies = sum(len(list(_named_terms(r.fix))) for r in RULES)
+
+    assert len(titled) == 5, sorted(r.id for r in titled)
+    assert len(remedied) >= 120, len(remedied)
+    assert terms_in_remedies >= 140, terms_in_remedies

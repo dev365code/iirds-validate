@@ -602,3 +602,63 @@ def test_r9_leaves_an_unrestricted_package_alone(tmp_path):
 
 def test_r9_is_silent_about_a_handover_package_that_nests_nothing(tmp_path):
     assert "R9" not in handover_ids(tmp_path, "r9_plain.iirds", "")
+
+
+#: A handover package that declares itself nested inside an outer package it
+#: does not describe: the profile is read off the package this container is
+#: about, so adding a description of that outer package moves the answer.
+BYPASS_DEFECT = MINIMAL_RDF.replace(
+    "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n",
+    "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+    "    <iirds:formatRestriction>H</iirds:formatRestriction>\n"
+    '    <iirds:is-part-of-package rdf:resource="urn:test:outer"/>\n')
+
+BYPASS_STUB = ('  <iirds:Package rdf:about="urn:test:outer">\n'
+               '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+               '  </iirds:Package>\n')
+
+
+def test_describing_the_outer_package_does_not_buy_a_clean_pass(tmp_path):
+    """Three lines that used to switch the handover profile off and take the
+    run to no findings at all.
+
+    Adding a description of the outer package is not itself a defect -- the
+    standard prints exactly that shape, a parent whose whole metadata is one
+    version triple, in §6.3.3 Example 16 -- so the repair is not to refuse it.
+    The repair is that the archive is asked whether the nested container it
+    now claims is actually here. Measured before that rule existed: the second
+    row below reported one warning and the third reported nothing at all and
+    exited zero.
+
+    The fourth row is left passing on purpose and is not a hole this project
+    knows how to close: a container that carries a real nested iiRDS container
+    is, in everything observable, a parent with a child, and the handover
+    claim then sits on a package the metadata says is inside it rather than on
+    this container. The profile is read off the package this container is
+    about; §6.3.3 Example 16 puts the child's own restriction in the child's
+    own file, which this validator does not open.
+    """
+    where = tmp_path / "inner_bypass"
+    where.mkdir(parents=True, exist_ok=True)
+    real = build_package(where, "inner.iirds").read_bytes()
+    stubbed = BYPASS_DEFECT.replace("</rdf:RDF>", BYPASS_STUB + "</rdf:RDF>")
+
+    def run(name, metadata, extra=()):
+        report = runner.check(build_package(tmp_path, name, metadata=metadata, extra=extra))
+        return report.ok, {f.rule.id for f in report.findings}
+
+    ok, plain = run("bypass_plain.iirds", BYPASS_DEFECT)
+    assert not ok and {"M15.9", "M15.11a"} <= plain, plain
+
+    ok, stub_only = run("bypass_stub.iirds", stubbed)
+    assert not ok, "the stub used to leave one warning and a passing run"
+    assert "R8" in stub_only, stub_only
+
+    ok, decoy = run("bypass_decoy.iirds", stubbed,
+                    (("content/nested.iirds", b"not a zip at all"),))
+    assert not ok, "sixteen bytes under a name ending .iirds used to be enough"
+    assert "R8" in decoy, decoy
+
+    ok, honest = run("bypass_honest.iirds", stubbed,
+                     (("content/nested.iirds", real),))
+    assert ok, honest

@@ -390,6 +390,34 @@ settles is a different sentence, not this one: R8 answers §6.3.3's "must be in
 the archive", and knowing that a document is wrong somewhere is not knowing
 that it is the nested package.
 
+**What is left open, and why it is left.** The profile and the version are read
+off the package this container is about, and a package the metadata says is
+nested does not set them — the reason is written in the rule that does the
+reading, and it is the false-reject direction: a nested child declaring the
+handover profile would otherwise switch seventeen handover MUSTs on against a
+container that never claimed to be one.
+
+That reading has a residual, and it is not closed here. A container whose own
+package declares the handover profile *and* declares itself nested inside an
+outer package described in the same file is judged unrestricted. Three states
+of that document are now separated:
+
+| the archive carries | verdict |
+|---|---|
+| no nested container | R8 — a declared nested package that is not here |
+| a file named `*.iirds` that is not one | R8, because the name is not the test |
+| a real nested iiRDS container | no finding |
+
+The third row passes, and this project does not claim to know how to close it.
+At that point the container is, in everything observable from outside, a parent
+carrying a child; the handover claim sits on a package the metadata says is
+inside it rather than on this container, and §6.3.3 Example 16 puts a child's
+own restriction in the child's own `metadata.rdf` — a file this validator does
+not open. Widening the profile reading to elect the nested package instead
+would not change that row either, and it would trade a certainty for an
+inference in the one place where an inference is silent: the choice of profile
+happens before any rule runs and produces no finding to disagree with.
+
 The cost, named: a parent's `metadata.rdf` that misspells its own package's
 IRI in the child's reference now draws M8 **and M3** on the child — M3 because
 two packages are then representing this container. That graph already breaks

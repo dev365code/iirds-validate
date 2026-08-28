@@ -98,6 +98,14 @@ jobs:
       - run: python -c "import rdflib, sys; print('rdflib', rdflib.__version__, 'on', sys.version)"
       - run: pytest -q
 
+      - name: the single-file form runs on the oldest Python it claims
+        # The archive is built on one Python and run on another; the wheel
+        # job builds it on 3.11, and this is the floor actually running it.
+        if: matrix.python == '3.9' && !matrix.pin
+        run: |
+          python tools/build_zipapp.py -o /tmp/floor.pyz --check
+          python -S /tmp/floor.pyz --version
+
       - name: no rule has quietly stopped firing
         # pytest records which rules produced a finding; this compares that
         # against docs/rule-coverage.json. A rule that fires nowhere is not

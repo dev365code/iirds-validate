@@ -595,6 +595,12 @@ def test_the_page_survives_the_single_file_distribution(tmp_path):
     # The library travels the same way: from the tree, not from an index.
     assert "iirds/__init__.py" in inside
     assert not [name for name in inside if name.startswith("iirds-") and ".dist-info/" in name]
+    # rdflib's closure for the oldest Python this runs on -- isodate is asked
+    # for only below 3.11, and a build on a newer Python must carry it anyway.
+    assert any(name.startswith("isodate/") for name in inside)
+    # No console scripts of the dependencies: they carry the building
+    # machine's interpreter path, and the archive has no use for them.
+    assert not any(name.startswith("bin/") for name in inside)
 
 
 def test_the_address_it_prints_is_one_a_browser_can_open():

@@ -343,3 +343,47 @@ def test_the_single_file_form_is_named_after_the_command():
     import build_zipapp
 
     assert build_zipapp.OUTPUT.name == "iirds.pyz"
+
+
+# ---------------------------------------------------------------------------
+# The archive has to run on the oldest Python it names, not on the one that built it
+# ---------------------------------------------------------------------------
+
+def test_the_archive_resolves_its_dependencies_for_the_oldest_python_it_claims():
+    """rdflib asks for isodate only below 3.11. Built on 3.12 -- the release
+    runner -- the archive left it out and died on 3.9 and 3.10 with
+    `No module named 'isodate'`: the one file meant to run on every Python
+    the README names ran on the newest ones. The resolver is pinned to the
+    floor pyproject declares, so the floor's closure is what travels."""
+    import build_zipapp
+
+    argv = build_zipapp.pip_arguments(Path("/staging"))
+    assert "--only-binary=:all:" in argv
+    assert argv[argv.index("--python-version") + 1] == build_zipapp.python_floor() == "3.9"
+    assert argv[argv.index("--target") + 1] == "/staging"
+
+
+def test_the_floor_is_read_from_pyproject_and_not_guessed():
+    import build_zipapp
+
+    assert build_zipapp.python_floor('requires-python = ">=3.12"\n') == "3.12"
+    with pytest.raises(AssertionError, match="requires-python"):
+        build_zipapp.python_floor('requires-python = "~=3.9"\n')
+
+
+def test_what_the_floor_needs_and_the_builder_did_not_install_is_named():
+    """pip evaluates a dependency's environment markers for the Python that
+    runs it, whatever `--python-version` says; so the closure the builder
+    resolved is asked, line by line, what the floor would have needed."""
+    import build_zipapp
+
+    metadata = """Requires-Dist: pyparsing (>=2.1.0,<4)
+Requires-Dist: isodate (>=0.7.2,<1.0.0) ; python_version < "3.11"
+Requires-Dist: lxml (>=4.3,<6.0) ; extra == "lxml"
+"""
+    staged = {"rdflib", "pyparsing"}
+    wanted = build_zipapp.missing_for_floor([metadata], staged, "3.9")
+    assert len(wanted) == 1 and wanted[0].startswith("isodate (")
+    assert set(wanted[0][len("isodate ("):-1].split(",")) == {">=0.7.2", "<1.0.0"}
+    assert build_zipapp.missing_for_floor([metadata], staged, "3.12") == []
+    assert build_zipapp.missing_for_floor([metadata], staged | {"isodate"}, "3.9") == []

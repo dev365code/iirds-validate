@@ -50,13 +50,16 @@ sys.exit(main())
 
 SHEBANG = b"#!/usr/bin/env python3\n"
 
-#: Every entry gets the same timestamp so two people building the same commit
-#: get the same file. `zipapp.create_archive` uses each file's modification
-#: time, and git does not preserve those — so the archive was reproducible on
-#: one machine and nowhere else, which is the half that does not matter. For a
-#: shop that has to approve a file before it crosses the air gap, "the hash on
-#: the release page is the hash of the file I carried in" is the whole trust
-#: story. Override with SOURCE_DATE_EPOCH.
+#: Every entry gets the same timestamp so two builds of one commit, against
+#: the same index with the same pip, give the same file. `zipapp.create_archive` uses each
+#: file's modification time, and git does not preserve those -- so the archive
+#: was reproducible on one machine and nowhere else, which is the half that
+#: does not matter. For a shop that has to approve a file before it crosses
+#: the air gap, "the hash on the release page is the hash of the file I
+#: carried in" is the whole trust story. Override with SOURCE_DATE_EPOCH.
+#: (The dependencies' versions are what the index offers on the day; the
+#: release workflow proves the two builds it makes agree, and records the
+#: hash beside the file.)
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
@@ -168,11 +171,99 @@ def copy_sources(target: Path) -> None:
                         ignore=shutil.ignore_patterns("__pycache__"))
 
 
+def python_floor(text: str = None) -> str:
+    """The oldest Python pyproject says this runs on, as "X.Y"."""
+    if text is None:
+        text = (ROOT / "pyproject.toml").read_text("utf-8")
+    found = re.search(r'^requires-python = ">=([0-9]+\.[0-9]+)"$', text, re.M)
+    assert found, ("pyproject.toml no longer declares requires-python as \">=X.Y\"; "
+                   "the archive would be resolved for whichever Python built it")
+    return found.group(1)
+
+
+def pip_arguments(target: Path) -> list:
+    """How the dependencies are fetched: resolved for the oldest Python this
+    runs on, not for the one doing the building.
+
+    rdflib asks for isodate only below 3.11. A build on 3.12 -- the release
+    runner -- therefore left it out, and the archive died on 3.9 and 3.10
+    with `No module named 'isodate'`: the one file that is supposed to run
+    on every Python it names ran on the newest ones. Pinning the resolver to
+    the floor puts the floor's closure in the archive; a newer Python simply
+    carries a module it does not import. Pure wheels only, which is what
+    every dependency here is and what a cross-version resolve requires.
+    """
+    return [sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
+            "--target", str(target), "--only-binary=:all:",
+            "--python-version", python_floor(), *dependencies()]
+
+
+def _requirement_class():
+    # pip carries its own copy of `packaging`; a machine that has pip has it,
+    # and a build script that already needs pip may lean on it.
+    try:
+        from packaging.requirements import Requirement
+    except ImportError:  # pragma: no cover - depends on the machine
+        from pip._vendor.packaging.requirements import Requirement
+    return Requirement
+
+
+def missing_for_floor(metadata_texts, staged, floor: str) -> list:
+    """Of the requirements the staged distributions declare, those the floor
+    Python would need and the builder's resolve did not stage.
+
+    `--python-version` steers wheel selection only; a dependency's
+    environment markers are evaluated for the Python that runs pip, so a
+    marker like `python_version < "3.11"` is false on the release runner
+    and true on the floor. Each `Requires-Dist` line is asked again with
+    the floor's version in the environment. Extras are never wanted.
+    """
+    Requirement = _requirement_class()
+    environment = {"python_version": floor, "python_full_version": floor + ".0", "extra": ""}
+    wanted = []
+    for text in metadata_texts:
+        for line in text.splitlines():
+            if not line.startswith("Requires-Dist:"):
+                continue
+            requirement = Requirement(line.partition(":")[2].strip())
+            if requirement.marker is None or not requirement.marker.evaluate(environment):
+                continue
+            if requirement.name.lower() in {name.lower() for name in staged}:
+                continue
+            spec = str(requirement.specifier)
+            wanted.append("%s (%s)" % (requirement.name, spec) if spec else requirement.name)
+    return sorted(set(wanted))
+
+
+def _staged_metadata(target: Path):
+    return [(path.name[:-len(".dist-info")].rsplit("-", 1)[0], (path / "METADATA").read_text("utf-8"))
+            for path in sorted(target.glob("*.dist-info"))]
+
+
+def complete_for_floor(target: Path) -> None:
+    """Install what the floor needs and the builder's Python did not, until
+    nothing is missing -- a dependency added this way may declare more."""
+    while True:
+        staged = _staged_metadata(target)
+        wanted = missing_for_floor([text for _, text in staged], {name for name, _ in staged},
+                                   python_floor())
+        if not wanted:
+            return
+        subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
+                        "--target", str(target), "--only-binary=:all:", "--no-deps",
+                        "--python-version", python_floor(), *wanted], check=True)
+
+
 def stage(target: Path) -> None:
     copy_sources(target)
     copy_licences(target)
-    subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
-                    "--target", str(target), *dependencies()], check=True)
+    subprocess.run(pip_arguments(target), check=True)
+    complete_for_floor(target)
+    # pip leaves the dependencies' console scripts in bin/, each with the
+    # building machine's interpreter path in its first line. The archive has
+    # no use for them, and they are why two machines' builds of one commit
+    # used to differ.
+    shutil.rmtree(target / "bin", ignore_errors=True)
     (target / "__main__.py").write_text(MAIN, "utf-8")
 
     for cache in target.rglob("__pycache__"):

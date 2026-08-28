@@ -22,8 +22,8 @@ specification and still be unreadable to whoever receives it.** This checks for
 both, from the command line, on a machine with no internet connection, as a step
 in a build.
 
-> **At a glance** — 194 rules across five editions and three profiles · two
-> pure-Python dependencies (rdflib and the `iirds` SDK), zero for the single-file `.pyz` ·
+> **At a glance** — 194 rules across five editions and three profiles · one
+> pure-Python dependency (rdflib), zero for the single-file `.pyz` ·
 > [what it checks](#what-it-checks) · [limits, measured](#limits-measured) ·
 > [how it knows it is right](docs/scope.md) · every number in this file is
 > re-derivable from a committed tool, and the console sample below is
@@ -76,15 +76,15 @@ packages.
 python iirds-validate.pyz dist/
 ```
 
-887 KB, contains `rdflib`, the `iirds` SDK and the iiRDS ontologies, compiles nothing, so the
+Under a megabyte, contains `rdflib`, the `iirds` library and the iiRDS ontologies, compiles nothing, so the
 same file runs on Linux, macOS and Windows. It is an ordinary zip: whoever has
 to approve software entering the network can open it and read every line, which
 is usually the hard part. Build it with `python tools/build_zipapp.py`.
 
 **Or on the path:** `pip install iirds-validate` — published to PyPI via
-trusted publishing. Two runtime dependencies, both pure Python: rdflib, and
-the [`iirds`](https://github.com/dev365code/iirds) SDK this project shares
-its container layer with. For an air-gapped install see
+trusted publishing. One runtime dependency, pure Python: rdflib. The `iirds`
+library — the container layer this checker is built on — ships in the same
+distribution. For an air-gapped install see
 [docs/offline-install.md](docs/offline-install.md).
 
 **Then point it at something:**
@@ -424,8 +424,7 @@ the repository.
 - **Integrity.** The bundled ontologies are checked against recorded SHA-256
   digests; `python -m iirds_validate.ontology --verify` does it from the
   installed copy.
-- **CI.** Python 3.9 to 3.13, Windows, rdflib 6 and 7, the iirds SDK at its
-  pinned floor, the wheel installed into
+- **CI.** Python 3.9 to 3.13, Windows, rdflib at its 6.0.0 floor and at 7, the wheel installed into
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 

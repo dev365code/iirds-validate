@@ -12,13 +12,16 @@ from __future__ import annotations
 import hashlib
 import re
 import zipfile
+from pathlib import Path
 
 import pytest
-from iirds import PackError, pack
 
+from iirds import PackError, pack
 from iirds_validate import runner
 from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, main
 from iirds_validate.model import MIMETYPE_VALUE
+
+ROOT = Path(__file__).resolve().parents[1]
 
 ARCHIVE_RULES = {"C1", "C3", "C4", "C5", "C6", "S7", "S8"}
 
@@ -140,7 +143,28 @@ def test_the_pyz_bundles_what_pyproject_declares():
     import build_zipapp
     names = sorted(spec.split(">")[0].split("=")[0].split("<")[0]
                    for spec in build_zipapp.dependencies())
-    assert names == ["iirds", "rdflib"]
+    assert names == ["rdflib"]
+
+
+def test_the_archive_stages_the_library_beside_the_checker(tmp_path):
+    """The `iirds` library is not a dependency any more; it is this tree's
+    other package, and the archive carries it the way it carries the checker
+    -- copied from `src/`, not fetched from an index."""
+    import build_zipapp
+
+    build_zipapp.copy_sources(tmp_path)
+    for name in ("iirds/__init__.py", "iirds/_package.py", "iirds_validate/cli.py",
+                 "iirds_validate/data/rule-catalog.json"):
+        assert (tmp_path / name).is_file(), "%s is not staged" % name
+    assert not list(tmp_path.rglob("__pycache__"))
+
+
+def test_the_provenance_table_does_not_call_this_projects_own_code_third_party():
+    """THIRD_PARTY.md opens "everything bundled here, where it came from".
+    The library came from this project; a row for it would say a copy of
+    our own code arrived from somewhere else."""
+    table = (ROOT / "THIRD_PARTY.md").read_text("utf-8")
+    assert "| `iirds` |" not in table
 
 
 # ---------------------------------------------------------------------------
@@ -212,8 +236,8 @@ def _read_licence_files_from(build_zipapp, text):
 
 def test_every_distribution_the_archive_bundles_has_a_row_in_third_party():
     """The table opens "everything bundled here", and pip brings a
-    dependency's dependencies too: the archive carries four distributions,
-    not the two this project declares. Asking the declared list would only
+    dependency's dependencies too: the archive carries three distributions,
+    not the one this project declares. Asking the declared list would only
     confirm the names somebody had already thought of -- which is what the
     first version of this test did, while `isodate` and `pyparsing` sat in
     the archive with no row anywhere."""
@@ -227,8 +251,8 @@ def test_every_distribution_the_archive_bundles_has_a_row_in_third_party():
 #: turns one into the other is the part a hand-written list never exercises
 #: -- and it was wrong: splitting on the last hyphen first left
 #: `rdflib-7.6.0.dist`, which matches no row in any table.
-BUNDLED_DIRS = ("iirds-0.3.2.dist-info", "isodate-0.7.2.dist-info",
-                "pyparsing-3.3.2.dist-info", "rdflib-7.6.0.dist-info")
+BUNDLED_DIRS = ("isodate-0.7.2.dist-info", "pyparsing-3.3.2.dist-info",
+                "rdflib-7.6.0.dist-info")
 
 
 def bundled():
@@ -240,7 +264,7 @@ def bundled():
 def test_a_dist_info_directory_gives_up_its_distribution_name():
     import build_zipapp
 
-    assert bundled() == ("iirds", "isodate", "pyparsing", "rdflib")
+    assert bundled() == ("isodate", "pyparsing", "rdflib")
     assert build_zipapp.distribution_name("zope.interface-5.0.dist-info") == "zope.interface"
 
 

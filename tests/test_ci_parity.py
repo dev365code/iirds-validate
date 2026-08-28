@@ -148,3 +148,10 @@ def test_make_actually_requires_the_cached_specification():
     assert re.search(r"(?m)^export IIRDS_REQUIRE_SPEC_CACHE\s*:?=\s*1\s*$", MAKEFILE), (
         "the Makefile does not export IIRDS_REQUIRE_SPEC_CACHE, so `make check` "
         "would hold the requirement index to nothing when the cache is absent")
+
+
+def test_no_ci_row_installs_the_library_from_an_index():
+    """`iirds` ships from this tree, beside the checker. A matrix row that
+    pinned it from an index would put a release ahead of `src/` on the path
+    and run the suite against code nobody is looking at."""
+    assert not re.search(r'pin:\s*"iirds', WORKFLOW), "a matrix row still installs iirds from an index"

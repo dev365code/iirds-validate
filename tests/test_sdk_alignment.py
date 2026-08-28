@@ -1,33 +1,23 @@
-"""One container layer, two projects, held together by `is`.
+"""One container layer, two packages, held together by `is`.
 
-The validator wrote the metadata guards, the parser and the merge; they
-moved to the iirds SDK so every tool shares them; the validator imports
-them back. Equality tests would pass against a drifted fork -- these pin
-object identity, so the seam cannot reopen without failing loudly.
+The checker wrote the metadata guards, the parser and the merge; they moved
+to the `iirds` library so every tool shares them; the checker imports them
+back. Equality tests would pass against a drifted copy -- these pin object
+identity, so the seam cannot reopen without failing loudly.
 
-Identity holds the seam shut. It says nothing about *which copy* of the
-SDK was on the other side of it, and until the last two tests here that
-was never asked -- so a green run was a fact about the machine rather
-than about the commit. The two projects are repaired together, and the
-suite that exercises the pair is this one.
+Both packages ship from this tree, and the tests under "which copies" say so:
+a green run is a statement about `src/`, not about whichever copy of either
+package a machine happens to have installed.
 """
-import os
+import importlib
 from pathlib import Path
 
-import iirds
 import pytest
 
-from conftest import declared_sdk_floor, sdk_version, version_tuple
+import iirds
 from iirds_validate import context, model
 
 ROOT = Path(__file__).resolve().parents[1]
-
-#: The name of the variable that names an SDK checkout. One thing in two
-#: files, so it is spelled once here and the Makefile is required to use the
-#: same word: two literals could be renamed apart, and the direction that
-#: fails quietly is the Makefile honouring a variable nobody sets while the
-#: test guarding it skips for ever.
-SDK_SRC_VAR = "IIRDS_SRC"
 
 
 def test_the_shared_constants_are_the_same_objects():
@@ -45,8 +35,8 @@ def test_the_shared_functions_are_the_same_objects():
 
 def test_the_error_string_contract_routes_findings():
     """The runner partitions each parse error on its first ": " to decide
-    which per-file finding it becomes; the SDK documents the same shape as
-    an interface. Whichever side moves first, this trips."""
+    which per-file finding it becomes; the library documents the same shape
+    as an interface. Whichever side moves first, this trips."""
     _, error = iirds.parse_metadata(model.METADATA_RDF, b"<broken",
                                     base=model.PACKAGE_BASE)
     name, sep, detail = error.partition(": ")
@@ -62,116 +52,49 @@ def test_the_generated_shapes_speak_the_same_base():
 
 
 # ---------------------------------------------------------------------------
-# Which SDK the run used
+# Which copies the run used
 # ---------------------------------------------------------------------------
 
-def test_the_sdk_under_test_satisfies_what_this_project_declares():
-    """A green run has to be a statement about a version, not about a laptop.
+@pytest.mark.parametrize("module", ["iirds", "iirds_validate"])
+def test_the_packages_under_test_are_the_ones_in_this_tree(module):
+    """A green run has to be a statement about this tree, not about a laptop.
 
-    `pyproject.toml` says `iirds>=0.3.1`, and nothing checked that the copy
-    the suite actually imported honours it. CI does pin the floor in one of
-    its rows, deliberately; a local run took whatever was installed and said
-    nothing about it either way.
+    Both packages ship from `src/`, and an installed copy of either -- a
+    release in site-packages, or the reader this checker used to depend on
+    -- resolves first the moment `src/` is not ahead of it on the path. Then
+    the suite passes or fails on code nobody is looking at. Asserted for
+    every run, without a variable to set: the path that finds the wrong
+    copy is the one a person did not know they had.
     """
-    assert version_tuple(iirds.__version__) >= declared_sdk_floor(), (
-        "the suite imported iirds %s from %s, below the floor pyproject declares"
-        % (iirds.__version__, iirds.__file__))
-
-
-@pytest.mark.parametrize("lower,higher", [
-    ("0.1.0", "0.2.0"), ("0.2.0", "0.3.0"), ("0.9.0", "0.10.0"), ("1.2.9", "1.10.0"),
-])
-def test_versions_compare_as_numbers_and_not_as_text(lower, higher):
-    """The comparison above is a tuple compare, and it had to be.
-
-    "0.10.0" sorts below "0.2.0" as text and above it as a release, so a
-    string comparison would report an environment as below the floor when it
-    is two minor versions past it. The choice was mutation-checked by hand
-    once; a hand check that leaves no gate is a hand check nobody repeats.
-    """
-    assert version_tuple(lower) < version_tuple(higher)
-
-
-def test_a_chosen_sdk_checkout_is_the_one_that_gets_imported():
-    """`IIRDS_SRC=/path/to/iirds/src make check` must mean it.
-
-    The Makefile assigned PYTHONPATH outright, discarding whatever the caller
-    had exported, so `import iirds` found the installed release however the
-    run was invoked. That is wrong in the one situation it matters most: the
-    SDK and the validator are repaired in the same breath, and the validator's
-    suite is the only place the pair is exercised together. Repairing the SDK
-    and watching this suite go green proved nothing about the repair.
-
-    Skipped when no checkout is named, which is the ordinary case -- then the
-    installed release is under test and the assertion above is what holds.
-    """
-    chosen = os.environ.get(SDK_SRC_VAR)
-    if not chosen:
-        pytest.skip("no SDK checkout named; the installed release is under test")
-    chosen = Path(chosen).resolve()
-    imported = Path(iirds.__file__).resolve()
-    assert imported.is_relative_to(chosen), (
-        "IIRDS_SRC names %s but the suite imported iirds from %s" % (chosen, imported))
-
-
-def test_the_makefile_still_builds_pythonpath_from_that_variable():
-    """The affordance above is two halves in two files.
-
-    A rename on either side fails quietly and in the worst direction: the
-    Makefile stops honouring a variable nobody sets any more, and the test
-    that guards it skips for ever. A skipping test and a passing one are the
-    same line in a summary, which is how a gate stops being one without
-    anybody deciding to remove it.
-    """
-    makefile = (ROOT / "Makefile").read_text("utf-8")
-    assert "$(%s)" % SDK_SRC_VAR in makefile, (
-        "the Makefile no longer builds PYTHONPATH from %s, so the test above "
-        "would skip for ever instead of checking anything" % SDK_SRC_VAR)
+    imported = Path(importlib.import_module(module).__file__).resolve()
+    assert imported.is_relative_to(ROOT / "src"), (
+        "%s was imported from %s, not from this tree" % (module, imported))
 
 
 # ---------------------------------------------------------------------------
 # The one piece of shared logic that is duplicated instead of imported
 #
 # `iirds.source_of` and `iirds_validate.package.entry_named` resolve the same
-# value the same way on purpose, and cannot be the same object yet: the
-# repaired resolution is not in any published `iirds`, so this project's floor
-# cannot name it. The seam is held by a table instead of by `is`, until the
-# floor moves and `entry_named` becomes a call into the SDK.
+# value the same way on purpose, and are two copies in one tree: the library
+# reads a node's property and refuses a value that escapes the package; the
+# checker takes the string and answers None, so that a rule can report it.
+# Until `entry_named` becomes a call into the library -- an addition to the
+# library's public surface, made on its own -- this table holds the seam:
+# every spelling the two are asked about, and the name each answers with.
 #
-# The table is in two halves, and the split is the honest one: twelve
-# spellings the two projects have always answered alike, asserted for every
-# reader; fifteen that need the repair, gated on the reader actually under
-# test. Gated with a strict xfail rather than a skip -- green against a
-# reader that does not carry the repair, red the day it regresses, and red
-# the day a reader carries it and the two still disagree. A skip would be
-# none of those things.
-#
-# Gated on what the reader *does*, not on its version, because the version
-# cannot answer: a reader keeps the version of its last release until the
-# day it ships, so the worktree this project is developed against carries
-# the repair while still calling itself the release before it. The probe
-# asks one spelling; the table then holds all fifteen, so a reader that
-# half-carries the repair is caught rather than excused.
-#
-# The difference the table allows either way is the documented one: a reader
-# refuses to resolve a value that escapes the package, and a validator answers
-# None and reports it. The *name* either resolves to must be identical.
+# The difference the table allows is the documented one: the library refuses
+# to resolve a value that escapes the package, and the checker answers None
+# and reports it. The *name* either resolves to must be identical.
 # ---------------------------------------------------------------------------
 
-#: The reader release that first publishes the shared resolution.
-RESOLVED_ALIKE_FROM = (0, 3, 3)
-
-#: Spellings the two have always answered alike.
-SETTLED_SPELLINGS = (
+SPELLINGS = (
+    # plain, and the ways of writing the same entry
     "content/topic1.xhtml", "/content/topic1.xhtml", "./content/topic1.xhtml",
     "content//topic1.xhtml", "content/extra/../topic1.xhtml", ".config/a.xhtml",
     "//content/topic1.xhtml", "", "   ", "..", "../outside.xhtml",
     "..\\..\\etc\\passwd",
-)
-
-#: Spellings that need the repair: percent-encoding, a fragment, a query, or a
-#: value carrying a colon that section 5.1.3 excludes from a file name.
-REPAIRED_SPELLINGS = (
+    # percent-encoding, a fragment, a query, or a value carrying a colon that
+    # section 5.1.3 excludes from a file name
     "content/a%20b.xhtml", "content/a%23b.xhtml", "content/%74opic1.xhtml",
     "content/topic1.xhtml#section-2", "content/topic1.xhtml?revision=2",
     "content/topic1.xhtml?revision=2#section-2",
@@ -184,8 +107,9 @@ REPAIRED_SPELLINGS = (
 
 
 def _both_answer(spelling):
-    """(what the SDK names, what this project names) -- the SDK's refusal to
-    resolve an escaping value read as None, which is the one difference."""
+    """(what the library names, what the checker names) -- the library's
+    refusal to resolve an escaping value read as None, which is the one
+    difference."""
     from rdflib import Graph, Literal, URIRef
 
     from iirds_validate.package import entry_named
@@ -200,76 +124,9 @@ def _both_answer(spelling):
     return theirs, entry_named(spelling)
 
 
-@pytest.mark.parametrize("spelling", SETTLED_SPELLINGS,
-                         ids=range(len(SETTLED_SPELLINGS)))
-def test_the_two_resolvers_have_always_answered_these_alike(spelling):
+@pytest.mark.parametrize("spelling", SPELLINGS, ids=range(len(SPELLINGS)))
+def test_the_two_resolvers_answer_alike(spelling):
     theirs, ours = _both_answer(spelling)
     assert theirs == ours, (
         "iirds.source_of and entry_named disagree about %r: %r vs %r"
         % (spelling, theirs, ours))
-
-
-def reader_carries_the_repair():
-    """Does the reader under test decode a percent-encoded name?
-
-    One probe, chosen because it is the plainest thing the repair does. It
-    decides whether the fifteen below are expected to agree; it does not
-    decide whether they do.
-    """
-    theirs, _ = _both_answer("content/a%20b.xhtml")
-    return theirs == "content/a b.xhtml"
-
-
-@pytest.mark.parametrize("spelling", REPAIRED_SPELLINGS,
-                         ids=range(len(REPAIRED_SPELLINGS)))
-@pytest.mark.xfail(not reader_carries_the_repair(), strict=True,
-                   reason="the shared resolution lives in the reader, and this "
-                          "one does not carry it yet; iirds %s publishes it"
-                          % ".".join(map(str, RESOLVED_ALIKE_FROM)))
-def test_the_two_resolvers_answer_the_repaired_spellings_alike(spelling):
-    theirs, ours = _both_answer(spelling)
-    assert theirs == ours, (
-        "iirds.source_of and entry_named disagree about %r: %r vs %r"
-        % (spelling, theirs, ours))
-
-
-def test_the_release_that_publishes_the_repair_actually_carries_it():
-    """The version half of the same question, kept because the probe above
-    cannot ask it: once a reader says it is at or past the release that
-    publishes the shared resolution, not carrying it is a defect in that
-    reader rather than a state this project tolerates.
-
-    One implication rather than an `if` around an assert. The `if` never
-    executed -- the reader on the path is below that release in every
-    configuration this project runs -- so it also never called the probe, and
-    a probe that raised or regressed said nothing. This calls it every run.
-
-    Be plain about what that does and does not buy. The implication is
-    evaluated but cannot fail while the reader is below the release, so the
-    forbidden combination is a guard for a state no run has yet been in. The
-    rule itself is tested by the table below; this is whichever row the
-    reader on the path happens to be on."""
-    at_or_past = sdk_version() >= RESOLVED_ALIKE_FROM
-    carries = reader_carries_the_repair()
-    assert isinstance(carries, bool), type(carries)
-    assert carries or not at_or_past, (
-        "iirds %s is at or past %s and does not resolve a percent-encoded "
-        "source; the two projects have diverged at the seam"
-        % (iirds.__version__, ".".join(map(str, RESOLVED_ALIKE_FROM))))
-
-
-@pytest.mark.parametrize("carries,at_or_past,allowed", [
-    (True, True, True),      # at the release and carrying it
-    (True, False, True),     # ahead of its own release, which a worktree is
-    (False, False, True),    # below the release and not carrying it yet
-    (False, True, False),    # the one this project does not tolerate
-])
-def test_only_one_combination_of_version_and_repair_is_forbidden(carries, at_or_past,
-                                                                allowed):
-    """The rule the test above applies, as a table, so all four rows are
-    exercised rather than the single row the reader on the path happens to be
-    on. Written after one version of that test asserted a tautology
-    (`x in (True, False)` for a bool) and another put its assertion inside a
-    condition false in every configuration -- both pass without deciding
-    anything, which is the failure this file keeps finding in itself."""
-    assert (carries or not at_or_past) is allowed

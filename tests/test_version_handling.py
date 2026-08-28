@@ -567,3 +567,19 @@ def test_a_profile_with_no_name_is_no_profile(make_package):
     assert report.variant == "unrestricted", (
         "a node with no name was reported as the profile: %r" % report.variant)
     assert not report.variant.startswith("N"), report.variant
+
+
+@pytest.mark.parametrize("lower,higher", [
+    ("0.1.0", "0.2.0"), ("0.2.0", "0.3.0"), ("0.9.0", "0.10.0"), ("1.2.9", "1.10.0"),
+])
+def test_versions_compare_as_numbers_and_not_as_text(lower, higher):
+    """`version_tuple` is a tuple compare, and it has to be.
+
+    "0.10.0" sorts below "0.2.0" as text and above it as a release, so a
+    string comparison would order the edition list wrongly two minor
+    versions past 0.9. The choice was mutation-checked by hand once; a hand
+    check that leaves no gate is a hand check nobody repeats.
+    """
+    from conftest import version_tuple
+
+    assert version_tuple(lower) < version_tuple(higher)

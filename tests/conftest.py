@@ -6,11 +6,11 @@ pytest. One builder, imported here, rather than two that drift apart.
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
 import pytest
+from rdflib.plugins.shared.jsonld.context import Context
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
@@ -24,7 +24,7 @@ from make_fixture_package import (  # noqa: E402
 )
 
 __all__ = ["ATTRIBUTE_STYLE_RDF", "DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_JSONLD", "MINIMAL_RDF",
-           "build_package", "declared_sdk_floor", "make_package", "sdk_version", "version_tuple"]
+           "build_package", "make_package", "version_tuple"]
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,25 +65,6 @@ def version_tuple(text: str):
     assert all(part.isdecimal() for part in parts), (
         "iirds %s is not a plain release; this comparison cannot judge it" % text)
     return tuple(int(part) for part in parts)
-
-
-def declared_sdk_floor():
-    """The lowest `iirds` this project says it works with."""
-    found = re.search(r'"iirds>=([0-9]+(?:\.[0-9]+)*)"',
-                      (ROOT / "pyproject.toml").read_text("utf-8"))
-    assert found, "pyproject.toml no longer declares an iirds floor in the expected shape"
-    return version_tuple(found.group(1))
-
-
-def sdk_version():
-    """The release of the reader this run is actually testing against.
-
-    Not the floor and not the worktree: whichever copy `import iirds`
-    resolved to, which is the thing a version-gated expectation has to ask
-    about. `IIRDS_SRC` decides it; see tests/test_sdk_alignment.py.
-    """
-    import iirds
-    return version_tuple(iirds.__version__)
 
 
 @pytest.fixture
@@ -141,3 +122,52 @@ def pytest_sessionfinish(session, exitstatus):
     import json
     if FIRED:
         OBSERVED.write_text(json.dumps(sorted(FIRED), indent=1) + "\n", "utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Nothing this suite parses may ask rdflib to fetch a context
+#
+# The metadata guard in `iirds` enumerates the JSON-LD constructs that make the
+# parser go and fetch something. That is pattern-matching a specification which
+# moves -- `@import` is what 1.1 added, and not knowing about it is how the
+# guard came to let a supplier read files off the machine doing the reading.
+#
+# An enumeration cannot assert its own completeness. This can: rdflib routes
+# every context dereference, network or filesystem, through one private
+# function, so a test that parses a document rdflib would fetch from goes red
+# here whatever keyword turns out to be responsible -- including one nobody
+# has heard of yet. It costs nothing, because no conformant document reaches
+# it. Suite-wide, for the checker's tests as much as the library's: the
+# checker parses through the same guard.
+# ---------------------------------------------------------------------------
+
+class Dereferenced(BaseException):
+    """Raised by the seal below, and deliberately not an Exception.
+
+    The reader catches Exception around its parse -- correctly, so a hostile
+    document becomes an error string rather than a traceback. That would
+    swallow this too, and then the seal would only be as strong as whatever
+    each test happens to assert about the string: one asserting `graph is
+    None` would pass while the parser had just been out to the filesystem.
+    Deriving from BaseException puts the seal above the code under test,
+    which is the only place a seal can stand.
+    """
+
+
+@pytest.fixture(autouse=True, scope="session")
+def seal_context_dereference():
+    # Asserted, not assumed: a rename would turn the seal into a decoration
+    # that passes for ever, which is the failure mode it exists to prevent.
+    assert hasattr(Context, "_fetch_context"), (
+        "rdflib no longer routes every context dereference through one "
+        "function; this seal is not sealing anything")
+    original = Context._fetch_context
+
+    def refuse(self, source, *args, **kwargs):
+        raise Dereferenced("the parser was asked to dereference %r" % (source,))
+
+    Context._fetch_context = refuse
+    try:
+        yield
+    finally:
+        Context._fetch_context = original

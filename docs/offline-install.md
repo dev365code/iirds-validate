@@ -21,7 +21,7 @@ python iirds-validate.pyz dist/       # on the machine without one
 ```
 
 No pip, no index, no virtual environment, no rights to create one. Everything
-is inside the archive, including `rdflib`, the `iirds` SDK and the ontologies,
+is inside the archive, including `rdflib`, the `iirds` library and the ontologies,
 and nothing in it
 is compiled — the same file runs on Linux, macOS and Windows.
 
@@ -41,8 +41,8 @@ On a machine with a network:
 pip download iirds-validate -d wheels/
 ```
 
-That directory holds `iirds_validate`, `rdflib`, the `iirds` SDK and their
-handful of dependencies. Copy it in by whatever means your site allows, then:
+That directory holds this project's wheel — `iirds_validate` and the `iirds`
+library it is built on — plus `rdflib` and its handful of dependencies. Copy it in by whatever means your site allows, then:
 
 ```sh
 pip install --no-index --find-links wheels/ iirds-validate
@@ -50,7 +50,7 @@ iirdsv --version
 ```
 
 If even pip is unavailable, the package is pure Python: unzip the wheel and put
-`iirds_validate/` on `PYTHONPATH`. `rdflib` and `iirds` are the only things
+`iirds_validate/` and `iirds/` on `PYTHONPATH`. `rdflib` is the only thing
 you must bring along.
 
 ## Verifying what you carried in

@@ -10,17 +10,9 @@
 
 RUFF_VERSION := 0.16.3
 PYTHON       ?= python3
-# The suite imports `iirds`, and this line decides which copy it finds. Left
-# to itself Python takes whatever happens to be installed, so a green run is a
-# fact about the machine rather than about the commit -- and while the SDK and
-# the validator are repaired together, it is a fact about the *unrepaired* SDK.
-# IIRDS_SRC names a checkout to prefer, and tests/test_sdk_alignment.py checks
-# that naming one meant it.
-#
-# Opt-in rather than reaching for ../iirds/src on sight: an implicit sibling
-# would quietly change what `make check` means for anyone who happens to have
-# one, which is the same accident this exists to remove.
-export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests$(if $(IIRDS_SRC),:$(IIRDS_SRC))
+# The suite imports `iirds` and `iirds_validate` from this tree, ahead of any
+# installed copy of either; tests/test_sdk_alignment.py checks that it did.
+export PYTHONPATH := $(CURDIR)/src:$(CURDIR)/tests
 
 # The differential gate is an opt-in extra and silent when absent, so a run
 # without it can report the tree good while the strongest cross-check here --
@@ -52,9 +44,6 @@ help:
 	@echo "make fix     ruff --fix, for the things it can correct itself"
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
-	@echo ""
-	@echo "IIRDS_SRC=../iirds/src make check   run against that SDK checkout,"
-	@echo "                                    not whatever is installed"
 
 check: lint generated corpus versions requirements shapes test exercised tools
 

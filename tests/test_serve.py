@@ -584,6 +584,9 @@ def test_the_page_survives_the_single_file_distribution(tmp_path):
     inside = set(zipfile.ZipFile(pyz).namelist())
     for part in (serve.PAGE, serve.STYLE, serve.SCRIPT, serve.STRINGS):
         assert "iirds_validate/data/%s/%s" % (serve.WEB, part) in inside, part
+    # The library travels the same way: from the tree, not from an index.
+    assert "iirds/__init__.py" in inside
+    assert not [name for name in inside if name.startswith("iirds-") and ".dist-info/" in name]
 
 
 def test_the_address_it_prints_is_one_a_browser_can_open():

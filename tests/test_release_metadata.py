@@ -195,13 +195,30 @@ def _name(said, key):
 # This repository
 # ---------------------------------------------------------------------------
 
-def test_pyproject_and_the_package_declare_the_same_release():
-    found = re.search(r'(?m)^version *= *"([^"]+)"',
-                      (ROOT / "pyproject.toml").read_text("utf-8"))
-    assert found, "pyproject.toml no longer declares a version in the expected shape"
-    assert found.group(1) == __version__, (
-        "pyproject.toml says %s and iirds_validate.__version__ says %s"
-        % (found.group(1), __version__))
+def version_in(text: str) -> str:
+    found = re.search(r'(?m)^version *= *"([^"]+)"', text)
+    assert found, "no version declared in the expected shape"
+    return found.group(1)
+
+
+def declared_versions() -> dict:
+    """Every place this tree states its release, by name.
+
+    Two packages ship from one distribution, so the library's `__version__`
+    is this release too. A release stated in one place and not another is
+    two releases, and `pip` and `--version` would disagree about which one
+    a machine has.
+    """
+    import iirds
+
+    return {"pyproject.toml": version_in((ROOT / "pyproject.toml").read_text("utf-8")),
+            "iirds_validate.__version__": __version__,
+            "iirds.__version__": iirds.__version__}
+
+
+def test_the_version_is_one_number_everywhere_it_is_declared():
+    said = declared_versions()
+    assert len(set(said.values())) == 1, said
 
 
 def test_the_changelog_records_this_release():
@@ -360,3 +377,20 @@ def test_a_fence_does_not_disarm_the_checks_below_it():
 @pytest.mark.parametrize("text", ["", "unreleased", "1.0+local", "v1.0", "1!1.0"])
 def test_something_that_is_not_a_release_is_refused_rather_than_ordered(text):
     assert release_key(text) is None
+
+
+# ---------------------------------------------------------------------------
+# The library's own history
+# ---------------------------------------------------------------------------
+
+LIBRARY_CHANGELOG = ROOT / "docs" / "library-changelog.md"
+
+
+def test_the_library_changelog_is_frozen_at_its_last_release():
+    """The library shipped on its own as `iirds` 0.1.0 to 0.3.2, and that
+    history is kept as it was published: complete up to its last release and
+    closed. Nothing lands there now; what changes in the library is recorded
+    in CHANGELOG.md beside what changes in the checker."""
+    text = LIBRARY_CHANGELOG.read_text("utf-8")
+    assert problems_with(text, "0.3.2") == []
+    assert "unreleased" not in text.lower()

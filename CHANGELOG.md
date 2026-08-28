@@ -1,5 +1,9 @@
 # Changelog
 
+The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
+[docs/library-changelog.md](docs/library-changelog.md). From here on, what
+changes in the library is recorded beside what changes in the checker.
+
 ## 0.4.3 — unreleased
 
 ### Fixed
@@ -297,6 +301,105 @@
   `1.0`. Its first package deliberately omits the property — its own comment
   says so — and the `1.0` came from a second package beside it. The findings
   are the same at either version.
+
+### Fixed in the library
+
+- **`pack()` refused to run under the convention it exists to support.**
+  `SOURCE_DATE_EPOCH=0` is the commonest value a reproducible build is given,
+  and a ZIP cannot carry a date before 1980, so the packer raised instead of
+  packing. A value large enough for `OverflowError` escaped the guard
+  entirely and reached the archive as a year in the millions. The stamp is
+  clamped to what the format can hold, which keeps the promise the variable
+  makes — two builds of one tree agree — where refusing kept nothing.
+
+- **A metadata document was refused on a size nobody had measured.** The gate
+  read the uncompressed size out of the ZIP directory, which is written by
+  whoever built the archive: a few hundred bytes could be announced as a
+  gigabyte and turned away, and the message named a limit and a length that
+  had never been read. The read is bounded and the bytes are counted now, and
+  where the directory disagrees with what is there the refusal says that
+  instead — a directory that does not describe its contents is the defect,
+  not an oversized document.
+
+- **Writing the metadata for an ordinary manual took most of a minute, and
+  nearly all of it was the self-check.** The bytes are parsed back and
+  compared against the graph they came from, which is what makes the write
+  trustworthy; the comparison asked rdflib whether the two graphs were
+  isomorphic, and that is priced for the general case. iiRDS nests a
+  rendition inside every information unit, so a few hundred topics is a few
+  hundred blank nodes: doubling the topic count multiplied the time by four
+  to six, reaching about forty-three seconds at eight hundred topics — by
+  which point the check was ninety-seven per cent of what writing cost.
+
+  Where the blank nodes form a forest — none shared, none in a cycle, which
+  is every metadata document in the vendored corpus — the same answer comes
+  from naming each blank node by a digest of the subtree hanging off it and
+  comparing the triples with those digests standing in for the labels. Under
+  that condition the two comparisons agree by construction, and where it does
+  not hold the graph goes to the general check unchanged. The self-check is
+  not weakened and is not optional; the same eight hundred topics now write
+  in well under a second.
+
+- **`iirds:source` is now read as the URL §6.3 calls it.** That section says
+  twice, normatively, that the property relates a rendition "to the URL of
+  the physical file" and that "the URL MUST be relative to the root folder".
+  Read as a literal path instead, a file named `a b.xhtml` and referred to
+  as `a%20b.xhtml` answered "no such entry" while sitting right there. The
+  value is now percent-decoded and its fragment and query cut before it is
+  matched.
+
+  This is a choice, not a fact: Appendix A calls the same value a "relative
+  path of a file" with range `rdfs:Literal`, and §5.1.3 permits `%` and `#`
+  in a file name — so a package naming a file `a%20b.xhtml` or `a#b.xhtml`
+  is entitled to, and this reading cannot reach it. `iirds-validate`'s
+  `docs/divergences.md` carries the evidence on both sides, and tests here
+  record the cost rather than leaving it to be discovered.
+
+  §5.1.3 settles the cheaper half outright: a colon may not appear in a file
+  name, so a value still holding one after decoding names nothing in this
+  container. `http://…`, `mailto:…` and `urn:uuid:…` answer `None` instead of
+  a path assembled out of the URL. `open()` now distinguishes the three
+  silences that answer `None` — no source, an empty one, and one naming
+  something that is not an entry here — instead of reporting a missing
+  declaration that is not missing.
+
+  `source_of()` resolves case for case with `iirds-validate`, which the
+  docstring claimed while several readings differed.
+
+- **`pack()` could write a package `open()` refuses.** The check for metadata
+  asked the filesystem, and a case-insensitive one answers yes for a file
+  spelled another way; the archive then carried the spelling from disk, which
+  a reader looking for the name the standard gives does not find. The question
+  is put to the names about to be written instead.
+
+- **A file whose name was stored decomposed did not match the metadata that
+  refers to it.** Several tools create names in that form, and the RDF beside
+  them is composed, so one file had two byte strings and a lookup by the name
+  in the metadata missed it. Members are stored composed; two names that would
+  collide once composed are refused rather than silently reduced to one.
+
+- **A failed pack destroyed the package it was replacing.** The archive was
+  opened for writing before anything had been read, so a failure part-way
+  through left the part already written — and that remainder is not obviously
+  broken: it carries a central directory, passes an integrity check, opens,
+  and reports its version while missing most of its content. It is written
+  beside the destination now and moved into place only once it is whole.
+
+- **A symbolic link in the packed directory put bytes from outside the
+  package into the delivery.** `is_file()` answers for the far end of a link,
+  so whatever it pointed at was read and written into the archive, quietly. A
+  link to a directory was the same silence facing the other way: the walk does
+  not descend through one, so a folder present in the source was absent from
+  the package. Links are refused now, naming the ones found — following or
+  skipping are both decisions about the delivery that belong to its author.
+
+- **The dependency allowlist swept one directory, not the package.** The
+  check that keeps this package's third-party dependencies down to rdflib
+  walked `src/iirds/*.py`, which reaches every module only because the
+  package is one flat directory today. The first subpackage would have
+  carried any import at all past the allowlist with nothing to say so. It
+  walks the tree now, and the walk itself is tested against a tree that has a
+  subpackage, which the real one does not.
 
 ## 0.4.2 — 2026-08-26
 

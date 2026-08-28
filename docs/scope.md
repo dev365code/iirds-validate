@@ -54,6 +54,7 @@ Written down because each of these was, at some point, about to be built.
 | `src/iirds_validate/context.py` | parses metadata into **one graph**; every rule reads this and nothing else |
 | `src/iirds_validate/terms.py` | every iiRDS term, in one place, checked against the ontology by a test |
 | `src/iirds_validate/data/` | what ships: the rule catalogue and the vendored ontologies |
+| `src/iirds/` | the container layer the checker is built on — open a package, read its metadata as a graph, write a conformant container — shipped in the same distribution and never importing the checker |
 | `tests/corpus/plusmeta/` | the reference corpus, verbatim and hashed — the only external check |
 | `tools/` | development and release machinery: extraction, cross-validation, vendoring, and the `.pyz` build a user may run once |
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |

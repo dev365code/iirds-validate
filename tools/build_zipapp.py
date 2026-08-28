@@ -8,7 +8,8 @@ and the rights to create one. A `.pyz` needs a copy of the file and a Python.
 
     python iirds-validate.pyz path/to/package.iirds
 
-Everything is inside it — rdflib and the iirds SDK included — and nothing is
+Everything is inside it — the checker, the `iirds` library it is built on, and
+rdflib — and nothing is
 compiled: the same file runs on Linux, macOS and Windows. It is also an ordinary zip: anyone who
 has to approve it can open it and read every line, which matters more than
 convenience when the approval is the hard part.
@@ -34,7 +35,10 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src" / "iirds_validate"
+#: Both first-party packages, copied from the tree rather than installed: the
+#: library is not a dependency any more, it is the other half of the same
+#: distribution, and pip has nothing to fetch for it.
+SOURCES = (ROOT / "src" / "iirds", ROOT / "src" / "iirds_validate")
 OUTPUT = ROOT / "dist" / "iirds-validate.pyz"
 
 MAIN = """import sys
@@ -157,8 +161,15 @@ def unattributed(distributions) -> list:
     return sorted(name for name in distributions if ("`%s`" % name) not in table)
 
 
+def copy_sources(target: Path) -> None:
+    """Both packages, as they are in `src/`, without any compiled cache."""
+    for source in SOURCES:
+        shutil.copytree(source, target / source.name,
+                        ignore=shutil.ignore_patterns("__pycache__"))
+
+
 def stage(target: Path) -> None:
-    shutil.copytree(SOURCE, target / "iirds_validate")
+    copy_sources(target)
     copy_licences(target)
     subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--no-compile",
                     "--target", str(target), *dependencies()], check=True)
@@ -225,7 +236,9 @@ def smoke(pyz: Path) -> int:
         print("  ok: %s" % what)
 
     # The point of the exercise: it must not need anything installed.
-    for module in (re.match(r"[A-Za-z0-9_-]+", spec).group(0) for spec in dependencies()):
+    modules = [re.match(r"[A-Za-z0-9_-]+", spec).group(0) for spec in dependencies()]
+    modules += [source.name for source in SOURCES]
+    for module in modules:
         probe = subprocess.run([sys.executable, "-S", "-c", "import %s" % module],
                                capture_output=True, text=True)
         if probe.returncode == 0:

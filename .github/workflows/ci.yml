@@ -76,12 +76,10 @@ jobs:
           - { os: ubuntu-latest, python: "3.11" }
           - { os: ubuntu-latest, python: "3.12" }
           - { os: ubuntu-latest, python: "3.13" }
-          # pyproject declares rdflib>=6.0, so 6.x has to be exercised or the
-          # floor is a guess. Same reasoning for the SDK: iirds>=0.3.1 is a
-          # promise about 0.3.1, so 0.3.1 exactly is what its row runs. The
+          # pyproject declares rdflib>=6, so 6.0.0 exactly is what this row
+          # runs: a floor test that floats upward stops testing the floor. The
           # floor and this pin move together or the promise is untested.
-          - { os: ubuntu-latest, python: "3.11", pin: "rdflib>=6.0,<7", label: "rdflib6" }
-          - { os: ubuntu-latest, python: "3.11", pin: "iirds==0.3.1", label: "iirds floor" }
+          - { os: ubuntu-latest, python: "3.9", pin: "rdflib==6.0.0", label: "rdflib floor" }
           # Windows is where an unclosed ZIP handle keeps files locked and where
           # the .gitattributes eol=lf setting gets tested. macOS is here
           # because README.md names it: a platform this says it runs on and
@@ -136,6 +134,10 @@ jobs:
               "iirds_validate/data/web/style.css",
               "iirds_validate/data/web/app.js",
               "iirds_validate/data/web/i18n.json",
+              "iirds/__init__.py",
+              "iirds/_metadata.py",
+              "iirds/_pack.py",
+              "iirds/_package.py",
           ]
           missing = [n for n in required if n not in names]
           if missing:
@@ -160,6 +162,7 @@ jobs:
           /tmp/v/bin/pip install --quiet dist/*.whl
           /tmp/v/bin/iirdsv --version
           /tmp/v/bin/iirds-validate --version
+          /tmp/v/bin/python -c "import iirds, iirds_validate"
 
       - name: the vendored ontologies must be intact after install
         run: /tmp/v/bin/python -m iirds_validate.ontology --verify
@@ -229,7 +232,8 @@ jobs:
       - name: no network access during validation
         run: |
           /tmp/v/bin/python - <<'PY'
-          from iirds_validate import runner          # import first, then cut the network
+          import iirds                              # import both first, then cut the network
+          from iirds_validate import runner
           import socket
           def refuse(*a, **k):
               raise AssertionError("the validator attempted a network connection")

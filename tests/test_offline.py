@@ -5,7 +5,6 @@ import socket
 
 import pytest
 
-from conftest import sdk_version
 from iirds_validate import runner
 from iirds_validate.context import load_context
 from iirds_validate.ontology import load
@@ -115,24 +114,12 @@ DECOY_CONTEXT = '{"@context": {"@vocab": "http://leaked.example/secret#"}}'
 RELATIVE_CONTEXT = ('{"@context": "secret-ctx.jsonld", "@id": "urn:test:package",'
                     ' "@type": "iirds:Package", "leak": "pwned"}')
 
-#: The reader release that first refuses it. The refusal is not this project's
-#: to make -- it belongs to the layer that parses -- so this expectation is
-#: gated on the reader actually under test rather than on the floor this
-#: project declares or on the copy in the next directory.
-REFUSED_FROM = (0, 3, 1)
-
-
-@pytest.mark.xfail(sdk_version() < REFUSED_FROM, strict=True,
-                   reason="the refusal lives in the reader; iirds %s is the first "
-                          "release that carries it" % ".".join(map(str, REFUSED_FROM)))
+#: The refusal is not this project's to make -- it belongs to the layer that
+#: parses, `iirds`, which ships from this tree -- so this asserts it from the
+#: checker's side, where a regression would surface as a leak.
 def test_a_relative_jsonld_context_reads_no_file_outside_the_container(
         make_package, monkeypatch, tmp_path):
     """No byte from outside the container may enter the graph.
-
-    Strict, and gated on the reader's version rather than skipped: green
-    today against a reader that has not shipped the refusal, red the day the
-    refusal regresses, and red the day this project's floor moves past
-    without it. A skip would have been none of those things.
 
     The assertions are deliberately both halves. Absence alone passes for the
     wrong reasons -- a parse that failed for an unrelated cause satisfies it

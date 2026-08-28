@@ -140,3 +140,19 @@ def test_a_relative_jsonld_context_reads_no_file_outside_the_container(
         graph = load_context(package).graph
     assert not any("leaked.example" in str(term) for triple in graph for term in triple), \
         "a file from the operator's working directory reached the graph"
+
+
+def test_the_documented_integrity_command_runs_without_a_warning():
+    """`python -m iirds_validate.ontology --verify` is what the README and the
+    offline guide tell a reviewer to run. Running a submodule as a script
+    after the package has already imported it makes Python warn about
+    unpredictable behaviour, and the package did exactly that on import --
+    so the one command meant to reassure an auditor opened with a warning."""
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-W", "error", "-m", "iirds_validate.ontology", "--verify"],
+        capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr[-600:]
+    assert "RuntimeWarning" not in result.stderr

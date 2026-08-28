@@ -142,3 +142,18 @@ def test_the_readme_headline_figures_are_the_counts():
                    "The %d rules this project invented" % own,
                    "%d of the %d have" % (coverage["exercised"], coverage["rules"])):
         assert phrase in readme, "README.md no longer says %r" % phrase
+
+
+def test_the_registry_knows_every_rule_without_the_runner_being_imported_first():
+    """Registration used to be a side effect of importing the package, which
+    imported the runner, which imported every rule module. Seven tools and
+    three tests import the registry alone; once the package stopped importing
+    eagerly, they were handed an empty registry and reported zero rules as
+    if that were a fact about the suite."""
+    import subprocess
+    import sys
+
+    probe = ("from iirds_validate.registry import all_rules, implemented_ids; "
+             "print(len(all_rules()), len(implemented_ids()))")
+    seen = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True)
+    assert seen.stdout.split() == [str(len(all_rules()))] * 2, seen.stdout

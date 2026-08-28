@@ -63,7 +63,22 @@ def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
     return decorator
 
 
+def _ensure_registered() -> None:
+    """Every rule module, imported -- which is what registers a rule.
+
+    Registration is a side effect of importing `iirds_validate.rules`, and
+    for a long time the package did that on its own import, so anything that
+    asked the registry found it full. The package no longer imports eagerly;
+    the registry asks for the modules itself, the first time it is asked
+    anything, rather than answering "no rules" to a caller that imported
+    only this module.
+    """
+    from . import rules  # noqa: F401  -- importing registers every rule
+
+
 def all_rules() -> List[Rule]:
+    _ensure_registered()
+
     def sort_key(r: Rule):
         head = r.id[0]
         digits = "".join(c if c.isdigit() or c == "." else " " for c in r.id[1:]).split()
@@ -76,6 +91,7 @@ def rules_of_kind(kind: str) -> List[Rule]:
 
 
 def implemented_ids() -> set:
+    _ensure_registered()
     return set(_registry)
 
 

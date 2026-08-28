@@ -86,7 +86,7 @@ def test_a_symlink_in_the_source_is_refused(source, tmp_path):
     outside = tmp_path / "outside"
     outside.mkdir()
     (outside / "manual.pdf").write_bytes(b"%PDF-1.4 not part of the package")
-    (source / "content" / "manual.pdf").symlink_to(outside / "manual.pdf")
+    _link(source / "content" / "manual.pdf", outside / "manual.pdf")
 
     with pytest.raises(iirds.PackError) as raised:
         iirds.pack(source, tmp_path / "linked.iirds", overwrite=True)
@@ -99,7 +99,7 @@ def test_a_symlinked_directory_is_refused_too(source, tmp_path):
     outside = tmp_path / "shared"
     outside.mkdir()
     (outside / "a.txt").write_text("outside", "utf-8")
-    (source / "shared").symlink_to(outside, target_is_directory=True)
+    _link(source / "shared", outside, target_is_directory=True)
 
     with pytest.raises(iirds.PackError) as raised:
         iirds.pack(source, tmp_path / "linkdir.iirds", overwrite=True)
@@ -196,3 +196,38 @@ def test_a_decomposed_filename_is_stored_composed(source, tmp_path):
 
     with iirds.open(output) as package:
         assert package.read("content/" + composed) == b"<html/>"
+
+
+def _link(link, target, **kwargs):
+    """A symbolic link, or a skip where the runner may not make one.
+
+    Windows grants that to administrators and to developer mode; a hosted
+    runner has it, a contributor's machine may not. The two tests above are
+    about what pack() does with a link, not about who may create one."""
+    try:
+        link.symlink_to(target, **kwargs)
+    except OSError as reason:
+        pytest.skip("this runner cannot create a symbolic link: %s" % reason)
+
+
+def test_two_spellings_of_one_name_are_refused_before_anything_is_written(source, tmp_path, monkeypatch):
+    """`_member_name` composes every name, so a decomposed `Prüfung.xhtml`
+    and a composed one would be stored under one member name. A filesystem
+    that keeps both spellings apart hands pack() two files for one name;
+    one that folds them (macOS) hands it one, so the two are injected here
+    rather than created, and the refusal is asserted before any byte is
+    read."""
+    import unicodedata
+
+    from iirds import _pack
+
+    composed = unicodedata.normalize("NFC", "content/Prüfung.xhtml")
+    decomposed = unicodedata.normalize("NFD", composed)
+    assert composed != decomposed
+    real = _pack._entries(source)
+    monkeypatch.setattr(_pack, "_entries",
+                        lambda root: real + [root / decomposed, root / composed])
+    with pytest.raises(iirds.PackError) as raised:
+        iirds.pack(source, tmp_path / "collide.iirds", overwrite=True)
+    assert "same name once written composed" in str(raised.value)
+    assert not (tmp_path / "collide.iirds").exists()

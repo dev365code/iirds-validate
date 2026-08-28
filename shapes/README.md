@@ -152,7 +152,7 @@ each listed with its reason in `MANIFEST.json`:
   in the container. None of that
   exists in an RDF graph, **by nature, not omission**. A package can satisfy
   every shape here and still be unreadable to every consumer; full checking
-  needs a container-aware validator, which is what iirds-validate is.
+  needs a container-aware validator, which is what the `iirds` checker is.
 - **6 deferred** — expressible in principle, not yet written: the six
   lint rules whose exemption lists are long (L1, L3, L5, L6, L8 — and L4,
   which is itself MUST-level: directory-structure cycle detection). The

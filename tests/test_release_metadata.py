@@ -14,9 +14,9 @@ happen is *shipping* under that undated heading.
 The checks are functions over changelog text rather than assertions over
 this repository's file, because a gate nobody has run against a bad
 changelog is a gate nobody has tested. The table at the bottom is that
-run. Six of the nine states in it were accepted by the first version of
-this file; the other three it already refused, and they are pinned so
-that they stay refused.
+run. Most of the states in it were accepted by some earlier version of
+this file; the rest it already refused, and they are pinned so that they
+stay refused.
 """
 import re
 from pathlib import Path
@@ -181,6 +181,9 @@ def problems_with(changelog: str, release: str):
         if release_key(name) <= mine and not DATE.match(rest):
             found.append("%s is at or below this release and is headed %r; it has "
                          "shipped, so it carries a date" % (name, rest))
+        elif release_key(name) > mine and DATE.match(rest):
+            found.append("%s is above this release and carries a date; it has not "
+                         "shipped, so it is headed 'unreleased'" % name)
     return found
 
 
@@ -288,6 +291,13 @@ BAD = {
     "a heading naming no release":
         (GOOD.replace("## 0.5.0 — unreleased", "## Unreleased — unreleased"),
          "can order"),
+    # The tree keeps the last shipped number until the release commit, so an
+    # entry above it is by definition unshipped: dating it claims a release
+    # that has not happened, and the version bump would then find its notes
+    # already "shipped".
+    "an entry above this release carries a date":
+        (GOOD.replace("## 0.5.0 — unreleased", "## 0.5.0 — 2026-08-28"),
+         "has not shipped"),
     # CommonMark renders an ATX heading indented up to three spaces. One
     # indented that way was a heading to every reader and invisible here, so
     # a release left undated behind it read as a file with nothing wrong.

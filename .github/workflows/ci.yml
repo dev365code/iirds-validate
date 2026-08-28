@@ -209,16 +209,16 @@ jobs:
 
       - name: validate them with the installed console script
         run: |
-          /tmp/v/bin/iirdsv check fixtures/good.iirds
-          /tmp/v/bin/iirdsv check fixtures/desc.iirds   # rdf:Description style must also pass
-          /tmp/v/bin/iirdsv check fixtures/good.iirds --format json | python -m json.tool > /dev/null
+          /tmp/v/bin/iirds check fixtures/good.iirds
+          /tmp/v/bin/iirds check fixtures/desc.iirds   # rdf:Description style must also pass
+          /tmp/v/bin/iirds check fixtures/good.iirds --format json | python -m json.tool > /dev/null
 
       - name: exit codes must mean what the README says
         run: |
           set +e
-          /tmp/v/bin/iirdsv check fixtures/good.iirds -q; test $? -eq 0 || exit 1
-          /tmp/v/bin/iirdsv check fixtures/bad.iirds  -q; test $? -eq 1 || exit 1
-          /tmp/v/bin/iirdsv check /no/such/file.iirds -q 2>/dev/null; test $? -eq 2 || exit 1
+          /tmp/v/bin/iirds check fixtures/good.iirds -q; test $? -eq 0 || exit 1
+          /tmp/v/bin/iirds check fixtures/bad.iirds  -q; test $? -eq 1 || exit 1
+          /tmp/v/bin/iirds check /no/such/file.iirds -q 2>/dev/null; test $? -eq 2 || exit 1
           echo "0 clean / 1 findings / 2 could not run"
 
       - name: agreement with the reference tool's own corpus

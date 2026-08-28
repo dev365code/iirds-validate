@@ -73,7 +73,7 @@ xfail_strict = true
 # not turn this suite red, while a deprecation raised anywhere else still does.
 filterwarnings = [
     "error",
-    "default::DeprecationWarning:rdflib.*",
+    "default::DeprecationWarning:rdflib(\\.|$)",
 ]
 
 [tool.ruff]

@@ -79,7 +79,9 @@ One package, one runtime dependency (rdflib, pure Python): the checker, the
 `iirds` command with `check`, `lint`, `pack` and `serve` under it, and the
 `iirds` library for reading and writing packages from Python. Published to
 PyPI via trusted publishing. `iirds-validate` and `iirdsv` still name the same
-command, and `pip install iirds-validate` still resolves — to this.
+command, and `pip install iirds-validate` still resolves — to this. Tools that
+install by executable, such as pipx and `uv tool`, want the name that has
+one: `iirds`.
 
 **Nothing to install:** copy one file in and run it — `python iirds.pyz dist/`.
 Under a megabyte, contains rdflib and the iiRDS ontologies, compiles nothing, so
@@ -99,7 +101,9 @@ iirds dist/                  # every package under a directory
 A path means "check it". No subcommand needed.
 
 **Upgrading from `iirds-validate` 0.4.x?** `pip uninstall -y iirds-validate`
-first, then `pip install iirds` — [CHANGELOG.md](CHANGELOG.md) says why.
+first, then `pip install -U iirds` — the `-U` because the `iirds` library
+already there would satisfy a plain install. [CHANGELOG.md](CHANGELOG.md) says
+why the order matters.
 
 ---
 
@@ -498,9 +502,10 @@ with a hash instead of taken on trust.
 
 ### Queries
 
-`Package.instances_of(cls)`, `is_instance(node, cls)` and `label_of(node)`
-(also module-level, taking any rdflib graph) answer "what is in this
-package" with **section-7 semantics**: an instance of a class the package
+`Package.instances_of(cls)`, `Package.is_instance(node, cls)` and
+`Package.label_of(node)` — the first and the last also at module level, taking
+any rdflib graph — answer "what is in this package" with **section-7
+semantics**: an instance of a class the package
 itself declares beneath an iiRDS class *is* an instance of that class.
 
 ```python

@@ -49,8 +49,11 @@ jobs:
         run: |
           for t in dist/*/*.tar.gz; do
             if tar tzf "$t" | sed -E 's#^[^/]+/##' \
-               | grep -qE '^(CLAUDE\.md|AGENTS\.md|\.claude/|docs/findings\.md|docs/audits\.md)$'; then
+               | grep -qE '^(CLAUDE\.md|AGENTS\.md|\.claude(/.*)?|docs/findings\.md|docs/audits\.md)$'; then
               echo "working notes in $t"; exit 1
+            fi
+            if tar tzf "$t" | grep -qE '^[^/]+/tests/'; then
+              echo "tests in $t; the suite does not ship"; exit 1
             fi
           done
 

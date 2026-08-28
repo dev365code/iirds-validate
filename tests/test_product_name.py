@@ -26,6 +26,7 @@ OLD_DISTRIBUTION_ALLOWED = {
     "docs/offline-install.md": "the upgrade note",
     "src/iirds_validate/model.py": "the `source` token stored reports carry",
     "src/iirds_validate/cli.py": "the same token, in the rules listing",
+    "src/iirds_validate/rules/system.py": "the issue tracker's address, in a remedy",
     "tests/test_registry.py": "pins that token",
     "tests/test_product_name.py": "this file",
     "tests/test_distribution.py": "the alias console script",

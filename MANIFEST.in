@@ -4,3 +4,6 @@ prune .claude
 exclude docs/findings.md docs/audits.md
 # The compatibility names are their own distributions, built from shims/.
 prune shims
+# The suite needs the corpus and the fixtures beside it, which do not ship;
+# half a suite is worse than none.
+prune tests

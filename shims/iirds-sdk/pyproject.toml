@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,11 +8,11 @@ version = "0.4.2"
 description = "Alias of the `iirds` package. Install `iirds`; this name is held under the same stewardship pledge."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Wooyong Lee", email = "zero8004paz@gmail.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
 ]
 # The floor moves with this file's own version (tests/test_shims.py).
@@ -24,4 +24,3 @@ Homepage = "https://github.com/dev365code/iirds-validate"
 [tool.setuptools]
 package-dir = { "" = "src" }
 packages = ["iirds_sdk"]
-license-files = ["LICENSE"]

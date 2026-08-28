@@ -8,17 +8,25 @@ changes in the library is recorded beside what changes in the checker.
 
 The first release in which the checker and the library ship as one
 distribution: `pip install iirds` installs both. The command is `iirds`;
-`iirds-validate` and `iirdsv` are kept as aliases of it. No check changed:
-the rules, their identifiers, the report and the `source` token in it are
-those of 0.4.2. The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
-PyPI as compatibility packages that install nothing of their own and depend
-on `iirds`.
+`iirds-validate` and `iirdsv` are kept as aliases of it. The renaming changed
+no rule, no rule identifier and not the `source` token a report carries;
+three remedies that told a reader to run `iirdsv pack`, or to report a rule
+that crashed, now spell the command's name and the issue tracker's address.
+The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
+PyPI as compatibility packages that depend on `iirds` at no less than their
+own release — a floor now, where the alias used to pin one exact version, so
+a later `pip install -U iirds` never conflicts with them. `iirds-validate`
+installs nothing of its own; `iirds-sdk` keeps the `iirds_sdk` module it
+published, which re-exports `iirds`. Tools that install by executable, such
+as pipx and `uv tool`, want the name that has one: `iirds`.
 
 **Upgrading from `iirds-validate` 0.4.x:** uninstall it first, then install
-the new name — `pip uninstall -y iirds-validate`, then `pip install iirds`.
-Two distributions used to own the `iirds_validate` package, and pip does not
-track which files belong to which name, so upgrading in place can leave the
-old name's uninstall deleting files the new one had just written. If that has
+the new name with `-U` — `pip uninstall -y iirds-validate`, then
+`pip install -U iirds`. Without `-U` the `iirds` library already present
+satisfies the request and nothing new is installed. The order matters: pip
+records each distribution's files separately and does not notice when two
+records claim one path, so installing the new name first and uninstalling the
+old one afterwards deletes files the new one had just written. If that has
 already happened, `pip install --force-reinstall --no-deps iirds` restores
 them.
 
@@ -194,11 +202,11 @@ them.
   refuses to skip these when the cache is absent, the way it already refuses
   to skip the differential gate.
 
-- **`iirdsv serve` — a drop page on the machine you are already on.** The
+- **`iirds serve` — a drop page on the machine you are already on.** The
   report has only ever existed as text on a terminal, and the people who build
   iiRDS packages are technical writers rather than people who read one. This
   serves one page on the loopback interface, takes a dropped `.iirds`, and
-  shows the verdict `iirdsv <path>` would have printed. Literally that string:
+  shows the verdict `iirds <path>` would have printed. Literally that string:
   the handler calls the same renderer on the same report object in the same
   process, so there is no second implementation to keep in step and nothing to
   prove agreement about. Three things differ by construction and are now

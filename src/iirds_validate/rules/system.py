@@ -55,7 +55,7 @@ def s2_no_usable_metadata(ctx):
 
 
 @rule("S3", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",
-       fix="Report this to the iirds issue tracker, quoting the rule id and the exception named beside it. A rule that raised has checked nothing, and this finding exists so that its silence is not read as a pass; the other rules ran and what they report stands.")
+       fix="Report this at https://github.com/dev365code/iirds-validate/issues, quoting the rule id and the exception named beside it. A rule that raised has checked nothing, and this finding exists so that its silence is not read as a pass; the other rules ran and what they report stands.")
 def s3_rule_raised(ctx):
     """Emitted by `runner.run` when a rule raises.
 

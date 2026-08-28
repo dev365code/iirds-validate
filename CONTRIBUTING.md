@@ -132,3 +132,12 @@ a clean package. Four identical empty reports agree with each other however
 badly the tool is broken, so `serialisation_equivalence.py` treats a package
 with no findings as a failed run unless you pass `--allow-clean`. The same
 reasoning applies to any test you add here: compare reports that say something.
+
+## Cutting a release
+
+The release is one number in six places, and a test holds them together:
+`pyproject.toml`, `src/iirds_validate/__init__.py`, `src/iirds/__init__.py`,
+and the two compatibility packages under `shims/` (their `version` and their
+`iirds>=` floor). Change them all, give the top entry of `CHANGELOG.md` its
+date, run `python tools/emit_shacl.py` so the shape manifest records the
+version, then `make check`. The tag is `v` and the number.

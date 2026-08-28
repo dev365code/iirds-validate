@@ -31,7 +31,8 @@ Python source that a reviewer can unpack and audit line by line. In an
 environment where approval is the obstacle rather than installation, that is
 the feature.
 
-`python -m iirds_validate.ontology --verify` works from inside the archive too.
+The same check from inside the archive:
+`PYTHONPATH=iirds.pyz python -S -m iirds_validate.ontology --verify`.
 
 ## Getting it in as a package
 
@@ -50,8 +51,8 @@ iirds --version
 ```
 
 If even pip is unavailable, the package is pure Python: unzip the wheel and put
-`iirds_validate/` and `iirds/` on `PYTHONPATH`. `rdflib` is the only thing
-you must bring along.
+`iirds_validate/` and `iirds/` on `PYTHONPATH`, with `rdflib` and what it
+needs — `pyparsing`, and `isodate` below Python 3.11.
 
 ## Verifying what you carried in
 
@@ -98,7 +99,7 @@ as never loading the page at all.
   stands between the two, and see the previous point.
 - **The dependency surface is large.** A Vue application pulls in hundreds of
   npm packages. Auditing that before every use is not realistic; auditing a
-  pure-Python package with two pure-Python dependencies is.
+  pure-Python package with one pure-Python dependency is.
 - **Most sites will not approve it regardless.** "Open a browser tab to an
   external domain and feed it engineering documentation" is not a request that
   passes review at a manufacturer, and being technically safe does not make it

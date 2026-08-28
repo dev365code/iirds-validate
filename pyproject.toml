@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.4.2"
 description = "Validate, lint, pack and serve iiRDS packages from the command line; read and write them from Python. Offline, graph-based. Held in stewardship for the iiRDS ecosystem."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY.md"]
 authors = [{ name = "Wooyong Lee", email = "zero8004paz@gmail.com" }]
 # Apache-2.0 covers this project's own code, the checker and the read/write
 # library alike. The bundled iiRDS ontologies stay
@@ -19,7 +20,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Libraries",
     "Topic :: Text Processing :: Markup :: XML",
@@ -50,9 +50,6 @@ shacl = ["pyshacl==0.40.*"]   # differential gate only, pinned to the tested min
 iirds = "iirds_validate.cli:main"
 iirds-validate = "iirds_validate.cli:main"
 iirdsv = "iirds_validate.cli:main"
-
-[tool.setuptools]
-license-files = ["LICENSE", "NOTICE", "THIRD_PARTY.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

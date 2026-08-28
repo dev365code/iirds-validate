@@ -168,3 +168,29 @@ def test_strategy_paths_can_never_be_tracked():
         import pytest
         pytest.skip("not a git checkout")
     assert result.stdout.strip() == "", result.stdout
+
+
+# ---------------------------------------------------------------------------
+# The stewardship pledge, word for word
+#
+# The `iirds` name on PyPI was held under a pledge from the day the library
+# first shipped, and the PyPI page renders this README. The two paragraphs are
+# the terms the name is held on; they are not paraphrased, and a test holds
+# the text so that an edit to the surrounding page cannot quietly loosen it.
+# ---------------------------------------------------------------------------
+
+PLEDGE = (
+    "The `iirds` name on PyPI belongs to the standard's community more than to any\n"
+    "one project. **Should the iiRDS Consortium want this name for an official\n"
+    "SDK, it will be transferred on request** — until then it does real work\n"
+    "rather than squatting. `iirds-sdk` is an alias of this package and travels\n"
+    "under the same pledge.",
+    "This is an unofficial project, not affiliated with or endorsed by the iiRDS\n"
+    "Consortium or tekom Deutschland e.V. \"iiRDS\" is used descriptively, to name\n"
+    "the standard these functions read and write.",
+)
+
+
+@pytest.mark.parametrize("paragraph", PLEDGE, ids=["transfer-on-request", "unofficial"])
+def test_the_readme_carries_the_stewardship_pledge_word_for_word(paragraph):
+    assert paragraph in (ROOT / "README.md").read_text("utf-8")

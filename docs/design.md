@@ -90,7 +90,7 @@ guess into a failing test.
 
 ## The banner
 
-`iirdsv` with no arguments prints a logo, the version and how to start. Nothing
+`iirds` with no arguments prints a logo, the version and how to start. Nothing
 else does — `check`, `lint` and `all` write into a build log or a pipe, and
 `--format json` writes a document another program parses. A banner in front of
 that is not noise, it is corruption, so `tests/test_cli.py` asserts it never

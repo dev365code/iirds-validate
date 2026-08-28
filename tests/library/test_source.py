@@ -9,12 +9,12 @@ hostile path walk out of the package.
 §6.3 calls the value a URL, twice, in one normative sentence, so it is
 read as one: percent-decoded, fragment and query cut. Appendix A calls
 the same value a relative path with range rdfs:Literal, so this is a
-choice between two normative sentences and not a fact -- iirds-validate's
+choice between two normative sentences and not a fact -- the checker's
 docs/divergences.md carries both sides. The tests at the bottom of this
 file record what the choice costs, because §5.1.3 permits `%` and `#` in
 a file name and one legal spelling of a legal name goes unreachable.
 
-The resolution here is iirds-validate's, case for case. What differs is
+The resolution here is the checker's, case for case. What differs is
 what happens at the end: a reader refuses to resolve what escapes, a
 validator answers None and reports it. Same reading, different layer.
 """

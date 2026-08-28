@@ -5,7 +5,7 @@ Every `versions` array in the rule catalogue came from the reference tool, and
 none had ever been checked against anything. A rule declaring itself applicable
 to a version in which its own vocabulary did not exist is wrong in a way that
 produces no finding, no traceback and no other sign: it runs, matches nothing,
-and reports a clean package. What it corrupts is the claim -- `iirdsv rules`
+and reports a clean package. What it corrupts is the claim -- `iirds rules`
 says the rule applies where it cannot, and per-version coverage is overstated.
 
 Checking it needs the vocabulary of each version, so the ontologies are fetched

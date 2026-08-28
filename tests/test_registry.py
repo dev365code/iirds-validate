@@ -53,7 +53,7 @@ def test_coverage_matches_the_readme():
     """The README publishes these as headline numbers, and it took them from
     `coverage()`, which used to put the content rules and the extra system
     rules in the interoperability bucket. A tool whose pitch is rigour cannot
-    miscount itself, and a reviewer comparing the table to `iirdsv rules`
+    miscount itself, and a reviewer comparing the table to `iirds rules`
     finds that in five minutes."""
     import pathlib
     import re

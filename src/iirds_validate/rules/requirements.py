@@ -116,7 +116,7 @@ for _id, _cls, _name, _requirement, _versions in NEEDS_AN_IRI:
       fix="Rebuild the archive from inside the package directory rather than from its "
           "parent, so that mimetype and META-INF are at the top level of the ZIP. With "
           "the zip command that is `cd mypackage && zip -X0 ../out.iirds mimetype && "
-          "zip -Xr ../out.iirds .`; `iirdsv pack mypackage` does it correctly.")
+          "zip -Xr ../out.iirds .`; `iirds pack mypackage` does it correctly.")
 def r3_container_is_at_the_archive_root(ctx):
     """"An iiRDS container MUST have a single root directory." (section 5.1)
 

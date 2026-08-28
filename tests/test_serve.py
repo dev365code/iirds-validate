@@ -1,7 +1,7 @@
 """The local drop page.
 
 A technical writer is not a person who reads a terminal, and this project's
-report has only ever existed as text on one. `iirdsv serve` puts a drop zone
+report has only ever existed as text on one. `iirds serve` puts a drop zone
 in front of the same run: a page served from the loopback interface, a file
 posted to a handler in the same process, and the verdict rendered by the
 function the command line already calls.
@@ -199,7 +199,7 @@ def test_the_handler_opens_no_outbound_connection(tmp_path, monkeypatch):
 
 def test_the_command_line_offers_it_and_refuses_a_public_address(capsys,
                                                                 monkeypatch):
-    """`iirdsv serve` is the way in. `--host` exists because somebody will
+    """`iirds serve` is the way in. `--host` exists because somebody will
     want ::1, and it is the one flag that can undo the promise, so the refusal
     is part of the command and not only part of the library."""
     from iirds_validate import cli

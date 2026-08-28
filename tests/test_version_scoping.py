@@ -137,7 +137,7 @@ def test_no_rule_claims_a_version_whose_vocabulary_it_predates():
     A rule declaring itself applicable to a version in which its own class or
     property did not exist is wrong in a way that produces nothing at all: it
     runs, matches nothing, reports a clean package. What it corrupts is the
-    claim -- `iirdsv rules` says the rule applies where it cannot.
+    claim -- `iirds rules` says the rule applies where it cannot.
 
     Five rules were in that state, all naming the external classification
     vocabulary that arrives in 1.2 while the catalogue dated them from 1.0.

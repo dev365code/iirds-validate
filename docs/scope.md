@@ -36,7 +36,7 @@ Written down because each of these was, at some point, about to be built.
   certify, or issue a record that a package conforms — and could not honestly,
   while the share of the specification it checks is unmeasured. See "the
   unresolved list" below.
-- **Not an authoring tool.** `iirdsv pack` exists because five container
+- **Not an authoring tool.** `iirds pack` exists because five container
   requirements cannot be assessed on an unpacked directory, and for no other
   reason. It is subordinate to checking, not a second product.
 - **Not a fixer.** No `--fix`. Deciding what a package was meant to say is the

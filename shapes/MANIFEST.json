@@ -225,7 +225,7 @@
   "L9": "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
  },
  "noop": {
-  "M96.4": "a MAY with nothing to violate; registered so `iirdsv rules` lists the catalogue"
+  "M96.4": "a MAY with nothing to violate; registered so `iirds rules` lists the catalogue"
  },
  "shapes": {
   "L7": {

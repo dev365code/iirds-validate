@@ -711,7 +711,7 @@ def m96_3_classification_identifier_non_empty(ctx):
 def m96_4_external_classification_is_optional(ctx):
     """A MAY, so there is nothing to violate.
 
-    Registered rather than skipped so that `iirdsv rules` lists the whole
+    Registered rather than skipped so that `iirds rules` lists the whole
     catalogue and coverage counts what is genuinely covered — the permission
     is honoured by M96.1 to M96.3 checking the shape when it is used, and by
     nothing complaining when it is not.

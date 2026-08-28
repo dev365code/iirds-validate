@@ -2,7 +2,7 @@
 
 Every fixture in this suite before this one was minimal — a blank-node
 Rendition, one topic, no navigation — so the rules were never confronted with
-what `iirdsv pack` users actually produce: renditions with IRIs, identities
+what `iirds pack` users actually produce: renditions with IRIs, identities
 with domains, parties with vcards, a table of contents. The audit built such a
 package and got thirty identical warnings on a correct result, which is the
 "too strict" half of the oscillation this project keeps falling into.

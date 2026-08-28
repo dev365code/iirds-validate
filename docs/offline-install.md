@@ -46,7 +46,7 @@ library it is built on — plus `rdflib` and its handful of dependencies. Copy i
 
 ```sh
 pip install --no-index --find-links wheels/ iirds
-iirdsv --version
+iirds --version
 ```
 
 If even pip is unavailable, the package is pure Python: unzip the wheel and put
@@ -76,9 +76,9 @@ python -m iirds_validate.ontology
 set -e
 python build_packages.py
 for pkg in dist/*.iirds; do
-    iirdsv check "$pkg"      # non-zero exit stops the build
+    iirds check "$pkg"      # non-zero exit stops the build
 done
-iirdsv lint dist/*.iirds --format json > reports/interop.json
+iirds lint dist/*.iirds --format json > reports/interop.json
 ```
 
 `check` gates the build. `lint` is advisory — record it, review the trend, do
@@ -108,7 +108,7 @@ This tool takes the question off the table. There is no page to load, no server
 to trust, and no version that changes underneath you: the wheel you carried in
 is the code that runs.
 
-`iirdsv serve` does not reopen it. It is a page served by the command you just
+`iirds serve` does not reopen it. It is a page served by the command you just
 ran, on the loopback interface of the machine you ran it on, from the code you
 carried in — the same wheel, the same rules, the same renderer. There is no
 origin to approve, no fetch that could leave, and no version that changes

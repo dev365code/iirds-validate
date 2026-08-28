@@ -1,7 +1,7 @@
 """System rules (S*) — the run itself failed, rather than the package.
 
 These three were previously fabricated inside `runner.py`, which meant their
-titles were written out twice and `iirdsv rules` reported system coverage as
+titles were written out twice and `iirds rules` reported system coverage as
 0/3 for behaviour that already existed. Registering them puts their metadata
 back in the catalogue with every other rule.
 
@@ -43,7 +43,7 @@ def s1_unreadable_container(ctx):
 def s2_no_usable_metadata(ctx):
     """Nothing in META-INF parsed, so no graph rule could have run.
 
-    Without this, `iirdsv lint` on a package with unreadable metadata reports
+    Without this, `iirds lint` on a package with unreadable metadata reports
     no findings and exits 0 — every L rule looked at an empty graph and found
     nothing to complain about.
     """

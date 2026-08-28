@@ -111,7 +111,7 @@ def c5_mimetype_content(ctx):
 
 @rule("C6",
        covers=("dfn-iirds-zip-archive#5", "dfn-iirds-zip-archive#6"),
-       fix="Store the mimetype entry uncompressed. Most tools cannot express this: with the zip command it takes two passes, `zip -X0 out.iirds mimetype` then `zip -Xr out.iirds .` for the rest. `iirdsv pack` does it correctly.")
+       fix="Store the mimetype entry uncompressed. Most tools cannot express this: with the zip command it takes two passes, `zip -X0 out.iirds mimetype` then `zip -Xr out.iirds .` for the rest. `iirds pack` does it correctly.")
 def c6_mimetype_stored_first(ctx):
     if not ctx.package.is_archive:
         return
@@ -161,7 +161,7 @@ def c10_forbidden_chars(ctx):
 @rule("C9",
        covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
        # The catalogue gives C8 and C9 identical wording, so without an
-       # explicit title the two are indistinguishable in `iirdsv rules`. C8 is
+       # explicit title the two are indistinguishable in `iirds rules`. C8 is
        # presence; this is the file being RDF/XML at all.
        title="metadata.rdf must be an RDF/XML document (root element rdf:RDF)",
        fix="Make rdf:RDF the document's root element. The file is present and parses "

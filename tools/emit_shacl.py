@@ -426,7 +426,7 @@ for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
 
-NOOP = {"M96.4": "a MAY with nothing to violate; registered so `iirdsv rules` lists the catalogue"}
+NOOP = {"M96.4": "a MAY with nothing to violate; registered so `iirds rules` lists the catalogue"}
 
 
 # ---------------------------------------------------------------------------

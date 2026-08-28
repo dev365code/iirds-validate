@@ -1,10 +1,10 @@
 """Command line interface.
 
-    iirdsv check pkg.iirds      conformance  (container + graph rules)
-    iirdsv lint  pkg.iirds      interoperability  (can a consumer use it?)
-    iirdsv check --fragment x.rdf   a bare metadata snippet, package rules suspended
-    iirdsv all   pkg.iirds      both
-    iirdsv rules --kind lint    what this tool knows how to check
+    iirds check pkg.iirds      conformance  (container + graph rules)
+    iirds lint  pkg.iirds      interoperability  (can a consumer use it?)
+    iirds check --fragment x.rdf   a bare metadata snippet, package rules suspended
+    iirds all   pkg.iirds      both
+    iirds rules --kind lint    what this tool knows how to check
 
 Exit codes: 0 clean, 1 errors found, 2 could not run.
 """
@@ -257,7 +257,7 @@ def main(argv=None) -> int:
                          help="also print versions, spec link, source and remedy")
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
 
-    # `iirdsv some/path` with no subcommand means `all`. Typing the verb is
+    # `iirds some/path` with no subcommand means `all`. Typing the verb is
     # friction, and "check it" is what anybody pointing at a package wants.
     argv = list(sys.argv[1:] if argv is None else argv)
     known = {"check", "lint", "all", "pack", "rules", "serve",
@@ -268,7 +268,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.command is None:
-        # Bare `iirdsv`. argparse would exit 2 with a usage error, which is a
+        # Bare `iirds`. argparse would exit 2 with a usage error, which is a
         # poor answer to someone who has just installed the thing.
         cov = coverage()
         print(banner("%d of %d catalogued rules, plus %d of its own. no network access."

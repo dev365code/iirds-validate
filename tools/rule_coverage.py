@@ -38,7 +38,7 @@ from iirds_validate.registry import all_rules  # noqa: E402
 CANNOT_FIRE = {
     "M96.4": "a MAY with nothing to violate; the permission is honoured by M96.1 to "
              "M96.3 checking the shape when it is used, and by nothing complaining "
-             "when it is not. Registered so `iirdsv rules` lists the whole catalogue.",
+             "when it is not. Registered so `iirds rules` lists the whole catalogue.",
 }
 
 OBSERVED = ROOT / ".rule-coverage.json"

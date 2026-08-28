@@ -86,7 +86,7 @@ def test_a_violation_may_override_its_rule(make_package):
 # remedy carried the right spelling in both cases.
 #
 # The remedy is the only iiRDS claim this repository ships without a gate,
-# and it ships twice -- `iirdsv rules -v` prints it and `sh:description`
+# and it ships twice -- `iirds rules -v` prints it and `sh:description`
 # carries it into the shapes.
 # ---------------------------------------------------------------------------
 

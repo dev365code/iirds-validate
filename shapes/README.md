@@ -164,7 +164,7 @@ each listed with its reason in `MANIFEST.json`:
 - **2 out of edition** — M16.1 and M16.2 exist only in editions 1.0–1.1;
   a 1.3 shapes set has nothing to say about them.
 - **1 no-op** — M96.4 is a MAY with nothing to violate; it is registered so
-  `iirdsv rules` lists the whole catalogue.
+  `iirds rules` lists the whole catalogue.
 
 ## Why you can trust the translation
 

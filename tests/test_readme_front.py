@@ -66,10 +66,10 @@ def expected_block() -> str:
         report.render_text(runner.run(path, runner.ALL_KINDS), stream=out)
         body = out.getvalue().rstrip("\n")
 
-    return "$ iirdsv manual.iirds\n%s\n$ echo $?\n1" % body
+    return "$ iirds manual.iirds\n%s\n$ echo $?\n1" % body
 
 
-FENCE = re.compile(r"```console\n\$ iirdsv manual\.iirds\n.*?\n```", re.S)
+FENCE = re.compile(r"```console\n\$ iirds manual\.iirds\n.*?\n```", re.S)
 
 
 def test_the_front_sample_is_what_the_tool_prints():

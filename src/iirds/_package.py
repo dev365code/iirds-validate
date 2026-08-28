@@ -18,7 +18,7 @@ METADATA_RDF = "META-INF/metadata.rdf"
 METADATA_JSONLD = "META-INF/metadata.jsonld"
 
 #: The base IRI this ecosystem's tools agree on for rdf:about="" — the same
-#: convention iirds-validate and its published SHACL shapes document.
+#: convention the checker and its published SHACL shapes document.
 PACKAGE_BASE = "urn:iirds:package:"
 
 IIRDS = Namespace("http://iirds.tekom.de/iirds#")
@@ -69,7 +69,7 @@ def source_of(graph: Graph, node) -> Optional[str]:
     rdfs:Literal, and a plain literal has no encoding layer. §5.1.3 lets a
     file name contain `%` and `#`, so a package naming a file `a%20b.xhtml`
     or `a#b.xhtml` is entitled to, and this reading cannot reach it. That
-    cost is real and chosen; iirds-validate's docs/divergences.md carries
+    cost is real and chosen; docs/divergences.md carries
     the evidence on both sides. What it buys is that a file named `a b.xhtml`
     is reachable, and that a `%2e%2e` escape is refused as the escape it
     is rather than passed on as an ordinary name.
@@ -83,7 +83,7 @@ def source_of(graph: Graph, node) -> Optional[str]:
     one that names something outside it. A value that climbs out after
     normalising raises instead. That last difference is the layer, not the
     reading -- a reader refuses to resolve what escapes, while
-    iirds-validate answers None and reports it as a finding. The
+    the checker answers None and reports it as a finding. The
     resolution itself is that project's, case for case.
 
     Deliberately *not* judged here: whether the entry exists. This
@@ -189,7 +189,7 @@ class Package:
         whoever built the archive, so a gate reading it is a gate the
         sender sets -- in either direction. One claiming a gigabyte over
         four hundred bytes made a conformant package unreadable here while
-        iirds-validate, which measures, read it and reported nothing. The
+        the checker, which measures, read it and reported nothing. The
         read is bounded instead: one byte past the limit is enough to know
         there were more, and costs that byte rather than the document.
         """

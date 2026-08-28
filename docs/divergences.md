@@ -204,7 +204,7 @@ here.
 
 The consequence of leaving it would have been small and entirely in the claim
 rather than the output: on a 1.1 package those rules ran, matched nothing, and
-reported clean. What was wrong was `iirdsv rules` saying they applied.
+reported clean. What was wrong was `iirds rules` saying they applied.
 
 Four pairs in `docs/agreement.json` moved from `agree` to `silent` as a result,
 and the movement is this project getting the answer right rather than wrong.
@@ -251,7 +251,7 @@ version arrays anybody has verified, and it held.
 
 One loose end belongs to the reference rather than to us: the `spec` link it
 gives for both rules points at the **1.3** document, where that sentence reads
-MAY. A reader following it from `iirdsv rules -v M16.1` sees this validator
+MAY. A reader following it from `iirds rules -v M16.1` sees this validator
 apparently contradicting the standard. It is not; the link is to a later
 edition of a sentence that changed. These are the only two rules in the
 catalogue whose spec link names an edition the rule does not apply to.
@@ -436,9 +436,9 @@ so the defect is real and only the rule ids are approximate. A rule for that
 sentence would retire the approximation; there is none yet, and §6.3.3 is at
 1 of 4.
 
-What does *not* accompany it: `iirdsv check` runs the conformance rules only,
+What does *not* accompany it: `iirds check` runs the conformance rules only,
 and L1 — "relation points at an IRI that is never described in this package" —
-is a lint rule. Under `iirdsv lint` it reports the dangling reference; under
+is a lint rule. Under `iirds lint` it reports the dangling reference; under
 the default subcommand nothing does.
 
 The population is the graph's own subclass closure, not the ontology's,

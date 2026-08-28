@@ -33,7 +33,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Tuple
 
-from . import __version__, resources, runner
+from . import PROGRAM, __version__, resources, runner
 from . import report as report_module
 
 #: Bigger than this and the browser is the wrong tool; the message says so
@@ -197,8 +197,13 @@ class _Handler(BaseHTTPRequestHandler):
     #: No version in the banner. Anything that can reach the port can read a
     #: response, and the version of the tool holding somebody's documentation
     #: is not something to volunteer.
-    server_version = "iirds-validate"
+    server_version = PROGRAM
     sys_version = ""
+
+    def version_string(self):
+        # The base class joins the two with a space and sends the space
+        # even when the second is empty; the header is the name, exactly.
+        return self.server_version
 
     #: Without this a request thread waits for ever on a Content-Length that
     #: was never going to arrive, and nothing reaps it. Measured: fifty
@@ -512,7 +517,7 @@ def serve(host: str = "127.0.0.1", port: int = 0, open_browser: bool = True,
     stream = sys.stdout if stream is None else stream
     httpd = build_server(host, port, verbose=verbose)
     url = origin_of(httpd.server_address[0], httpd.server_address[1]) + "/"
-    print("iirds-validate %s — drop a package at %s" % (__version__, url),
+    print("%s %s — drop a package at %s" % (PROGRAM, __version__, url),
           file=stream, flush=True)
     print("nothing leaves this machine. ctrl-c to stop.", file=stream, flush=True)
     if open_browser:

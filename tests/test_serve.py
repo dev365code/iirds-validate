@@ -847,3 +847,34 @@ def test_a_drop_that_crashes_the_checker_gives_its_slot_back(tmp_path, monkeypat
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_the_server_names_the_command_and_nothing_more(server):
+    """The name, and no version behind it (the test above says why)."""
+    response = urllib.request.urlopen(server + "/", timeout=30)
+    try:
+        assert response.getheader("Server") == "iirds"
+    finally:
+        response.close()
+
+
+def test_the_console_line_names_the_command(monkeypatch):
+    """The first thing `serve` prints is the name a person just typed."""
+    import io
+
+    from iirds_validate import __version__
+
+    class Stub:
+        server_address = ("127.0.0.1", 8791)
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(serve, "build_server", lambda host, port, verbose=False: Stub())
+    out = io.StringIO()
+    assert serve.serve(open_browser=False, stream=out) == 0
+    assert out.getvalue().splitlines()[0] == (
+        "iirds %s — drop a package at http://127.0.0.1:8791/" % __version__)

@@ -13,7 +13,7 @@ def test_a_bare_invocation_greets_instead_of_erroring(capsys):
     someone who has just installed the thing."""
     assert main([]) == EXIT_OK
     out = capsys.readouterr().out
-    assert "iirdsv check" in out
+    assert "iirds check" in out
     assert "157" in out, "the banner should say how much of the catalogue is covered"
 
 
@@ -98,3 +98,46 @@ def test_fragment_mode_finds_real_defects_without_package_noise(tmp_path, capsys
     clean = tmp_path / "clean.rdf"
     clean.write_text(FRAGMENT.replace("/absolute/path.xhtml", "content/t.xhtml"), "utf-8")
     assert main(["check", str(clean), "--fragment"]) == EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# The command's name, in every message the tool prints about itself
+#
+# Three console scripts point at `main`. All three answer to one name, the way
+# `python3` answers `python`: the name is the distribution's, and the other two
+# are what the checker was called before the library shipped beside it.
+# ---------------------------------------------------------------------------
+
+def test_the_version_flag_names_the_command(capsys):
+    from iirds_validate import __version__
+
+    with pytest.raises(SystemExit) as leaving:
+        main(["--version"])
+    assert leaving.value.code == 0
+    assert capsys.readouterr().out == "iirds %s\n" % __version__
+
+
+def test_help_names_the_command(capsys):
+    with pytest.raises(SystemExit) as leaving:
+        main(["--help"])
+    assert leaving.value.code == 0
+    assert capsys.readouterr().out.startswith("usage: iirds ")
+
+
+@pytest.mark.parametrize("argv", [
+    ["check", "--fragment", "/no/such/fragment.rdf"],
+    ["check", "/no/such/package.iirds"],
+    ["serve", "--host", "8.8.8.8", "--no-open"],
+], ids=["missing-fragment", "missing-package", "serve-refuses-host"])
+def test_an_operator_error_is_prefixed_with_the_command_name(capsys, argv):
+    """`startswith`, not `in`: `iirds:` also occurs inside the vocabulary
+    (`iirds:source`), and a prefix test that matched it would pass on an
+    error message about the wrong thing."""
+    assert main(argv) == EXIT_ERROR
+    err = capsys.readouterr().err
+    assert err.startswith("iirds: "), err
+
+
+def test_an_empty_directory_is_an_operator_error_with_the_same_prefix(tmp_path, capsys):
+    assert main(["check", str(tmp_path)]) == EXIT_ERROR
+    assert capsys.readouterr().err.startswith("iirds: no iiRDS package found under ")

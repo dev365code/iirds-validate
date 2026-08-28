@@ -17,7 +17,7 @@ import sys
 
 from iirds import PackError, pack
 
-from . import __version__, runner
+from . import PROGRAM, __version__, runner
 from .banner import banner
 from .model import VERSIONS, Severity
 from .package import discover
@@ -73,7 +73,7 @@ def _run(args, kinds) -> int:
         # Fragments are files, named one by one; discovery is for containers.
         missing = [p for p in args.package if not os.path.isfile(p)]
         for path in missing:
-            print("iirds-validate: no such file: %s" % path, file=sys.stderr)
+            print("%s: no such file: %s" % (PROGRAM, path), file=sys.stderr)
         if missing:
             return EXIT_ERROR
         reports = [runner.run_fragment(path, kinds, version=args.version)
@@ -81,9 +81,9 @@ def _run(args, kinds) -> int:
     else:
         targets, missing, empty = _targets(args.package)
         for path in missing:
-            print("iirds-validate: no such file or directory: %s" % path, file=sys.stderr)
+            print("%s: no such file or directory: %s" % (PROGRAM, path), file=sys.stderr)
         for path in empty:
-            print("iirds-validate: no iiRDS package found under %s" % path, file=sys.stderr)
+            print("%s: no iiRDS package found under %s" % (PROGRAM, path), file=sys.stderr)
         if missing or empty:
             return EXIT_ERROR
         reports = [runner.run(path, kinds, version=args.version) for path in targets]
@@ -123,7 +123,7 @@ def _cmd_pack(args) -> int:
         # The SDK's pack() speaks API ("pass overwrite=True"); this is a
         # terminal, so the one remedy it names is translated to its flag.
         message = str(exc).replace("pass overwrite=True", "pass --overwrite")
-        print("iirds-validate: %s" % message, file=sys.stderr)
+        print("%s: %s" % (PROGRAM, message), file=sys.stderr)
         return EXIT_ERROR
 
     if not args.quiet and args.format == "text":
@@ -205,15 +205,15 @@ def _cmd_serve(args) -> int:
                                   open_browser=args.open_browser,
                                   verbose=args.verbose)
     except ValueError as exc:
-        print("iirds-validate: %s" % exc, file=sys.stderr)
+        print("%s: %s" % (PROGRAM, exc), file=sys.stderr)
         return EXIT_ERROR
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        prog="iirds-validate",
+        prog=PROGRAM,
         description="Offline validator and interoperability linter for iiRDS packages.")
-    parser.add_argument("--version", action="version", version="iirds-validate %s" % __version__)
+    parser.add_argument("--version", action="version", version="%s %s" % (PROGRAM, __version__))
     sub = parser.add_subparsers(dest="command")
 
     p_check = sub.add_parser("check", help="conformance: container structure and metadata graph")
@@ -292,7 +292,7 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         return EXIT_ERROR
     except OSError as exc:
-        print("iirds-validate: %s" % exc, file=sys.stderr)
+        print("%s: %s" % (PROGRAM, exc), file=sys.stderr)
         return EXIT_ERROR
     return EXIT_ERROR
 

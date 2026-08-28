@@ -1,4 +1,4 @@
-"""The thing you see when you type `iirdsv` and nothing else.
+"""The thing you see when you type `iirds` and nothing else.
 
 Deliberately not printed by `check`, `lint` or `all`. Those write to a build
 log or into a pipe, and `--format json` writes a document another program
@@ -10,7 +10,7 @@ the machines this tool is built for are exactly the ones with the old fonts.
 """
 from __future__ import annotations
 
-from . import __version__
+from . import PROGRAM, __version__
 
 #: figlet, "slant". 25 columns, which leaves room on an 80-column terminal for
 #: the version to sit on the baseline.
@@ -37,7 +37,7 @@ def banner(coverage=None) -> str:
     lines[-1] = "%-26s validate %s" % (lines[-1], __version__)
     out = ["", "\n".join(lines), "", "  " + TAGLINE, ""]
     for command, purpose in COMMANDS:
-        out.append("  iirdsv %-18s %s" % (command, purpose))
+        out.append("  %s %-18s %s" % (PROGRAM, command, purpose))
     out.append("")
     if coverage:
         out.append("  " + coverage)

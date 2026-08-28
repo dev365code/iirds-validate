@@ -118,7 +118,7 @@ def test_a_defect_in_the_directory_survives_packing(unpacked, tmp_path):
 
 def test_packing_something_unpackable_is_an_operator_error(tmp_path, capsys):
     assert main(["pack", str(tmp_path / "nope"), "-q"]) == EXIT_ERROR
-    assert "iirds-validate:" in capsys.readouterr().err
+    assert capsys.readouterr().err.startswith("iirds: ")
 
 
 def test_the_exists_refusal_speaks_cli_on_the_cli(unpacked, tmp_path, capsys):

@@ -357,10 +357,11 @@ def test_the_archive_resolves_its_dependencies_for_the_oldest_python_it_claims()
     floor pyproject declares, so the floor's closure is what travels."""
     import build_zipapp
 
-    argv = build_zipapp.pip_arguments(Path("/staging"))
+    staging = Path("/staging")
+    argv = build_zipapp.pip_arguments(staging)
     assert "--only-binary=:all:" in argv
     assert argv[argv.index("--python-version") + 1] == build_zipapp.python_floor() == "3.9"
-    assert argv[argv.index("--target") + 1] == "/staging"
+    assert argv[argv.index("--target") + 1] == str(staging)   # spelled as the platform spells it
 
 
 def test_the_floor_is_read_from_pyproject_and_not_guessed():

@@ -169,10 +169,12 @@ def test_an_unknown_path_is_a_404_and_not_a_directory_listing(server):
     with pytest.raises(urllib.error.HTTPError) as caught:
         urllib.request.urlopen(server + "/../setup.py", timeout=30)
     assert caught.value.code in (400, 403, 404)
+    caught.value.close()
 
     with pytest.raises(urllib.error.HTTPError) as caught:
         urllib.request.urlopen(server + "/tests/", timeout=30)
     assert caught.value.code in (400, 403, 404)
+    caught.value.close()
 
 
 def test_the_handler_opens_no_outbound_connection(tmp_path, monkeypatch):
@@ -373,6 +375,7 @@ def test_a_body_larger_than_the_page_will_hold_is_refused_before_it_is_read(serv
         urllib.request.urlopen(request, timeout=30)
     assert caught.value.code == 400
     assert b"command line" in caught.value.read()
+    caught.value.close()
 
 
 def test_a_post_with_no_file_and_a_post_with_no_body_are_both_refused(server):
@@ -385,12 +388,14 @@ def test_a_post_with_no_file_and_a_post_with_no_body_are_both_refused(server):
     with pytest.raises(urllib.error.HTTPError) as caught:
         urllib.request.urlopen(request, timeout=30)
     assert caught.value.code == 400
+    caught.value.close()
 
     plain = urllib.request.Request(server + "/check", data=b"hello",
                                    headers={"Content-Type": "text/plain"})
     with pytest.raises(urllib.error.HTTPError) as caught:
         urllib.request.urlopen(plain, timeout=30)
     assert caught.value.code == 400
+    caught.value.close()
 
 
 def test_requests_are_not_logged_unless_asked_for(tmp_path, capfd):
@@ -426,6 +431,7 @@ def test_a_body_with_no_boundary_is_refused_and_does_not_crash_the_thread(server
         with pytest.raises(urllib.error.HTTPError) as caught:
             urllib.request.urlopen(request, timeout=30)
         assert caught.value.code == 400, content_type
+        caught.value.close()
     assert "Traceback" not in capfd.readouterr().err
 
 
@@ -446,6 +452,7 @@ def test_a_post_from_another_page_is_refused(tmp_path, server):
     with pytest.raises(urllib.error.HTTPError) as caught:
         urllib.request.urlopen(request, timeout=30)
     assert caught.value.code == 403
+    caught.value.close()
 
 
 def test_its_own_page_is_not_refused(tmp_path, server):
@@ -486,6 +493,7 @@ def test_a_method_nobody_implemented_answers_like_everything_else(server):
         urllib.request.urlopen(request, timeout=30)
     assert caught.value.code in (400, 501)
     headers = {k.lower(): v for k, v in caught.value.headers.items()}
+    caught.value.close()
     assert headers.get("content-type", "").startswith("text/plain")
     assert "content-security-policy" in headers
     assert b"w3.org" not in caught.value.read()

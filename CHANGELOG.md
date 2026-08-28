@@ -401,6 +401,20 @@ changes in the library is recorded beside what changes in the checker.
   walks the tree now, and the walk itself is tested against a tree that has a
   subpackage, which the real one does not.
 
+### Changed in the library
+
+- **A warning from this package's own code fails the suite.** Warnings were
+  collected and printed at the end of a run, where one that means something
+  is indistinguishable from the eleven that do not. They are errors now, with
+  one exception scoped to rdflib, whose JSON-LD parser warns about its own
+  deprecated internals on every parse — scoped to where the warning comes
+  from rather than to its wording, so the dependency rephrasing its message
+  does not turn this suite red. Expected failures are strict and unregistered
+  marks are refused, both for the same reason: a test that silently applies
+  to nothing is worse than no test. The settings are checked by tests that
+  provoke the behaviour, because a configuration table is the one part of a
+  suite that nothing else exercises.
+
 ## 0.4.2 — 2026-08-26
 
 ### Security

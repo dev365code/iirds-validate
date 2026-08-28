@@ -66,7 +66,10 @@ def test_c15_the_same_path_stored_twice(tmp_path):
     """A ZIP can hold one path more than once; which copy a consumer gets
     depends on the unzip implementation."""
     twice = (*BASE, ("content/topic1.xhtml", "<html>second</html>"))
-    assert "C15" in ids(archive(tmp_path, "dupe.iirds", twice))
+    # zipfile says so too, at write time; the point is what the checker says.
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        path = archive(tmp_path, "dupe.iirds", twice)
+    assert "C15" in ids(path)
 
 
 def test_l12_two_paths_differing_only_in_case(tmp_path):

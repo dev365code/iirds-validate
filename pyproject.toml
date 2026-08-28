@@ -54,6 +54,21 @@ iirds_validate = ["py.typed", "data/*.json", "data/web/*", "data/ontologies/*.tx
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "tests"]
+# --strict-markers so a typo in a mark is an error rather than a mark nobody
+# applies; --strict-config so a typo in this table is too. xfail_strict so an
+# expected failure that starts passing is reported instead of quietly logged.
+addopts = "--strict-markers --strict-config"
+xfail_strict = true
+# A warning raised by this project's own code is a failure. The one exception
+# is rdflib's own deprecation schedule, which this project does not control:
+# its JSON-LD parser builds a ConjunctiveGraph on every parse and warns about
+# it, and nothing here constructs one. Scoped to where the warning comes from
+# rather than to its wording, so a dependency rephrasing its own message does
+# not turn this suite red, while a deprecation raised anywhere else still does.
+filterwarnings = [
+    "error",
+    "default::DeprecationWarning:rdflib.*",
+]
 
 [tool.ruff]
 line-length = 100

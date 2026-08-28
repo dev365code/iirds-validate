@@ -3,22 +3,25 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "iirds-validate"
+name = "iirds"
 version = "0.4.2"
-description = "Offline, graph-based validator and interoperability linter for iiRDS packages"
+description = "Validate, lint, pack and serve iiRDS packages from the command line; read and write them from Python. Offline, graph-based. Held in stewardship for the iiRDS ecosystem."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
-# Apache-2.0 covers this project's own code. The bundled iiRDS ontologies stay
+authors = [{ name = "Wooyong Lee", email = "zero8004paz@gmail.com" }]
+# Apache-2.0 covers this project's own code, the checker and the read/write
+# library alike. The bundled iiRDS ontologies stay
 # under CC BY-ND 4.0 and the rule catalogue under MIT; see NOTICE, which ships
 # in the wheel alongside them. docs/licensing.md explains what that means.
-keywords = ["iirds", "tekom", "rdf", "validation", "technical-documentation", "vdi2770"]
+keywords = ["iirds", "tekom", "rdf", "validation", "technical-documentation", "intelligent-information", "vdi2770"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
     "Topic :: Text Processing :: Markup :: XML",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -26,6 +29,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+# One runtime dependency. tests/library/test_dependencies.py holds the library
+# half of the tree to exactly this line, and tools/build_zipapp.py bundles what
+# it says.
 dependencies = ["rdflib>=6"]
 
 [project.urls]
@@ -39,6 +45,9 @@ dev = ["pytest>=7", "ruff==0.16.3"]
 shacl = ["pyshacl==0.40.*"]   # differential gate only, pinned to the tested minor; runtime stays rdflib-only
 
 [project.scripts]
+# One command, three names. `iirds` is the name; the other two are what the
+# checker was called before it and the library shipped as one distribution.
+iirds = "iirds_validate.cli:main"
 iirds-validate = "iirds_validate.cli:main"
 iirdsv = "iirds_validate.cli:main"
 

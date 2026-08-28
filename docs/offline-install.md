@@ -38,14 +38,14 @@ the feature.
 On a machine with a network:
 
 ```sh
-pip download iirds-validate -d wheels/
+pip download iirds -d wheels/
 ```
 
 That directory holds this project's wheel — `iirds_validate` and the `iirds`
 library it is built on — plus `rdflib` and its handful of dependencies. Copy it in by whatever means your site allows, then:
 
 ```sh
-pip install --no-index --find-links wheels/ iirds-validate
+pip install --no-index --find-links wheels/ iirds
 iirdsv --version
 ```
 

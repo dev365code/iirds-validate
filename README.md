@@ -81,7 +81,7 @@ same file runs on Linux, macOS and Windows. It is an ordinary zip: whoever has
 to approve software entering the network can open it and read every line, which
 is usually the hard part. Build it with `python tools/build_zipapp.py`.
 
-**Or on the path:** `pip install iirds-validate` — published to PyPI via
+**Or on the path:** `pip install iirds` — published to PyPI via
 trusted publishing. One runtime dependency, pure Python: rdflib. The `iirds`
 library — the container layer this checker is built on — ships in the same
 distribution. For an air-gapped install see

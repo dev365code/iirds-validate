@@ -161,8 +161,9 @@ jobs:
           python -m venv /tmp/v
           /tmp/v/bin/pip install --quiet dist/*.whl
           /tmp/v/bin/iirdsv --version
+          /tmp/v/bin/iirds --version
           /tmp/v/bin/iirds-validate --version
-          /tmp/v/bin/python -c "import iirds, iirds_validate"
+          /tmp/v/bin/python -c "import iirds, iirds_validate; assert iirds.__version__ == iirds_validate.__version__"
 
       - name: the vendored ontologies must be intact after install
         run: /tmp/v/bin/python -m iirds_validate.ontology --verify

@@ -1,8 +1,10 @@
-# Runs when a version tag is pushed. Builds the two artefacts, proves the
-# .pyz reproducible by building it twice and comparing hashes, and attaches
-# everything to a GitHub Release with the checksums beside it — because for
-# the air-gapped audience, "the hash on the release page is the hash of the
-# file I carried in" is the entire trust story.
+# Runs when a version tag is pushed. Proves the tree green, builds the three
+# distributions and the single file, proves the .pyz reproducible by building
+# it twice, attaches everything to a GitHub Release with the checksums beside
+# it -- for the air-gapped audience, "the hash on the release page is the hash
+# of the file I carried in" is the entire trust story -- and then publishes
+# the same bytes to PyPI, `iirds` first so that the two compatibility names
+# can resolve the moment they land.
 name: release
 
 on:
@@ -10,26 +12,57 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: everything must be green first
+      - name: the tag and the version agree
         run: |
-          pip install -e ".[dev]"
-          make check
+          pip install -e ".[dev,shacl]"
+          v="$(python -c 'import iirds_validate; print(iirds_validate.__version__)')"
+          [ "$GITHUB_REF_NAME" = "v$v" ] || { echo "tag $GITHUB_REF_NAME != version $v"; exit 1; }
 
-      - name: build the wheel and sdist
+      - name: everything must be green first
+        # The specification is not redistributable, so no runner has a
+        # .spec-cache/ and the checks that hold docs/requirements.json to the
+        # document can only run where somebody fetched one; pySHACL is
+        # installed above, so the differential gate does run here.
+        run: make check IIRDS_REQUIRE_SPEC_CACHE=
+
+      - name: build the three distributions
         run: |
           pip install build
-          python -m build --outdir dist/
+          python -m build --outdir dist/iirds .
+          python -m build --outdir dist/iirds-validate shims/iirds-validate
+          python -m build --outdir dist/iirds-sdk shims/iirds-sdk
+
+      - name: no sdist carries working notes
+        run: |
+          for t in dist/*/*.tar.gz; do
+            if tar tzf "$t" | sed -E 's#^[^/]+/##' \
+               | grep -qE '^(CLAUDE\.md|AGENTS\.md|\.claude/|docs/findings\.md|docs/audits\.md)$'; then
+              echo "working notes in $t"; exit 1
+            fi
+          done
+
+      - name: the compatibility names install beside the wheel and own no file of it
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --quiet dist/iirds/*.whl
+          /tmp/v/bin/pip install --quiet --no-index --find-links dist/iirds \
+            --find-links dist/iirds-validate --find-links dist/iirds-sdk iirds-validate iirds-sdk
+          /tmp/v/bin/pip check
+          /tmp/v/bin/python tools/shim_overlap.py
+          /tmp/v/bin/iirds --version && /tmp/v/bin/iirds-validate --version && /tmp/v/bin/iirdsv --version
 
       - name: build the .pyz twice; the hashes must match
         run: |
@@ -44,11 +77,18 @@ jobs:
         run: |
           (cd shapes && zip -qr ../dist/iirds-shapes-1.3.zip .)
 
-      - name: checksums
+      - name: one directory, one checksum file
         run: |
-          cd dist
-          shasum -a 256 * > SHA256SUMS
-          cat SHA256SUMS
+          mv dist/iirds/* dist/iirds-validate/* dist/iirds-sdk/* dist/
+          rmdir dist/iirds dist/iirds-validate dist/iirds-sdk
+          cd dist && shasum -a 256 * > SHA256SUMS && cat SHA256SUMS
+
+      # The publishers below upload exactly these bytes; nothing is rebuilt.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
 
       - name: create the release
         env:
@@ -56,25 +96,57 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
-            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`."
+            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it."
 
-  # Publishes to PyPI via Trusted Publishing (OIDC): no API tokens anywhere.
-  # One-time setup on pypi.org first — Account → Publishing → add a "pending
-  # publisher" for repository dev365code/iirds-validate, workflow release.yml,
-  # environment pypi. Until that is done this job fails visibly, on purpose,
+  # Trusted Publishing (OIDC), one job and one GitHub environment per PyPI
+  # project. `iirds` goes first: the other two declare `iirds>=<this version>`
+  # and must not be resolvable before it is. Until pypi.org trusts this
+  # repository for a project, that project's job fails visibly, on purpose,
   # without touching the GitHub Release above.
-  pypi:
-    needs: release
+  publish-iirds:
+    needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-iirds
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/download-artifact@v7
         with:
-          python-version: "3.12"
-      - run: |
-          pip install build
-          python -m build --outdir dist/
+          name: dist
+          path: dist
+      - run: mkdir up && cp dist/iirds-[0-9]*.whl dist/iirds-[0-9]*.tar.gz up/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: up
+
+  publish-iirds-validate:
+    needs: publish-iirds
+    runs-on: ubuntu-latest
+    environment: pypi          # the publisher pypi.org already trusts for this project
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist
+      - run: mkdir up && cp dist/iirds_validate-[0-9]*.whl dist/iirds_validate-[0-9]*.tar.gz up/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: up
+
+  publish-iirds-sdk:
+    needs: publish-iirds
+    runs-on: ubuntu-latest
+    environment: pypi-iirds-sdk
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist
+      - run: mkdir up && cp dist/iirds_sdk-[0-9]*.whl dist/iirds_sdk-[0-9]*.tar.gz up/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: up

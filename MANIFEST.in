@@ -2,3 +2,5 @@
 exclude CLAUDE.md AGENTS.md
 prune .claude
 exclude docs/findings.md docs/audits.md
+# The compatibility names are their own distributions, built from shims/.
+prune shims

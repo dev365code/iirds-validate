@@ -31,6 +31,7 @@ OLD_DISTRIBUTION_ALLOWED = {
     "tests/test_distribution.py": "the alias console script",
     "tests/test_shims.py": "the compatibility name",
     "tools/emit_shacl.py": "the published shape namespace and `ruleSource`",
+    "tools/shim_overlap.py": "the compatibility name, asked of the installed metadata",
     "shapes/README.md": "the published shape namespace",
     "shapes/THIRD-PARTY-NOTICES.md": "the `ruleSource` token",
     "shapes/MANIFEST.json": "the published shape namespace",
@@ -88,7 +89,8 @@ def test_the_old_short_command_appears_only_where_it_must():
 
 
 def test_the_old_single_file_name_appears_nowhere():
-    assert _offenders("iirds-validate.pyz", {}) == []
+    # Spelled in two halves so that this file is not its own first offender.
+    assert _offenders("iirds-validate" + ".pyz", {}) == []
 
 
 def test_the_front_page_installs_the_one_name():

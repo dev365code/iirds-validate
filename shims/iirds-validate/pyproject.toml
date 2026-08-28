@@ -1,0 +1,34 @@
+# The checker's old distribution name. Since 0.5.0 the checker, its commands
+# and the read/write library ship together as `iirds`; this distribution
+# carries no files of its own and exists so that `pip install iirds-validate`
+# keeps working and the name stays in use.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iirds-validate"
+version = "0.4.2"
+description = "Compatibility name for the iiRDS checker, which now ships as `iirds`. Installs nothing itself."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Wooyong Lee", email = "zero8004paz@gmail.com" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+]
+# The floor moves with this file's own version (tests/test_shims.py): a shim
+# never resolves to a release older than the one it was published beside, and
+# never stands in the way of a newer one.
+dependencies = ["iirds>=0.4.2"]
+
+[project.urls]
+Homepage = "https://github.com/dev365code/iirds-validate"
+
+[tool.setuptools]
+# Module-less on purpose: `iirds_validate` is in the `iirds` wheel, and two
+# distributions owning one file is how an uninstall breaks the other.
+packages = []
+license-files = ["LICENSE"]

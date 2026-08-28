@@ -118,6 +118,16 @@ jobs:
       - run: pip install build
       - run: python -m build --wheel --outdir dist/
 
+      - name: the sdist carries no working notes
+        # Built into its own directory so the wheel checks below keep seeing
+        # exactly one file under dist/.
+        run: |
+          python -m build --sdist --outdir dist/sdist/
+          if tar tzf dist/sdist/*.tar.gz | sed -E 's#^[^/]+/##' \
+             | grep -qE '^(CLAUDE\.md|AGENTS\.md|\.claude/|docs/findings\.md|docs/audits\.md)$'; then
+            echo "working notes in the sdist"; exit 1
+          fi
+
       - name: the wheel must carry the ontologies and the catalogue
         run: |
           python - <<'PY'
@@ -164,6 +174,18 @@ jobs:
           /tmp/v/bin/iirds --version
           /tmp/v/bin/iirds-validate --version
           /tmp/v/bin/python -c "import iirds, iirds_validate; assert iirds.__version__ == iirds_validate.__version__"
+
+      - name: the compatibility names install beside the wheel and own no file of it
+        # `iirds-validate` and `iirds-sdk` keep the old names resolving. Each
+        # depends on `iirds` and carries nothing of it; a file owned by two
+        # distributions is how an uninstall of one breaks the other.
+        run: |
+          python -m build --wheel --outdir dist/shims/ shims/iirds-validate
+          python -m build --wheel --outdir dist/shims/ shims/iirds-sdk
+          /tmp/v/bin/pip install --quiet --no-index --find-links dist/ --find-links dist/shims/ iirds-validate iirds-sdk
+          /tmp/v/bin/pip check
+          /tmp/v/bin/python tools/shim_overlap.py
+          /tmp/v/bin/python -c "import iirds_sdk; assert iirds_sdk.__version__ == __import__('iirds').__version__"
 
       - name: the vendored ontologies must be intact after install
         run: /tmp/v/bin/python -m iirds_validate.ontology --verify

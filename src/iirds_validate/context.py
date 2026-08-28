@@ -25,9 +25,10 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
-from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_of
 from rdflib import BNode, Graph, URIRef
 from rdflib.namespace import RDF, RDFS
+
+from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_of
 
 from . import ontology as ontology_mod
 from . import terms as T

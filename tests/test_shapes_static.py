@@ -166,10 +166,34 @@ def test_shacl_and_python_agree_on_the_minimal_fixture():
     assert _fired(data) == set()
 
 
+def _sparql_parser_works() -> bool:
+    """rdflib's own parser, on the plainest query there is.
+
+    At rdflib 6.0.0 against the pyparsing pip installs today it raises on
+    `SELECT * WHERE { ?s ?p ?o }`: the instrument is broken there, not the
+    shapes. Nothing at run time parses SPARQL, so the floor row is still a
+    floor for the checker; this one syntax check stands down on it and says
+    so, and runs everywhere the parser works."""
+    from rdflib.plugins.sparql import prepareQuery
+
+    try:
+        prepareQuery("SELECT * WHERE { ?s ?p ?o }")
+    except Exception:
+        return False
+    return True
+
+
 def test_every_sparql_select_is_valid_sparql():
     """Syntax-checked with rdflib alone, so the guard runs on every CI row,
     pyshacl present or not."""
+    import pyparsing
+    import rdflib
     from rdflib.plugins.sparql import prepareQuery
+
+    if not _sparql_parser_works():
+        pytest.skip("rdflib %s cannot parse a trivial SELECT with pyparsing %s; the "
+                    "shapes are syntax-checked where the parser works"
+                    % (rdflib.__version__, pyparsing.__version__))
 
     selects = list(SHAPES.objects(None, SH.select))
     assert len(selects) >= 14        # 13 rules; M3 carries two constraints

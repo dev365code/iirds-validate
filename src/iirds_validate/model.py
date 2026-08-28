@@ -7,9 +7,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Tuple
 
-from iirds import METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE  # noqa: F401  (re-exported)
 from rdflib import Namespace, URIRef
 from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
+
+from iirds import METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE  # noqa: F401  (re-exported)
 
 # --- iiRDS namespaces -------------------------------------------------------
 IIRDS = Namespace("http://iirds.tekom.de/iirds#")

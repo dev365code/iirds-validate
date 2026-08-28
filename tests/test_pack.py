@@ -335,3 +335,11 @@ def test_the_archive_itself_is_asked_whether_the_terms_are_in_it(tmp_path):
     with zipfile.ZipFile(bare, "w") as archive:
         archive.writestr("__main__.py", "")
     assert len(build_zipapp.inspect(bare)) == len(build_zipapp.REDISTRIBUTED)
+
+
+def test_the_single_file_form_is_named_after_the_command():
+    """`python iirds.pyz manual.iirds` reads as the command does; the name the
+    validator shipped under before is not the name of the thing any more."""
+    import build_zipapp
+
+    assert build_zipapp.OUTPUT.name == "iirds.pyz"

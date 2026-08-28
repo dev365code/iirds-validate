@@ -583,7 +583,7 @@ def test_the_page_survives_the_single_file_distribution(tmp_path):
     import sys as _sys
     import zipfile
 
-    pyz = tmp_path / "iirds-validate.pyz"
+    pyz = tmp_path / "iirds.pyz"
     built = subprocess.run(
         [_sys.executable, str(ROOT / "tools" / "build_zipapp.py"), "-o", str(pyz)],
         capture_output=True, text=True, cwd=str(ROOT))

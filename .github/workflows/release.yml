@@ -33,9 +33,9 @@ jobs:
 
       - name: build the .pyz twice; the hashes must match
         run: |
-          python tools/build_zipapp.py -o dist/iirds-validate.pyz --check
+          python tools/build_zipapp.py -o dist/iirds.pyz --check
           python tools/build_zipapp.py -o /tmp/again.pyz
-          cmp dist/iirds-validate.pyz /tmp/again.pyz
+          cmp dist/iirds.pyz /tmp/again.pyz
           echo "reproducible: yes"
 
       - name: bundle the SHACL shapes
@@ -56,7 +56,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
-            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds-validate.pyz your-package.iirds\`."
+            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`."
 
   # Publishes to PyPI via Trusted Publishing (OIDC): no API tokens anywhere.
   # One-time setup on pypi.org first — Account → Publishing → add a "pending

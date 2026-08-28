@@ -16,8 +16,8 @@ data never has to move.
 
 ```sh
 python tools/build_zipapp.py          # on a machine with a network
-# copy dist/iirds-validate.pyz across by whatever means the site allows
-python iirds-validate.pyz dist/       # on the machine without one
+# copy dist/iirds.pyz across by whatever means the site allows
+python iirds.pyz dist/                # on the machine without one
 ```
 
 No pip, no index, no virtual environment, no rights to create one. Everything

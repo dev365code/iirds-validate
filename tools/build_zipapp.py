@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Build the single-file form: `iirds-validate.pyz`.
+"""Build the single-file form: `iirds.pyz`.
 
 Why this exists. The tool is for networks that have no route to the internet,
 and `pip install` is the first thing such a network takes away. A wheel still
 needs pip, an index or a directory of wheels, and often a virtual environment
 and the rights to create one. A `.pyz` needs a copy of the file and a Python.
 
-    python iirds-validate.pyz path/to/package.iirds
+    python iirds.pyz path/to/package.iirds
 
 Everything is inside it — the checker, the `iirds` library it is built on, and
 rdflib — and nothing is
@@ -14,7 +14,7 @@ compiled: the same file runs on Linux, macOS and Windows. It is also an ordinary
 has to approve it can open it and read every line, which matters more than
 convenience when the approval is the hard part.
 
-    python tools/build_zipapp.py                  # dist/iirds-validate.pyz
+    python tools/build_zipapp.py                  # dist/iirds.pyz
     python tools/build_zipapp.py --check          # build and smoke-test it
 
 Requires network access once, to fetch the dependencies being bundled.
@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 #: library is not a dependency any more, it is the other half of the same
 #: distribution, and pip has nothing to fetch for it.
 SOURCES = (ROOT / "src" / "iirds", ROOT / "src" / "iirds_validate")
-OUTPUT = ROOT / "dist" / "iirds-validate.pyz"
+OUTPUT = ROOT / "dist" / "iirds.pyz"
 
 MAIN = """import sys
 

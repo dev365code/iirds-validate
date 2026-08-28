@@ -73,7 +73,7 @@ packages.
 **Nothing to install.** Copy one file in and run it:
 
 ```sh
-python iirds-validate.pyz dist/
+python iirds.pyz dist/
 ```
 
 Under a megabyte, contains `rdflib`, the `iirds` library and the iiRDS ontologies, compiles nothing, so the

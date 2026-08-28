@@ -10,7 +10,7 @@ The first release in which the checker and the library ship as one
 distribution: `pip install iirds` installs both. The command is `iirds`;
 `iirds-validate` and `iirdsv` are kept as aliases of it. No check changed:
 the rules, their identifiers, the report and the `source` token in it are
-those of 0.4.2.
+those of 0.4.2. The single-file form is `iirds.pyz`.
 
 **Upgrading from `iirds-validate` 0.4.x:** uninstall it first, then install
 the new name — `pip uninstall -y iirds-validate`, then `pip install iirds`.

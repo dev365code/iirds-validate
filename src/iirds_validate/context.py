@@ -32,7 +32,14 @@ from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_
 
 from . import ontology as ontology_mod
 from . import terms as T
-from .model import LATEST_VERSION, METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE, VERSIONS
+from .model import (
+    LATEST_VERSION,
+    METADATA_JSONLD,
+    METADATA_RDF,
+    PACKAGE_BASE,
+    VERSIONS,
+    is_absolute_name,
+)
 from .package import Package
 
 
@@ -422,6 +429,35 @@ def _version_key(text: str):
         return (0, tuple(int(part) for part in parts))
     return (1, text)
 
+
+
+#: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
+#: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
+#: else that is an absolute IRI names a node element -- the class of a typed
+#: node, or rdf:Description for an untyped one.
+NOT_NODE_ELEMENTS = frozenset(("RDF", "ID", "about", "parseType", "resource", "nodeID",
+                               "datatype", "li", "aboutEach", "aboutEachPrefix", "bagID"))
+RDF_NAMESPACE = str(RDF)
+
+
+def is_rdfxml_document_element(tag: str) -> bool:
+    """Is this element, as ElementTree names it, one an RDF/XML document may start with?
+
+    §7.2.1 of the grammar: a standalone document starts with production doc
+    -- the rdf:RDF element -- or with production nodeElement; §2.6 says the
+    same in prose, "when there is only one top-level node element inside
+    rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must
+    still be declared". A node element's name is any absolute IRI except
+    the reserved ones (§7.2.5), so an element with no namespace is not one:
+    its name is not an IRI. Only the document element is judged here; what
+    the body does with the grammar is the parser's to say.
+    """
+    namespace, _, local = tag[1:].partition("}") if tag.startswith("{") else ("", "", tag)
+    if namespace == RDF_NAMESPACE and local == "RDF":
+        return True
+    if not is_absolute_name(namespace + local):
+        return False
+    return not (namespace == RDF_NAMESPACE and local in NOT_NODE_ELEMENTS)
 
 
 def build_graph(package: Package):

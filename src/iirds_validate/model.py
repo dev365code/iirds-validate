@@ -41,6 +41,12 @@ _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 #: silently joined into something that looks absolute.
 
 
+def is_absolute_name(text: str) -> bool:
+    """The same test as `is_absolute_iri`, for a name that is not yet a node --
+    an XML element's expanded name, say, before anything has read it."""
+    return bool(_SCHEME.match(text))
+
+
 def is_absolute_iri(node) -> bool:
     """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not."""
     return isinstance(node, URIRef) and bool(_SCHEME.match(str(node)))

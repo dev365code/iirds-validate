@@ -13,7 +13,9 @@ no rule, no rule identifier and not the `source` token a report carries;
 three remedies that told a reader to run `iirdsv pack`, or to report a rule
 that crashed, now spell the command's name and the issue tracker's address.
 One rule is new, L13, and it is a warning: a package that passed 0.4.2
-still exits 0 unless `-W` asks warnings to fail the run.
+still exits 0 unless `-W` asks warnings to fail the run. One rule reports
+less: C9 no longer fails an RDF/XML document written without the `rdf:RDF`
+element, a form the grammar permits (see *Fixed*).
 The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
 PyPI as compatibility packages that depend on `iirds` at no less than their
 own release — a floor now, where the alias used to pin one exact version, so
@@ -80,6 +82,19 @@ them.
   reports.
 
 ### Fixed
+
+- **A metadata.rdf written without the `rdf:RDF` element was rejected
+  (C9).** The RDF 1.1 XML grammar, which the obligation C9 covers cites,
+  lets a document start with `rdf:RDF` or with a single node element (§7.2.1;
+  §2.6: "the rdf:RDF can be omitted although any XML namespaces must still be
+  declared"). A file whose one top-level element was the package itself --
+  three statements to every RDF parser, and the shape most of the standard's
+  own examples take -- was reported as not an RDF document, with a remedy
+  claiming no parser would read a statement from it. The rule now judges by
+  the grammar: the document element is `rdf:RDF`, or its name is an absolute
+  IRI outside the eleven names the grammar reserves. `<manual>` is still not
+  RDF/XML -- a name with no namespace is not an IRI -- and says so with a
+  remedy that is true.
 
 - **Which package the version and the profile were read off.** That pair
   chooses the ontology and the applicable rules, so reading it from the wrong

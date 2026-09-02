@@ -1,6 +1,8 @@
 """System rules (S*) and the container rules that finish category C."""
 from __future__ import annotations
 
+import pytest
+
 from conftest import MINIMAL_RDF
 from iirds_validate import runner
 from iirds_validate.registry import CATALOG, implemented_ids
@@ -42,10 +44,127 @@ def test_s2_when_nothing_parses(make_package):
 # --- container ------------------------------------------------------------
 
 def test_c9_metadata_that_is_not_an_rdf_document(make_package):
-    """C8 asks whether the file is there; C9 asks whether it is RDF at all."""
+    """C8 asks whether the file is there; C9 asks whether it is RDF/XML at all.
+
+    A document element with no namespace is not a node element -- its name
+    is not an IRI -- so this is not RDF/XML by the grammar. (An earlier
+    version of this test used `<notrdf xmlns="urn:x"/>`, which *is* a node
+    element: a typed node in the `urn:x` namespace. The grammar says so and
+    rdflib reads it so; the test was pinning the rule's overreach.)
+    """
     report = runner.check(make_package(
-        metadata='<?xml version="1.0"?><notrdf xmlns="urn:x"/>'))
+        metadata='<?xml version="1.0"?><manual><title>hello</title></manual>'))
     assert "C9" in ids(report)
+
+
+#: One top-level node element, no rdf:RDF around it: the form RDF/XML §2.6
+#: permits -- "When there is only one top-level node element inside rdf:RDF,
+#: the rdf:RDF can be omitted although any XML namespaces must still be
+#: declared." The package sits inside the topic by is-part-of-package so that
+#: one element holds everything MINIMAL_RDF says.
+ROOTLESS = """<?xml version="1.0" encoding="utf-8"?>
+<iirds:Topic xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns:iirds="http://iirds.tekom.de/iirds#" rdf:about="urn:test:topic1">
+  <iirds:title>A topic</iirds:title>
+  <iirds:is-part-of-package>
+    <iirds:Package rdf:about="urn:test:package">
+      <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+      <iirds:title>Test package</iirds:title>
+    </iirds:Package>
+  </iirds:is-part-of-package>
+  <iirds:has-rendition>
+    <iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/topic1.xhtml</iirds:source>
+    </iirds:Rendition>
+  </iirds:has-rendition>
+</iirds:Topic>
+"""
+WRAPPED = ROOTLESS.replace(
+    '<iirds:Topic xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+    '             xmlns:iirds="http://iirds.tekom.de/iirds#" rdf:about="urn:test:topic1">',
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+    '         xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
+    '<iirds:Topic rdf:about="urn:test:topic1">').replace("</iirds:Topic>\n", "</iirds:Topic>\n</rdf:RDF>\n")
+
+
+def test_c9_accepts_the_rootless_form_the_grammar_permits(make_package):
+    """The obligation C9 covers asks for RDF 1.1 XML syntax and cites the
+    grammar; the grammar's §2.6 lets the rdf:RDF element go when one node
+    element is all there is. rdflib reads that form into the same graph as
+    the wrapped one; the rule reported it as not RDF, with a remedy claiming
+    no parser would read a statement from it."""
+    from rdflib.compare import isomorphic
+
+    from iirds_validate.context import load_context
+    from iirds_validate.package import open_package
+
+    assert "</rdf:RDF>" in WRAPPED and "</rdf:RDF>" not in ROOTLESS
+    rootless, wrapped = make_package(metadata=ROOTLESS), make_package(metadata=WRAPPED)
+    with open_package(rootless) as a, open_package(wrapped) as b:
+        assert isomorphic(load_context(a).graph, load_context(b).graph)
+    plain, framed = runner.check(rootless), runner.check(wrapped)
+    assert "C9" not in ids(plain)
+    assert plain.ok and framed.ok
+    assert ids(plain) == ids(framed)
+
+
+def test_c9_accepts_rdf_description_as_the_document_element(make_package):
+    metadata = ROOTLESS.replace("<iirds:Topic ", "<rdf:Description ").replace("</iirds:Topic>", "</rdf:Description>") \
+        .replace('rdf:about="urn:test:topic1">', 'rdf:about="urn:test:topic1"><rdf:type rdf:resource="http://iirds.tekom.de/iirds#Topic"/>')
+    assert "C9" not in ids(runner.check(make_package(metadata=metadata)))
+
+
+def test_c9_accepts_an_empty_rdf_root(make_package):
+    """`<rdf:RDF/>` is RDF/XML that says nothing; the graph rules, not this
+    one, say what is missing."""
+    report = runner.check(make_package(
+        metadata='<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'))
+    assert "C9" not in ids(report)
+    assert "M3" in ids(report)
+
+
+def test_c9_leaves_a_namespaced_document_to_the_graph_rules(make_package):
+    """An XHTML file named metadata.rdf is, to the grammar, one typed node
+    element of the XHTML vocabulary: RDF/XML that is not about iiRDS. Not
+    C9's finding -- the graph rules say there is no package, and lint says
+    the classes are nobody's."""
+    xhtml = ('<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml">'
+             '<head><title>t</title></head><body><p>x</p></body></html>')
+    package = make_package(metadata=xhtml)
+    report = runner.check(package)
+    assert "C9" not in ids(report)
+    assert "M3" in ids(report)
+    assert "L5" in ids(runner.lint(package))
+
+
+def test_c9_is_silent_when_the_reader_refused_the_document(make_package):
+    """A document element the grammar reserves (`rdf:li` here) is not a node
+    element, and rdflib refuses it before this rule looks: C16.1 owns it."""
+    report = runner.check(make_package(
+        metadata='<?xml version="1.0"?><rdf:li xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'))
+    assert "C16.1" in ids(report)
+    assert "C9" not in ids(report)
+
+
+@pytest.mark.parametrize("tag,verdict", [
+    ("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF", True),          # doc
+    ("{http://iirds.tekom.de/iirds#}Package", True),                      # a node element
+    ("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description", True),   # the untyped node element
+    ("{urn:x}notrdf", True),                                              # a node element in any vocabulary
+    ("{http://www.w3.org/1999/xhtml}html", True),
+    ("manual", False),                                                    # no namespace: not an IRI
+    ("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}li", False),           # reserved by §7.2.5
+    ("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about", False),
+    ("{foo}bar", False),                                                  # `foobar` is no absolute IRI
+])
+def test_the_rdfxml_criterion_is_the_grammars(tag, verdict):
+    """§7.2.1: a standalone document starts with production doc *or*
+    nodeElement; §7.2.5: a node element's name is any absolute IRI except
+    the core syntax terms, rdf:li and the old terms."""
+    from iirds_validate.context import is_rdfxml_document_element
+
+    assert is_rdfxml_document_element(tag) is verdict
 
 
 def test_c9_accepts_an_unusual_prefix(make_package):

@@ -100,7 +100,8 @@ Each is implemented here from the specification text instead.
 
 ## Rules where this project is more lenient, deliberately
 
-Each of these was stricter until the reference's own fixtures showed the cost.
+Each of these was stricter until the reference's own fixtures showed the cost —
+or, for C9, until the grammar the obligation cites was read.
 
 | rule | earlier behaviour | now | reason |
 |---|---|---|---|
@@ -109,6 +110,24 @@ Each of these was stricter until the reference's own fixtures showed the cost.
 | M19.4 | the identity domain had to be typed here | undescribed domains left to L1 | a reference out of the package is not a typing error |
 | M15.7b/d, M15.8/9/10 | required a typed `vcard:Organization` | requires a stated `vcard:organization-name` | the reference's handover fixtures type the node `vcard:organization` — the property, lower case; the substance is that the party can be identified |
 | "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | absoluteness is M5's question, and M5 is RECOMMENDED. Conflating them turned one recommendation into sixty MUSTs |
+| C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
+
+**C9, in more detail.** Section 5.1.1 asks for "RDF 1.1 XML syntax (see
+[rdf-syntax-grammar])", and the rule enforced the shape most files have
+rather than the grammar: a file whose one top-level element was
+`<iirds:Package rdf:about="…">` — three statements to every RDF parser — was
+reported as not an RDF document, with a remedy claiming no parser would read
+a statement from it. The criterion is the grammar's now: the document element
+is `rdf:RDF`, or it is a node element, which §7.2.5 defines as any absolute
+IRI outside the eleven reserved names (the core syntax terms, `rdf:li`, the
+old terms). Two consequences follow and are pinned by tests. An element with
+no namespace, `<manual>`, is still C9: its name is not an IRI, so it is not a
+node element, however happily rdflib turns it into a class. And an XHTML file
+saved as metadata.rdf is *not* C9: to the grammar it is one typed node of the
+XHTML vocabulary — RDF/XML that is not about iiRDS — and the graph rules say
+what is missing (no package) while lint says whose the classes are (nobody's).
+Only the document element is judged; a body that strays from the grammar is
+the parser's to notice, and rdflib is permissive there.
 
 ## Differences that are not anybody's bug
 

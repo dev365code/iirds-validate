@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ElementTree
 import zipfile
 from collections import Counter
 
+from ..context import is_rdfxml_document_element
 from ..model import (
     META_DIR,
     METADATA_JSONLD,
@@ -43,7 +44,6 @@ MAX_NAME = 255
 CONTENT_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".gif", ".png", ".html", ".htm",
                     ".xhtml", ".css", ".iirds", ".js")
 CONTENT_LIST = "index.html"
-RDF_ROOT = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF"
 
 
 def _is_content_file(name: str) -> bool:
@@ -163,17 +163,25 @@ def c10_forbidden_chars(ctx):
        # The catalogue gives C8 and C9 identical wording, so without an
        # explicit title the two are indistinguishable in `iirds rules`. C8 is
        # presence; this is the file being RDF/XML at all.
-       title="metadata.rdf must be an RDF/XML document (root element rdf:RDF)",
-       fix="Make rdf:RDF the document's root element. The file is present and parses "
-           "as XML, but its root is something else, so no RDF parser will read a "
-           "single statement from it. If it was exported from another tool, export "
-           "as RDF/XML rather than as plain XML.")
+       title="metadata.rdf must be an RDF/XML document (rdf:RDF, or a single node element)",
+       fix="Start the document the way the RDF/XML grammar allows: an rdf:RDF element "
+           "holding the node elements, or -- when there is only one top-level node "
+           "element -- that element alone, with every namespace it uses declared on "
+           "it. The file is well-formed XML but its document element is neither, so "
+           "an RDF parser reads it as arbitrary classes and properties rather than as "
+           "iiRDS metadata. If it was exported from another tool, export as RDF/XML "
+           "rather than as plain XML.")
 def c9_metadata_is_rdf(ctx):
-    """C8 asks whether metadata.rdf is present; this asks whether it is RDF.
+    """C8 asks whether metadata.rdf is present; this asks whether it is RDF/XML.
 
-    Checked by namespace rather than by looking for the literal string
-    "<rdf:RDF", so a document that binds the RDF namespace to a different
-    prefix is not rejected for it.
+    Judged by the grammar the obligation cites, not by the shape most files
+    have: a document starts with rdf:RDF or with a single node element
+    (§7.2.1, §2.6), and a node element is named by an absolute IRI outside
+    the reserved names (§7.2.5). This rule used to demand rdf:RDF, and its
+    remedy said no parser would read a rootless document -- while rdflib
+    read one into exactly the graph its wrapped twin gives. Checked by
+    namespace rather than by the literal string "<rdf:RDF", so a document
+    that binds the RDF namespace to a different prefix is not rejected for it.
     """
     if not ctx.package.has(METADATA_RDF) or any(
             e.startswith(METADATA_RDF) for e in ctx.parse_errors):
@@ -182,9 +190,11 @@ def c9_metadata_is_rdf(ctx):
         root = ElementTree.fromstring(ctx.package.read(METADATA_RDF))
     except ElementTree.ParseError:
         return
-    if root.tag != RDF_ROOT:
-        yield Violation("metadata.rdf must be an RDF document",
-                        subject=METADATA_RDF, detail="root element is %s" % root.tag)
+    if not is_rdfxml_document_element(root.tag):
+        yield Violation("metadata.rdf is not an RDF/XML document",
+                        subject=METADATA_RDF,
+                        detail="document element is %s; RDF/XML starts with rdf:RDF or with "
+                               "a single node element" % root.tag)
 
 
 @rule("C11.1",

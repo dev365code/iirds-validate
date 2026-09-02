@@ -145,28 +145,68 @@ def test_our_own_titles_name_terms_that_exist(rule):
             % (rule.id, prefix, local))
 
 
-def test_no_remedy_reaches_a_reader_without_passing_this_gate():
-    """A tripwire, because the gate above reads only the rule's own advice.
+def _per_instance_remedies():
+    """Every remedy a rule attaches to a single finding, with where it came from.
 
     `Finding.fix` is `violation.fix or rule.fix`, so a rule may override its
-    standing remedy per finding -- and that override is a string this gate
-    never sees. No rule does it today. The day one does, this fails and says
-    where to widen, rather than letting the first per-instance remedy be the
-    one nobody checks.
+    standing remedy per finding -- and that override is a string the gate
+    above never sees. The first rule to do it (L13, one remedy per position
+    the name stood in) keeps its texts in a module-level dict of literals;
+    this reads that dict through the module, so the texts pass the same
+    check as every standing remedy. A form this cannot read is a failure,
+    not a silence: the first per-instance remedy nobody checks is the one
+    that names a term that does not exist.
     """
     import ast
+    import importlib
 
-    overrides = []
+    found, unreadable = [], []
     for path in sorted((ROOT / "src" / "iirds_validate" / "rules").glob("*.py")):
-        for node in ast.walk(ast.parse(path.read_text("utf-8"))):
-            if (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Violation"
-                    and any(kw.arg == "fix" for kw in node.keywords)):
-                overrides.append("%s:%d" % (path.name, node.lineno))
+        tree = ast.parse(path.read_text("utf-8"))
+        module = None
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Violation"):
+                continue
+            for keyword in node.keywords:
+                if keyword.arg != "fix":
+                    continue
+                value = keyword.value
+                where = "%s:%d" % (path.name, node.lineno)
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    found.append((where, value.value))
+                    continue
+                root = value
+                while isinstance(root, ast.Subscript):
+                    root = root.value
+                if isinstance(root, ast.Name):
+                    module = module or importlib.import_module("iirds_validate.rules." + path.stem)
+                    texts = getattr(module, root.id, None)
+                    if isinstance(texts, dict) and all(isinstance(v, str) for v in texts.values()):
+                        found.extend(("%s[%s]" % (where, key), text) for key, text in sorted(texts.items()))
+                        continue
+                    if isinstance(texts, str):
+                        found.append((where, texts))
+                        continue
+                unreadable.append(where)
+    return found, unreadable
 
-    assert not overrides, (
-        "these findings carry their own remedy, which test_the_remedy_names_terms_"
-        "that_exist does not read: %s. Widen it to Violation(fix=...) literals, or "
-        "the first per-instance remedy is the first one nobody checks." % overrides)
+
+PER_INSTANCE, UNREADABLE = _per_instance_remedies()
+
+
+def test_every_per_instance_remedy_is_one_this_gate_can_read():
+    assert not UNREADABLE, (
+        "these findings carry a remedy in a form the gate cannot read: %s. Keep "
+        "per-instance remedies as literals or in a module-level dict of literals, "
+        "or the first per-instance remedy is the first one nobody checks." % UNREADABLE)
+
+
+@pytest.mark.parametrize("where,text", PER_INSTANCE, ids=[w for w, _ in PER_INSTANCE])
+def test_a_per_instance_remedy_names_terms_that_exist(where, text):
+    for prefix, local, iri in _named_terms(text):
+        assert load().is_defined(iri), (
+            "%s: the remedy tells the reader to use %s:%s, which the bundled "
+            "ontology does not define" % (where, prefix, local))
 
 
 def test_the_term_reader_actually_reads_terms():

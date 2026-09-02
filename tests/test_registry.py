@@ -157,3 +157,20 @@ def test_the_registry_knows_every_rule_without_the_runner_being_imported_first()
              "print(len(all_rules()), len(implemented_ids()))")
     seen = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True)
     assert seen.stdout.split() == [str(len(all_rules()))] * 2, seen.stdout
+
+
+def test_the_readme_lists_every_interoperability_rule_in_its_table():
+    """The prose said "Twelve interoperability rules" and the table stopped
+    at L12 while the thirteenth had landed and every count beside it had
+    moved. A table nobody derives is a table that lags; this derives it."""
+    import pathlib
+    import re
+
+    readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
+    lint_ids = [r.id for r in all_rules() if r.kind == "lint"]
+    for rule_id in lint_ids:
+        assert re.search(r"^\| %s \| " % re.escape(rule_id), readme, re.M), \
+            "README.md's interoperability table has no row for %s" % rule_id
+    words = {12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen", 16: "Sixteen"}
+    assert "%s\ninterop" % words[len(lint_ids)] in readme or "%s interop" % words[len(lint_ids)] in readme, \
+        "README.md does not say '%s interoperability rules'" % words[len(lint_ids)]

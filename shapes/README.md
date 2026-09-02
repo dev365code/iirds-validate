@@ -156,10 +156,11 @@ each listed with its reason in `MANIFEST.json`:
 - **7 deferred** — expressible in principle, not yet written: the six
   lint rules whose exemption lists are long (L1, L3, L5, L6, L8 — and L4,
   which is itself MUST-level: directory-structure cycle detection), and
-  L13, which asks which predicates a node uses: every SHACL path names its
-  predicate, so the position that rule cares about most cannot be reached
-  in Core. A `sh:sparql` constraint expresses it and would carry the
-  edition's whole term list; that is a shape worth writing on its own. The
+  L13, which compares every name in the iiRDS namespaces with the
+  vocabulary: `sh:closed` sees a node's predicates, but Core cannot keep
+  the ones of a namespace and check them against a list it does not carry.
+  A `sh:sparql` constraint expresses it with the edition's term list as a
+  VALUES block; that is a shape worth writing on its own. The
   five iiRDS/H MUSTs deferred at first release (M15.7b, M15.7d,
   M15.8–M15.10) have since landed as SPARQL shapes, softenings included:
   a party whose vCard this package does not describe passes those five,

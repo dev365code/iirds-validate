@@ -408,12 +408,12 @@ DEFERRED_V11 = {
     "L5": "proprietary-class linkage exemption nest",
     "L6": "structural-node and label exemption nest",
     "L8": "external-vocabulary filters",
-    # Core has no path that yields the predicates a node uses -- every path
-    # names its predicate -- so the position this rule cares about most
-    # cannot be reached. A sh:sparql constraint expresses all three
-    # positions and would carry the edition's whole term list as a VALUES
+    # sh:closed sees every predicate a node uses, but Core has no way to
+    # keep the ones in a namespace and compare them with the vocabulary
+    # short of listing the vocabulary in the shape. A sh:sparql constraint
+    # expresses all three positions with the edition's term list as a VALUES
     # block; that is a shape worth emitting and not one to bolt on here.
-    "L13": "needs the predicates a node uses, which no Core path yields",
+    "L13": "needs a namespace filter and the term list; Core has neither without embedding the vocabulary",
 }
 
 #: No RDF graph to look at, or two graphs, or graph×ZIP joins. Verbatim family

@@ -211,7 +211,7 @@ with evidence, in [docs/divergences.md](docs/divergences.md).
 
 Four things here are different.
 
-**It asks whether the package will work, not only whether it conforms.** Twelve
+**It asks whether the package will work, not only whether it conforms.** Thirteen
 interoperability rules, most with no counterpart in the specification, because
 a conformant package can still be undeliverable (L2 and L9 do implement
 sentences the standard states, and run under `check` accordingly):
@@ -230,6 +230,7 @@ sentences the standard states, and run under `check` accordingly):
 | L10 | an abstract iiRDS class used to type an instance directly |
 | L11 | content named `.xhtml` but declared as another media type, so nothing checked it |
 | L12 | two entries differing only in case, so one is lost when the package is unpacked |
+| L13 | a name in the iiRDS namespace that the standard does not define, with the term that was probably meant |
 
 **It checks the content.** Appendix B states 25 absolute requirements about
 iiRDS XHTML5 — no scripting, no forms, no `<svg>`, a fixed element list, a

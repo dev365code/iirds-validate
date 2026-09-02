@@ -594,8 +594,8 @@ the namespace of the defining party*. A name in one of the four iiRDS
 namespaces that no iiRDS vocabulary defines is therefore one of two things: a
 misspelling of a term the standard has, or a proprietary term registered to
 the wrong party's namespace. Either way a consumer that looks it up finds no
-class, no property and no label. Until this rule nothing asked the bundled
-vocabulary whether an iiRDS name exists — `is_iirds_term` tests the prefix,
+class, no property and no label. Until this rule no rule asked the bundled
+vocabulary whether an arbitrary iiRDS name exists — `is_iirds_term` tests the prefix,
 which is what most rules want, and `is_defined` was applied to iiRDS IRIs
 nowhere — so `iirds:relates-to-componnet` passed every rule, in the standard's
 own namespace, where a reader has the least reason to doubt it.
@@ -605,7 +605,7 @@ over the reference corpus, the rule names exactly two terms. One is the
 corpus author's own negative fixture, `iirds:ThisIsNotAStandardizedDocumentType`,
 which is the rule working. The other is
 `iirds:EnvironmentalProtectionInstruction`, named in the core namespace by
-fifty-one files — nineteen of them fixtures the author calls passes — where
+fifty-one files — seven of them fixtures the catalogue marks as passing — where
 the standard defines that term under `iirds/domain/machinery#`. The IRIs differ,
 so the core spelling resolves to nothing in the published vocabularies; but
 this is not a proprietary term in the wrong namespace, it is the standard's
@@ -620,12 +620,19 @@ becomes a conformance rule covering that condition of section 7.3.
 **What the rule does not do.** It does not judge names outside the four
 iiRDS namespaces (L5 asks whether those are linked in), and it does not
 check a term against the edition the package declares — every edition's
-vocabulary is a strict superset of the one before, 281 terms in 1.0 to 327 in
+vocabulary is never smaller than the one before, 281 terms in 1.0 to 327 in
 1.3 with nothing removed, so a name defined in any edition is defined in 1.3;
 a term used ahead of the edition that introduced it is a separate reading.
 
 **Measured.** The two sample packages the iiRDS Consortium publishes name
-nothing this rule reports.
+nothing this rule reports. The 1.3 specification's own Example 53 does:
+`iirds:vdi2770` for the classification type the vocabulary spells `VDI2770`,
+which the rule reports with that correction.
+
+**What it cannot see.** A datatype IRI (`rdf:datatype="…iirds#Revison"`) is
+inside a literal, not a term of the graph; and a JSON-LD key that no context
+maps is dropped by the processor before any graph exists. Both are the
+parser's, and both are below this rule.
 
 ## Where severity currently outruns the reading
 

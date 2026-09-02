@@ -178,7 +178,7 @@
   "L5": "proprietary-class linkage exemption nest",
   "L6": "structural-node and label exemption nest",
   "L8": "external-vocabulary filters",
-  "L13": "needs the predicates a node uses, which no Core path yields"
+  "L13": "needs a namespace filter and the term list; Core has neither without embedding the vocabulary"
  },
  "not_expressible": {
   "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",

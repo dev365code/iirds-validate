@@ -128,7 +128,9 @@ gone wrong.
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Two Appendix B rules rest on readings the specification does not
-   settle**, also recorded there. They are the questions to put to tekom. A
+   settle**, also recorded there, and one name the vocabulary does not define
+   that the reference corpus uses in fifty-one files (L13). They are the
+   questions to put to tekom. A
    third used to sit beside them on a false premise -- that iiRDS never
    requires a safety alert symbol in terms. It does, in 1.0 and 1.3 alike, and
    B10 reports its absence; what remains a reading of ours there is the

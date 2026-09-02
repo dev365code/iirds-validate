@@ -36,8 +36,8 @@ them.
 
 - **A name in the iiRDS namespace that the standard does not define is
   reported (L13).** The namespace was trusted and the name never was:
-  `is_iirds_term` tests a prefix, and nothing asked the bundled vocabulary
-  whether the name behind it exists. So `iirds:relates-to-componnet`, a class
+  `is_iirds_term` tests a prefix, and no rule asked the bundled vocabulary
+  whether the name behind an arbitrary iiRDS IRI exists. So `iirds:relates-to-componnet`, a class
   spelled `iirds:Componentt` beside a real one, and a document type the
   standard does not have all passed every rule, in the standard's own
   namespace, where a consumer has the least reason to doubt them -- and
@@ -45,12 +45,16 @@ them.
   finding names the term once however often it occurs and, where a defined
   term is close enough, says which one was probably meant, as the whole IRI:
   the commonest case is not a misspelling but a term the standard defines in
-  one of its domain vocabularies, named in core.
+  one of its domain vocabularies, named in core. The suggestion is measured:
+  every defined term, mutated the ways names get mutated, is answered with
+  the original or with nothing, never with another term -- a test holds
+  that -- and the remedy fits the position the name stood in.
 
   A warning, not an error, on purpose. Fifty-one files of the reference
-  corpus and nineteen of the fixtures its author calls passes name
+  corpus -- seven of them fixtures the catalogue marks as passing -- name
   `iirds:EnvironmentalProtectionInstruction` in core, where the standard
-  defines it under machinery. Whether section 7 forbids that is a question
+  defines it under machinery, and the 1.3 specification's own Example 53
+  writes `iirds:vdi2770` for `VDI2770`. Whether section 7 forbids that is a question
   for the standard's editors, recorded in `docs/divergences.md`; the two
   sample packages the iiRDS Consortium publishes name nothing this rule
   reports.

@@ -13,6 +13,7 @@ going to work.
 from __future__ import annotations
 
 import difflib
+import re
 
 from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
@@ -480,65 +481,200 @@ def l12_case_only_collisions(ctx):
 # A name in the iiRDS namespace that the vocabulary does not define
 # ---------------------------------------------------------------------------
 
-#: How alike two names have to be before one is offered as the other's
-#: correction. `difflib`'s ratio, not an edit count, so the threshold means
-#: the same thing for a short name and a long one. High on purpose: a wrong
-#: suggestion costs more than no suggestion, because a reader acts on it.
+#: How alike two normalised names have to be before one is offered as the
+#: other's correction -- `difflib`'s ratio, so the threshold means the same
+#: for a short name and a long one. Below it, a name of six letters or fewer
+#: is still answered when exactly one defined name is a single slip away
+#: (a letter dropped, added, changed, or two swapped): a ratio built for long
+#: names calls a five-letter word with one slip a stranger.
 NEAREST_ENOUGH = 0.82
+SHORT_NAME = 6
+
+#: What may stand in each position of a triple, by the vocabulary's own
+#: typing. A predicate is answered only with a property, the object of
+#: rdf:type only with a class, and any other object or a subject with an
+#: instance or a class -- the nearest name by letters to `hasDocumentType`
+#: is the class `DocumentType`, which a reader cannot put in a predicate.
+KINDS_BY_POSITION = {"predicate": ("property",), "class": ("class",),
+                     "value": ("instance", "class"), "subject": ("instance", "class")}
+POSITION_ORDER = ("predicate", "class", "value", "subject")
+
+#: The host the four iiRDS namespaces share, so that a suggestion in a
+#: sibling vocabulary can be written as "X in iirds/domain/machinery#"
+#: rather than as a whole IRI that the grouped report would have to cut.
+IIRDS_HOST = "http://iirds.tekom.de/"
+
+REMEDY_BY_POSITION = {
+    "predicate": "Correct the spelling, or declare the property in your own namespace and "
+                 "link it to the iiRDS property it specialises with rdfs:subPropertyOf "
+                 "(section 7.3).",
+    "class": "Correct the spelling, or declare the class in your own namespace and link it "
+             "to the iiRDS class it specialises with rdfs:subClassOf (section 7.3).",
+    "value": "Correct the spelling, or mint the instance in your own namespace and give it "
+             "an rdf:type of the iiRDS class it belongs to (section 7.3).",
+}
+REMEDY_BY_POSITION["subject"] = REMEDY_BY_POSITION["value"]
 
 
-def _nearest(iri, ontology):
+def _normalised(name: str) -> str:
+    """Case and separators aside: `hasDocumentType`, `has-document-type` and
+    `HAS_DOCUMENT_TYPE` are one name to a person, and to this."""
+    return re.sub(r"[^a-z0-9]", "", name.casefold())
+
+
+def _one_slip_apart(a: str, b: str) -> bool:
+    """Optimal-string-alignment distance of exactly one: a letter dropped,
+    added or changed, or two neighbours swapped."""
+    if abs(len(a) - len(b)) > 1:
+        return False
+    rows = [list(range(len(b) + 1))]
+    for i, ca in enumerate(a, 1):
+        row = [i]
+        for j, cb in enumerate(b, 1):
+            cost = 0 if ca == cb else 1
+            best = min(rows[i - 1][j] + 1, row[j - 1] + 1, rows[i - 1][j - 1] + cost)
+            if i > 1 and j > 1 and ca == b[j - 2] and a[i - 2] == cb:
+                best = min(best, rows[i - 2][j - 2] + 1)
+            row.append(best)
+        rows.append(row)
+    return rows[-1][-1] == 1
+
+
+def _vocabulary(ontology):
+    """The defined terms indexed for suggestion, once per vocabulary.
+
+    Kept on the ontology object because it is the thing that does not change
+    between packages; building it per finding cost half a millisecond, which
+    is nothing for one typo and a second for a package with two thousand.
+    """
+    cache = ontology.__dict__.get("_suggestion_index")
+    if cache is not None:
+        return cache
+    classes = ontology.classes()
+    properties = ontology.properties()
+    index = {}
+    for position, kinds in KINDS_BY_POSITION.items():
+        by_norm = {}
+        for term in ontology.defined_terms():
+            kind = "class" if term in classes else "property" if term in properties else "instance"
+            if kind in kinds:
+                by_norm.setdefault(_normalised(_local(term)), []).append(term)
+        index[position] = by_norm
+    ontology.__dict__["_suggestion_index"] = index
+    return index
+
+
+def _local(iri) -> str:
+    return str(iri).rsplit("#", 1)[-1]
+
+
+def _namespace(iri) -> str:
+    return str(iri).rsplit("#", 1)[0] + "#"
+
+
+def _pick(candidates, namespace):
+    """Of several terms that spell the same, the one in the namespace the
+    name was written in; `Operation` exists in core and in handover."""
+    same = [c for c in candidates if _namespace(c) == namespace]
+    return sorted(same or candidates, key=str)[0]
+
+
+def _suggest(term, position, ontology):
     """The defined term this one was most likely meant to be, or None.
 
-    Compared on the local name and answered as the whole IRI, because the
-    commonest case is not a misspelling at all: the standard defines a term
-    in one of its domain vocabularies and a package names it in core. There
-    the local names are identical and only the namespace is wrong, so a
-    suggestion that gave back the name alone would read as nonsense.
+    Compared on normalised local names, within the kinds the position
+    allows. Exact after normalisation wins outright (a case slip, a
+    separator written the other way, a term of a sibling vocabulary named
+    in core); then a clearly nearest name by ratio; then, for a short name,
+    the single defined name one slip away. Two candidates as good as each
+    other are no answer: a wrong suggestion costs more than none, because a
+    reader acts on it.
     """
-    def local(term):
-        return str(term).rsplit("#", 1)[-1]
-
-    wanted = local(iri)
-    by_name = {}
-    for defined in ontology.defined_terms():
-        by_name.setdefault(local(defined), []).append(defined)
-    close = difflib.get_close_matches(wanted, by_name, n=1, cutoff=NEAREST_ENOUGH)
-    if not close:
+    by_norm = _vocabulary(ontology)[position]
+    wanted = _normalised(_local(term))
+    if not wanted:
         return None
-    return sorted(by_name[close[0]], key=str)[0]
+    namespace = _namespace(term)
+    if wanted in by_norm:
+        return _pick(by_norm[wanted], namespace)
+    close = difflib.get_close_matches(wanted, by_norm, n=2, cutoff=NEAREST_ENOUGH)
+    if close:
+        if len(close) == 1 or (difflib.SequenceMatcher(None, wanted, close[0]).ratio()
+                               > difflib.SequenceMatcher(None, wanted, close[1]).ratio()):
+            return _pick(by_norm[close[0]], namespace)
+        return None
+    if len(wanted) <= SHORT_NAME:
+        near = [name for name in by_norm if _one_slip_apart(wanted, name)]
+        if len(near) == 1:
+            return _pick(by_norm[near[0]], namespace)
+    return None
+
+
+def _spelled(term, meant) -> str:
+    """The suggestion as a reader would write it back."""
+    name = _local(meant)
+    if _namespace(meant) == _namespace(term):
+        return name
+    return "%s in %s" % (name, _namespace(meant)[len(IIRDS_HOST):]
+                         if str(meant).startswith(IIRDS_HOST) else _namespace(meant))
+
+
+def _positions_of(graph, terms):
+    """Where each term stands, by the fixed preference in POSITION_ORDER."""
+    seen = {}
+    for s, p, o in graph:
+        for term, position in ((p, "predicate"), (o, "class" if p == RDF.type else "value"),
+                               (s, "subject")):
+            if term in terms:
+                current = seen.get(term)
+                if current is None or POSITION_ORDER.index(position) < POSITION_ORDER.index(current):
+                    seen[term] = position
+    return seen
 
 
 @_lint("L13", "a name in the iiRDS namespace that the standard does not define",
        fix="Correct the spelling, or move the term into a namespace of your own and "
-           "link it into iiRDS with rdfs:subClassOf or rdfs:subPropertyOf. A name in "
-           "the iiRDS namespace that the vocabulary does not define resolves to "
-           "nothing: a consumer looking it up finds no class, no property and no "
-           "label, and cannot tell a typo from a term it has not heard of.")
+           "link it into iiRDS: a property with rdfs:subPropertyOf, a class with "
+           "rdfs:subClassOf, an instance with an rdf:type of an iiRDS class (section "
+           "7.3). A name in the iiRDS namespace that the vocabulary does not define "
+           "resolves to nothing for a consumer that trusts the namespace and looks "
+           "it up there.")
 def l13_undefined_iirds_terms(ctx):
     """The namespace was trusted and the name never was.
 
     `is_iirds_term` tests a prefix, which is what most rules want: it answers
     "is this the standard's business". Whether the standard actually has the
-    name is a different question, and until this rule nothing asked it of an
-    iiRDS IRI — so a package could misspell a predicate, a class or a value
-    and pass every rule, in the standard's own namespace, where a consumer
-    has the least reason to doubt it.
+    name is a different question, and no rule asked it of an arbitrary iiRDS
+    IRI -- so a package could misspell a predicate, a class or a value and
+    pass every rule, in the standard's own namespace, where a consumer has
+    the least reason to doubt it.
 
-    Reported once per distinct name however often it occurs, and in a fixed
-    order, because a report that lists the same defect thirty times in
-    whatever order the graph came out in is a report nobody reads.
+    Reported once per distinct name however often it occurs, in a fixed
+    order, with the term that was probably meant and a remedy that fits the
+    position the name was used in. The vocabulary IRI itself (an empty local
+    name) is not a name and is not reported.
     """
-    seen = set()
+    undefined = set()
     for triple in ctx.graph:
         for term in triple:
-            if not isinstance(term, URIRef) or term in seen:
-                continue
-            if not ctx.ontology.is_iirds_term(term) or ctx.ontology.is_defined(term):
-                continue
-            seen.add(term)
-    for term in sorted(seen, key=str):
-        meant = _nearest(term, ctx.ontology)
+            if (isinstance(term, URIRef) and term not in undefined
+                    and ctx.ontology.is_iirds_term(term) and not ctx.ontology.is_defined(term)
+                    and _local(term)):
+                undefined.add(term)
+    positions = _positions_of(ctx.graph, undefined)
+    for term in sorted(undefined, key=str):
+        position = positions.get(term, "value")
+        meant = _suggest(term, position, ctx.ontology)
+        parts = []
+        if meant is not None:
+            spelled = _spelled(term, meant)
+            if _local(term) != _local(term).strip() and _local(term).strip() == _local(meant):
+                parts.append("has trailing or leading whitespace; did you mean %s?" % spelled)
+            else:
+                parts.append("did you mean %s?" % spelled)
+        if (term, None, None) in ctx.graph:
+            parts.append("described in this package, not in the standard")
         yield Violation("name is in the iiRDS namespace but the vocabulary does not define it",
                         subject=ctx.ref(term),
-                        detail=("did you mean %s?" % meant) if meant else None)
+                        detail="; ".join(parts) if parts else None,
+                        fix=REMEDY_BY_POSITION[position])

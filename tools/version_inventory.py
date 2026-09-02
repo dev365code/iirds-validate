@@ -42,7 +42,7 @@ from iirds_validate.ontology import load  # noqa: E402
 from iirds_validate.registry import all_rules  # noqa: E402
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES  # noqa: E402
 
-INVENTORY = ROOT / "docs" / "version-terms.json"
+INVENTORY = ROOT / "src" / "iirds_validate" / "data" / "version-terms.json"
 NAMESPACE = "http://iirds.tekom.de/"
 
 #: The Consortium's own downloads, one URL set per published version. This

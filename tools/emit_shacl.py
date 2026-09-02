@@ -419,6 +419,7 @@ DEFERRED_V11 = {
     # distance, which neither Core nor SPARQL has. Deferred with the host half
     # rather than emitted as half a rule.
     "L14": "string distance to a namespace; the on-host half alone is a SPARQL filter",
+    "L15": "needs the per-edition term inventory beside the declared version; Core cannot embed it",
 }
 
 #: No RDF graph to look at, or two graphs, or graph×ZIP joins. Verbatim family

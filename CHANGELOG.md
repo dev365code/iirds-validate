@@ -12,9 +12,9 @@ distribution: `pip install iirds` installs both. The command is `iirds`;
 no rule, no rule identifier and not the `source` token a report carries;
 three remedies that told a reader to run `iirdsv pack`, or to report a rule
 that crashed, now spell the command's name and the issue tracker's address.
-One rule is new, L13, and it is a warning: a package that passed 0.4.2
-still exits 0 unless `-W` asks warnings to fail the run. One rule reports
-less: C9 no longer fails an RDF/XML document written without the `rdf:RDF`
+Three rules are new, L13, L14 and L15, and all three are warnings: a
+package that passed 0.4.2 still exits 0 unless `-W` asks warnings to fail
+the run. One rule reports less: C9 no longer fails an RDF/XML document written without the `rdf:RDF`
 element, a form the grammar permits (see *Fixed*).
 The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
 PyPI as compatibility packages that depend on `iirds` at no less than their
@@ -68,6 +68,20 @@ them.
   on a handover package "1 for packages that are not iiRDS/H"; `-v` lists
   them by rule, and `--format json` carries them under `notApplicable`.
   Read off the rules, not typed, and worded in the standard's profile names.
+
+- **A name from a later edition of iiRDS than the package declares is
+  reported (L15).** Only the newest ontology ships, so every package is
+  judged against the 1.3 vocabulary whatever it declares: a package
+  declaring 1.0 that uses `iirds:is-based-on` (1.3) passed every rule,
+  since the standard does define the name -- and a consumer reading the
+  package as 1.0 has no definition for it. The finding names the edition
+  the name arrived in, once per name; forty-six names arrived after 1.0,
+  fifteen in 1.1, eleven in 1.2, twenty in 1.3, and every one is pinned
+  as an anachronism against a 1.0 declaration. The per-edition inventory,
+  read off the Consortium's published schemas by `tools/version_inventory.py`,
+  moves into the package for this, from `docs/`; no edition has ever
+  dropped a name, which is what makes "defined from 1.2 on" one edition
+  rather than a list. A name no edition has stays L13's.
 
 - **A name in the iiRDS namespace that the standard does not define is
   reported (L13).** The namespace was trusted and the name never was:

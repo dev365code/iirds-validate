@@ -9,8 +9,10 @@ copied in and cannot accept `pip install`.
 """
 from __future__ import annotations
 
+import functools
+import json
 from importlib import resources
-from typing import List
+from typing import Dict, FrozenSet, List
 
 
 def _data():
@@ -66,3 +68,16 @@ def listdir(*parts: str) -> List[str]:
         return sorted(entry.name for entry in target.iterdir())
     except (FileNotFoundError, NotADirectoryError):
         return []
+
+
+@functools.lru_cache(maxsize=1)
+def version_terms() -> Dict[str, FrozenSet[str]]:
+    """Which term IRIs each published edition of iiRDS defines.
+
+    Written by `tools/version_inventory.py --refresh` off the Consortium's
+    published schema files (1.3 from the bundled ontologies), and checked
+    offline by the same tool. Only the newest ontology ships, so this list
+    is the only thing that knows a 1.3 name is not a 1.0 name.
+    """
+    data = json.loads(read_text("version-terms.json"))
+    return {edition: frozenset(terms) for edition, terms in data["terms"].items()}

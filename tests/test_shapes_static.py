@@ -51,7 +51,7 @@ def test_the_census_numbers_hold():
     assert counts["core_emitted"] == 121
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 21
-    assert counts["deferred_v1.1"] == 8
+    assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 43
     assert counts["noop"] == 1
 
@@ -222,8 +222,8 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     # The 53-rule remainder is broken out by category, and the five deferred
     # iiRDS/H MUSTs are named -- a reader under H must know to keep the
     # Python validator in the loop.
-    assert "54 of the %d" % rules in readme
-    assert len(MANIFEST["deferred_v1.1"]) == 8
+    assert "55 of the %d" % rules in readme
+    assert len(MANIFEST["deferred_v1.1"]) == 9
     # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
     # that once demanded they be named as missing now demands the opposite.
     for rid in ("M15.7b", "M15.7d", "M15.8", "M15.9", "M15.10"):

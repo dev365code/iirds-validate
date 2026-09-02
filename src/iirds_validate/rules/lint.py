@@ -22,6 +22,7 @@ from .. import terms as T
 from ..model import DCTERMS, IIRDS_NAMESPACES, OWL, VCARD, VERSIONS, Violation
 from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
+from ..resources import version_terms
 
 #: Interoperability rules are not version-specific. Take the list from model
 #: rather than restating it: a private copy means that the day 1.4 is added,
@@ -785,3 +786,40 @@ def l14_near_miss_namespace(ctx):
                         subject=namespace,
                         detail="%d name%s under it, %d of them iiRDS names; did you mean %s?"
                                % (len(names), "" if len(names) == 1 else "s", known, suggestion))
+
+
+# ---------------------------------------------------------------------------
+# A name the declared edition of iiRDS does not have yet
+# ---------------------------------------------------------------------------
+
+@_lint("L15", "a name the declared edition of iiRDS does not have yet",
+       fix="Declare the edition whose vocabulary the metadata uses in iirds:iiRDSVersion, "
+           "or use the names that edition has. A consumer that reads the package as the "
+           "declared edition has no definition for the name and can only ignore what it "
+           "says; every later edition keeps every earlier name, so declaring the newer "
+           "edition loses nothing.")
+def l15_name_from_a_later_edition(ctx):
+    """Only the newest ontology ships, so L13 judges every package against
+    the 1.3 vocabulary: a package declaring 1.0 that uses `is-based-on`
+    (1.3) is using a name the standard defines. The per-edition inventory
+    says when the name arrived, and the edition named here is the first
+    that has it -- a single edition, because no edition has ever dropped a
+    name (the inventory test holds that). Reported once per name; a name no
+    edition has is L13's, not this rule's.
+    """
+    editions = version_terms()
+    declared = ctx.declared_version
+    if declared not in editions:
+        return
+    present = editions[declared]
+    later = set()
+    for triple in ctx.graph:
+        for term in triple:
+            if (isinstance(term, URIRef) and term not in later and str(term) not in present
+                    and ctx.ontology.is_iirds_term(term) and ctx.ontology.is_defined(term)):
+                later.add(term)
+    for term in sorted(later, key=str):
+        arrived = next(edition for edition in VERSIONS if str(term) in editions.get(edition, ()))
+        yield Violation("%s is not in iiRDS %s" % (_spelled(term, term), declared), subject=term,
+                        detail="defined from iiRDS %s on; this package declares %s"
+                               % (arrived, declared))

@@ -20,6 +20,7 @@ import pytest
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 from iirds_validate.registry import all_rules
+from iirds_validate.resources import read_text, version_terms
 
 ROOT = Path(__file__).resolve().parents[1]
 ALL_VERSIONS = ("1.0", "1.0.1", "1.1", "1.2", "1.3")
@@ -142,12 +143,9 @@ def test_no_rule_claims_a_version_whose_vocabulary_it_predates():
     Five rules were in that state, all naming the external classification
     vocabulary that arrives in 1.2 while the catalogue dated them from 1.0.
     """
-    import json
-
     from version_inventory import terms_named_by
 
-    data = json.loads((ROOT / "docs" / "version-terms.json").read_text("utf-8"))
-    inventory = {k: set(v) for k, v in data["terms"].items()}
+    inventory = version_terms()
 
     problems = []
     for rule in all_rules():
@@ -168,6 +166,6 @@ def test_every_published_edition_has_an_inventory():
     edition ever appears faster than its schemas do."""
     import json
 
-    data = json.loads((ROOT / "docs" / "version-terms.json").read_text("utf-8"))
+    data = json.loads(read_text("version-terms.json"))
     assert data["_unavailable"] == []
     assert set(data["terms"]) == {"1.0", "1.0.1", "1.1", "1.2", "1.3"}

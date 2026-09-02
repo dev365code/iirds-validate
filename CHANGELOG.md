@@ -141,6 +141,12 @@ them.
   is C9 as well, named as such, rather than a parse error in rdflib's
   words.
 
+- **Links on the PyPI page led nowhere.** The README is the PyPI page too,
+  and its nineteen links into the repository were relative -- `docs/scope.md`
+  -- which PyPI resolves against itself, to a 404. They are absolute now,
+  held so by a test, which also refuses a link to a file that is no longer
+  where the link says.
+
 - **Which package the version and the profile were read off.** That pair
   chooses the ontology and the applicable rules, so reading it from the wrong
   node changes what "valid" means for the whole run — before any rule runs.

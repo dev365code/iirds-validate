@@ -28,7 +28,9 @@ OLD_DISTRIBUTION_ALLOWED = {
     ".github/workflows/release.yml": (9, "the compatibility package and the alias console script"),
     "CHANGELOG.md": (None, "history"),
     "NOTICE": (1, "the name earlier releases were published under"),
-    "README.md": (7, "the badge address, the alias sentence, the upgrade note, the `source` token"),
+    "README.md": (26, "the badge address, the alias sentence, the upgrade note, the `source` token, "
+                       "and nineteen links into the repository's tree, absolute so that PyPI can "
+                       "follow them, under the repository's address until it is renamed"),
     "docs/divergences.md": (2, "an issue's address"),
     "docs/library-changelog.md": (None, "history"),
     "pyproject.toml": (5, "the alias console script, and the repository's address"),

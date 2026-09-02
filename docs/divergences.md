@@ -586,6 +586,47 @@ The second half is the part that is easy to miss: `rdf:langString` and
 `xsd:string` are different datatypes, so `sh:uniqueLang` alone leaves an
 untagged literal uncapped.
 
+## L13 — a name in the iiRDS namespace the standard does not define (open, warning)
+
+Section 7.3 lists the conditions a proprietary extension MUST fulfil, and the
+first is that proprietary classes, instances and properties *are registered to
+the namespace of the defining party*. A name in one of the four iiRDS
+namespaces that no iiRDS vocabulary defines is therefore one of two things: a
+misspelling of a term the standard has, or a proprietary term registered to
+the wrong party's namespace. Either way a consumer that looks it up finds no
+class, no property and no label. Until this rule nothing asked the bundled
+vocabulary whether an iiRDS name exists — `is_iirds_term` tests the prefix,
+which is what most rules want, and `is_defined` was applied to iiRDS IRIs
+nowhere — so `iirds:relates-to-componnet` passed every rule, in the standard's
+own namespace, where a reader has the least reason to doubt it.
+
+**Why it is a warning and not the error the sentence would support.** Run
+over the reference corpus, the rule names exactly two terms. One is the
+corpus author's own negative fixture, `iirds:ThisIsNotAStandardizedDocumentType`,
+which is the rule working. The other is
+`iirds:EnvironmentalProtectionInstruction`, named in the core namespace by
+fifty-one files — nineteen of them fixtures the author calls passes — where
+the standard defines that term under `iirds/domain/machinery#`. The IRIs differ,
+so the core spelling resolves to nothing in the published vocabularies; but
+this is not a proprietary term in the wrong namespace, it is the standard's
+own term under the standard's sibling namespace, and a widely used reference
+implementation treats it as fine. Whether the four iiRDS namespaces are one
+vocabulary for the purpose of resolving a name is the standard's editors'
+question, not this project's, and it is on the list of questions to put to
+them. Until it is answered the rule reports and does not fail a build; if the
+answer is that a name resolves only in the namespace that defines it, L13
+becomes a conformance rule covering that condition of section 7.3.
+
+**What the rule does not do.** It does not judge names outside the four
+iiRDS namespaces (L5 asks whether those are linked in), and it does not
+check a term against the edition the package declares — every edition's
+vocabulary is a strict superset of the one before, 281 terms in 1.0 to 327 in
+1.3 with nothing removed, so a name defined in any edition is defined in 1.3;
+a term used ahead of the edition that introduced it is a separate reading.
+
+**Measured.** The two sample packages the iiRDS Consortium publishes name
+nothing this rule reports.
+
 ## Where severity currently outruns the reading
 
 The README's rule is that anything resting on this project's own reading is a

@@ -12,6 +12,8 @@ distribution: `pip install iirds` installs both. The command is `iirds`;
 no rule, no rule identifier and not the `source` token a report carries;
 three remedies that told a reader to run `iirdsv pack`, or to report a rule
 that crashed, now spell the command's name and the issue tracker's address.
+One rule is new, L13, and it is a warning: a package that passed 0.4.2
+still exits 0 unless `-W` asks warnings to fail the run.
 The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
 PyPI as compatibility packages that depend on `iirds` at no less than their
 own release — a floor now, where the alias used to pin one exact version, so
@@ -29,6 +31,29 @@ records claim one path, so installing the new name first and uninstalling the
 old one afterwards deletes files the new one had just written. If that has
 already happened, `pip install --force-reinstall --no-deps iirds` restores
 them.
+
+### Added
+
+- **A name in the iiRDS namespace that the standard does not define is
+  reported (L13).** The namespace was trusted and the name never was:
+  `is_iirds_term` tests a prefix, and nothing asked the bundled vocabulary
+  whether the name behind it exists. So `iirds:relates-to-componnet`, a class
+  spelled `iirds:Componentt` beside a real one, and a document type the
+  standard does not have all passed every rule, in the standard's own
+  namespace, where a consumer has the least reason to doubt them -- and
+  found no class, no property and no label when it looked them up. The
+  finding names the term once however often it occurs and, where a defined
+  term is close enough, says which one was probably meant, as the whole IRI:
+  the commonest case is not a misspelling but a term the standard defines in
+  one of its domain vocabularies, named in core.
+
+  A warning, not an error, on purpose. Fifty-one files of the reference
+  corpus and nineteen of the fixtures its author calls passes name
+  `iirds:EnvironmentalProtectionInstruction` in core, where the standard
+  defines it under machinery. Whether section 7 forbids that is a question
+  for the standard's editors, recorded in `docs/divergences.md`; the two
+  sample packages the iiRDS Consortium publishes name nothing this rule
+  reports.
 
 ### Fixed
 

@@ -12,6 +12,8 @@ going to work.
 """
 from __future__ import annotations
 
+import difflib
+
 from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
@@ -472,3 +474,71 @@ def l12_case_only_collisions(ctx):
             yield Violation("entries differ only in case, so one is lost on a "
                             "case-insensitive filesystem",
                             subject=distinct[0], detail="also " + ", ".join(distinct[1:]))
+
+
+# ---------------------------------------------------------------------------
+# A name in the iiRDS namespace that the vocabulary does not define
+# ---------------------------------------------------------------------------
+
+#: How alike two names have to be before one is offered as the other's
+#: correction. `difflib`'s ratio, not an edit count, so the threshold means
+#: the same thing for a short name and a long one. High on purpose: a wrong
+#: suggestion costs more than no suggestion, because a reader acts on it.
+NEAREST_ENOUGH = 0.82
+
+
+def _nearest(iri, ontology):
+    """The defined term this one was most likely meant to be, or None.
+
+    Compared on the local name and answered as the whole IRI, because the
+    commonest case is not a misspelling at all: the standard defines a term
+    in one of its domain vocabularies and a package names it in core. There
+    the local names are identical and only the namespace is wrong, so a
+    suggestion that gave back the name alone would read as nonsense.
+    """
+    def local(term):
+        return str(term).rsplit("#", 1)[-1]
+
+    wanted = local(iri)
+    by_name = {}
+    for defined in ontology.defined_terms():
+        by_name.setdefault(local(defined), []).append(defined)
+    close = difflib.get_close_matches(wanted, by_name, n=1, cutoff=NEAREST_ENOUGH)
+    if not close:
+        return None
+    return sorted(by_name[close[0]], key=str)[0]
+
+
+@_lint("L13", "a name in the iiRDS namespace that the standard does not define",
+       fix="Correct the spelling, or move the term into a namespace of your own and "
+           "link it into iiRDS with rdfs:subClassOf or rdfs:subPropertyOf. A name in "
+           "the iiRDS namespace that the vocabulary does not define resolves to "
+           "nothing: a consumer looking it up finds no class, no property and no "
+           "label, and cannot tell a typo from a term it has not heard of.")
+def l13_undefined_iirds_terms(ctx):
+    """The namespace was trusted and the name never was.
+
+    `is_iirds_term` tests a prefix, which is what most rules want: it answers
+    "is this the standard's business". Whether the standard actually has the
+    name is a different question, and until this rule nothing asked it of an
+    iiRDS IRI — so a package could misspell a predicate, a class or a value
+    and pass every rule, in the standard's own namespace, where a consumer
+    has the least reason to doubt it.
+
+    Reported once per distinct name however often it occurs, and in a fixed
+    order, because a report that lists the same defect thirty times in
+    whatever order the graph came out in is a report nobody reads.
+    """
+    seen = set()
+    for triple in ctx.graph:
+        for term in triple:
+            if not isinstance(term, URIRef) or term in seen:
+                continue
+            if not ctx.ontology.is_iirds_term(term) or ctx.ontology.is_defined(term):
+                continue
+            seen.add(term)
+    for term in sorted(seen, key=str):
+        meant = _nearest(term, ctx.ontology)
+        yield Violation("name is in the iiRDS namespace but the vocabulary does not define it",
+                        subject=ctx.ref(term),
+                        detail=("did you mean %s?" % meant) if meant else None)

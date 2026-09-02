@@ -9,7 +9,7 @@
   "core_emitted": 121,
   "version_excluded": 2,
   "sparql_emitted": 21,
-  "deferred_v1.1": 6,
+  "deferred_v1.1": 7,
   "not_expressible": 43,
   "noop": 1
  },
@@ -177,7 +177,8 @@
   "L4": "cycle detection via property-path +",
   "L5": "proprietary-class linkage exemption nest",
   "L6": "structural-node and label exemption nest",
-  "L8": "external-vocabulary filters"
+  "L8": "external-vocabulary filters",
+  "L13": "needs the predicates a node uses, which no Core path yields"
  },
  "not_expressible": {
   "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",

@@ -22,7 +22,7 @@ specification and still be unreadable to whoever receives it.** This checks for
 both, from the command line, on a machine with no internet connection, as a step
 in a build.
 
-> **At a glance** — 194 rules across five editions and three profiles · one
+> **At a glance** — 195 rules across five editions and three profiles · one
 > pure-Python dependency (rdflib), zero for the single-file `.pyz` ·
 > [what it checks](#what-it-checks) · [limits, measured](#limits-measured) ·
 > [how it knows it is right](docs/scope.md) · every number in this file is
@@ -48,7 +48,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  173 rules checked, 21 not applicable to this version/variant
+  174 rules checked, 21 not applicable to this version/variant
 $ echo $?
 1
 ```
@@ -272,10 +272,10 @@ container  19/19    the ZIP and its layout  +3 of its own
 schema     135/135  the metadata graph  +6 of its own
 system     3/3      the run itself  +6 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +10 of its own
-lint       -        will a consumer be able to use it  +12 of its own
+lint       -        will a consumer be able to use it  +13 of its own
 ```
 
-157 of 157 catalogued rules, plus 37 of this project's own.
+157 of 157 catalogued rules, plus 38 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
@@ -283,7 +283,7 @@ lint       -        will a consumer be able to use it  +12 of its own
 | schema (M\*) | 135 / 135 | 6 |
 | system (S\*) | 3 / 3 | 6 |
 | content (B\*) | — | 10 |
-| interoperability (L\*) | — | 12 |
+| interoperability (L\*) | — | 13 |
 
 Coverage of the catalogue is not coverage of the standard. The specification
 states **314 absolute obligations**, counted by
@@ -413,13 +413,13 @@ the repository.
   directory too high used to open with three findings telling you to add files
   you already had; it now opens with the one saying your package is fine and
   merely misplaced.
-- **Every finding says what to do about it.** All 194 rules carry one imperative
+- **Every finding says what to do about it.** All 195 rules carry one imperative
   sentence naming the change, and `tests/test_remediation.py` refuses a rule
   that does not. A validator that names a defect and not the remedy has told
   you that something is wrong and left you the specification to search, which
   is most of the work and all of the expertise.
 - **Every rule has been watched fire.** The suite records which rule ids
-  actually produce a finding, and 193 of the 194 have — the remaining one is a
+  actually produce a finding, and 194 of the 195 have — the remaining one is a
   `MAY` with nothing to violate. It began at 63. A rule that fires nowhere is
   not known to work: S8 was exactly backwards from the day it was written, able to fire only on
   archives that were correct, and no test would have caught it because no test
@@ -438,7 +438,7 @@ the repository.
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 
-**What is not established.** The 37 rules this project invented have no second
+**What is not established.** The 38 rules this project invented have no second
 implementation anywhere to be compared against. They have tests in both
 directions, and those tests were checked by breaking each rule in turn, which is
 weaker evidence than the catalogued rules have.

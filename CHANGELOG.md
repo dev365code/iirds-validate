@@ -96,6 +96,19 @@ them.
   RDF/XML -- a name with no namespace is not an IRI -- and says so with a
   remedy that is true.
 
+- **Findings that only followed from a document not being RDF/XML were
+  reported as the package's own.** rdflib reads `<manual>` as a class named
+  `manual`, and the graph rules ran on that: "declares no iirds:Package",
+  "proprietary class not linked into iiRDS" -- every finding true, every
+  one a consequence of C9, and the note beside them said the graph rules
+  could not run. A graph read from a document that is not RDF/XML is not
+  the package's metadata and is not admitted as such: the report is C9 and
+  S2, with the reason in S2's detail. The same holds where the XML itself
+  did not parse -- S2 says no metadata was usable, and "declares no
+  iirds:Package" no longer fires on the empty graph beside it. `lint`,
+  which runs no container rule, reports C9 the way it reports a parse
+  failure, so a package nobody could read no longer lints clean.
+
 - **Which package the version and the profile were read off.** That pair
   chooses the ontology and the applicable rules, so reading it from the wrong
   node changes what "valid" means for the whole run — before any rule runs.

@@ -57,6 +57,10 @@ def _metadata_findings(ctx: Context, kinds: Sequence[str]):
         rule_id = "C16.1" if name == METADATA_RDF else "C16.2"
         yield Finding(_emitted(rule_id, "container"),
                       Violation("metadata could not be parsed", subject=name, detail=detail))
+    if ctx.not_rdfxml is not None:
+        yield Finding(_emitted("C9", "container"),
+                      Violation("metadata.rdf is not an RDF/XML document", subject=METADATA_RDF,
+                                detail="document element is %s" % ctx.not_rdfxml))
 
 
 
@@ -177,7 +181,7 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                 "-- check the namespace, which is http://iirds.tekom.de/iirds# for the core "
                 "vocabulary" % len(iris))
     if not ctx.sources:
-        report.notes.append("no parsable metadata found; graph rules could not run")
+        report.notes.append("no usable metadata found; the graph rules had nothing to check")
 
     conformance_run = "schema" in kinds
     for rule in all_rules():

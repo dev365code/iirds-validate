@@ -220,3 +220,52 @@ def test_c12_content_file_in_meta_inf(make_package):
 def test_container_category_is_complete():
     container = {rid for rid, m in CATALOG.items() if m["kind"] == "container"}
     assert container <= implemented_ids(), sorted(container - implemented_ids())
+
+
+# --- what follows from "not RDF/XML" is not the package's own -------------------
+
+NOT_RDFXML = '<?xml version="1.0"?><manual><title>hello</title></manual>'
+
+
+def test_a_document_that_is_not_rdfxml_yields_no_graph_findings(make_package):
+    """rdflib reads `<manual>` as a class named manual, and the graph rules
+    used to run on that: "declares no iirds:Package", "proprietary class
+    `manual` not linked" -- every finding true, every one a consequence of
+    C9. A graph read from a document that is not RDF/XML is not the
+    package's metadata and is not admitted as such; S2 says why nothing
+    could be checked."""
+    report = runner.run(make_package(metadata=NOT_RDFXML), runner.ALL_KINDS)
+    found = ids(report)
+    assert "C9" in found and "S2" in found
+    assert "M3" not in found and "L5" not in found
+    s2 = [f for f in report.findings if f.rule.id == "S2"][0]
+    assert "not an RDF/XML document (document element is manual)" in (s2.violation.detail or "")
+    assert any("the graph rules had nothing to check" in n for n in report.notes)
+    assert not report.ok
+
+
+def test_the_json_report_says_which_finding_follows(make_package):
+    report = runner.check(make_package(metadata=NOT_RDFXML))
+    assert [f.rule.id for f in report.findings] == ["C9", "S2"]
+    listed = report.as_dict()["findings"]
+    assert listed[0]["diagnosis"] is None
+    assert listed[-1]["diagnosis"] == "consequence"
+
+
+def test_a_json_ld_twin_keeps_the_graph_rules_running(make_package):
+    """metadata.jsonld beside a metadata.rdf that is not RDF/XML: the graph
+    comes from the JSON-LD, C9 is reported, and nothing else follows."""
+    from conftest import MINIMAL_JSONLD
+
+    report = runner.check(make_package(metadata=NOT_RDFXML, jsonld=MINIMAL_JSONLD))
+    assert "C9" in ids(report)
+    assert "S2" not in ids(report) and "M3" not in ids(report)
+    assert any("metadata read from META-INF/metadata.jsonld" in n for n in report.notes)
+
+
+def test_unparseable_metadata_no_longer_reports_the_absence_of_a_package_on_top(make_package):
+    """The note said the graph rules could not run; M3 fired anyway, on an
+    empty graph. One absence, said once, by S2."""
+    report = runner.check(make_package(metadata=MINIMAL_RDF.replace("</rdf:RDF>", "")))
+    assert "C16.1" in ids(report) and "S2" in ids(report)
+    assert "M3" not in ids(report)

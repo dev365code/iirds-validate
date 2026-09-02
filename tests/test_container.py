@@ -48,6 +48,9 @@ def test_broken_xml_is_reported_not_crashed(make_package):
     report = runner.check(make_package(metadata="<rdf:RDF><unclosed>"))
     assert "C16.1" in ids(report)
     assert not report.ok
+    # One absence, said once: S2 says no metadata was usable, and "declares
+    # no iirds:Package" no longer fires on the empty graph beside it.
+    assert "S2" in ids(report) and "M3" not in ids(report)
 
 
 def test_undecodable_metadata_is_reported_not_crashed(make_package):

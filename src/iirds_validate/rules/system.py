@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import posixpath
 
-from ..model import VARIANTS, VERSIONS, Violation
+from ..model import METADATA_RDF, VARIANTS, VERSIONS, Violation
 from ..registry import rule
 
 #: Every kind of run, so a container that cannot be read is reported whether
@@ -49,9 +49,13 @@ def s2_no_usable_metadata(ctx):
     """
     if ctx.sources:
         return
-    detail = "; ".join(ctx.parse_errors) if ctx.parse_errors else "no metadata file present"
-    yield Violation("container validation failed: no usable metadata, so no graph rule ran",
-                    subject="META-INF", detail=detail)
+    reasons = list(ctx.parse_errors)
+    if ctx.not_rdfxml is not None:
+        reasons.append("%s: not an RDF/XML document (document element is %s)"
+                       % (METADATA_RDF, ctx.not_rdfxml))
+    yield Violation("container validation failed: no usable metadata, so no graph rule could "
+                    "check anything",
+                    subject="META-INF", detail="; ".join(reasons) or "no metadata file present")
 
 
 @rule("S3", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",

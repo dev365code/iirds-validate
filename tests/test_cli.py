@@ -141,3 +141,21 @@ def test_an_operator_error_is_prefixed_with_the_command_name(capsys, argv):
 def test_an_empty_directory_is_an_operator_error_with_the_same_prefix(tmp_path, capsys):
     assert main(["check", str(tmp_path)]) == EXIT_ERROR
     assert capsys.readouterr().err.startswith("iirds: no iiRDS package found under ")
+
+
+def test_a_fragment_written_without_the_rdf_root_is_still_a_fragment(tmp_path):
+    """Most of the standard's own examples are one node element with no
+    rdf:RDF around it -- the form the grammar's section 2.6 permits. A
+    fragment check that rejected it as not RDF would reject the examples
+    it exists to check."""
+    rootless = FRAGMENT.replace(
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+        '         xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
+        '  <iirds:Topic rdf:about="urn:frag:topic1">',
+        '<iirds:Topic xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+        '             xmlns:iirds="http://iirds.tekom.de/iirds#" rdf:about="urn:frag:topic1">'
+    ).replace("  </iirds:Topic>\n</rdf:RDF>\n", "</iirds:Topic>\n").replace("/absolute/path.xhtml", "content/t.xhtml")
+    assert "rdf:RDF" not in rootless
+    frag = tmp_path / "rootless.rdf"
+    frag.write_text(rootless, "utf-8")
+    assert main(["check", str(frag), "--fragment"]) == EXIT_OK

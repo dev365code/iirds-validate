@@ -150,3 +150,14 @@ def test_metadata_in_utf16_is_read_not_rejected(make_package):
             metadata=MINIMAL_RDF.encode(encoding) if encoding != "utf-8-sig"
             else ("﻿" + MINIMAL_RDF).encode("utf-8")))
         assert report.ok, (encoding, [f.violation.message for f in report.findings])
+
+
+def test_lint_does_not_report_clean_on_metadata_that_is_not_rdfxml(make_package):
+    """`lint` runs no container rule, so C9 was never in its report: the
+    graph rules looked at what rdflib made of `<manual>` and found little.
+    The lint path emits C9 the way it emits C16.x, and S2 stands."""
+    report = runner.lint(make_package(
+        metadata='<?xml version="1.0"?><manual><title>hello</title></manual>'))
+    assert not report.ok
+    found = {f.rule.id for f in report.findings}
+    assert "C9" in found and "S2" in found and "L5" not in found

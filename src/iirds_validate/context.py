@@ -54,6 +54,11 @@ class Context:
     requested_version: Optional[str] = None     # set when the caller overrode it
     parse_errors: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
+    #: The document element of a metadata.rdf that parsed as XML but is not
+    #: RDF/XML by the grammar -- `manual`, say. Such a file's graph is what
+    #: rdflib makes of arbitrary elements, not the package's metadata, and is
+    #: not admitted to `sources`; C9 reports the element, S2 the consequence.
+    not_rdfxml: Optional[str] = None
     #: One graph per metadata file, kept alongside the merged `graph` so a rule
     #: can ask whether the serialisations agree. Merging is right for every
     #: other rule and is exactly what hides a disagreement.
@@ -475,6 +480,7 @@ def build_graph(package: Package):
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
+    not_rdfxml = None
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -514,14 +520,33 @@ def build_graph(package: Package):
         if error is not None:
             errors.append(error)
             continue
+        if name == METADATA_RDF:
+            element = _document_element(raw)
+            if element is not None and not is_rdfxml_document_element(element):
+                not_rdfxml = element
+                continue
         per_source[name] = single
         sources.append(name)
 
-    return merge_sources(per_source), errors, sources, per_source
+    return merge_sources(per_source), errors, sources, per_source, not_rdfxml
+
+
+def _document_element(raw: bytes):
+    """The expanded name of the first element, or None where XML itself
+    cannot say (which the parser has already reported)."""
+    import io
+    import xml.etree.ElementTree as ElementTree
+
+    try:
+        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
+            return element.tag
+    except ElementTree.ParseError:
+        return None
+    return None
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources, per_source = build_graph(package)
+    graph, errors, sources, per_source, not_rdfxml = build_graph(package)
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -543,4 +568,5 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         parse_errors=errors,
         sources=sources,
         per_source=per_source,
+        not_rdfxml=not_rdfxml,
     )

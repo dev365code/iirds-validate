@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import posixpath
 import re
-import xml.etree.ElementTree as ElementTree
 import zipfile
 from collections import Counter
 
-from ..context import is_rdfxml_document_element
 from ..model import (
     META_DIR,
     METADATA_JSONLD,
@@ -183,18 +181,14 @@ def c9_metadata_is_rdf(ctx):
     namespace rather than by the literal string "<rdf:RDF", so a document
     that binds the RDF namespace to a different prefix is not rejected for it.
     """
-    if not ctx.package.has(METADATA_RDF) or any(
-            e.startswith(METADATA_RDF) for e in ctx.parse_errors):
-        return                      # C8 and C16.1 own those cases
-    try:
-        root = ElementTree.fromstring(ctx.package.read(METADATA_RDF))
-    except ElementTree.ParseError:
-        return
-    if not is_rdfxml_document_element(root.tag):
+    # Decided where the graph is built, so that the graph rules and this rule
+    # cannot disagree about whether the file was metadata: the context reads
+    # the document element once and admits or withholds the graph on it.
+    if ctx.not_rdfxml is not None:
         yield Violation("metadata.rdf is not an RDF/XML document",
                         subject=METADATA_RDF,
                         detail="document element is %s; RDF/XML starts with rdf:RDF or with "
-                               "a single node element" % root.tag)
+                               "a single node element" % ctx.not_rdfxml)
 
 
 @rule("C11.1",

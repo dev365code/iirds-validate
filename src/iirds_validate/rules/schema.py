@@ -120,6 +120,8 @@ def m2_9(ctx):
 @rule("M3",
        fix="Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous.")
 def m3_exactly_one_package(ctx):
+    if not ctx.sources:
+        return      # S2 says no metadata was usable; "declares no Package" on top is the same absence twice
     # One reading of "the package that represents this container", shared with
     # M8 and with version detection, so a node cannot be the container for one
     # of them and a nested child for the next.

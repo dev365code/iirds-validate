@@ -152,12 +152,15 @@ def test_metadata_in_utf16_is_read_not_rejected(make_package):
         assert report.ok, (encoding, [f.violation.message for f in report.findings])
 
 
-def test_lint_does_not_report_clean_on_metadata_that_is_not_rdfxml(make_package):
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-16", "utf-32"])
+def test_lint_does_not_report_clean_on_metadata_that_is_not_rdfxml(make_package, encoding):
     """`lint` runs no container rule, so C9 was never in its report: the
     graph rules looked at what rdflib made of `<manual>` and found little.
-    The lint path emits C9 the way it emits C16.x, and S2 stands."""
+    The lint path emits C9 the way it emits C16.x, and S2 stands. In every
+    encoding: the first judge read the stored bytes, saw no element in a
+    UTF-32 document, and passed it."""
     report = runner.lint(make_package(
-        metadata='<?xml version="1.0"?><manual><title>hello</title></manual>'))
+        metadata='<?xml version="1.0"?><manual><title>hello</title></manual>'.encode(encoding)))
     assert not report.ok
     found = {f.rule.id for f in report.findings}
     assert "C9" in found and "S2" in found and "L5" not in found

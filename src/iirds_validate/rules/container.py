@@ -11,6 +11,8 @@ import re
 import zipfile
 from collections import Counter
 
+from iirds import NOT_RDFXML
+
 from ..model import (
     META_DIR,
     METADATA_JSONLD,
@@ -181,14 +183,31 @@ def c9_metadata_is_rdf(ctx):
     namespace rather than by the literal string "<rdf:RDF", so a document
     that binds the RDF namespace to a different prefix is not rejected for it.
     """
-    # Decided where the graph is built, so that the graph rules and this rule
-    # cannot disagree about whether the file was metadata: the context reads
-    # the document element once and admits or withholds the graph on it.
-    if ctx.not_rdfxml is not None:
-        yield Violation("metadata.rdf is not an RDF/XML document",
-                        subject=METADATA_RDF,
-                        detail="document element is %s; RDF/XML starts with rdf:RDF or with "
-                               "a single node element" % ctx.not_rdfxml)
+    # Decided by the reader, so that the graph rules and this rule cannot
+    # disagree about whether the file was metadata: the SDK judges the
+    # document element on the bytes it parses and refuses the graph, and
+    # this rule reports the refusal.
+    for error in ctx.parse_errors:
+        detail = rdfxml_refusal(error)
+        if detail is not None:
+            yield c9_violation(detail)
+
+
+def rdfxml_refusal(error: str):
+    """The reader's reason, when a parse error is its refusal of metadata.rdf
+    as RDF/XML; None for every other error. The category is the SDK's
+    exported constant, so this is the seam contract, not its wording."""
+    name, _, rest = error.partition(": ")
+    category, _, detail = rest.partition(": ")
+    if name == METADATA_RDF and category == NOT_RDFXML:
+        return detail
+    return None
+
+
+def c9_violation(detail: str) -> Violation:
+    return Violation("metadata.rdf is not an RDF/XML document", subject=METADATA_RDF,
+                     detail="%s; RDF/XML starts with rdf:RDF or with a single node element"
+                            % detail)
 
 
 @rule("C11.1",
@@ -269,7 +288,7 @@ def c15_unique_names(ctx):
        fix="Read the error reported alongside this: a syntax error means the markup is malformed and has to be corrected, while an encoding error means the bytes were damaged or cut short in transit and the file has to be sent again. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
-        if err.startswith(METADATA_RDF):
+        if err.startswith(METADATA_RDF) and rdfxml_refusal(err) is None:
             # "could not be read", not "invalid syntax": the reader refuses on
             # size and on entity declarations, and fails on an encoding the
             # bytes do not honour, none of which is a syntax error. The
@@ -277,7 +296,8 @@ def c16_1_rdf_parses(ctx):
             # the error string to say more -- the seam contract is that it
             # leads with the file name and partitions on the first ": ", and
             # reading further into the SDK's wording would be a dependency
-            # nothing pins.
+            # nothing pins. The one refusal C9 reports instead is recognised
+            # by the category the SDK exports for it, which is pinned.
             yield Violation("metadata.rdf could not be read as RDF 1.1 XML",
                             subject=METADATA_RDF, detail=err.split(": ", 1)[-1])
 

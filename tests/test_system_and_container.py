@@ -138,13 +138,17 @@ def test_c9_leaves_a_namespaced_document_to_the_graph_rules(make_package):
     assert "L5" in ids(runner.lint(package))
 
 
-def test_c9_is_silent_when_the_reader_refused_the_document(make_package):
+def test_a_reserved_name_as_document_element_is_c9_not_a_parse_error(make_package):
     """A document element the grammar reserves (`rdf:li` here) is not a node
-    element, and rdflib refuses it before this rule looks: C16.1 owns it."""
+    element. rdflib refuses it too, in its own words; the reader judges first
+    and says which name and why, and C16.1 does not report the same document
+    a second time as damaged."""
     report = runner.check(make_package(
         metadata='<?xml version="1.0"?><rdf:li xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'))
-    assert "C16.1" in ids(report)
-    assert "C9" not in ids(report)
+    assert "C9" in ids(report)
+    assert "C16.1" not in ids(report)
+    c9 = [f for f in report.findings if f.rule.id == "C9"][0]
+    assert c9.violation.detail.startswith("document element is rdf:li, a name the grammar reserves")
 
 
 @pytest.mark.parametrize("tag,verdict", [
@@ -162,7 +166,7 @@ def test_the_rdfxml_criterion_is_the_grammars(tag, verdict):
     """§7.2.1: a standalone document starts with production doc *or*
     nodeElement; §7.2.5: a node element's name is any absolute IRI except
     the core syntax terms, rdf:li and the old terms."""
-    from iirds_validate.context import is_rdfxml_document_element
+    from iirds import is_rdfxml_document_element
 
     assert is_rdfxml_document_element(tag) is verdict
 
@@ -239,7 +243,8 @@ def test_a_document_that_is_not_rdfxml_yields_no_graph_findings(make_package):
     assert "C9" in found and "S2" in found
     assert "M3" not in found and "L5" not in found
     s2 = [f for f in report.findings if f.rule.id == "S2"][0]
-    assert "not an RDF/XML document (document element is manual)" in (s2.violation.detail or "")
+    assert ("not an RDF/XML document: document element is manual, which has no namespace"
+            in (s2.violation.detail or ""))
     assert any("the graph rules had nothing to check" in n for n in report.notes)
     assert not report.ok
 

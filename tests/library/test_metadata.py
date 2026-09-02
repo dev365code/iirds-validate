@@ -204,6 +204,70 @@ def test_every_byte_order_mark_is_honoured(bom, codec):
     assert error is None and len(graph) == 2
 
 
+#: XML, well formed, and not RDF/XML: the grammar's document starts with
+#: rdf:RDF or with a node element (§7.2.1), and an element with no namespace
+#: is neither -- its name is not an IRI. rdflib reads it anyway, into two
+#: triples about an element called manual.
+MANUAL = '<?xml version="1.0"?><manual><title>hello</title></manual>'
+
+#: The same document as a supplier's tool might save it: plain, with each
+#: byte order mark the reader honours, and with a mark that contradicts the
+#: declaration -- the decode believes the mark, and so must every judge.
+MANUAL_ENCODINGS = [
+    ("plain", MANUAL.encode("utf-8")),
+    ("utf-8 bom", b"\xef\xbb\xbf" + MANUAL.encode("utf-8")),
+    ("utf-16 bom", b"\xff\xfe" + MANUAL.encode("utf-16-le")),
+    ("utf-32 bom", b"\xff\xfe\x00\x00" + MANUAL.encode("utf-32-le")),
+    ("utf-16 bom, utf-8 declared",
+     b"\xff\xfe" + MANUAL.replace('version="1.0"', 'version="1.0" encoding="utf-8"').encode("utf-16-le")),
+]
+
+
+@pytest.mark.parametrize("shape,raw", MANUAL_ENCODINGS, ids=[s for s, _ in MANUAL_ENCODINGS])
+def test_a_document_that_is_not_rdfxml_is_refused_whatever_its_encoding(shape, raw):
+    """Judged on the bytes the parser reads, after the decode. A judge that
+    read the stored bytes saw no element at all in a UTF-32 document --
+    expat does not know the encoding -- and let the graph through."""
+    graph, error = iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
+    assert graph is None, shape
+    assert error == ("META-INF/metadata.rdf: not an RDF/XML document: "
+                     "document element is manual, which has no namespace")
+
+
+ROOTLESS = RDF_XML.replace(
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+    '         xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
+    '  <iirds:Package rdf:about="urn:test:package">',
+    '<iirds:Package xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+    '         xmlns:iirds="http://iirds.tekom.de/iirds#" rdf:about="urn:test:package">',
+).replace("</rdf:RDF>\n", "")
+
+
+@pytest.mark.parametrize("bom,codec", [
+    (b"", "utf-8"), (b"\xff\xfe\x00\x00", "utf-32-le"), (b"\xff\xfe", "utf-16-le"),
+])
+def test_a_rootless_node_element_is_read_whatever_its_encoding(bom, codec):
+    """§2.6 lets the rdf:RDF element go when one node element is all there is.
+    The same judge must not turn a legitimate document away for its encoding."""
+    assert "<rdf:RDF" not in ROOTLESS and ROOTLESS.startswith("<?xml")
+    raw = bom + ROOTLESS.replace(' encoding="utf-8"', "").encode(codec)
+    graph, error = iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
+    assert error is None and len(graph) == 2
+
+
+def test_a_package_whose_metadata_is_not_rdfxml_has_no_metadata_source(tmp_path):
+    """What the validator refuses, the library refuses: a tool built on the
+    SDK does not see two triples of `manual` where the validator reports
+    that nothing was read."""
+    with iirds.open(package_with(tmp_path, MANUAL)) as package:
+        assert package.metadata_sources == []
+        assert package.parse_errors == [
+            "META-INF/metadata.rdf: not an RDF/XML document: "
+            "document element is manual, which has no namespace"]
+        with pytest.raises(iirds.IirdsError):
+            len(package.graph)
+
+
 #: The same five, minus utf-8: dropping one byte from an ASCII utf-8 payload
 #: leaves a document that still decodes. For every multi-byte encoding it
 #: leaves half a code unit, which is what a transfer cut short looks like.

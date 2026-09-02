@@ -89,8 +89,9 @@ them.
   §2.6: "the rdf:RDF can be omitted although any XML namespaces must still be
   declared"). A file whose one top-level element was the package itself --
   three statements to every RDF parser, and the shape most of the standard's
-  own examples take -- was reported as not an RDF document, with a remedy
-  claiming no parser would read a statement from it. The rule now judges by
+  own examples are written in (with the namespace declarations the examples
+  leave out) -- was reported as not an RDF document, with a remedy claiming
+  no parser would read a statement from it. The rule now judges by
   the grammar: the document element is `rdf:RDF`, or its name is an absolute
   IRI outside the eleven names the grammar reserves. `<manual>` is still not
   RDF/XML -- a name with no namespace is not an IRI -- and says so with a
@@ -101,13 +102,17 @@ them.
   `manual`, and the graph rules ran on that: "declares no iirds:Package",
   "proprietary class not linked into iiRDS" -- every finding true, every
   one a consequence of C9, and the note beside them said the graph rules
-  could not run. A graph read from a document that is not RDF/XML is not
-  the package's metadata and is not admitted as such: the report is C9 and
-  S2, with the reason in S2's detail. The same holds where the XML itself
-  did not parse -- S2 says no metadata was usable, and "declares no
-  iirds:Package" no longer fires on the empty graph beside it. `lint`,
-  which runs no container rule, reports C9 the way it reports a parse
-  failure, so a package nobody could read no longer lints clean.
+  could not run. The reader now refuses a document the grammar does not
+  define, judged on the bytes it parses -- after the byte order mark has
+  been honoured, so a UTF-16 or UTF-32 `<manual>` is refused like a UTF-8
+  one -- and the report is C9 and S2, with the reader's reason in S2's
+  detail. The same holds where the XML itself did not parse -- S2 says no
+  metadata was usable, and "declares no iirds:Package" no longer fires on
+  the empty graph beside it. `lint`, which runs no container rule, reports
+  C9 the way it reports a parse failure, so a package nobody could read no
+  longer lints clean. A document element the grammar reserves (`rdf:li`)
+  is C9 as well, named as such, rather than a parse error in rdflib's
+  words.
 
 - **Which package the version and the profile were read off.** That pair
   chooses the ontology and the applicable rules, so reading it from the wrong
@@ -503,6 +508,19 @@ them.
   subpackage, which the real one does not.
 
 ### Changed in the library
+
+- **`parse_metadata` refuses a well-formed XML document that is not
+  RDF/XML.** The grammar's document starts with `rdf:RDF` or with a single
+  node element (RDF 1.1 XML Syntax §7.2.1, §2.6); rdflib reads anything
+  else -- `<manual>`, an element in a namespace that is not an IRI, a root
+  the grammar reserves -- into a graph nobody wrote. The reader now returns
+  `(None, "<name>: not an RDF/XML document: <why>")`, judged on the decoded
+  bytes so that the encoding cannot hide the document element, and
+  `Package.parse_errors` and `metadata_sources` say so; `Package.graph`
+  raises as it does for every refusal. The category is exported as
+  `NOT_RDFXML`, the judgement as `is_rdfxml_document_element()`, and the
+  scheme test both use as `is_absolute_name()`. A validator built on the
+  library reports the same document the same way this one does.
 
 - **A warning from this package's own code fails the suite.** Warnings were
   collected and printed at the end of a run, where one that means something

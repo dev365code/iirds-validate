@@ -123,11 +123,19 @@ IRI outside the eleven reserved names (the core syntax terms, `rdf:li`, the
 old terms). Two consequences follow and are pinned by tests. An element with
 no namespace, `<manual>`, is still C9: its name is not an IRI, so it is not a
 node element, however happily rdflib turns it into a class. And an XHTML file
-saved as metadata.rdf is *not* C9: to the grammar it is one typed node of the
-XHTML vocabulary — RDF/XML that is not about iiRDS — and the graph rules say
-what is missing (no package) while lint says whose the classes are (nobody's).
-Only the document element is judged; a body that strays from the grammar is
-the parser's to notice, and rdflib is permissive there.
+saved as metadata.rdf is *not* C9: its document element, `html` in the XHTML
+namespace, is a node element to the grammar, so the file is RDF/XML that is
+not about iiRDS, and the graph rules say what is missing (no package) while
+lint says whose the classes are (nobody's — rdflib types the node with the
+namespace and the element name run together, `…/1999/xhtmlhtml`, and drops
+the text inside `title`, which §7.2.11 gives no place to). Only the document
+element is judged; what the body does with the grammar is the parser's to
+say, and rdflib says nothing.
+
+The judgement is the reader's, not this checker's: `iirds.parse_metadata`
+refuses the document on the bytes it parses, after the byte order mark has
+decided the encoding. Judged before the decode, a UTF-32 `<manual>` showed
+no element at all to the judge and two triples to the parser.
 
 ## Differences that are not anybody's bug
 

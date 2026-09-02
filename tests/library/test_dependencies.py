@@ -39,7 +39,7 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "iirds"
 #: to almost all of what writing cost. Where the blank nodes form a forest
 #: the same answer comes from naming each one by a digest of its subtree.
 #: Standard library, like the three above.
-ALLOWED = {"hashlib", "iirds", "rdflib", "__future__", "json", "os",
+ALLOWED = {"hashlib", "iirds", "io", "rdflib", "__future__", "json", "os",
            "pathlib", "posixpath", "re", "time", "typing", "unicodedata",
            "urllib", "xml", "zipfile"}
 

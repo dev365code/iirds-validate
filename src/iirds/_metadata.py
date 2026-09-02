@@ -9,8 +9,10 @@ from here; there is one copy.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import re
+import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
 from typing import Optional, Tuple
 
@@ -126,6 +128,75 @@ def _declares_entities(raw: bytes) -> bool:
     return False
 
 
+#: The category `parse_metadata` returns for a well-formed XML document the
+#: RDF/XML grammar does not define. Part of the error string's shape --
+#: ``"<name>: <category>: <detail>"`` -- and exported because the validator
+#: routes on it: this refusal is the metadata being the wrong kind of
+#: document, not the document being damaged.
+NOT_RDFXML = "not an RDF/XML document"
+
+#: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
+#: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
+#: else that is an absolute IRI names a node element -- the class of a typed
+#: node, or rdf:Description for an untyped one.
+NOT_NODE_ELEMENTS = frozenset(("RDF", "ID", "about", "parseType", "resource", "nodeID",
+                               "datatype", "li", "aboutEach", "aboutEachPrefix", "bagID"))
+_RDF_NAMESPACE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def is_absolute_name(text: str) -> bool:
+    """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not."""
+    return bool(_SCHEME.match(text))
+
+
+def is_rdfxml_document_element(tag: str) -> bool:
+    """Is this element, as ElementTree names it, one an RDF/XML document may start with?
+
+    §7.2.1 of the grammar: a standalone document starts with production doc
+    -- the rdf:RDF element -- or with production nodeElement; §2.6 says the
+    same in prose, "when there is only one top-level node element inside
+    rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must
+    still be declared". A node element's name is any absolute IRI except
+    the reserved ones (§7.2.5), so an element with no namespace is not one:
+    its name is not an IRI. Only the document element is judged here; what
+    the body does with the grammar is the parser's to say.
+    """
+    namespace, local = _split(tag)
+    if namespace == _RDF_NAMESPACE and local == "RDF":
+        return True
+    if not is_absolute_name(namespace + local):
+        return False
+    return not (namespace == _RDF_NAMESPACE and local in NOT_NODE_ELEMENTS)
+
+
+def _split(tag: str) -> Tuple[str, str]:
+    if tag.startswith("{"):
+        namespace, _, local = tag[1:].partition("}")
+        return namespace, local
+    return "", tag
+
+
+def _document_element(raw: bytes) -> Optional[str]:
+    """The expanded name of the first element, or None where XML itself
+    cannot say -- which the parser then reports in its own words."""
+    try:
+        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
+            return element.tag
+    except ElementTree.ParseError:
+        return None
+    return None
+
+
+def _why_not_rdfxml(tag: str) -> str:
+    namespace, local = _split(tag)
+    if not namespace:
+        return "document element is %s, which has no namespace" % local
+    if not is_absolute_name(namespace + local):
+        return "document element is %s in namespace %s, which is not an absolute IRI" % (local, namespace)
+    return "document element is rdf:%s, a name the grammar reserves" % local
+
+
 def _decode(raw: bytes) -> bytes:
     """The document as UTF-8, decided the way the parser will decide it.
 
@@ -238,7 +309,9 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     parse failure. The error string always leads with the file name --
     ``"<name>: <detail>"`` -- and that shape is an interface, not a habit:
     the validator routes these strings into its per-file findings by
-    partitioning on the first ``": "``.
+    partitioning on the first ``": "``. One refusal has a named category
+    after the file name, ``"<name>: <NOT_RDFXML>: <detail>"``, because the
+    validator reports it under a different rule from a damaged file.
 
     ``base`` has no default on purpose: a parse needs a base IRI and the
     caller owns that decision (the container reader passes PACKAGE_BASE).
@@ -276,6 +349,18 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # document the decode was about to make readable, entities and all.
     if fmt == "xml" and _declares_entities(raw):
         return None, "%s: refused: the document declares XML entities" % name
+
+    # Whether the document is RDF/XML at all is decided here, on the decoded
+    # bytes, for the reason the entity guard is: a judge that read the stored
+    # bytes saw no element in a UTF-32 document -- expat does not know the
+    # encoding -- and let it through. rdflib reads `<manual>` into two
+    # triples about an element name; the grammar (§7.2.1) defines no such
+    # document, so nothing was read, and the reader says so rather than
+    # handing on a graph nobody wrote.
+    if fmt == "xml":
+        element = _document_element(raw)
+        if element is not None and not is_rdfxml_document_element(element):
+            return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))
 
 
     if fmt == "json-ld":

@@ -17,7 +17,15 @@ break. `open()` returns a `Package`; `pack()` writes one.
 """
 from __future__ import annotations
 
-from ._metadata import MAX_METADATA_BYTES, merge_sources, parse_metadata, write_metadata
+from ._metadata import (
+    MAX_METADATA_BYTES,
+    NOT_RDFXML,
+    is_absolute_name,
+    is_rdfxml_document_element,
+    merge_sources,
+    parse_metadata,
+    write_metadata,
+)
 from ._pack import PackError, pack
 from ._package import (
     IIRDS,
@@ -35,6 +43,7 @@ from ._package import open_package as open  # noqa: A001 - deliberate, like gzip
 
 __version__ = "0.4.2"
 __all__ = ["IIRDS", "IirdsError", "MAX_METADATA_BYTES", "METADATA_JSONLD",
-           "METADATA_RDF", "PACKAGE_BASE", "PackError", "Package", "__version__",
-           "instances_of", "label_of", "merge_sources", "open", "pack",
+           "METADATA_RDF", "NOT_RDFXML", "PACKAGE_BASE", "PackError", "Package",
+           "__version__", "instances_of", "is_absolute_name",
+           "is_rdfxml_document_element", "label_of", "merge_sources", "open", "pack",
            "parse_metadata", "source_of", "subclasses_of", "write_metadata"]

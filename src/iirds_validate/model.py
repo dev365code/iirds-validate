@@ -3,14 +3,18 @@ from __future__ import annotations
 
 import enum
 import heapq
-import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Tuple
 
 from rdflib import Namespace, URIRef
 from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, SKOS, XSD  # noqa: F401  (re-exported)
 
-from iirds import METADATA_JSONLD, METADATA_RDF, PACKAGE_BASE  # noqa: F401  (re-exported)
+from iirds import (  # noqa: F401  (re-exported)
+    METADATA_JSONLD,
+    METADATA_RDF,
+    PACKAGE_BASE,
+    is_absolute_name,
+)
 
 # --- iiRDS namespaces -------------------------------------------------------
 IIRDS = Namespace("http://iirds.tekom.de/iirds#")
@@ -33,7 +37,6 @@ MIMETYPE_VALUE = "application/iirds+zip"
 META_DIR = "META-INF"
 
 
-_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
 #: PACKAGE_BASE (imported above) is deliberately a URN: URNs are not
@@ -41,15 +44,11 @@ _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 #: silently joined into something that looks absolute.
 
 
-def is_absolute_name(text: str) -> bool:
-    """The same test as `is_absolute_iri`, for a name that is not yet a node --
-    an XML element's expanded name, say, before anything has read it."""
-    return bool(_SCHEME.match(text))
-
-
 def is_absolute_iri(node) -> bool:
-    """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not."""
-    return isinstance(node, URIRef) and bool(_SCHEME.match(str(node)))
+    """An absolute IRI has a scheme. `urn:uuid:...` counts; a bare name does not.
+    The SDK's test, so that what the reader admits as a document element and
+    what the rules admit as a name cannot come apart."""
+    return isinstance(node, URIRef) and is_absolute_name(str(node))
 
 
 def is_named(node) -> bool:

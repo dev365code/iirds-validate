@@ -38,7 +38,6 @@ from .model import (
     METADATA_RDF,
     PACKAGE_BASE,
     VERSIONS,
-    is_absolute_name,
 )
 from .package import Package
 
@@ -58,7 +57,6 @@ class Context:
     #: RDF/XML by the grammar -- `manual`, say. Such a file's graph is what
     #: rdflib makes of arbitrary elements, not the package's metadata, and is
     #: not admitted to `sources`; C9 reports the element, S2 the consequence.
-    not_rdfxml: Optional[str] = None
     #: One graph per metadata file, kept alongside the merged `graph` so a rule
     #: can ask whether the serialisations agree. Merging is right for every
     #: other rule and is exactly what hides a disagreement.
@@ -436,42 +434,17 @@ def _version_key(text: str):
 
 
 
-#: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
-#: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
-#: else that is an absolute IRI names a node element -- the class of a typed
-#: node, or rdf:Description for an untyped one.
-NOT_NODE_ELEMENTS = frozenset(("RDF", "ID", "about", "parseType", "resource", "nodeID",
-                               "datatype", "li", "aboutEach", "aboutEachPrefix", "bagID"))
-RDF_NAMESPACE = str(RDF)
-
-
-def is_rdfxml_document_element(tag: str) -> bool:
-    """Is this element, as ElementTree names it, one an RDF/XML document may start with?
-
-    §7.2.1 of the grammar: a standalone document starts with production doc
-    -- the rdf:RDF element -- or with production nodeElement; §2.6 says the
-    same in prose, "when there is only one top-level node element inside
-    rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must
-    still be declared". A node element's name is any absolute IRI except
-    the reserved ones (§7.2.5), so an element with no namespace is not one:
-    its name is not an IRI. Only the document element is judged here; what
-    the body does with the grammar is the parser's to say.
-    """
-    namespace, _, local = tag[1:].partition("}") if tag.startswith("{") else ("", "", tag)
-    if namespace == RDF_NAMESPACE and local == "RDF":
-        return True
-    if not is_absolute_name(namespace + local):
-        return False
-    return not (namespace == RDF_NAMESPACE and local in NOT_NODE_ELEMENTS)
-
-
 def build_graph(package: Package):
     """Parse every metadata serialisation in the container into one graph.
 
     The guards (entity declarations, oversize, remote @context, byte order
-    marks), the parser and the isomorphic-once merge live in the iirds SDK:
-    this project wrote them, moved them to the layer every tool shares, and
-    imports them back, so the SDK's answer can never contradict this one.
+    marks, a document the RDF/XML grammar does not define), the parser and
+    the isomorphic-once merge live in the iirds SDK: this project wrote
+    them, moved them to the layer every tool shares, and imports them back,
+    so the SDK's answer can never contradict this one. The grammar judge
+    was the last to move, and moved for that reason: kept here it read the
+    stored bytes while the reader read the decoded ones, and a UTF-32
+    document was metadata to one and nothing to the other.
     The one gate kept here is the pre-read size check -- it runs off the
     container's directory, refusing an oversized document without ever
     decompressing it, which only the container layer can do; the SDK's own
@@ -480,7 +453,6 @@ def build_graph(package: Package):
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
-    not_rdfxml = None
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -520,33 +492,14 @@ def build_graph(package: Package):
         if error is not None:
             errors.append(error)
             continue
-        if name == METADATA_RDF:
-            element = _document_element(raw)
-            if element is not None and not is_rdfxml_document_element(element):
-                not_rdfxml = element
-                continue
         per_source[name] = single
         sources.append(name)
 
-    return merge_sources(per_source), errors, sources, per_source, not_rdfxml
-
-
-def _document_element(raw: bytes):
-    """The expanded name of the first element, or None where XML itself
-    cannot say (which the parser has already reported)."""
-    import io
-    import xml.etree.ElementTree as ElementTree
-
-    try:
-        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
-            return element.tag
-    except ElementTree.ParseError:
-        return None
-    return None
+    return merge_sources(per_source), errors, sources, per_source
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources, per_source, not_rdfxml = build_graph(package)
+    graph, errors, sources, per_source = build_graph(package)
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -568,5 +521,4 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         parse_errors=errors,
         sources=sources,
         per_source=per_source,
-        not_rdfxml=not_rdfxml,
     )

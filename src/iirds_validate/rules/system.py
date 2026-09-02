@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import posixpath
 
-from ..model import METADATA_RDF, VARIANTS, VERSIONS, Violation
+from ..model import VARIANTS, VERSIONS, Violation
 from ..registry import rule
 
 #: Every kind of run, so a container that cannot be read is reported whether
@@ -39,23 +39,22 @@ def s1_unreadable_container(ctx):
 
 
 @rule("S2", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",
-       fix="Fix the container problems reported alongside this. No graph rule can run until the metadata is found and parsed, so this is a consequence rather than a defect of its own.")
+       fix="Fix the container problems reported alongside this. No graph rule can run until the metadata is found and read as RDF, so this is a consequence rather than a defect of its own.")
 def s2_no_usable_metadata(ctx):
-    """Nothing in META-INF parsed, so no graph rule could have run.
+    """Nothing in META-INF was read as metadata, so no graph rule could have run.
 
     Without this, `iirds lint` on a package with unreadable metadata reports
     no findings and exits 0 — every L rule looked at an empty graph and found
-    nothing to complain about.
+    nothing to complain about. The reasons are the reader's own words: a
+    parse failure, a refusal (size, entities, a remote context), or a
+    document the RDF/XML grammar does not define.
     """
     if ctx.sources:
         return
-    reasons = list(ctx.parse_errors)
-    if ctx.not_rdfxml is not None:
-        reasons.append("%s: not an RDF/XML document (document element is %s)"
-                       % (METADATA_RDF, ctx.not_rdfxml))
     yield Violation("container validation failed: no usable metadata, so no graph rule could "
                     "check anything",
-                    subject="META-INF", detail="; ".join(reasons) or "no metadata file present")
+                    subject="META-INF",
+                    detail="; ".join(ctx.parse_errors) or "no metadata file present")
 
 
 @rule("S3", versions=ALWAYS, variants=ALWAYS, diagnosis="consequence",

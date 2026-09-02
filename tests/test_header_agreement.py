@@ -279,3 +279,33 @@ def test_reads_stay_bounded_on_a_hostile_name_length(tmp_path):
         return Z.bend(data, local + 26, Z.le(65535, 2))
     findings = s10(runner.check(patched(tmp_path, change)))
     assert [f.violation.subject for f in findings] == [SPARE]
+
+
+def test_two_directory_entries_sharing_one_local_header_are_said_so(tmp_path):
+    """Two central records, the same name, the same offset: a reader that
+    trusts the directory hands out one file twice, and the second record's
+    entry does not exist. Said as what it is rather than as data running
+    into a neighbour."""
+    def change(data):
+        other = Z.local_header(data, OTHER)
+        central = Z.central_entry(data, SPARE)
+        data = Z.bend(data, central + 46, OTHER.encode("ascii"))
+        return Z.bend(data, central + 42, Z.le(other, 4))
+    findings = s10(runner.check(patched(tmp_path, change)))
+    assert [f.violation.message for f in findings] == [
+        "the central directory gives two entries the same local file header"]
+    assert findings[0].violation.subject == OTHER
+
+
+def test_an_offset_the_directory_cannot_express_yields_no_header(tmp_path):
+    """A broken ZIP64 end record makes `zipfile` compute a negative
+    correction, and every offset it hands out goes negative -- an InfoZip
+    `-fd -fz` archive does this. A seek there raised, and the run reported
+    the rule as having crashed; it is one more offset that holds no local
+    file header."""
+    from iirds_validate.package import Package
+
+    with Package(package(tmp_path)) as pkg:
+        pkg.infos[1].header_offset = -5
+        headers = [header for _info, header, _descriptor in pkg.local_headers()]
+    assert headers[1] is None and headers[0] is not None

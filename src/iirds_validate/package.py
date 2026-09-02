@@ -190,8 +190,9 @@ class Package:
 
         `(info, header, descriptor)` per directory entry, in directory order,
         the file opened once. `header` is None where the offset holds no
-        local file header -- past the end of the file, or bytes that do not
-        start with the signature. `descriptor` is the 24 bytes following the
+        local file header -- past the end of the file, negative after a
+        broken ZIP64 end record, or bytes that do not start with the
+        signature. `descriptor` is the 24 bytes following the
         data, as the directory's compressed size places them, for an entry
         whose local header sets bit 3; empty otherwise. Reads are bounded by
         the format itself: thirty bytes, then two 16-bit lengths' worth, then
@@ -200,10 +201,16 @@ class Package:
         """
         with open(self.path, "rb") as handle:
             for info in self.infos:
-                handle.seek(info.header_offset)
-                head = handle.read(_HEADER_FIXED)
                 header = None
                 descriptor = b""
+                # Negative after a broken ZIP64 end record: `zipfile` corrects
+                # every offset by the shift it measures, and a record that
+                # lies about the directory's position makes the shift negative.
+                # One more offset that holds no local file header.
+                head = b""
+                if info.header_offset >= 0:
+                    handle.seek(info.header_offset)
+                    head = handle.read(_HEADER_FIXED)
                 if len(head) == _HEADER_FIXED and head[:4] == _LOCAL_HEADER:
                     rest = handle.read(_u16(head, 26) + _u16(head, 28))
                     header = parse_local_header(head + rest, info.header_offset)

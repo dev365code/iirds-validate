@@ -290,8 +290,12 @@ def s10_local_headers_agree_with_the_directory(ctx):
             continue
         extents.append((info.header_offset, header.data_start + info.compress_size, info.filename))
     extents.sort()
-    for (_start, end, name), (following, _end, _name) in zip(extents, extents[1:]):
-        if end > following:
+    for (start, end, name), (following, _end, other) in zip(extents, extents[1:]):
+        if following == start:
+            yield Violation("the central directory gives two entries the same local file header",
+                            subject=other, detail="offset %d, also the header of %s"
+                                                  % (start, name))
+        elif end > following:
             yield Violation("entry data, as the central directory describes it, runs into the "
                             "next entry", subject=name,
                             detail="data ends at %d, the next local header starts at %d"

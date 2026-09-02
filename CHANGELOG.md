@@ -34,6 +34,26 @@ them.
 
 ### Added
 
+- **A namespace that is nearly, but not, an iiRDS namespace is reported
+  (L14).** `iirds/` for `iirds#`, `https` for `http`, `www.` in front: to
+  every consumer a different vocabulary, so every name under it resolved to
+  nothing -- and the package was reported as a set of proprietary classes
+  not linked into iiRDS and a container declaring no package. True, and the
+  wrong place to look. The finding names the namespace once, says how many
+  names sit under it and how many of them the standard has, and which
+  namespace was meant. Anything on the standard's own host that is not one
+  of its four namespaces is reported whatever its distance; the nearest
+  legitimate foreign namespace in the reference corpus scores 0.55 against
+  a line at 0.85.
+
+- **The report says which layer a problem is in.** Metadata that names no
+  iiRDS term at all -- the namespace misspelled, or a document that is not
+  about iiRDS -- gets one note first, saying so and naming the namespace to
+  check, before the findings that describe the absence. The footer's "21
+  not applicable" now says for what: "19 for iiRDS/H, 2 for other
+  editions"; `-v` lists them by rule, and `--format json` carries them under
+  `notApplicable`. Read off the rules, not typed.
+
 - **A name in the iiRDS namespace that the standard does not define is
   reported (L13).** The namespace was trusted and the name never was:
   `is_iirds_term` tests a prefix, and no rule asked the bundled vocabulary

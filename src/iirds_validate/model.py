@@ -267,6 +267,11 @@ class Report:
     variant: str = "unrestricted"
     checked: int = 0                 # rules actually executed
     skipped: int = 0                 # rules not applicable to this version/variant
+    #: The same rules by id, by the reason they did not apply: "variant" (the
+    #: package does not declare the profile the rule is for) or "version". A
+    #: count told a reader that twenty-one rules did not run; which ones, and
+    #: whether the handover rules were among them, it did not.
+    not_applicable: dict = field(default_factory=lambda: {"variant": [], "version": []})
     unimplemented: int = 0           # catalogued but not yet implemented here
     notes: list = field(default_factory=list)
     #: rule id -> how many of its findings were counted but not listed.
@@ -367,6 +372,7 @@ class Report:
                 "findingsNotListed": sum(self.suppressed.values()),
             },
             "notes": self.notes,
+            "notApplicable": {reason: list(ids) for reason, ids in self.not_applicable.items()},
             #: What the listing left out, per rule and in total. A stored
             #: report has to be readable as a whole thing later, so it says
             #: this rather than leaving a reader to infer it from a summary

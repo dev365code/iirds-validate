@@ -143,24 +143,26 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-53 of the 195 rules have no shape, in four honest categories,
+54 of the 196 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **43 not expressible** — 43 of the 195 rules are about ZIP bytes, content
+- **43 not expressible** — 43 of the 196 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, files present
   in the container. None of that
   exists in an RDF graph, **by nature, not omission**. A package can satisfy
   every shape here and still be unreadable to every consumer; full checking
   needs a container-aware validator, which is what the `iirds` checker is.
-- **7 deferred** — expressible in principle, not yet written: the six
+- **8 deferred** — expressible in principle, not yet written: the six
   lint rules whose exemption lists are long (L1, L3, L5, L6, L8 — and L4,
-  which is itself MUST-level: directory-structure cycle detection), and
-  L13, which compares every name in the iiRDS namespaces with the
-  vocabulary: `sh:closed` sees a node's predicates, but Core cannot keep
-  the ones of a namespace and check them against a list it does not carry.
-  A `sh:sparql` constraint expresses it with the edition's term list as a
-  VALUES block; that is a shape worth writing on its own. The
+  which is itself MUST-level: directory-structure cycle detection); L13,
+  which compares every name in the iiRDS namespaces with the vocabulary:
+  `sh:closed` sees a node's predicates, but Core cannot keep the ones of a
+  namespace and check them against a list it does not carry, and a
+  `sh:sparql` constraint would carry the edition's term list as a VALUES
+  block; and L14, whose test is how far a namespace is from iiRDS's — a
+  string distance neither Core nor SPARQL has, though the half about the
+  standard's own host is one `FILTER(STRSTARTS(...))`. The
   five iiRDS/H MUSTs deferred at first release (M15.7b, M15.7d,
   M15.8–M15.10) have since landed as SPARQL shapes, softenings included:
   a party whose vCard this package does not describe passes those five,
@@ -183,7 +185,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 195-rule Python
+Every emitted shape is **differentially tested against the 196-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

@@ -9,7 +9,7 @@
   "core_emitted": 121,
   "version_excluded": 2,
   "sparql_emitted": 21,
-  "deferred_v1.1": 7,
+  "deferred_v1.1": 8,
   "not_expressible": 43,
   "noop": 1
  },
@@ -178,7 +178,8 @@
   "L5": "proprietary-class linkage exemption nest",
   "L6": "structural-node and label exemption nest",
   "L8": "external-vocabulary filters",
-  "L13": "needs a namespace filter and the term list; Core has neither without embedding the vocabulary"
+  "L13": "needs a namespace filter and the term list; Core has neither without embedding the vocabulary",
+  "L14": "string distance to a namespace; the on-host half alone is a SPARQL filter"
  },
  "not_expressible": {
   "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",

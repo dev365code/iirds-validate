@@ -19,7 +19,7 @@ from rdflib import BNode, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
-from ..model import DCTERMS, OWL, VCARD, VERSIONS, Violation
+from ..model import DCTERMS, IIRDS_NAMESPACES, OWL, VCARD, VERSIONS, Violation
 from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
 
@@ -678,3 +678,61 @@ def l13_undefined_iirds_terms(ctx):
                         subject=ctx.ref(term),
                         detail="; ".join(parts) if parts else None,
                         fix=REMEDY_BY_POSITION[position])
+
+
+# ---------------------------------------------------------------------------
+# A namespace that is nearly, but not, one of iiRDS's
+# ---------------------------------------------------------------------------
+
+#: How alike a namespace has to be to one of the four before it is called a
+#: near miss. The nearest legitimate namespace in the reference corpus,
+#: plusmeta's own `https://www.i4icm.de/pifan#`, scores 0.55; a slash for the
+#: hash, `https` for `http`, or `www.` in front score above 0.9. Anything on
+#: the standard's own host is reported whatever its distance: nobody else
+#: mints names there.
+NAMESPACE_NEAR_ENOUGH = 0.85
+IIRDS_HOSTS = ("http://iirds.tekom.de/", "https://iirds.tekom.de/")
+
+
+def _namespace_part(iri) -> str:
+    text = str(iri)
+    cut = max(text.rfind("#"), text.rfind("/"))
+    return text[:cut + 1]
+
+
+@_lint("L14", "a namespace that is nearly, but not, an iiRDS namespace",
+       fix="Write the namespace exactly as the standard publishes it: "
+           "http://iirds.tekom.de/iirds# for the core vocabulary and "
+           "http://iirds.tekom.de/iirds/domain/{handover,machinery,software}# for the "
+           "domains. A namespace one character away is a different vocabulary to every "
+           "consumer, so the names under it resolve to nothing however right they are.")
+def l14_near_miss_namespace(ctx):
+    """`iirds/` for `iirds#`, `https` for `http`, `www.` in front.
+
+    Such a package used to be reported as a set of proprietary classes that
+    are not linked into iiRDS (L5) and a container that declares no
+    iirds:Package (M3) -- every finding true, every one of them the wrong
+    place to look. L13 is the mirror image: right namespace, wrong name.
+    This is wrong namespace, right names, and it says how many of the names
+    under it the standard actually has.
+    """
+    by_namespace = {}
+    for triple in ctx.graph:
+        for term in triple:
+            if isinstance(term, URIRef) and not ctx.ontology.is_iirds_term(term):
+                namespace = _namespace_part(term)
+                if namespace:
+                    by_namespace.setdefault(namespace, set()).add(term)
+    for namespace in sorted(by_namespace):
+        nearest = max(IIRDS_NAMESPACES,
+                      key=lambda known: difflib.SequenceMatcher(None, namespace, known).ratio())
+        ratio = difflib.SequenceMatcher(None, namespace, nearest).ratio()
+        if not namespace.startswith(IIRDS_HOSTS) and ratio < NAMESPACE_NEAR_ENOUGH:
+            continue
+        names = by_namespace[namespace]
+        known = sum(1 for term in names
+                    if ctx.ontology.is_defined(URIRef(nearest + str(term)[len(namespace):])))
+        yield Violation("namespace is nearly, but not, an iiRDS namespace",
+                        subject=namespace,
+                        detail="%d name%s under it, %d of them iiRDS names; did you mean %s?"
+                               % (len(names), "" if len(names) == 1 else "s", known, nearest))

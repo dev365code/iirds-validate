@@ -414,6 +414,11 @@ DEFERRED_V11 = {
     # expresses all three positions with the edition's term list as a VALUES
     # block; that is a shape worth emitting and not one to bolt on here.
     "L13": "needs a namespace filter and the term list; Core has neither without embedding the vocabulary",
+    # The half about the standard's own host is a SPARQL FILTER(STRSTARTS);
+    # the half that measures how far a namespace is from iiRDS's is string
+    # distance, which neither Core nor SPARQL has. Deferred with the host half
+    # rather than emitted as half a rule.
+    "L14": "string distance to a namespace; the on-host half alone is a SPARQL filter",
 }
 
 #: No RDF graph to look at, or two graphs, or graph×ZIP joins. Verbatim family

@@ -75,6 +75,26 @@ def _remedy_marker(stream) -> str:
     return "\u2192"
 
 
+def _reason_label(report: Report, reason: str, ids) -> str:
+    """"for iiRDS/H" rather than "variant": the profile those rules are for,
+    read off the rules themselves, so the wording follows a new profile."""
+    if reason == "version":
+        return "for other editions"
+    from .registry import all_rules
+
+    by_id = {rule.id: rule for rule in all_rules()}
+    variants = sorted({variant for rule_id in ids for variant in by_id[rule_id].variants}
+                      if all(rule_id in by_id for rule_id in ids) else ())
+    return "for iiRDS/%s" % "/".join(variants) if variants else "for another profile"
+
+
+def _not_applicable_reasons(report: Report):
+    """"17 for iiRDS/H, 4 for other editions" -- the number a reader had, split
+    the way a reader asks about it: did the handover rules run?"""
+    return ["%d %s" % (len(ids), _reason_label(report, reason, ids))
+            for reason, ids in report.not_applicable.items() if ids]
+
+
 def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool = False) -> None:
     # Resolved here rather than as a default argument: a default is evaluated
     # once at import, so `stream=sys.stdout` would capture the interpreter's
@@ -145,9 +165,17 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
           file=stream)
     tail = "  %d rule%s checked, %d not applicable to this version/variant" % (
         report.checked, "" if report.checked == 1 else "s", report.skipped)
+    reasons = _not_applicable_reasons(report)
+    if reasons:
+        tail += " (%s)" % ", ".join(reasons)
     if report.unimplemented:
         tail += ", %d catalogued but not yet implemented" % report.unimplemented
     print(paint(tail, _DIM), file=stream)
+    if verbose:
+        for reason, ids in report.not_applicable.items():
+            if ids:
+                print(paint("  not applicable, %s: %s" % (_reason_label(report, reason, ids),
+                                                          ", ".join(ids)), _DIM), file=stream)
 
 
 def _show_group(group, total, paint, stream, marker="\u2192") -> None:

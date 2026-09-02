@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Sequence
 
+from rdflib import URIRef
+
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
@@ -163,6 +165,17 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             % (ctx.version, ctx.ontology.substituted))
     if ctx.sources:
         report.notes.append("metadata read from " + ", ".join(ctx.sources))
+        # A namespace spelled `iirds/` for `iirds#`, or a document that is
+        # not about iiRDS at all, used to be reported as "declares no
+        # iirds:Package" and a proprietary class per type: three true
+        # findings, none of them the place to look. Said once, first.
+        iris = {term for triple in ctx.graph for term in triple if isinstance(term, URIRef)}
+        if iris and not any(ctx.ontology.is_iirds_term(term) for term in iris):
+            report.notes.append(
+                "no iiRDS term appears in the metadata (%d IRIs, none in an iiRDS namespace); "
+                "the findings below describe the absence of iiRDS rather than a defect in it "
+                "-- check the namespace, which is http://iirds.tekom.de/iirds# for the core "
+                "vocabulary" % len(iris))
     if not ctx.sources:
         report.notes.append("no parsable metadata found; graph rules could not run")
 
@@ -172,6 +185,8 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             continue
         if not rule.applies_to(ctx.version, ctx.variant):
             report.skipped += 1
+            reason = "version" if rule.versions and ctx.version not in rule.versions else "variant"
+            report.not_applicable[reason].append(rule.id)
             continue
         report.checked += 1
         try:

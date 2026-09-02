@@ -43,18 +43,30 @@ them.
   not linked into iiRDS and a container declaring no package. True, and the
   wrong place to look. The finding names the namespace once, says how many
   names sit under it and how many of them the standard has, and which
-  namespace was meant. Anything on the standard's own host that is not one
-  of its four namespaces is reported whatever its distance; the nearest
-  legitimate foreign namespace in the reference corpus scores 0.55 against
-  a line at 0.85.
+  namespace was meant. Written the way the standard's own prose writes it,
+  without the `#` -- so that every name runs into the namespace,
+  `iirdsPackage` -- the namespace is reported as written and the names
+  under it decide which one was meant, since by letters `handover#` is as
+  near to `.../domain/machinery` as `machinery#` is; where several of the
+  standard's namespaces begin with the one written, all are offered rather
+  than the shortest. `iirds#/` -- one character past the separator -- is
+  this finding, not eight unknown names under a namespace a prefix test
+  took for the standard's; and the standard's host or vocabulary IRI on its
+  own is not a name under anything. Anything on the standard's own host
+  that is not one of its four namespaces is reported whatever its distance;
+  the nearest legitimate foreign namespace in the reference corpus, read
+  off the corpus in the test, scores below 0.6 against a line at 0.85.
 
 - **The report says which layer a problem is in.** Metadata that names no
-  iiRDS term at all -- the namespace misspelled, or a document that is not
-  about iiRDS -- gets one note first, saying so and naming the namespace to
-  check, before the findings that describe the absence. The footer's "21
-  not applicable" now says for what: "19 for iiRDS/H, 2 for other
-  editions"; `-v` lists them by rule, and `--format json` carries them under
-  `notApplicable`. Read off the rules, not typed.
+  iiRDS name at all -- the namespace misspelled, or a document that is not
+  about iiRDS -- gets one note before every other, saying so and naming the
+  namespace to check, before the findings that describe the absence and
+  before the note that no version was declared, which is true of such a
+  package and the wrong thing to read first. The footer's "21 not
+  applicable" now says for what: "19 for iiRDS/H, 2 for other editions", or
+  on a handover package "1 for packages that are not iiRDS/H"; `-v` lists
+  them by rule, and `--format json` carries them under `notApplicable`.
+  Read off the rules, not typed, and worded in the standard's profile names.
 
 - **A name in the iiRDS namespace that the standard does not define is
   reported (L13).** The namespace was trusted and the name never was:

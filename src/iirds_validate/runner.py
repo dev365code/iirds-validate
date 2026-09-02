@@ -147,6 +147,19 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
 
     # Three different situations used to share one message, which is how a
     # package declaring 1.3 came to be told that 1.3 is not a known version.
+    # A namespace spelled `iirds/` for `iirds#`, or a document that is not
+    # about iiRDS at all, used to be reported as "declares no iirds:Package"
+    # and a proprietary class per type: three true findings, none of them
+    # the place to look. Said once, and before every other note -- the
+    # version note came first and said "no iirds:iiRDSVersion", true and the
+    # wrong layer again, when the version was there under the misspelling.
+    iris = {term for triple in ctx.graph for term in triple if isinstance(term, URIRef)}
+    if iris and not any(ctx.ontology.is_iirds_term(term) for term in iris):
+        report.notes.append(
+            "no iiRDS name appears in the metadata (%d IRIs, none under an iiRDS namespace); "
+            "the findings below describe the absence of iiRDS rather than a defect in it "
+            "-- check the namespace, which is http://iirds.tekom.de/iirds# for the core "
+            "vocabulary" % len(iris))
     if ctx.requested_version and ctx.requested_version != ctx.declared_version:
         report.notes.append(
             "validated against %s because it was asked for; the package declares %s"
@@ -170,17 +183,6 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             % (ctx.version, ctx.ontology.substituted))
     if ctx.sources:
         report.notes.append("metadata read from " + ", ".join(ctx.sources))
-        # A namespace spelled `iirds/` for `iirds#`, or a document that is
-        # not about iiRDS at all, used to be reported as "declares no
-        # iirds:Package" and a proprietary class per type: three true
-        # findings, none of them the place to look. Said once, first.
-        iris = {term for triple in ctx.graph for term in triple if isinstance(term, URIRef)}
-        if iris and not any(ctx.ontology.is_iirds_term(term) for term in iris):
-            report.notes.append(
-                "no iiRDS term appears in the metadata (%d IRIs, none in an iiRDS namespace); "
-                "the findings below describe the absence of iiRDS rather than a defect in it "
-                "-- check the namespace, which is http://iirds.tekom.de/iirds# for the core "
-                "vocabulary" % len(iris))
     if not ctx.sources:
         report.notes.append("no usable metadata found; the graph rules had nothing to check")
 

@@ -685,11 +685,12 @@ def l13_undefined_iirds_terms(ctx):
 # ---------------------------------------------------------------------------
 
 #: How alike a namespace has to be to one of the four before it is called a
-#: near miss. The nearest legitimate namespace in the reference corpus,
-#: plusmeta's own `https://www.i4icm.de/pifan#`, scores 0.55; a slash for the
-#: hash, `https` for `http`, or `www.` in front score above 0.9. Anything on
-#: the standard's own host is reported whatever its distance: nobody else
-#: mints names there.
+#: near miss. The nearest legitimate namespace in the reference corpus, an
+#: example's own `http://myCompany.de/iirds/myPackage/`, scores below 0.6
+#: (the test reads the corpus and pins the number); a slash for the hash,
+#: `https` for `http`, or `www.` in front score above 0.9. Anything on the
+#: standard's own host is reported whatever its distance: nobody else mints
+#: names there.
 NAMESPACE_NEAR_ENOUGH = 0.85
 IIRDS_HOSTS = ("http://iirds.tekom.de/", "https://iirds.tekom.de/")
 
@@ -698,6 +699,45 @@ def _namespace_part(iri) -> str:
     text = str(iri)
     cut = max(text.rfind("#"), text.rfind("/"))
     return text[:cut + 1]
+
+
+def _namespace_as_written(term) -> str:
+    """The namespace the author wrote, where it can be told from the IRI.
+
+    The standard's own prose writes its namespaces without the `#` ("iiRDS
+    Core: http://iirds.tekom.de/iirds"), and a document that copies that
+    runs every name into the namespace: `http://iirds.tekom.de/iirdsPackage`
+    splits, by its last slash, into a namespace nobody wrote and a name
+    nobody meant. When the IRI begins with an iiRDS namespace less its `#`
+    and continues with a bare name, that stem is the namespace as written.
+    """
+    text = str(term)
+    for known in sorted(IIRDS_NAMESPACES, key=len, reverse=True):
+        stem = known[:-1]
+        rest = text[len(stem):]
+        if text.startswith(stem) and rest and "#" not in rest and "/" not in rest:
+            return stem
+    return _namespace_part(term)
+
+
+def _meant_by(namespace):
+    """The iiRDS namespaces a misspelt one could be, fewest first.
+
+    A namespace that several of the standard's begin with (`.../domain/`)
+    is offered all of them: by letters the shortest would win, and a wrong
+    suggestion costs more than none.
+    """
+    if namespace + "#" in IIRDS_NAMESPACES:
+        return [namespace + "#"]
+    scored = sorted(((difflib.SequenceMatcher(None, namespace, known).ratio(), known)
+                     for known in IIRDS_NAMESPACES), reverse=True)
+    best, nearest = scored[0]
+    if best < NAMESPACE_NEAR_ENOUGH and not namespace.startswith(IIRDS_HOSTS):
+        return []
+    begun = [known for known in IIRDS_NAMESPACES if known.startswith(namespace)]
+    if nearest in begun:
+        return begun
+    return [known for ratio, known in scored if ratio == best]
 
 
 @_lint("L14", "a namespace that is nearly, but not, an iiRDS namespace",
@@ -720,19 +760,21 @@ def l14_near_miss_namespace(ctx):
     for triple in ctx.graph:
         for term in triple:
             if isinstance(term, URIRef) and not ctx.ontology.is_iirds_term(term):
-                namespace = _namespace_part(term)
-                if namespace:
+                namespace = _namespace_as_written(term)
+                # An IRI that is all namespace -- the standard's host, the
+                # vocabulary itself -- is not a name under anything.
+                if namespace and str(term) != namespace:
                     by_namespace.setdefault(namespace, set()).add(term)
     for namespace in sorted(by_namespace):
-        nearest = max(IIRDS_NAMESPACES,
-                      key=lambda known: difflib.SequenceMatcher(None, namespace, known).ratio())
-        ratio = difflib.SequenceMatcher(None, namespace, nearest).ratio()
-        if not namespace.startswith(IIRDS_HOSTS) and ratio < NAMESPACE_NEAR_ENOUGH:
+        meant = _meant_by(namespace)
+        if not meant:
             continue
         names = by_namespace[namespace]
-        known = sum(1 for term in names
-                    if ctx.ontology.is_defined(URIRef(nearest + str(term)[len(namespace):])))
+        known = sum(1 for term in names if any(
+            ctx.ontology.is_defined(URIRef(candidate + str(term)[len(namespace):]))
+            for candidate in meant))
+        suggestion = meant[0] if len(meant) == 1 else "one of " + ", ".join(meant)
         yield Violation("namespace is nearly, but not, an iiRDS namespace",
                         subject=namespace,
                         detail="%d name%s under it, %d of them iiRDS names; did you mean %s?"
-                               % (len(names), "" if len(names) == 1 else "s", known, nearest))
+                               % (len(names), "" if len(names) == 1 else "s", known, suggestion))

@@ -88,7 +88,22 @@ class Ontology:
         return False
 
     def is_iirds_term(self, iri) -> bool:
-        return isinstance(iri, URIRef) and str(iri).startswith(IIRDS_NAMESPACES)
+        """A name under one of the standard's namespaces, exactly.
+
+        A prefix test called `iirds#/Package` an iiRDS term and the bare
+        vocabulary IRI one too: the first is a namespace one character off,
+        which L14 reports as such rather than as unknown names, and the
+        second names nothing. Whether the name is one the standard defines
+        is `is_defined`; this answers only whose business the name is.
+        """
+        if not isinstance(iri, URIRef):
+            return False
+        text = str(iri)
+        for namespace in IIRDS_NAMESPACES:
+            if text.startswith(namespace):
+                local = text[len(namespace):]
+                return bool(local) and "/" not in local and "#" not in local
+        return False
 
     def is_defined(self, iri) -> bool:
         return iri in self.defined_terms()

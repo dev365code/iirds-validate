@@ -75,24 +75,48 @@ def _remedy_marker(stream) -> str:
     return "\u2192"
 
 
-def _reason_label(report: Report, reason: str, ids) -> str:
-    """"for iiRDS/H" rather than "variant": the profile those rules are for,
-    read off the rules themselves, so the wording follows a new profile."""
-    if reason == "version":
-        return "for other editions"
+def _profile_label(variants) -> str:
+    """"for iiRDS/H" rather than "variant": the profiles a rule is for, read
+    off the rule itself, so the wording follows a new profile. A rule the
+    registry marks for the unrestricted profile and some named ones is a
+    rule the *other* named profiles leave out, and is labelled by what it
+    is not for: "unrestricted" is the absence of a restriction, not a
+    profile name, and "iiRDS/A/unrestricted" named nothing published."""
+    from .model import VARIANTS
+
+    if "unrestricted" in variants:
+        left_out = [variant for variant in VARIANTS if variant not in variants]
+        return "for packages that are not iiRDS/%s" % "/".join(left_out)
+    named = [variant for variant in VARIANTS if variant in variants]
+    return "for iiRDS/%s" % "/".join(named) if named else "for another profile"
+
+
+def _not_applicable_groups(report: Report):
+    """(label, ids) for every group of rules that did not run: the version
+    ones together, the profile ones grouped by the profiles they are for."""
     from .registry import all_rules
 
     by_id = {rule.id: rule for rule in all_rules()}
-    variants = sorted({variant for rule_id in ids for variant in by_id[rule_id].variants}
-                      if all(rule_id in by_id for rule_id in ids) else ())
-    return "for iiRDS/%s" % "/".join(variants) if variants else "for another profile"
+    out = []
+    for reason, ids in report.not_applicable.items():
+        if not ids:
+            continue
+        if reason == "version":
+            out.append(("for other editions", list(ids)))
+            continue
+        groups = {}
+        for rule_id in ids:
+            variants = by_id[rule_id].variants if rule_id in by_id else ()
+            groups.setdefault(variants, []).append(rule_id)
+        for variants in sorted(groups, key=lambda v: (len(groups[v]), v), reverse=True):
+            out.append((_profile_label(variants), groups[variants]))
+    return out
 
 
 def _not_applicable_reasons(report: Report):
     """"17 for iiRDS/H, 4 for other editions" -- the number a reader had, split
     the way a reader asks about it: did the handover rules run?"""
-    return ["%d %s" % (len(ids), _reason_label(report, reason, ids))
-            for reason, ids in report.not_applicable.items() if ids]
+    return ["%d %s" % (len(ids), label) for label, ids in _not_applicable_groups(report)]
 
 
 def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool = False) -> None:
@@ -172,10 +196,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
         tail += ", %d catalogued but not yet implemented" % report.unimplemented
     print(paint(tail, _DIM), file=stream)
     if verbose:
-        for reason, ids in report.not_applicable.items():
-            if ids:
-                print(paint("  not applicable, %s: %s" % (_reason_label(report, reason, ids),
-                                                          ", ".join(ids)), _DIM), file=stream)
+        for label, ids in _not_applicable_groups(report):
+            print(paint("  not applicable, %s: %s" % (label, ", ".join(ids)), _DIM), file=stream)
 
 
 def _show_group(group, total, paint, stream, marker="\u2192") -> None:

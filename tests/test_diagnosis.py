@@ -33,19 +33,19 @@ def note_about(report, needle):
 
 def test_metadata_naming_no_iirds_term_is_said_so_in_one_sentence(make_package):
     report = runner.run(make_package(metadata=FOREIGN), runner.ALL_KINDS)
-    notes = note_about(report, "no iiRDS term")
+    notes = note_about(report, "no iiRDS name")
     assert notes, report.notes
     assert "namespace" in notes[0]
 
 
 def test_a_package_with_iirds_terms_gets_no_such_note(make_package):
     report = runner.run(make_package(), runner.ALL_KINDS)
-    assert not note_about(report, "no iiRDS term")
+    assert not note_about(report, "no iiRDS name")
 
 
 def test_the_note_travels_in_the_json_report(make_package):
     report = runner.run(make_package(metadata=FOREIGN), runner.ALL_KINDS)
-    assert any("no iiRDS term" in n for n in json.loads(json.dumps(report.as_dict()))["notes"])
+    assert any("no iiRDS name" in n for n in json.loads(json.dumps(report.as_dict()))["notes"])
 
 
 # --- a namespace that is nearly iiRDS's --------------------------------------
@@ -79,18 +79,126 @@ def test_a_genuinely_foreign_namespace_is_not_called_a_near_miss(make_package):
 
 
 def test_the_reference_corpus_and_its_authors_own_vocabulary_trip_nothing():
-    """plusmeta's `https://www.i4icm.de/pifan#` is the closest legitimate
-    namespace in the reference corpus to iiRDS's by letters, at 0.55; it and
-    every other foreign namespace there stay below the line."""
+    """Every foreign namespace in the reference corpus, read off the files
+    rather than typed here, stays below the line. The nearest legitimate one
+    by letters is an example's own package namespace, and the number is
+    pinned so that a change in the measure is a change in this test."""
     import difflib
+
+    from rdflib import Graph, URIRef
+    from tools import vendor_corpus
 
     from iirds_validate.model import IIRDS_NAMESPACES
     from iirds_validate.rules import lint as L
 
-    for foreign in ("https://www.i4icm.de/pifan#", "http://myCompany.com/io/",
-                    "http://www.w3.org/2000/01/rdf-schema#", "http://purl.org/dc/terms/"):
-        best = max(difflib.SequenceMatcher(None, foreign, ns).ratio() for ns in IIRDS_NAMESPACES)
-        assert best < L.NAMESPACE_NEAR_ENOUGH, (foreign, best)
+    nearest = {}
+    for path in sorted(vendor_corpus.FILES.iterdir()):
+        graph = Graph()
+        try:
+            graph.parse(path, format="xml")
+        except Exception:
+            continue
+        for triple in graph:
+            for term in triple:
+                if isinstance(term, URIRef) and not str(term).startswith(IIRDS_NAMESPACES):
+                    namespace = L._namespace_part(term)
+                    if namespace and namespace not in nearest:
+                        nearest[namespace] = max(
+                            difflib.SequenceMatcher(None, namespace, ns).ratio()
+                            for ns in IIRDS_NAMESPACES)
+    assert len(nearest) > 10
+    assert max(nearest.values()) < L.NAMESPACE_NEAR_ENOUGH
+    closest = max(nearest, key=nearest.get)
+    assert (closest, round(nearest[closest], 3)) == ("http://myCompany.de/iirds/myPackage/", 0.575)
+
+
+NO_SEPARATOR = MINIMAL_RDF.replace("http://iirds.tekom.de/iirds#", "http://iirds.tekom.de/iirds")
+EXTRA_SLASH = MINIMAL_RDF.replace("http://iirds.tekom.de/iirds#", "http://iirds.tekom.de/iirds#/")
+MACHINERY_NO_SEPARATOR = MINIMAL_RDF.replace(
+    '</rdf:RDF>',
+    '  <m:Assembly xmlns:m="http://iirds.tekom.de/iirds/domain/machinery" rdf:about="urn:test:c1"/>\n'
+    '</rdf:RDF>')
+DOMAIN_ONLY = MACHINERY_NO_SEPARATOR.replace("http://iirds.tekom.de/iirds/domain/machinery",
+                                             "http://iirds.tekom.de/iirds/domain/")
+
+
+def l14(report):
+    return [f for f in report.findings if f.rule.id == "L14"]
+
+
+def test_a_namespace_written_without_its_separator_names_the_separator(make_package):
+    """The standard's own prose writes the core namespace without the `#`
+    ("iiRDS Core: http://iirds.tekom.de/iirds"). Written that way in a
+    document, every name runs into the namespace -- `iirdsPackage` -- and
+    the nearest namespace by letters was the wrong one. The names decide."""
+    findings = l14(runner.lint(make_package(metadata=NO_SEPARATOR)))
+    assert len(findings) == 1
+    assert findings[0].violation.subject == "http://iirds.tekom.de/iirds"
+    assert findings[0].violation.detail == (
+        "8 names under it, 8 of them iiRDS names; did you mean http://iirds.tekom.de/iirds#?")
+
+
+def test_a_domain_namespace_without_its_separator_is_matched_by_its_names(make_package):
+    """`.../domain/machinery` + `Assembly` runs into `.../domain/machineryAssembly`,
+    and by letters `handover#` and `software#` are as near as `machinery#`.
+    A wrong suggestion costs more than none; the name says which domain."""
+    findings = l14(runner.lint(make_package(metadata=MACHINERY_NO_SEPARATOR)))
+    assert [f.violation.subject for f in findings] == ["http://iirds.tekom.de/iirds/domain/machinery"]
+    assert findings[0].violation.detail == (
+        "1 name under it, 1 of them iiRDS names; "
+        "did you mean http://iirds.tekom.de/iirds/domain/machinery#?")
+
+
+def test_a_namespace_that_several_iirds_namespaces_begin_with_is_offered_all_of_them(make_package):
+    findings = l14(runner.lint(make_package(metadata=DOMAIN_ONLY)))
+    assert [f.violation.subject for f in findings] == ["http://iirds.tekom.de/iirds/domain/"]
+    detail = findings[0].violation.detail
+    assert detail.startswith("1 name under it, 1 of them iiRDS names; did you mean one of ")
+    for domain in ("handover", "machinery", "software"):
+        assert "http://iirds.tekom.de/iirds/domain/%s#" % domain in detail
+
+
+def test_an_extra_slash_after_the_separator_is_one_near_miss_not_eight_unknown_names(make_package):
+    """`iirds#/Package` begins with the core namespace, so a prefix test
+    called it an iiRDS term and L13 reported eight unknown names, each with
+    "did you mean Package?". It is one namespace one character off."""
+    report = runner.lint(make_package(metadata=EXTRA_SLASH))
+    assert "L13" not in ids(report)
+    findings = l14(report)
+    assert len(findings) == 1
+    assert findings[0].violation.subject == "http://iirds.tekom.de/iirds#/"
+    assert findings[0].violation.detail.endswith("did you mean http://iirds.tekom.de/iirds#?")
+
+
+def test_the_bare_host_and_the_vocabulary_iri_are_not_names_under_a_namespace(make_package):
+    """A value of `http://iirds.tekom.de/` on rdfs:seeAlso, or owl:imports of
+    the vocabulary IRI itself, has no local name to be near or far from."""
+    metadata = MINIMAL_RDF.replace(
+        "<iirds:title>Test package</iirds:title>",
+        '<iirds:title>Test package</iirds:title>\n'
+        '    <rdfs:seeAlso rdf:resource="http://iirds.tekom.de/"/>\n'
+        '    <rdfs:seeAlso rdf:resource="http://iirds.tekom.de/iirds#"/>')
+    assert not l14(runner.lint(make_package(metadata=metadata)))
+
+
+def test_the_vocabulary_iri_alone_does_not_make_a_package_iirds(make_package):
+    """owl:imports of the vocabulary names no term; the note still fires."""
+    metadata = FOREIGN.replace(
+        "</rdf:RDF>",
+        '  <rdf:Description rdf:about="urn:test:onto">\n'
+        '    <rdfs:seeAlso rdf:resource="http://iirds.tekom.de/iirds#"/>\n'
+        '  </rdf:Description>\n</rdf:RDF>')
+    report = runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
+    assert note_about(report, "no iiRDS name"), report.notes
+
+
+def test_the_no_iirds_note_is_the_first_line_of_the_report(make_package):
+    """The version note came first and said "no iirds:iiRDSVersion in the
+    package" -- true, and the wrong layer again: the version is there,
+    under the misspelt namespace. The layer is named before anything else."""
+    report = runner.run(make_package(metadata=SLASH_FOR_HASH), runner.ALL_KINDS)
+    assert report.notes[0].startswith("no iiRDS name appears in the metadata"), report.notes
+    assert any("no iirds:iiRDSVersion" in n for n in report.notes[1:])
 
 
 def test_a_near_miss_namespace_is_reported_once_however_many_names_it_carries(make_package):
@@ -118,6 +226,29 @@ def test_the_footer_says_why_rules_were_not_applicable(make_package):
     report_module.render_text(result, out, verbose=True)
     assert "%d for iiRDS/H" % len(for_variant) in out.getvalue()
     assert "not applicable, for iiRDS/H:" in out.getvalue()
+
+
+def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
+    """On an iiRDS/H package the one rule that does not apply is for the
+    other two profiles, which the registry spells ("unrestricted", "A").
+    Joined with a slash that read "for iiRDS/A/unrestricted" -- a profile
+    name nobody published. "unrestricted" is the absence of a restriction."""
+    import io
+
+    from iirds_validate import report as report_module
+
+    metadata = MINIMAL_RDF.replace(
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:formatRestriction>H</iirds:formatRestriction>")
+    result = runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
+    assert result.not_applicable["variant"] == ["C11.1"]
+    out = io.StringIO()
+    report_module.render_text(result, out, verbose=True)
+    text = out.getvalue()
+    assert "1 for packages that are not iiRDS/H" in text
+    assert "not applicable, for packages that are not iiRDS/H: C11.1" in text
+    assert "unrestricted" not in text
 
 
 def test_the_not_applicable_rules_are_listed_by_id_in_the_json_report(make_package):

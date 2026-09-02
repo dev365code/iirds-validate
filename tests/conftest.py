@@ -6,6 +6,7 @@ pytest. One builder, imported here, rather than two that drift apart.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -27,6 +28,18 @@ __all__ = ["ATTRIBUTE_STYLE_RDF", "DESCRIPTION_STYLE_RDF", "MIMETYPE", "MINIMAL_
            "build_package", "make_package", "version_tuple"]
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# The warning policy of pyproject's `filterwarnings` reaches this interpreter
+# and no other. Nine modules run the tool as a child process, and a warning
+# raised there went to a stderr nobody read while the parent stayed green.
+# The children inherit this: a RuntimeWarning from anywhere (runpy raises
+# the `-m` one, about our module) and a UserWarning -- `warnings.warn`'s
+# default, the category this package's own code would raise -- are errors
+# there too. Not `error` outright: on the dependency floor the libraries'
+# own DeprecationWarnings would end every child, and the module field of a
+# `-W` filter is a literal name, not a prefix, so "our packages" cannot be
+# said there. Only set where the caller has not chosen a policy of their own.
+os.environ.setdefault("PYTHONWARNINGS", "error::RuntimeWarning,error::UserWarning")
 
 
 def shacl_or_skip():

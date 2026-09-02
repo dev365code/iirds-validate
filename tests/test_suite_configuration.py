@@ -58,3 +58,35 @@ def test_an_unregistered_mark_is_an_error(pytestconfig):
                    strict=True)
 def test_a_marked_failure_still_fails():
     raise AssertionError("if this ever passes, xfail_strict makes it a failure")
+
+
+def test_a_warning_in_a_child_process_of_the_suite_is_a_failure_too():
+    """`filterwarnings` reaches the interpreter running pytest and nothing
+    else. Nine test modules run the tool as a child process -- the CLI, the
+    zipapp, `-m iirds_validate.ontology` -- and a warning raised there was
+    printed to a stderr nobody read, while the parent stayed green. The
+    same policy travels in the environment the children inherit: a
+    RuntimeWarning from anywhere (the one the `-m` path raised was runpy's,
+    about our module) and a UserWarning, the category `warnings.warn` gives
+    this package's own code. Those two, not `error` outright: on the
+    dependency floor the libraries' own deprecation warnings would end
+    every child, and a `-W` module field is a literal name, not a prefix,
+    so "this package's modules" cannot be said in the environment."""
+    import os
+    import subprocess
+    import sys
+
+    def child(code):
+        return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+
+    # every child inherits the policy through the environment, so a test
+    # that builds its own `dict(os.environ, ...)` keeps it
+    assert "PYTHONWARNINGS" in os.environ
+    assert child("import warnings; warnings.warn('x', RuntimeWarning)").returncode != 0
+    ours = child("import warnings, iirds_validate.model as m; "
+                 "warnings.warn_explicit('x', UserWarning, m.__file__, 1, module='iirds_validate.model')")
+    assert ours.returncode != 0, ours.stderr
+    # and a dependency's DeprecationWarning is still only a warning there
+    theirs = child("import warnings; "
+                   "warnings.warn_explicit('x', DeprecationWarning, 'f.py', 1, module='rdflib.term')")
+    assert theirs.returncode == 0, theirs.stderr

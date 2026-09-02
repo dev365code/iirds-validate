@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 21,
   "deferred_v1.1": 9,
-  "not_expressible": 43,
+  "not_expressible": 44,
   "noop": 1
  },
  "core_emitted": [
@@ -217,9 +217,10 @@
   "S2": "system: the subject is the run itself, not the graph",
   "S3": "system: the subject is the run itself, not the graph",
   "S9": "system: the subject is the run itself, not the graph",
-  "S6": "archive: entry names, encryption bits, ZIP64 records",
-  "S7": "archive: entry names, encryption bits, ZIP64 records",
-  "S8": "archive: entry names, encryption bits, ZIP64 records",
+  "S6": "archive: entry names, encryption bits, ZIP64 records, local headers",
+  "S7": "archive: entry names, encryption bits, ZIP64 records, local headers",
+  "S8": "archive: entry names, encryption bits, ZIP64 records, local headers",
+  "S10": "archive: entry names, encryption bits, ZIP64 records, local headers",
   "L2": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L11": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L12": "graph×ZIP join: the verdict depends on which files the archive carries",

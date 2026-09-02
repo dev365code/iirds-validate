@@ -7,7 +7,7 @@ the container rules need to know about the ZIP lives here, including the things
 A directory is the form the package exists in while it is being built. Checking
 it before zipping is the difference between finding a defect in the second you
 made it and finding it in the artefact — and content rules in particular are
-worth running on every save. Four requirements are about the archive rather
+worth running on every save. Six requirements are about the archive rather
 than the package and cannot be assessed on a directory; `is_archive` says so,
 and the report says so too, rather than quietly passing them.
 """
@@ -17,7 +17,7 @@ import os
 import posixpath
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, NamedTuple, Optional, Tuple
 
 from .model import METADATA_RDF, MIMETYPE_FILE, MIMETYPE_VALUE
 
@@ -185,6 +185,38 @@ class Package:
     def read(self, name: str, limit: int = MAX_ENTRY_BYTES) -> bytes:
         return self.read_bounded(name, limit)[0]
 
+    def local_headers(self) -> Iterator[Tuple[zipfile.ZipInfo, Optional[LocalHeader], bytes]]:
+        """Every entry's local file header, read where the directory says it is.
+
+        `(info, header, descriptor)` per directory entry, in directory order,
+        the file opened once. `header` is None where the offset holds no
+        local file header -- past the end of the file, or bytes that do not
+        start with the signature. `descriptor` is the 24 bytes following the
+        data, as the directory's compressed size places them, for an entry
+        whose local header sets bit 3; empty otherwise. Reads are bounded by
+        the format itself: thirty bytes, then two 16-bit lengths' worth, then
+        twenty-four. `infos` carries the offsets `zipfile` already corrected
+        for anything prepended to the archive.
+        """
+        with open(self.path, "rb") as handle:
+            for info in self.infos:
+                handle.seek(info.header_offset)
+                head = handle.read(_HEADER_FIXED)
+                header = None
+                descriptor = b""
+                if len(head) == _HEADER_FIXED and head[:4] == _LOCAL_HEADER:
+                    rest = handle.read(_u16(head, 26) + _u16(head, 28))
+                    header = parse_local_header(head + rest, info.header_offset)
+                if header is not None and header.flag_bits & 0x8:
+                    handle.seek(header.data_start + info.compress_size)
+                    descriptor = handle.read(_DESCRIPTOR_BYTES)
+                yield info, header, descriptor
+
+    @property
+    def directory_offset(self) -> int:
+        """Where the central directory begins, as `zipfile` found it."""
+        return self._zip.start_dir
+
     def read_bounded(self, name: str, limit: int):
         """The entry's bytes, and whether there were more than `limit` of them.
 
@@ -203,10 +235,10 @@ class Package:
         it did: `zipfile` truncates to the size in the *central directory*,
         and a consumer that streams the archive reads the *local* header
         instead. Where the two disagree the two see different documents, and
-        this sees the shorter one -- so a member can be blessed here and
+        this sees the shorter one -- so a member could be blessed here and
         arrive longer somewhere else. Refusing that is a rule about the
-        archive rather than a bound on a read, and there is no rule for it
-        yet; docs/scope.md carries it as open.
+        archive rather than a bound on a read: S10 compares the two records
+        for every entry, through `local_headers` below.
         """
         out = bytearray()
         with self._zip.open(name) as handle:
@@ -368,6 +400,72 @@ CONTAINER_SUFFIX = ".iirds"
 _LOCAL_HEADER = b"PK\x03\x04"
 _HEADER_FIXED = 30
 _STORED = 0
+#: A data descriptor (APPNOTE 4.3.9): an optional signature, crc-32, then the
+#: two sizes at four bytes each or, for ZIP64, eight. Twenty-four bytes cover
+#: the longest form.
+_DATA_DESCRIPTOR = b"PK\x07\x08"
+_DESCRIPTOR_BYTES = 24
+_ZIP64_EXTRA = 0x0001
+_PLACEHOLDER = 0xFFFFFFFF
+
+
+class LocalHeader(NamedTuple):
+    """The fields of a local file header (APPNOTE 4.3.7) a reader acts on,
+    with the ZIP64 sizes (4.5.3) already read in for the placeholders."""
+    offset: int
+    name: bytes
+    flag_bits: int
+    compress_type: int
+    crc: int
+    compress_size: int
+    file_size: int
+    data_start: int
+
+
+def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
+    """The local file header at the start of `raw`, or None where there is none."""
+    if len(raw) < _HEADER_FIXED or raw[:4] != _LOCAL_HEADER:
+        return None
+    name_len, extra_len = _u16(raw, 26), _u16(raw, 28)
+    if len(raw) < _HEADER_FIXED + name_len + extra_len:
+        return None
+    name = raw[_HEADER_FIXED:_HEADER_FIXED + name_len]
+    extra = raw[_HEADER_FIXED + name_len:_HEADER_FIXED + name_len + extra_len]
+    compress_size, file_size = _zip64_sizes(extra, _u32(raw, 18), _u32(raw, 22))
+    return LocalHeader(offset, name, _u16(raw, 6), _u16(raw, 8), _u32(raw, 14),
+                       compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len)
+
+
+def _zip64_sizes(extra: bytes, compress_size: int, file_size: int):
+    """4.5.3: the ZIP64 extra carries, in this order, only the sizes whose
+    32-bit field holds the placeholder."""
+    at = 0
+    while at + 4 <= len(extra):
+        tag, size = _u16(extra, at), _u16(extra, at + 2)
+        body = extra[at + 4:at + 4 + size]
+        if tag == _ZIP64_EXTRA:
+            cursor = 0
+            if file_size == _PLACEHOLDER and cursor + 8 <= len(body):
+                file_size = int.from_bytes(body[cursor:cursor + 8], "little")
+                cursor += 8
+            if compress_size == _PLACEHOLDER and cursor + 8 <= len(body):
+                compress_size = int.from_bytes(body[cursor:cursor + 8], "little")
+            break
+        at += 4 + size
+    return compress_size, file_size
+
+
+def descriptor_readings(descriptor: bytes):
+    """Every (crc, compressed size, uncompressed size) a data descriptor's
+    bytes can be read as: with or without the signature (4.3.9.3), with
+    four-byte or eight-byte sizes (ZIP64)."""
+    for skip in (4, 0) if descriptor.startswith(_DATA_DESCRIPTOR) else (0,):
+        for width in (4, 8):
+            end = skip + 4 + 2 * width
+            if len(descriptor) >= end:
+                yield (_u32(descriptor, skip),
+                       int.from_bytes(descriptor[skip + 4:skip + 4 + width], "little"),
+                       int.from_bytes(descriptor[skip + 4 + width:end], "little"))
 
 
 def _u16(raw: bytes, at: int) -> int:

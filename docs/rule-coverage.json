@@ -1,8 +1,8 @@
 {
  "_generated_by": "tools/rule_coverage.py --write-baseline",
  "_note": "`never_fires` lists rules no test has been seen to make fire. Not a target: the list should shrink, and it must not grow without somebody saying why. A rule there is not known to be broken -- it is not known to work. `cannot_fire_by_design` is the separate, closed case.",
- "rules": 197,
- "exercised": 196,
+ "rules": 198,
+ "exercised": 197,
  "cannot_fire_by_design": {
   "M96.4": "a MAY with nothing to violate; the permission is honoured by M96.1 to M96.3 checking the shape when it is used, and by nothing complaining when it is not. Registered so `iirds rules` lists the whole catalogue."
  },

@@ -15,6 +15,7 @@ from __future__ import annotations
 import posixpath
 
 from ..model import VARIANTS, VERSIONS, Violation
+from ..package import descriptor_readings
 from ..registry import rule
 
 #: Every kind of run, so a container that cannot be read is reported whether
@@ -198,6 +199,108 @@ def s8_zip64_where_required(ctx):
         return
     yield Violation("archive exceeds the ZIP32 limits but does not use ZIP64",
                     detail="%d entries, largest file %d bytes" % (entries, biggest))
+
+
+#: Compression methods a reader is likely to meet, for the message.
+_METHODS = {0: "stored", 8: "deflated", 12: "bzip2", 14: "lzma", 93: "zstd", 99: "aes"}
+
+
+def _method(code: int) -> str:
+    return "%d (%s)" % (code, _METHODS[code]) if code in _METHODS else str(code)
+
+
+def _name_bytes(info) -> bytes:
+    """The directory's name as bytes, under the encoding its own flag declares."""
+    return info.orig_filename.encode("utf-8" if info.flag_bits & 0x800 else "cp437",
+                                     errors="replace")
+
+
+def _disagreements(info, header, descriptor):
+    """Every field on which the local header describes a different entry
+    from the central directory's, in the order a reader meets them."""
+    if header.name != _name_bytes(info):
+        local_name = header.name.decode("utf-8" if header.flag_bits & 0x800 else "cp437",
+                                        errors="replace")
+        yield "file name: directory %s, local header %s" % (info.orig_filename, local_name)
+    if header.compress_type != info.compress_type:
+        yield "compression method: directory %s, local header %s" % (
+            _method(info.compress_type), _method(header.compress_type))
+    for bit, meaning in ((0x1, "bit 0 (encryption)"), (0x40, "bit 6 (strong encryption)"),
+                         (0x8, "bit 3 (data descriptor)")):
+        if (header.flag_bits ^ info.flag_bits) & bit:
+            yield "general purpose flag %s: directory %s, local header %s" % (
+                meaning, "set" if info.flag_bits & bit else "clear",
+                "set" if header.flag_bits & bit else "clear")
+    expected = (info.CRC, info.compress_size, info.file_size)
+    if header.flag_bits & 0x8:
+        # 4.4.4: with bit 3 the local fields are zero (or, from one writer,
+        # the true sizes) and the descriptor after the data is the record
+        if expected not in set(descriptor_readings(descriptor)):
+            yield ("no data descriptor carrying the directory's crc-32 and sizes where "
+                   "the directory's compressed size puts one")
+    else:
+        for label, ours, theirs, form in (
+                ("crc-32", info.CRC, header.crc, "%08x"),
+                ("compressed size", info.compress_size, header.compress_size, "%d"),
+                ("uncompressed size", info.file_size, header.file_size, "%d")):
+            if ours != theirs:
+                yield ("%s: directory " + form + ", local header " + form) % (label, ours, theirs)
+
+
+@rule("S10", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="cause",
+      title="every local file header must describe the entry the central directory describes",
+      fix="Rebuild the archive with one tool in one pass and do not edit it afterwards; "
+          "`iirds pack` writes both records from one source. Every entry is described twice, "
+          "in a local file header before its data and in the central directory at the end. "
+          "This run judged the entry the directory describes, as Python's zipfile does; a "
+          "consumer that reads the local header -- libarchive, Java's stream reader, anything "
+          "fed from a pipe, and unzip for the checksum and the method -- receives the entry the "
+          "local header describes, and where the two disagree the two do not receive the same "
+          "file.")
+def s10_local_headers_agree_with_the_directory(ctx):
+    """The archive's own index, checked against the archive.
+
+    `zipfile` reads the central directory, so that is the document every
+    other rule judges. A reader that takes the archive as a stream reads
+    the local file header before each entry's data instead, and where the
+    two records disagree the two readers receive different files -- a
+    package blessed here on the seven bytes the directory described while a
+    stream received seven hundred. Compared per entry: the name, the
+    method, the flags that change what a reader does, and the crc and
+    sizes -- from the local header, or from the data descriptor where the
+    local header defers to one (bit 3). Extra fields and timestamps differ
+    between writers and between the two records legitimately and are not
+    compared. Then the entries' extents: data that runs into the next
+    entry's header is handed out by a trusting reader as this entry's.
+    """
+    package = ctx.package
+    if not package.is_archive:
+        return
+    extents = []
+    for info, header, descriptor in package.local_headers():
+        if header is None:
+            yield Violation("no local file header at the offset the central directory gives",
+                            subject=info.filename, detail="offset %d" % info.header_offset)
+            continue
+        found = list(_disagreements(info, header, descriptor))
+        if found:
+            yield Violation("local file header disagrees with the central directory",
+                            subject=info.filename, detail="; ".join(found))
+            continue
+        extents.append((info.header_offset, header.data_start + info.compress_size, info.filename))
+    extents.sort()
+    for (_start, end, name), (following, _end, _name) in zip(extents, extents[1:]):
+        if end > following:
+            yield Violation("entry data, as the central directory describes it, runs into the "
+                            "next entry", subject=name,
+                            detail="data ends at %d, the next local header starts at %d"
+                                   % (end, following))
+    if extents and extents[-1][1] > package.directory_offset:
+        yield Violation("entry data, as the central directory describes it, runs into the "
+                        "central directory", subject=extents[-1][2],
+                        detail="data ends at %d, the central directory starts at %d"
+                               % (extents[-1][1], package.directory_offset))
 
 
 @rule("S9", kind="system", prio="MUST", versions=(), variants=(),

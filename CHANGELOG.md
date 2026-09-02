@@ -12,9 +12,11 @@ distribution: `pip install iirds` installs both. The command is `iirds`;
 no rule, no rule identifier and not the `source` token a report carries;
 three remedies that told a reader to run `iirdsv pack`, or to report a rule
 that crashed, now spell the command's name and the issue tracker's address.
-Three rules are new, L13, L14 and L15, and all three are warnings: a
-package that passed 0.4.2 still exits 0 unless `-W` asks warnings to fail
-the run. One rule reports less: C9 no longer fails an RDF/XML document
+Four rules are new. L13, L14 and L15 are warnings: a package that passed
+0.4.2 still exits 0 unless `-W` asks warnings to fail the run. S10 is an
+error, about an archive no tool writes and one edit produces: it fails a
+package only where the archive describes an entry two ways. One rule
+reports less: C9 no longer fails an RDF/XML document
 written without the `rdf:RDF` element, a form the grammar permits (see
 *Fixed*).
 The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
@@ -36,6 +38,28 @@ already happened, `pip install --force-reinstall --no-deps iirds` restores
 them.
 
 ### Added
+
+- **An archive whose two records of an entry disagree is reported (S10).**
+  A ZIP describes every entry twice, in a local file header before its data
+  and in the central directory at the end. `zipfile` reads the directory,
+  so that is the document every rule here judged; a consumer that reads
+  the archive as a stream -- libarchive, Java's stream reader, anything
+  fed from a pipe -- reads the local header instead, and `unzip` takes the
+  checksum and the method from it. Where the two disagreed, this tool
+  blessed the entry the directory described and a stream received the one
+  the local header described, and nothing said so: seven bytes here, seven
+  hundred there, every existing rule silent. S10 reads the local header
+  where the directory says it is and reports the entry whose name, method,
+  encryption or data-descriptor flag, crc-32 or sizes differ between the
+  two records -- from the local header, or from the data descriptor it
+  defers to -- and the entry whose data, as the directory describes it,
+  runs into the next entry's header or the directory itself. What writers
+  legitimately do differently is not a disagreement: the extra fields and
+  timestamps, a data descriptor with or without its signature, ZIP64 sizes
+  in an extra field or in an eight-byte descriptor, an archive with
+  something prepended. The archives Python's stream writer, ZIP64 and a
+  prefixed stub produce are the rule's negatives and stay silent, as do
+  the Consortium's own sample packages.
 
 - **A namespace that is nearly, but not, an iiRDS namespace is reported
   (L14).** `iirds/` for `iirds#`, `https` for `http`, `www.` in front: to

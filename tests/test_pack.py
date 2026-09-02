@@ -23,7 +23,7 @@ from iirds_validate.model import MIMETYPE_VALUE
 
 ROOT = Path(__file__).resolve().parents[1]
 
-ARCHIVE_RULES = {"C1", "C3", "C4", "C5", "C6", "S7", "S8"}
+ARCHIVE_RULES = {"C1", "C3", "C4", "C5", "C6", "S7", "S8", "S10"}
 
 
 @pytest.fixture

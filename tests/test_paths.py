@@ -33,7 +33,7 @@ def test_an_unpacked_container_gives_the_same_answer(unpacked):
     from_archive = runner.run(archive, runner.ALL_KINDS)
     from_directory = runner.run(directory, runner.ALL_KINDS)
 
-    archive_only = {"C1", "C3", "C6", "S7", "S8"}
+    archive_only = {"C1", "C3", "C6", "S7", "S8", "S10"}
     assert ({f.rule.id for f in from_directory.findings} - archive_only
             == {f.rule.id for f in from_archive.findings} - archive_only)
 

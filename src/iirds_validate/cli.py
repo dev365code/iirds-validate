@@ -114,7 +114,7 @@ def _cmd_pack(args) -> int:
     """Write the archive, then validate the archive.
 
     Validating what was just written rather than the directory is the point:
-    the five requirements about the ZIP that a directory cannot answer are now
+    the six requirements about the ZIP that a directory cannot answer are now
     answerable, and answered against the file that will actually be delivered.
     """
     try:

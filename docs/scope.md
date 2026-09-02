@@ -147,12 +147,14 @@ gone wrong.
    against the 1.0 text ([divergences.md](divergences.md)). Their schemas now
    feed the version inventory too, so no edition is unchecked.
 
-6. **The archive's own index is taken at its word.** This tool judges the
-   container as `zipfile` presents it, and a consumer that reads an archive
-   by another route is not guaranteed to be looking at the same thing.
-   Nothing in the specification addresses the case and no rule reports it.
-   Recorded rather than fixed: it wants a container rule of its own, not a
-   wider bound on a read.
+6. ~~The archive's own index is taken at its word~~ **Closed**: S10 reads
+   every entry's local file header where the central directory says it is
+   and reports the entry where the two describe different files -- name,
+   method, the flags a reader acts on, checksum and sizes, and data that
+   runs into the next entry. The extra fields and timestamps writers put in
+   the two records differ legitimately and are not compared. Nothing in the
+   specification addresses the case; a consumer reading the archive as a
+   stream does.
 
 ## Checking any of this yourself
 

@@ -432,8 +432,8 @@ for _rid in ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10"):
     NOT_EXPRESSIBLE[_rid] = "content: the subject is XHTML files inside the archive"
 for _rid in ("S1", "S2", "S3", "S9"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
-for _rid in ("S6", "S7", "S8"):
-    NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records"
+for _rid in ("S6", "S7", "S8", "S10"):
+    NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records, local headers"
 for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"

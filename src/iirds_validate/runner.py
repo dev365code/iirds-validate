@@ -174,8 +174,8 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                             "validated against %s instead" % (ctx.declared_version, ctx.version))
     if not package.is_archive:
         report.notes.append(
-            "validated as an unpacked container; the five requirements about the ZIP "
-            "archive itself (C1, C3, C6, S7, S8) cannot be assessed until it is packed")
+            "validated as an unpacked container; the six requirements about the ZIP "
+            "archive itself (C1, C3, C6, S7, S8, S10) cannot be assessed until it is packed")
     if ctx.ontology.substituted:
         report.notes.append(
             "no ontology bundled for iiRDS %s; class hierarchy taken from %s, so rules that "

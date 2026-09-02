@@ -48,8 +48,9 @@ them.
   `iirdsPackage` -- the namespace is reported as written and the names
   under it decide which one was meant, since by letters `handover#` is as
   near to `.../domain/machinery` as `machinery#` is; where several of the
-  standard's namespaces begin with the one written, all are offered rather
-  than the shortest. `iirds#/` -- one character past the separator -- is
+  standard's namespaces begin with the one written -- the host alone, or
+  `.../domain/` -- the names under it pick the one that defines them, and
+  where none does all are offered rather than the shortest. `iirds#/` -- one character past the separator -- is
   this finding, not eight unknown names under a namespace a prefix test
   took for the standard's; and the standard's host or vocabulary IRI on its
   own is not a name under anything. Anything on the standard's own host

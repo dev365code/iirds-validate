@@ -149,13 +149,29 @@ def test_a_domain_namespace_without_its_separator_is_matched_by_its_names(make_p
         "did you mean http://iirds.tekom.de/iirds/domain/machinery#?")
 
 
-def test_a_namespace_that_several_iirds_namespaces_begin_with_is_offered_all_of_them(make_package):
+def test_a_namespace_that_several_iirds_namespaces_begin_with_is_decided_by_its_names(make_package):
+    """`.../domain/` begins three of the standard's namespaces. By letters
+    the shortest wins; `Assembly` is a machinery name and says which. A
+    name none of them has leaves all three on offer rather than one."""
     findings = l14(runner.lint(make_package(metadata=DOMAIN_ONLY)))
     assert [f.violation.subject for f in findings] == ["http://iirds.tekom.de/iirds/domain/"]
+    assert findings[0].violation.detail == (
+        "1 name under it, 1 of them iiRDS names; "
+        "did you mean http://iirds.tekom.de/iirds/domain/machinery#?")
+
+    findings = l14(runner.lint(make_package(metadata=DOMAIN_ONLY.replace("m:Assembly", "m:Foo"))))
     detail = findings[0].violation.detail
-    assert detail.startswith("1 name under it, 1 of them iiRDS names; did you mean one of ")
+    assert detail.startswith("1 name under it, 0 of them iiRDS names; did you mean one of ")
     for domain in ("handover", "machinery", "software"):
         assert "http://iirds.tekom.de/iirds/domain/%s#" % domain in detail
+
+
+def test_the_bare_host_with_core_names_under_it_means_the_core(make_package):
+    findings = l14(runner.lint(make_package(
+        metadata=MINIMAL_RDF.replace("http://iirds.tekom.de/iirds#", "http://iirds.tekom.de/"))))
+    assert [f.violation.subject for f in findings] == ["http://iirds.tekom.de/"]
+    assert findings[0].violation.detail == (
+        "8 names under it, 8 of them iiRDS names; did you mean http://iirds.tekom.de/iirds#?")
 
 
 def test_an_extra_slash_after_the_separator_is_one_near_miss_not_eight_unknown_names(make_package):

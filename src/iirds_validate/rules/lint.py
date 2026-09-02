@@ -770,9 +770,16 @@ def l14_near_miss_namespace(ctx):
         if not meant:
             continue
         names = by_namespace[namespace]
-        known = sum(1 for term in names if any(
-            ctx.ontology.is_defined(URIRef(candidate + str(term)[len(namespace):]))
-            for candidate in meant))
+        locals_ = [str(term)[len(namespace):] for term in names]
+        if len(meant) > 1:
+            # The names decide between the candidates where they can: the
+            # host alone with Package and Topic under it means the core.
+            defining = [candidate for candidate in meant
+                        if any(ctx.ontology.is_defined(URIRef(candidate + local)) for local in locals_)]
+            if len(defining) == 1:
+                meant = defining
+        known = sum(1 for local in locals_
+                    if any(ctx.ontology.is_defined(URIRef(candidate + local)) for candidate in meant))
         suggestion = meant[0] if len(meant) == 1 else "one of " + ", ".join(meant)
         yield Violation("namespace is nearly, but not, an iiRDS namespace",
                         subject=namespace,

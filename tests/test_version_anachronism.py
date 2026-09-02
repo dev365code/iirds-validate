@@ -32,11 +32,65 @@ def declaring(version, *terms):
 
 
 def l15(report):
+    assert "S3" not in {f.rule.id for f in report.findings}, "L15 raised"
     return [f for f in report.findings if f.rule.id == "L15"]
 
 
 def ids(report):
     return {f.rule.id for f in report.findings}
+
+
+HANDOVER_OPERATION = "http://iirds.tekom.de/iirds/domain/handover#Operation"
+
+
+def test_a_domain_name_is_named_with_its_domain(make_package):
+    """`Operation` is a core name since 1.0 and a handover name since 1.3.
+    "Operation is not in iiRDS 1.2" was false of the standard; the message
+    says which one it means."""
+    findings = l15(runner.lint(make_package(metadata=declaring("1.2", HANDOVER_OPERATION))))
+    assert [f.violation.message for f in findings] == [
+        "Operation in iirds/domain/handover# is not in iiRDS 1.2"]
+    assert findings[0].violation.subject == HANDOVER_OPERATION
+    assert type(findings[0].violation.subject) is str
+
+
+def test_the_edition_validated_against_is_the_one_the_names_are_held_to(make_package):
+    """`--iirds-version` asks for a run against another edition, and every
+    other version-scoped rule follows it. So does this one, and it says
+    which edition the run used when that is not the one declared."""
+    package = make_package(metadata=declaring("1.3", IS_BASED_ON))
+    findings = l15(runner.lint(package, version="1.0"))
+    assert [f.violation.detail for f in findings] == [
+        "defined from iiRDS 1.3 on; this run validates against 1.0, the package declares 1.3"]
+    assert not l15(runner.lint(make_package(metadata=declaring("1.0", IS_BASED_ON)), version="1.3"))
+
+
+def test_a_name_the_inventory_lags_behind_is_not_a_crash(make_package, monkeypatch):
+    """The bundle and the inventory are refreshed separately; a bundle one
+    name ahead used to raise inside the rule, and the run reported S3 on a
+    clean package. The name is left alone until the inventory catches up,
+    and the inventory test below is what keeps the two together."""
+    from iirds_validate import resources
+    from iirds_validate.rules import lint as L
+
+    editions = {k: set(v) for k, v in version_terms().items()}
+    for edition in editions:
+        editions[edition].discard(IS_BASED_ON)
+    monkeypatch.setattr(L, "version_terms", lambda: {k: frozenset(v) for k, v in editions.items()})
+    monkeypatch.setattr(resources, "version_terms", L.version_terms)
+    report = runner.lint(make_package(metadata=declaring("1.0", IS_BASED_ON)))
+    assert report.ok and not l15(report)
+
+
+def test_the_newest_editions_inventory_is_the_bundled_vocabulary():
+    """What the rule holds a name against and what L13 holds it against
+    must be the same list, or a name is defined to one and unknown to the
+    other."""
+    from iirds_validate import ontology
+
+    bundled = ontology.load("1.3")
+    ours = {str(t) for t in bundled.defined_terms() if bundled.is_iirds_term(t)}
+    assert ours == set(version_terms()["1.3"])
 
 
 def test_a_name_the_declared_edition_lacks_is_reported_with_the_edition_it_arrived_in(make_package):

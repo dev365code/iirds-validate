@@ -131,8 +131,8 @@ gone wrong.
    settle**, also recorded there, one name the vocabulary does not define
    that the reference corpus uses in fifty-one files (L13), and whether a
    name from a later edition than the package declares is a defect or a
-   warning (L15 says warning). They are the questions to put to tekom. A
-   third used to sit beside them on a false premise -- that iiRDS never
+   warning (L15 says warning). They are the questions to put to tekom.
+   Another used to sit beside them on a false premise -- that iiRDS never
    requires a safety alert symbol in terms. It does, in 1.0 and 1.3 alike, and
    B10 reports its absence; what remains a reading of ours there is the
    exemption for NOTICE, which reports less rather than more.

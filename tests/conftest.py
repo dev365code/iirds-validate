@@ -118,6 +118,13 @@ def _observe_which_rules_fire():
         def wrapped(*args, **kwargs):
             report = fn(*args, **kwargs)
             FIRED.update(f.rule.id for f in report.findings)
+            # A subject that is an rdflib term rather than text renders, and
+            # then the report's grouping concatenates it and rdflib warns on
+            # stderr that the result "does not look like a valid URI". Every
+            # run in the suite is checked, so a new rule cannot bring one in.
+            odd = [(f.rule.id, type(f.violation.subject).__name__) for f in report.findings
+                   if f.violation.subject is not None and type(f.violation.subject) is not str]
+            assert odd == [], "a finding's subject must be plain text: %r" % odd
             return report
         return wrapped
 

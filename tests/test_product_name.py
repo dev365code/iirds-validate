@@ -63,7 +63,11 @@ TEXT_SUFFIXES = {".py", ".md", ".toml", ".yml", ".yaml", ".txt", ".json", ".html
 
 
 def tracked_text_files():
-    listed = subprocess.run(["git", "ls-files"], cwd=str(ROOT), capture_output=True, text=True)
+    # `--others --exclude-standard` as well: a new file is swept before it is
+    # committed, not on the gate after -- a test module carrying the old name
+    # passed one gate untracked and failed the next one tracked.
+    listed = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+                            cwd=str(ROOT), capture_output=True, text=True)
     if listed.returncode != 0:
         pytest.skip("not a git checkout")
     for line in listed.stdout.splitlines():

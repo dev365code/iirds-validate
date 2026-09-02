@@ -14,8 +14,9 @@ three remedies that told a reader to run `iirdsv pack`, or to report a rule
 that crashed, now spell the command's name and the issue tracker's address.
 Three rules are new, L13, L14 and L15, and all three are warnings: a
 package that passed 0.4.2 still exits 0 unless `-W` asks warnings to fail
-the run. One rule reports less: C9 no longer fails an RDF/XML document written without the `rdf:RDF`
-element, a form the grammar permits (see *Fixed*).
+the run. One rule reports less: C9 no longer fails an RDF/XML document
+written without the `rdf:RDF` element, a form the grammar permits (see
+*Fixed*).
 The single-file form is `iirds.pyz`. `iirds-validate` and `iirds-sdk` stay on
 PyPI as compatibility packages that depend on `iirds` at no less than their
 own release — a floor now, where the alias used to pin one exact version, so
@@ -50,8 +51,9 @@ them.
   near to `.../domain/machinery` as `machinery#` is; where several of the
   standard's namespaces begin with the one written -- the host alone, or
   `.../domain/` -- the names under it pick the one that defines them, and
-  where none does all are offered rather than the shortest. `iirds#/` -- one character past the separator -- is
-  this finding, not eight unknown names under a namespace a prefix test
+  where none does all are offered rather than the shortest. `iirds#/` --
+  one character past the separator -- is this finding, not eight unknown
+  names under a namespace a prefix test
   took for the standard's; and the standard's host or vocabulary IRI on its
   own is not a name under anything. Anything on the standard's own host
   that is not one of its four namespaces is reported whatever its distance;
@@ -77,17 +79,27 @@ them.
   package as 1.0 has no definition for it. The finding names the edition
   the name arrived in, once per name; forty-six names arrived after 1.0,
   fifteen in 1.1, eleven in 1.2, twenty in 1.3, and every one is pinned
-  as an anachronism against a 1.0 declaration. The per-edition inventory,
-  read off the Consortium's published schemas by `tools/version_inventory.py`,
-  moves into the package for this, from `docs/`; no edition has ever
-  dropped a name, which is what makes "defined from 1.2 on" one edition
-  rather than a list. A name no edition has stays L13's.
+  as an anachronism against a 1.0 declaration. The names are held to the
+  edition the run validates against -- the declared one, or the one
+  `--iirds-version` asked for, as with every version-scoped rule -- and
+  the detail says which when they differ. A domain name is named with its
+  domain: `Operation` is a core name since 1.0 and a handover name since
+  1.3, and the finding about the second does not read as a claim about
+  the first. The per-edition inventory, read off the Consortium's
+  published schemas by `tools/version_inventory.py`, moves into the
+  package for this, from `docs/`; no edition has ever dropped a name,
+  which is what makes "defined from 1.2 on" one edition rather than a
+  list, and a test holds the newest edition's list to the bundled
+  vocabulary. A name no edition has stays L13's. What the rule cannot see
+  is a value that is a literal: the profile `H`, which 1.3 introduced, is
+  declared as one.
 
 - **A name in the iiRDS namespace that the standard does not define is
   reported (L13).** The namespace was trusted and the name never was:
   `is_iirds_term` tests a prefix, and no rule asked the bundled vocabulary
-  whether the name behind an arbitrary iiRDS IRI exists. So `iirds:relates-to-componnet`, a class
-  spelled `iirds:Componentt` beside a real one, and a document type the
+  whether the name behind an arbitrary iiRDS IRI exists. So
+  `iirds:relates-to-componnet`, a class spelled `iirds:Componentt` beside a
+  real one, and a document type the
   standard does not have all passed every rule, in the standard's own
   namespace, where a consumer has the least reason to doubt them -- and
   found no class, no property and no label when it looked them up. The

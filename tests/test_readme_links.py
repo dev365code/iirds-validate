@@ -11,7 +11,15 @@ import re
 from pathlib import Path
 
 README = Path(__file__).resolve().parents[1] / "README.md"
-REPOSITORY = "https://github.com/dev365code/iirds-validate"
+
+
+def repository():
+    """The address pyproject publishes, so that a rename reaches here too."""
+    text = (README.parent / "pyproject.toml").read_text("utf-8")
+    return re.search(r'^Homepage = "([^"]+)"', text, re.M).group(1)
+
+
+REPOSITORY = repository()
 
 
 def links():

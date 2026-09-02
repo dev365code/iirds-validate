@@ -792,34 +792,59 @@ def l14_near_miss_namespace(ctx):
 # A name the declared edition of iiRDS does not have yet
 # ---------------------------------------------------------------------------
 
-@_lint("L15", "a name the declared edition of iiRDS does not have yet",
+def _named(term) -> str:
+    """The name as a reader writes it: the local name when it is the core
+    vocabulary's, the domain beside it otherwise -- `Operation` is a core
+    name since 1.0 and a handover name since 1.3, and a message about the
+    second must not read as a claim about the first."""
+    namespace = _namespace(term)
+    if namespace == IIRDS_NAMESPACES[0]:
+        return _local(term)
+    return "%s in %s" % (_local(term), namespace[len(IIRDS_HOST):]
+                         if namespace.startswith(IIRDS_HOST) else namespace)
+
+
+@_lint("L15", "a name the edition of iiRDS validated against does not have yet",
        fix="Declare the edition whose vocabulary the metadata uses in iirds:iiRDSVersion, "
            "or use the names that edition has. A consumer that reads the package as the "
            "declared edition has no definition for the name and can only ignore what it "
-           "says; every later edition keeps every earlier name, so declaring the newer "
-           "edition loses nothing.")
+           "says. Every later edition keeps every earlier name, so a package that declares "
+           "the newer edition keeps every statement it makes; the newer edition's own "
+           "requirements then apply to it.")
 def l15_name_from_a_later_edition(ctx):
     """Only the newest ontology ships, so L13 judges every package against
     the 1.3 vocabulary: a package declaring 1.0 that uses `is-based-on`
     (1.3) is using a name the standard defines. The per-edition inventory
     says when the name arrived, and the edition named here is the first
     that has it -- a single edition, because no edition has ever dropped a
-    name (the inventory test holds that). Reported once per name; a name no
-    edition has is L13's, not this rule's.
+    name (the inventory test holds that). Held to the edition the run
+    validates against: the declared one, or the one `--iirds-version`
+    asked for, like every other version-scoped rule -- and the detail says
+    which when they differ. Reported once per name; a name no edition has
+    is L13's, not this rule's, and a name the inventory does not know yet
+    (a bundle refreshed ahead of it) is left alone rather than raised on.
+    A value that is a literal -- the profile `H`, which 1.3 introduced --
+    is outside what this rule can see.
     """
     editions = version_terms()
-    declared = ctx.declared_version
-    if declared not in editions:
+    edition = ctx.version
+    if edition not in editions:
         return
-    present = editions[declared]
+    present = editions[edition]
     later = set()
     for triple in ctx.graph:
         for term in triple:
             if (isinstance(term, URIRef) and term not in later and str(term) not in present
                     and ctx.ontology.is_iirds_term(term) and ctx.ontology.is_defined(term)):
                 later.add(term)
+    if ctx.declared_version == edition:
+        where = "this package declares %s" % edition
+    else:
+        where = "this run validates against %s, the package declares %s" % (
+            edition, ctx.declared_version or "no edition")
     for term in sorted(later, key=str):
-        arrived = next(edition for edition in VERSIONS if str(term) in editions.get(edition, ()))
-        yield Violation("%s is not in iiRDS %s" % (_spelled(term, term), declared), subject=term,
-                        detail="defined from iiRDS %s on; this package declares %s"
-                               % (arrived, declared))
+        arrived = next((e for e in VERSIONS if str(term) in editions.get(e, ())), None)
+        if arrived is None:
+            continue
+        yield Violation("%s is not in iiRDS %s" % (_named(term), edition), subject=str(term),
+                        detail="defined from iiRDS %s on; %s" % (arrived, where))

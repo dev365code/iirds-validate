@@ -238,9 +238,11 @@ and the movement is this project getting the answer right rather than wrong.
 The reference's own fixtures for those rules — `M96-1_false.rdf` and its
 siblings — declare `iiRDSVersion 1.1` while using `iirds:ExternalClassification`,
 vocabulary that release did not have. Their unit tests call `validateSingleRule`
-directly and bypass the version filter their product applies. This project honours the declared version,
-so it now stands down where the fixture claims a release its own contents
-contradict.
+directly and bypass the version filter their product applies. This project
+honours the declared version, so it now stands down where the fixture claims
+a release its own contents contradict -- and, since L15, says so: run over
+the reference corpus, those eight fixtures are exactly the files on which it
+reports names from a later edition than the one declared.
 
 That the eleven terms appearing between 1.1 and 1.2 are, without exception, the
 external classification vocabulary — `ExternalClassification`,

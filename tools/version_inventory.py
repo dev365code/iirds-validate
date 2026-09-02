@@ -8,18 +8,20 @@ produces no finding, no traceback and no other sign: it runs, matches nothing,
 and reports a clean package. What it corrupts is the claim -- `iirds rules`
 says the rule applies where it cannot, and per-version coverage is overstated.
 
-Checking it needs the vocabulary of each version, so the ontologies are fetched
-once from the consortium's tagged releases and reduced to a list of term IRIs.
-Only the list is committed. A set of names is a fact about the vocabulary
-rather than a copy of the work, which keeps this clear of the CC BY-ND terms
-the ontology files carry and keeps the repository small.
+Checking it needs the vocabulary of each version, so the schema files of
+every published edition are fetched once from the Consortium's own downloads
+(1.3 from the bundled ontologies) and reduced to a list of term IRIs. Only the
+list is committed -- into the package, where the L15 rule reads it. A set of
+names is a fact about the vocabulary rather than a copy of the work, which
+keeps this clear of the CC BY-ND terms the ontology files carry and keeps the
+repository small.
 
     python tools/version_inventory.py --refresh   # needs the network, once
     python tools/version_inventory.py             # check, offline
 
-iiRDS 1.0 and 1.0.1 are not tagged in that repository, so no inventory exists
-for them and no rule is checked against them. That gap is recorded in the file
-rather than papered over.
+Every edition from 1.0 on has an inventory; the file keeps an `_unavailable`
+list so that an edition published faster than its schemas is recorded as
+unchecked rather than conflated with checked and clean.
 """
 from __future__ import annotations
 
@@ -163,7 +165,7 @@ def check() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--refresh", action="store_true", help="re-fetch the tagged ontologies")
+    ap.add_argument("--refresh", action="store_true", help="re-fetch every edition's schema files and rewrite the inventory")
     args = ap.parse_args()
     return refresh() if args.refresh else check()
 

@@ -86,8 +86,8 @@ def test_the_reference_corpus_and_its_authors_own_vocabulary_trip_nothing():
     import difflib
 
     from rdflib import Graph, URIRef
-    from tools import vendor_corpus
 
+    import vendor_corpus
     from iirds_validate.model import IIRDS_NAMESPACES
     from iirds_validate.rules import lint as L
 

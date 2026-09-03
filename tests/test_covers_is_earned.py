@@ -689,6 +689,20 @@ def test_a_claim_a_rule_refuses_in_its_own_source_is_not_made_elsewhere():
 #: The `claim` column of the leniency table in docs/divergences.md, read as
 #: an assertion. A row saying "withdrawn" whose rules still claim something
 #: from that section is the shape the M25 paragraph was in.
+#: The two regions whose claim language is legitimate and is read elsewhere:
+#: the leniency table (its `claim` column, by the test above) and the M25
+#: paragraph (by the test below). Cut out, not filtered -- see the docstring.
+LENIENCY_TABLE = re.compile(r"\| rule \| kind of leniency \| claim \|.*?(?=\n\n)", re.S)
+M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
+
+#: A rule id within 120 characters of a verb that says what it claims, in
+#: either order, over whitespace-collapsed text.
+RESTATES_A_CLAIM = re.compile(
+    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b.{0,120}?"
+    r"(?:withdrew|withdrawn|no longer claims|does not claim)"
+    r"|(?:withdrew|withdrawn|no longer claims|does not claim).{0,120}?"
+    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b")
+
 LENIENCY_ROW = re.compile(r"^\| ([^|]+?) \| \*\*[^|]+\*\*[^|]*\| (withdrawn|kept|never claimed) \|$",
                           re.M)
 
@@ -872,26 +886,34 @@ def test_the_divergence_document_does_not_restate_what_the_code_claims(tmp_path)
     twice: the M25 paragraph, and then a paragraph naming two rules as having
     withdrawn claims they had been given back.
 
-    Both times the document was written carefully and read by nothing. The
-    fix that holds is not a better sentence -- it is that the document stops
-    making the statement. Withdrawals live in `# not <id>:` comments pinned
-    above; claims live in `covers=`, held by a package or listed as unaudited.
-    This asserts the document does not say it again.
+    Both times the document was written carefully and read by nothing. The fix
+    that holds is not a better sentence -- it is that the document stops making
+    the statement. Withdrawals live in `# not <id>:` comments pinned above;
+    claims live in `covers=`, held by a package or listed as unaudited.
 
-    Deliberately narrow: it looks for a rule id next to `withdrawn`, `no
-    longer claims` or `does not claim`, outside the table whose claim column a
-    test already reads.
+    The first version of this test could not have caught either. Its window
+    was `[^.\n]{0,80}?`, which crosses neither a newline nor a full stop, and
+    this document is hard-wrapped at 75-odd characters: the sentence it was
+    written to keep out has `withdrawn` at the end of one line and `M23` at the
+    start of the next, and a rule id like `C16.2` carries a full stop of its
+    own. It was verified against a mutation, and the mutation was the sentence
+    reflowed onto one line -- so the test proved something about a text that
+    had never existed. Whitespace is collapsed before matching now.
+
+    Two regions are cut out rather than filtered. The leniency table's `claim`
+    column legitimately says "withdrawn" and is read by the test above; the
+    M25 paragraph is read by the one below. Filtering matches by content
+    instead let a drift hide behind them: `re.finditer` is leftmost and
+    non-overlapping, so naming M25 earlier in the same window swallowed the
+    match that came after it.
     """
     text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
-    prose = "\n".join(line for line in text.splitlines() if not line.startswith("|"))
-    pattern = re.compile(
-        r"\b([CMLBRS]\d+(?:\.\d+[a-z]?)?)\b[^.\n]{0,80}?"
-        r"(withdrew|withdrawn|no longer claims|does not claim)"
-        r"|(withdrew|withdrawn|no longer claims|does not claim)[^.\n]{0,80}?"
-        r"\b([CMLBRS]\d+(?:\.\d+[a-z]?)?)\b")
-    named = [m.group(0).strip() for m in pattern.finditer(prose)]
-    # The M25 paragraph is the one exception and is itself gated, by
-    # test_the_divergence_document_and_the_claims_agree.
-    named = [n for n in named if "M25" not in n]
+    for cut in (LENIENCY_TABLE, M25_PARAGRAPH):
+        block = cut.search(text)
+        assert block, "the region this test cuts out is no longer there: %s" % cut.pattern[:40]
+        text = text[:block.start()] + text[block.end():]
+    prose = " ".join(text.split())
+
+    named = [m.group(0).strip() for m in RESTATES_A_CLAIM.finditer(prose)]
     assert named == [], (
         "docs/divergences.md restates a claim's status in prose: %s" % named)

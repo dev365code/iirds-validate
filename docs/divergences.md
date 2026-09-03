@@ -242,10 +242,10 @@ sentence never asked for. Where the rule genuinely checks less than the
 sentence says, the claim goes with it.
 
 **Which claims stand is not stated in this document.** It was, in a paragraph
-here that named two rules as having withdrawn theirs, and both had been earned
-back by the time anyone read it again — the same failure as the M25 paragraph
-below, in the same file, three days later. A sentence of prose about what the
-code claims is a copy of the code, and copies drift.
+here that named two rules and described the state of their citations; both had
+moved by the time anyone read it again. The paragraph further down about
+section 6.9.1 went the same way, in this file, three days apart. A sentence of
+prose about what the code claims is a copy of the code, and copies drift.
 
 So the record lives in two places a test reads. A withdrawal is a
 `# not <requirement id>: <reason>` comment on the rule that refused it, pinned

@@ -106,6 +106,22 @@ def make_package(tmp_path):
 FIRED: set = set()
 OBSERVED = Path(__file__).resolve().parents[1] / ".rule-coverage.json"
 
+#: Which tests actually passed, by `module::name`. `docs/scope.md` publishes
+#: how many coverage claims are "held by a package", and each of those names a
+#: test in `tests/test_covers_is_earned.py`. That file could only check the
+#: function existed -- so marking one `@pytest.mark.skip` left the number
+#: standing and the claim held by a function nobody ran, which is the state
+#: the number exists to rule out. Recorded here and compared by
+#: `tools/held_claims.py`, after the run, the way rule coverage is.
+PASSED: set = set()
+PASSED_FILE = Path(__file__).resolve().parents[1] / ".passed-tests.json"
+
+
+def pytest_runtest_logreport(report):
+    if report.when == "call" and report.passed:
+        path, _, name = report.nodeid.partition("::")
+        PASSED.add("%s::%s" % (Path(path).stem, name.partition("[")[0]))
+
 
 @pytest.fixture(autouse=True, scope="session")
 def _observe_which_rules_fire():
@@ -142,6 +158,8 @@ def pytest_sessionfinish(session, exitstatus):
     import json
     if FIRED:
         OBSERVED.write_text(json.dumps(sorted(FIRED), indent=1) + "\n", "utf-8")
+    if PASSED:
+        PASSED_FILE.write_text(json.dumps(sorted(PASSED), indent=1) + "\n", "utf-8")
 
 
 # ---------------------------------------------------------------------------

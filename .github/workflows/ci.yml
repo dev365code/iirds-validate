@@ -112,6 +112,9 @@ jobs:
         # known to work, and the count must not grow without somebody saying so.
         run: python tools/rule_coverage.py --check
 
+      - name: Every claim called held by a package names a test that passed
+        run: python tools/held_claims.py --check
+
   wheel:
     # The failure this job exists for: a wheel that builds and installs but is
     # missing data/ontologies/, so the tool works from a checkout and dies on a

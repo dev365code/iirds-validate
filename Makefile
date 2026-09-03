@@ -71,6 +71,7 @@ generated:
 # exactly backwards. Depends on `test` having run, which writes the record.
 exercised:
 	$(PYTHON) tools/rule_coverage.py --check
+	$(PYTHON) tools/held_claims.py --check
 
 # The other half of that question: not "has this rule ever fired" but "has this
 # *line* ever run". Deliberately NOT in `check` -- it re-runs the suite under a

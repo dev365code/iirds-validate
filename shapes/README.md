@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-56 of the 199 rules have no shape, in four honest categories,
+57 of the 200 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **44 not expressible** — 44 of the 199 rules are about ZIP bytes, content
+- **45 not expressible** — 45 of the 200 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, files present
   in the container. None of that

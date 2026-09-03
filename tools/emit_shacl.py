@@ -527,6 +527,8 @@ for _rid in ("S6", "S7", "S8", "S10"):
 for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
+NOT_EXPRESSIBLE["R11"] = ("asks which metadata file a statement is in; a shapes file validates "
+                          "one graph and the file it came from is not in it")
 
 NOOP = {"M96.4": "a MAY with nothing to violate; registered so `iirds rules` lists the catalogue"}
 

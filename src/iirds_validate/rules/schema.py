@@ -587,7 +587,7 @@ def m17_external_product_ontology_is_mapped(ctx):
                         subject="iirds:relates-to-component")
 
 
-@rule("M18",   # not x6-7-4-product-variants#1: see the docstring
+@rule("M18",   # x6-7-4-product-variants#1 belongs to R11, not here
        fix="Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants.")
 def m18_product_variants_are_declared(ctx):
     """Product variants are a proprietary extension, so they travel in the package.
@@ -595,11 +595,9 @@ def m18_product_variants_are_declared(ctx):
     Section 6.7.4 says they "MUST be present in the metadata.rdf of the iiRDS
     package", and this asks something else entirely: whether the package leans
     on an outside vocabulary while declaring no `iirds:ProductVariant` of its
-    own. Those coincide only by accident. A variant declared in metadata.jsonld
-    alone satisfies this rule and breaches that sentence -- and `_where_stated`,
-    three functions up, would answer the file question in one line, so the
-    reason this is withdrawn is not that the question is hard. It is that this
-    rule was never about it.
+    own. Those coincide only by accident, so the claim on that sentence was
+    withdrawn from here. R11 holds it now, together with the general sentence
+    it is an instance of.
     """
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_product_variant,
                                                 T.ProductVariant):

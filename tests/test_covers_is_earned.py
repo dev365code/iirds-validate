@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -512,7 +513,15 @@ UNAUDITED = frozenset((
 #: needs a shape the table cannot express, so each has a test of its own. The
 #: test's name is here so that deleting the test is not a way of keeping the
 #: id -- a claim held by a function nobody runs is a claim held by nothing.
+#: `module:name` where the test lives in another file, which is where it
+#: belongs when the rule has a file of its own.
 NAMED_CASES = {
+    "x7-1-iirds-extension-scenarios#4":
+        "test_extensions_in_metadata_rdf:test_a_proprietary_class_only_in_the_json_ld_is_reported",
+    "x6-7-4-product-variants#1":
+        "test_extensions_in_metadata_rdf:test_a_product_variant_only_in_the_json_ld_is_reported",
+    "x6-7-1-component-trees-in-the-package#2":
+        "test_extensions_in_metadata_rdf:test_a_component_only_in_the_json_ld_is_reported",
     "dfn-iirds-zip-archive#5": "test_the_mimetype_sentence_is_covered_in_both_limbs",
     "dfn-iirds-zip-archive#6": "test_the_mimetype_sentence_is_covered_in_both_limbs",
     "dfn-iirds-container#1": "test_the_single_root_directory_sentence_is_covered",
@@ -552,8 +561,10 @@ def held():
     for requirement, cases in COUNTEREXAMPLES.items():
         assert cases, "%s is listed with no counterexample at all" % requirement
     for requirement, test_name in NAMED_CASES.items():
-        assert callable(globals().get(test_name)), \
-            "%s is held by %s, which is not in this module" % (requirement, test_name)
+        module, _, name = test_name.rpartition(":")
+        where = __import__(module) if module else sys.modules[__name__]
+        assert callable(getattr(where, name, None)), \
+            "%s is held by %s, which does not exist" % (requirement, test_name)
     return set(COUNTEREXAMPLES) | set(NAMED_CASES)
 
 
@@ -577,7 +588,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 67, len(CLAIMED)
+    assert len(CLAIMED) == 70, len(CLAIMED)
     assert len(UNAUDITED) == 51, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -618,7 +629,6 @@ REFUSAL = re.compile(r'#\s*not\s+([\w.-]+#\d+)\s*:')
 REFUSED = frozenset((
     ("C16.2", "x6-12-rdf-serialization#3"),
     ("M17", "x6-7-2-external-product-ontology#6"),
-    ("M18", "x6-7-4-product-variants#1"),
     ("M23", "x6-8-3-parties-and-roles#3"),
     ("M25", "x6-9-1-directory-nodes#3"),
 ))

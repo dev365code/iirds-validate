@@ -25,6 +25,7 @@ from __future__ import annotations
 import posixpath
 
 from rdflib import URIRef
+from rdflib.namespace import RDFS
 
 from .. import terms as T
 from ..context import container_packages, package_nodes
@@ -428,3 +429,62 @@ def r9_a_handover_package_does_not_nest(ctx):
                         subject=ctx.ref(pkg),
                         detail="section 6.7.3; the handover profile forms hierarchies "
                                "with component trees instead")
+
+
+@rule("R11", kind="schema", prio="MUST", versions=("1.3",), variants=(),
+      title="a proprietary extension must be in metadata.rdf, not only in metadata.jsonld",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#iirds-extension-scenarios",
+      covers=("x7-1-iirds-extension-scenarios#4",
+              "x6-7-4-product-variants#1",
+              "x6-7-1-component-trees-in-the-package#2"),
+      fix="Add the statement to META-INF/metadata.rdf as well. A consumer that reads only "
+          "metadata.rdf — which the standard permits, and which is the file every consumer "
+          "must support — will not see your extension at all, and the classes and instances "
+          "the rest of your metadata refers to will resolve to nothing.")
+def r11_extensions_live_in_metadata_rdf(ctx):
+    """Three sentences, one shape, and merged graphs are what hide it.
+
+    "All proprietary extensions that are used in a package MUST be contained
+    in the file metadata.rdf" (7.1); "As product variants are a proprietary
+    iiRDS extension, they MUST be present in the metadata.rdf" (6.7.4); "The
+    component tree is a proprietary iiRDS extension, it MUST be stored in the
+    metadata.rdf" (6.7.1). The general sentence and two of its instances.
+
+    Every rule but L9 reads the two serialisations merged, which is right for
+    every other question and is exactly what makes this invisible: a product
+    variant stated only in metadata.jsonld is in the graph the rules see and
+    in none of the files these sentences name. L9 reports that the two
+    disagree, which is a different sentence, and cannot be substituted -- a
+    package can satisfy L9 by omitting the extension from both files, and
+    breach these by carrying it in one.
+
+    A package with no metadata.jsonld cannot breach this: whatever is in the
+    graph came from metadata.rdf. A package with no metadata.rdf is C8's
+    finding, not this one -- reporting every extension as misplaced when the
+    file they belong in is absent buries the absence.
+    """
+    if METADATA_RDF not in ctx.per_source or len(ctx.per_source) < 2:
+        return
+    inside = ctx.per_source[METADATA_RDF]
+    for label, cls in (("iirds:ProductVariant", T.ProductVariant),
+                       ("iirds:Component", T.Component)):
+        for subject in sorted(ctx.instances_of(cls), key=ctx.ref):
+            if (subject, None, None) not in inside:
+                yield Violation("%s is a proprietary iiRDS extension and is stated outside "
+                                "metadata.rdf" % label,
+                                subject=ctx.ref(subject), detail=_only_in(ctx, subject))
+    for subject, parent in sorted(ctx.graph.subject_objects(RDFS.subClassOf), key=str):
+        if ctx.ontology.is_iirds_term(subject) or not ctx.ontology.is_iirds_term(parent):
+            continue
+        if (subject, RDFS.subClassOf, parent) not in inside:
+            yield Violation("a proprietary class of the iiRDS vocabulary is declared outside "
+                            "metadata.rdf",
+                            subject=ctx.ref(subject), detail=_only_in(ctx, subject))
+
+
+def _only_in(ctx, subject) -> str:
+    """Which files do describe it — so the remedy names the file to copy from."""
+    names = sorted(name.rpartition("/")[2] for name, graph in ctx.per_source.items()
+                   if (subject, None, None) in graph)
+    return "stated in %s" % " and ".join(names) if names else None

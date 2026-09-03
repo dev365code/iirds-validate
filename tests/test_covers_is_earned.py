@@ -850,3 +850,33 @@ def test_the_handover_class_restriction_sentence_is_covered(tmp_path):
     got = fired(tmp_path, "handover_topic.iirds", metadata=handover, jsonld=jsonld,
                 extra=(("index.html", "<html><body><p>list</p></body></html>"),))
     assert claimants & got, sorted(got)
+
+
+def test_the_divergence_document_does_not_restate_what_the_code_claims(tmp_path):
+    """Prose about which claims stand is a copy of the code, and it drifted
+    twice: the M25 paragraph, and then a paragraph naming two rules as having
+    withdrawn claims they had been given back.
+
+    Both times the document was written carefully and read by nothing. The
+    fix that holds is not a better sentence -- it is that the document stops
+    making the statement. Withdrawals live in `# not <id>:` comments pinned
+    above; claims live in `covers=`, held by a package or listed as unaudited.
+    This asserts the document does not say it again.
+
+    Deliberately narrow: it looks for a rule id next to `withdrawn`, `no
+    longer claims` or `does not claim`, outside the table whose claim column a
+    test already reads.
+    """
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    prose = "\n".join(line for line in text.splitlines() if not line.startswith("|"))
+    pattern = re.compile(
+        r"\b([CMLBRS]\d+(?:\.\d+[a-z]?)?)\b[^.\n]{0,80}?"
+        r"(withdrew|withdrawn|no longer claims|does not claim)"
+        r"|(withdrew|withdrawn|no longer claims|does not claim)[^.\n]{0,80}?"
+        r"\b([CMLBRS]\d+(?:\.\d+[a-z]?)?)\b")
+    named = [m.group(0).strip() for m in pattern.finditer(prose)]
+    # The M25 paragraph is the one exception and is itself gated, by
+    # test_the_divergence_document_and_the_claims_agree.
+    named = [n for n in named if "M25" not in n]
+    assert named == [], (
+        "docs/divergences.md restates a claim's status in prose: %s" % named)

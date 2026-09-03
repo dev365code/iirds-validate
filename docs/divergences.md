@@ -241,18 +241,27 @@ or where what is called leniency is really the correction of a strictness the
 sentence never asked for. Where the rule genuinely checks less than the
 sentence says, the claim goes with it.
 
-Two claims were withdrawn on that ground outside this table and both have
-since been earned back, which is recorded because the reasons given for
-withdrawing them turned out to be wrong. M23's sentence asks for a "compliant
-vcard:kind object", and the withdrawal said checking it would need the vCard
-vocabulary bundled: it does not — the vocabulary's class IRIs are facts, the
-way iiRDS term IRIs are, and R12 names the six of them. C16.2 was said to ask
-whether `metadata.jsonld` parses and not whether it contains iiRDS metadata,
-which was true of the rule and is a thing a rule can be taught; it asks both
-now, with L9 covering what one file alone cannot show. A withdrawal is
-cheaper than a wrong claim and it is not free: it says a sentence cannot be
-checked, and twice here that was a statement about the afternoon rather than
-about the sentence.
+**Which claims stand is not stated in this document.** It was, in a paragraph
+here that named two rules as having withdrawn theirs, and both had been earned
+back by the time anyone read it again — the same failure as the M25 paragraph
+below, in the same file, three days later. A sentence of prose about what the
+code claims is a copy of the code, and copies drift.
+
+So the record lives in two places a test reads. A withdrawal is a
+`# not <requirement id>: <reason>` comment on the rule that refused it, pinned
+as rule-and-obligation pairs in `tests/test_covers_is_earned.py`; a claim is
+`covers=` on the rule, and every one of them is either held by a package there
+or named in that file's UNAUDITED list. The table above says which rows of it
+keep a claim, and a test reads the column. This document explains *why* a
+reading was chosen. It no longer says what the code does.
+
+What is worth keeping from that paragraph is the part about withdrawals
+themselves. A withdrawal is cheaper than a wrong claim and it is not free: it
+says a sentence cannot be checked. Twice that was a statement about the
+afternoon rather than about the sentence — "it would need the vCard vocabulary
+bundled" needed six IRIs, and "the rule asks whether the file parses" was true
+of the rule and is a thing a rule can be taught. Ask a withdrawal for its
+evidence the way a claim is asked for a package.
 
 **C9, in more detail.** Section 5.1.1 asks for "RDF 1.1 XML syntax (see
 [rdf-syntax-grammar])", and the rule enforced the shape most files have

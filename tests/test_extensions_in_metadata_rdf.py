@@ -216,3 +216,35 @@ def test_a_blank_node_in_both_files_is_not_called_misplaced(tmp_path):
                 rdf_body='  <iirds:Component><rdfs:label>Pump</rdfs:label></iirds:Component>\n',
                 jsonld_nodes=({"@type": "iirds:Component", "rdfs:label": "Pump"},))
     assert "R11" not in got, sorted(got)
+
+
+SUBCLASS_DECL = ('  <rdf:Description rdf:about="http://my.co/ns#Trim">\n'
+                 '    <rdfs:subClassOf rdf:resource="%sProductVariant"/>\n'
+                 "  </rdf:Description>\n" % IIRDS)
+TRIM = {"@id": "urn:test:trim", "@type": "http://my.co/ns#Trim", "rdfs:label": "Sport"}
+TRIM_DECL = {"@id": "http://my.co/ns#Trim", "rdfs:subClassOf": {"@id": "iirds:ProductVariant"}}
+
+
+def test_a_variant_typed_with_the_packages_own_subclass_is_present(tmp_path):
+    """Section 7 lets a package declare its own class beneath an iiRDS one and
+    requires consumers to treat instances of it as the parent. A variant typed
+    that way, wholly inside metadata.rdf, is present there.
+
+    The question is asked through the subclass closure for that reason, and
+    without this test dropping the closure changed nothing anybody could see:
+    the rule would report a conformant package, which is the failure the
+    `Context.is_instance` docstring names -- "exact typing is how section 7
+    gets forgotten one rule at a time" -- in a function written to avoid it.
+    """
+    body = SUBCLASS_DECL + ('  <rdf:Description rdf:about="urn:test:trim">\n'
+                            '    <rdf:type rdf:resource="http://my.co/ns#Trim"/>\n'
+                            "    <rdfs:label>Sport</rdfs:label>\n  </rdf:Description>\n")
+    assert "R11" not in fired(tmp_path, "subclass_present.iirds",
+                              rdf_body=body, jsonld_nodes=(TRIM, TRIM_DECL))
+
+
+def test_a_variant_typed_with_a_subclass_declared_only_in_the_json_ld_is_reported(tmp_path):
+    """The other direction, so the closure cannot be satisfied by accepting
+    everything: the same shape with nothing of it in metadata.rdf."""
+    assert "R11" in fired(tmp_path, "subclass_absent.iirds",
+                          jsonld_nodes=(TRIM, TRIM_DECL))

@@ -49,3 +49,40 @@ def test_the_cache_is_partitioned_by_revision(tmp_path):
     second = crossvalidate.cache_dir(tmp_path, "1" * 40)
     assert first != second
     assert first.is_relative_to(tmp_path) and second.is_relative_to(tmp_path)
+
+
+#: Pairs where this project reports a finding on a fixture the catalogue marks
+#: as passing, each with the argument for it. Empty is the honest state today
+#: and was not the state before 2026-09-03: two `extra` pairs sat in
+#: `docs/agreement.json` for months, both M15.10 against a passing handover
+#: fixture, and both were this project's error -- the rule asked an
+#: information object for a party section 8.3.2 hangs on its identity domain.
+#:
+#: The classifier saw it every run. Nothing failed, because the number was
+#: recorded rather than answered. A finding on a fixture the reference passes
+#: is either a defect the reference misses, which has to be argued in
+#: docs/divergences.md, or a defect of ours; it is never a figure to carry.
+ARGUED_EXTRA: dict = {}
+
+
+def test_a_finding_on_a_passing_fixture_is_argued_or_it_is_a_bug():
+    """The gate the two M15.10 pairs never met.
+
+    Adding one means writing down why this project is right and the reference
+    wrong, in the same commit, beside the rule id and the fixture it fires on.
+    """
+    import json
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    agreement = json.loads((root / "docs" / "agreement.json").read_text("utf-8"))
+    extra = sorted(pair for pair, verdict in agreement.get("verdicts", {}).items()
+                   if verdict == "extra")
+    assert extra == sorted(ARGUED_EXTRA), (
+        "these fire on fixtures the catalogue says pass and nothing argues for them: %s"
+        % [p for p in extra if p not in ARGUED_EXTRA])
+    for pair, reason in ARGUED_EXTRA.items():
+        rule_id = pair.split("|", 1)[0]
+        divergences = (root / "docs" / "divergences.md").read_text("utf-8")
+        assert rule_id in divergences, (pair, "argued here but not in docs/divergences.md")
+        assert len(reason) > 40, (pair, "the argument is the point")

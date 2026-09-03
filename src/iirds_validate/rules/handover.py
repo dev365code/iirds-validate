@@ -195,10 +195,18 @@ def m15_7a_product_variant_instance_identity(ctx):
                             "iirds:ProductVariant", subject=ctx.ref(doc))
             continue
         if not any(any(_identities_of_type(ctx, v, T.INSTANCE_IDENTITY_TYPES)) for v in variants):
+            # Its own remedy: the Document already relates to a variant, and
+            # what is missing sits on the variant rather than on the document.
             yield Violation("iiRDS/H: the related iirds:ProductVariant must carry an identity "
                             "whose domain has an identity type of ObjectInstanceURI, "
                             "ObjectTypeURI or SerialNumber",
-                            subject=ctx.ref(doc))
+                            subject=ctx.ref(doc),
+                            fix="Give the product variant this document names an "
+                                "iirds:has-identity whose iirds:IdentityDomain declares an "
+                                "iirds:has-identity-type of iirds:ObjectInstanceURI, "
+                                "iirds:ObjectTypeURI or iirds:SerialNumber. The relation from "
+                                "the document is already there; what is missing is which "
+                                "machine, as distinct from which model.")
 
 
 @rule("M15.7b", spec=_spec_sans_quote("M15.7b"),

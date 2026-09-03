@@ -238,8 +238,15 @@ def b1_well_formed(ctx):
     for name in sorted(_xhtml_renditions(ctx)):
         refused = _refusal(ctx, name)
         if refused:
+            # Its own remedy: nothing here is a syntax error, so a reader sent
+            # to an XML parser would find the file perfectly well-formed.
             yield Violation("content declared as iiRDS XHTML5 was refused rather than parsed",
-                            subject=name, detail=refused)
+                            subject=name, detail=refused,
+                            fix="Read the reason reported alongside this and remove what it "
+                                "names -- entity declarations, or bytes past the limit a run "
+                                "will read. The file was turned away before it was parsed, so "
+                                "there is no syntax error in it to find; an XML parser would "
+                                "open it and a consumer applying the same guard will not.")
             continue
         try:
             ElementTree.fromstring(_bytes_of(ctx, name)[0])

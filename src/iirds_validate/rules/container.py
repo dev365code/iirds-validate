@@ -237,8 +237,12 @@ def c11_2_handover_content_list(ctx):
         return
     body = ctx.package.text(CONTENT_LIST)
     if "<html" not in body.lower():
+        # Its own remedy: the file is there, so "add it" is already done.
         yield Violation("the content list index.html must be an HTML document",
-                        subject=CONTENT_LIST)
+                        subject=CONTENT_LIST,
+                        fix="Write index.html as an HTML document, beginning with an <html> "
+                            "element. The file is present and a browser will not render it as "
+                            "a page, which is the one thing it exists to do.")
 
 
 @rule("C12",
@@ -320,5 +324,12 @@ def c16_2_jsonld(ctx):
             # fetch, and on an @import, none of which is a syntax error. A
             # refused document is perfectly valid JSON-LD 1.1. The detail says
             # which refusal it was; the message must stop contradicting it.
+            # Its own remedy: this file is named exactly right and cannot be
+            # read, so the rule's remedy about naming answers the other branch.
             yield Violation("metadata.jsonld could not be read as JSON-LD 1.1",
-                            subject=METADATA_JSONLD, detail=err.split(": ", 1)[-1])
+                            subject=METADATA_JSONLD, detail=err.split(": ", 1)[-1],
+                            fix="Read the error reported alongside this and repair the file. A "
+                                "refusal means the document asked the reader to fetch something "
+                                "or was too large, not that its syntax is wrong; a parse error "
+                                "means the JSON itself is malformed. Until it reads, the "
+                                "statements in it reach no consumer that prefers JSON-LD.")

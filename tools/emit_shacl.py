@@ -783,6 +783,48 @@ def shape_iri(rule_id: str) -> str:
     return "ivs:" + rule_id
 
 
+def per_finding_remedies(rule_id):
+    """The remedies a rule attaches to one of its findings rather than to
+    itself, read out of the source.
+
+    A rule that reports two different defects carries one `fix=`, and where
+    the two need different actions the second gets its own through
+    `Violation(fix=...)`. Those never reached a SHACL consumer: the shape
+    carried the rule's remedy and nothing else, so `sh:description` gave
+    advice that is right for one of the rule's findings and wrong for the
+    other -- the defect this project fixed in its own report and left in the
+    encoding it publishes for everyone not running Python.
+
+    Read from the syntax tree rather than declared beside the shape, because
+    a hand-written mapping between a rule's branches and its shape's
+    constraints is a thing that drifts, and a test holds this one to the code.
+    """
+    import ast
+    import contextlib
+
+    found = []
+    for path in sorted((ROOT / "src" / "iirds_validate" / "rules").glob("*.py")):
+        tree = ast.parse(path.read_text("utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            named = [d for d in node.decorator_list
+                     if isinstance(d, ast.Call) and getattr(d.func, "id", "") in ("rule", "_lint")
+                     and d.args and getattr(d.args[0], "value", None) == rule_id]
+            if not named:
+                continue
+            for sub in ast.walk(node):
+                if not (isinstance(sub, ast.Call) and getattr(sub.func, "id", "") == "Violation"):
+                    continue
+                for keyword in sub.keywords:
+                    if keyword.arg == "fix":
+                        # A computed remedy (L13 picks one per position) cannot
+                        # be read here; the rule-level one stands for it.
+                        with contextlib.suppress(ValueError):
+                            found.append(ast.literal_eval(keyword.value))
+    return found
+
+
 def metadata_lines(rule) -> list:
     lines = ['rdfs:label "%s"' % esc(rule.title),
              "sh:severity %s" % SEVERITY[rule.severity],
@@ -796,6 +838,11 @@ def metadata_lines(rule) -> list:
     lines[4] = 'ivm:ruleSource "%s"' % ("catalogue" if rule.id in CATALOG else "iirds-validate")
     if rule.fix:
         lines.append('sh:description "%s"' % esc(rule.fix))
+    # A rule whose findings carry their own remedies publishes all of them:
+    # one description per situation the rule reports, so a consumer reading
+    # the shapes is never handed the advice for somebody else's finding.
+    for remedy in per_finding_remedies(rule.id):
+        lines.append('sh:description "%s"' % esc(remedy))
     if rule.spec:
         lines.append("dcterms:source <%s>" % _spec_link(rule))
     if rule.versions:

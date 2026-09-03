@@ -342,3 +342,34 @@ def test_the_readme_says_how_many_shapes_are_edition_specific():
     readme = (SHAPE_DIR.parent / "README.md").read_text("utf-8")
     assert "%d of them encode a rule that iiRDS 1.3 added" % len(limited) in readme, \
         "shapes/README.md should say %d; it says something else" % len(limited)
+
+
+def test_a_finding_with_its_own_remedy_publishes_it_in_the_shapes():
+    """`sh:description` is the advice a SHACL consumer gets, and it carried
+    only the rule's own `fix=`. A rule that reports two different defects
+    gives the second its own remedy through `Violation(fix=...)`, and those
+    never left Python: the shapes handed a reader the advice for the other
+    finding, which is the defect this project fixed in its report (M24.5) and
+    left in the encoding it publishes for everyone not running Python.
+
+    The emitter reads them out of the source rather than being told, so this
+    holds the derivation to the code.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import emit_shacl
+
+    # Across the set: a handover rule's shape lives in the handover files,
+    # which iirds-complete.ttl deliberately leaves out.
+    published = "\n".join(path.read_text("utf-8")
+                          for path in sorted((ROOT / "shapes" / "iirds-1.3").glob("*.ttl")))
+    checked = 0
+    for rule_id in sorted(set(MANIFEST["core_emitted"]) | set(MANIFEST["sparql_emitted"])):
+        for remedy in emit_shacl.per_finding_remedies(rule_id):
+            # The whole value, not a substring: a remedy shortened to one
+            # character passed a substring test against any file at all.
+            assert 'sh:description "%s"' % emit_shacl.esc(remedy) in published, \
+                (rule_id, remedy[:60])
+            checked += 1
+    assert checked, "no rule attaches a remedy to one of its findings any more"

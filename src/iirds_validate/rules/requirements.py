@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import posixpath
 
-from rdflib import URIRef
+from rdflib import BNode, URIRef
 from rdflib.namespace import RDFS
 
 from .. import terms as T
@@ -431,7 +431,7 @@ def r9_a_handover_package_does_not_nest(ctx):
                                "with component trees instead")
 
 
-@rule("R11", kind="schema", prio="MUST", versions=("1.3",), variants=(),
+@rule("R11", kind="schema", prio="MUST", versions=(), variants=(),
       title="a proprietary extension must be in metadata.rdf, not only in metadata.jsonld",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#iirds-extension-scenarios",
@@ -487,7 +487,14 @@ def r11_extensions_live_in_metadata_rdf(ctx):
     for label, cls in (("iirds:ProductVariant", T.ProductVariant),
                        ("iirds:Component", T.Component)):
         for subject in sorted(ctx.instances_of(cls), key=ctx.ref):
-            if (subject, None, None) not in inside:
+            # Named subjects only. rdflib labels blank nodes per parse, so the
+            # same anonymous component written into both files is two nodes in
+            # the merge and one of them looks misplaced. That package fails on
+            # L9 and on the rule requiring an IRI; naming a defect it does not
+            # have is a separate wrong.
+            if isinstance(subject, BNode):
+                continue
+            if not ctx.is_instance_in(inside, subject, cls):
                 yield Violation("%s is a proprietary iiRDS extension and is stated outside "
                                 "metadata.rdf" % label,
                                 subject=ctx.ref(subject), detail=_only_in(ctx, subject))

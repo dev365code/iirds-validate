@@ -90,7 +90,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 86, len(pairs)
+    assert len(pairs) == 87, len(pairs)
     assert len(asserted) == 2, sorted(asserted)
     assert sorted(rid for rid, _ in asserted) == ["R1", "R2"], sorted(asserted)
 

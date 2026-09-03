@@ -91,11 +91,22 @@ def test_a_vcard_with_no_type_at_all_is_reported(tmp_path):
     assert "R12" in got, sorted(got)
 
 
-def test_a_vcard_the_package_never_describes_is_left_to_l1(tmp_path):
-    """The same softening every rule in this family makes: one unresolvable
-    pointer is one finding, and it belongs to the rule about pointers."""
+def test_a_vcard_the_package_never_describes_is_reported_here_too(tmp_path):
+    """This test asserted the opposite when it was written, and the reading it
+    encoded was wrong.
+
+    The softening it copied belongs to section 8.3.2's five named-party MUSTs,
+    where one unresolvable pointer would otherwise arrive five times and R4
+    owns the cause. Here one rule asks the question, R4 is gated to iiRDS/H,
+    and the softening left `iirds check` silent about a party described as
+    nothing at all -- L1 reports the pointer and L1 is a lint that `check`
+    does not run.
+
+    A pointer at nothing is not a description of the party as a vcard kind.
+    Both rules speak now: L1 about the pointer, this about the sentence.
+    """
     got = fired(tmp_path, "kind_dangling.iirds", "")
-    assert "R12" not in got, sorted(got)
+    assert "R12" in got, sorted(got)
     assert "L1" in got, "the dangling pointer is still reported, by its own rule"
 
 
@@ -110,4 +121,68 @@ def test_a_literal_where_a_vcard_belongs_is_reported(tmp_path):
     got = {f.rule.id for f in runner.run(
         build_package(tmp_path, "kind_literal.iirds", metadata=metadata),
         runner.ALL_KINDS).findings}
+    assert "R12" in got, sorted(got)
+
+
+def test_a_vcard_the_vocabulary_calls_a_kind_by_its_other_name_is_accepted(tmp_path):
+    """`vcard:VCard` is not a fifth subclass; it is the same class under the
+    older name, and the vocabulary says so itself:
+
+        <#VCard> a owl:Class;
+          rdfs:comment "The vCard class is equivalent to the new Kind class,
+                        which is the parent for the four explicit types of
+                        vCards (Individual, Organization, Location, Group)";
+          owl:equivalentClass <#Kind>.
+
+    Reading the file for `rdfs:subClassOf` alone found four and missed this,
+    and a card typed with it is conformant and was the rule's only finding --
+    failure mode three in docs/scope.md, on a shape no corpus here contains
+    and no oracle could have caught.
+    """
+    assert "R12" not in fired(tmp_path, "kind_vcard.iirds", typed(VCARD + "VCard"))
+
+
+#: What the rule must report, and what each would have been mistaken for.
+NOT_A_KIND = [
+    ("a term of the standard's own vocabulary", IIRDS + "Topic"),
+    ("a named individual of the standard's", IIRDS + "Manufacturer"),
+    ("the vcard class itself rather than an instance of it", VCARD + "Organization"),
+    ("an IRI the package never describes", "urn:test:nowhere"),
+    ("an http IRI the package never describes", "http://example.com/card"),
+]
+
+
+@pytest.mark.parametrize("what,iri", NOT_A_KIND, ids=[w.replace(" ", "-") for w, _ in NOT_A_KIND])
+def test_a_card_that_is_not_a_kind_is_reported_whoever_else_describes_it(what, iri, tmp_path):
+    """The rule kept two of the three guards the shared helper carries, and
+    the one it dropped is the one the helper's docstring exists to explain: a
+    term the standard defines is not a dangling pointer, it is the wrong term.
+
+    Nothing else covers these. L1 exempts iiRDS terms by design and exempts
+    the vcard namespace by name (`WELL_KNOWN`), L8 is a MAY, and both are
+    lints that `check` does not run -- so `iirds check` reported nothing at
+    all for every row here.
+    """
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (PARTY % "") + "</rdf:RDF>").replace(
+        'rdf:resource="urn:test:card"', 'rdf:resource="%s"' % iri)
+    package = build_package(tmp_path, "notkind_%d.iirds" % abs(hash(what)), metadata=metadata)
+    for kinds, mode in ((runner.ALL_KINDS, "everything"), (runner.CONFORMANCE_KINDS, "check")):
+        got = {f.rule.id for f in runner.run(package, kinds).findings}
+        assert "R12" in got, (what, mode, sorted(got))
+
+
+def test_a_blank_node_card_with_no_type_is_reported(tmp_path):
+    """The worst of them: `<iirds:relates-to-vcard><rdf:Description/></...>`
+    produced no finding anywhere. R12 read it as undescribed, L1 requires a
+    URIRef and never sees a blank node, and M23 counts one value and is
+    satisfied."""
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <iirds:Party rdf:about="urn:test:p">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard><rdf:Description/></iirds:relates-to-vcard>
+  </iirds:Party>
+</rdf:RDF>""" % IIRDS)
+    got = {f.rule.id for f in runner.run(
+        build_package(tmp_path, "blank_card.iirds", metadata=metadata),
+        runner.CONFORMANCE_KINDS).findings}
     assert "R12" in got, sorted(got)

@@ -1322,6 +1322,7 @@ VCARD_BRANCHES = [
     ("vcard:Group", '<rdf:type rdf:resource="%sGroup"/>' % VCARD_, False),
     ("vcard:Location", '<rdf:type rdf:resource="%sLocation"/>' % VCARD_, False),
     ("vcard:Kind itself", '<rdf:type rdf:resource="%sKind"/>' % VCARD_, False),
+    ("vcard:VCard, the same class older", '<rdf:type rdf:resource="%sVCard"/>' % VCARD_, False),
     ("the lower-case spelling", '<rdf:type rdf:resource="%sorganization"/>' % VCARD_, False),
     ("an iiRDS class", '<rdf:type rdf:resource="%sTopic"/>' % IIRDS_, True),
     ("described and untyped", "<rdfs:label>a card, allegedly</rdfs:label>", True),
@@ -1362,7 +1363,11 @@ def test_a_vcard_declared_beneath_a_kind_is_one_in_both_encodings(tmp_path):
     assert "R12" not in py, sorted(py)
 
 
-def test_a_vcard_nothing_describes_is_left_to_l1_in_both_encodings(tmp_path):
+def test_a_vcard_nothing_describes_is_reported_in_both_encodings(tmp_path):
+    """This asserted the opposite when it was written. The exemption it
+    encoded left `iirds check` silent about a party described as nothing --
+    L1 reports the pointer and L1 is a lint that check does not run -- so it
+    is gone from both encodings, and the pair has to move together."""
     metadata = _meta('''  <iirds:Party rdf:about="urn:test:party">
     <iirds:has-party-role rdf:resource="%sAuthor"/>
     <iirds:relates-to-vcard rdf:resource="urn:test:nothing"/>
@@ -1370,7 +1375,7 @@ def test_a_vcard_nothing_describes_is_left_to_l1_in_both_encodings(tmp_path):
 ''' % IIRDS_)
     py = python_fired(tmp_path, "vcard_dangling.iirds", metadata)
     assert py == shacl_fired(metadata)
-    assert "R12" not in py, sorted(py)
+    assert "R12" in py, sorted(py)
 
 
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():

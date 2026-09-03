@@ -246,8 +246,7 @@ ivs:R12 a sh:NodeShape ;
   $this <http://iirds.tekom.de/iirds#relates-to-vcard> ?value .
   FILTER NOT EXISTS {
     ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?kind .
-    FILTER (?kind IN (<http://www.w3.org/2006/vcard/ns#Group>, <http://www.w3.org/2006/vcard/ns#Individual>, <http://www.w3.org/2006/vcard/ns#Kind>, <http://www.w3.org/2006/vcard/ns#Location>, <http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>)) }
-  FILTER (isLiteral(?value) || EXISTS { ?value ?p2 ?o2 }) }""" ] .
+    FILTER (?kind IN (<http://www.w3.org/2006/vcard/ns#Group>, <http://www.w3.org/2006/vcard/ns#Individual>, <http://www.w3.org/2006/vcard/ns#Kind>, <http://www.w3.org/2006/vcard/ns#Location>, <http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#VCard>, <http://www.w3.org/2006/vcard/ns#organization>)) } }""" ] .
 
 ivs:S4 a sh:NodeShape ;
   rdfs:label "iirds:iiRDSVersion must name a published version of the standard" ;

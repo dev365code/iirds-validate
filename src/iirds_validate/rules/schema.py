@@ -953,16 +953,25 @@ def r12_party_vcard_is_a_kind(ctx):
     records. Asked through `is_instance`, so a class the package declares
     beneath one of them is one, as section 7 requires.
 
-    Exemptions, as elsewhere in this family: an IRI the package never
-    describes is a dangling pointer and L1's, not a typing error. A literal is
-    neither -- L1 says nothing about one and no literal is an instance of
-    anything -- so it is reported here.
+    No exemptions, which is where this first went wrong. It was written with
+    two of the three guards the shared helper carries, and the one dropped is
+    the one that helper's docstring exists to explain -- a term the standard
+    defines is not a dangling pointer, it is the wrong term. With it missing,
+    a card pointing at `iirds:Topic`, at `iirds:Manufacturer`, or at the class
+    `vcard:Organization` itself produced no finding anywhere: L1 exempts iiRDS
+    terms by design and exempts the vcard namespace by name, L8 is a MAY, and
+    both are lints that `check` does not run.
+
+    So the question is asked without a way out, because the sentence has none:
+    it wants a vcard kind, and a card that cannot be shown to be one is not
+    one. That covers a blank node with no type -- which produced no finding
+    from any rule at all, L1 requiring a URIRef and M23 counting one value and
+    being satisfied -- and an IRI the package never describes, which is not a
+    description of the party as anything. Across every corpus here all 162
+    cards are already kinds, so nothing that passed before fails now.
     """
     acceptable = VCARD_KINDS | ORGANISATION_TYPES
     for party, card in sorted(ctx.graph.subject_objects(T.relates_to_vcard), key=str):
-        if any(ctx.is_instance(card, cls) for cls in acceptable):
-            continue
-        if not isinstance(card, Literal) and (card, None, None) not in ctx.graph:
-            continue          # undescribed reference: L1's business
-        yield Violation("iirds:relates-to-vcard must point to a vcard kind",
-                        subject=ctx.ref(party), detail=ctx.ref(card))
+        if not any(ctx.is_instance(card, cls) for cls in acceptable):
+            yield Violation("iirds:relates-to-vcard must point to a vcard kind",
+                            subject=ctx.ref(party), detail=ctx.ref(card))

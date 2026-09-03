@@ -134,6 +134,18 @@ class Context:
         section 7 gets forgotten one rule at a time."""
         return bool(set(self.values(node, RDF.type)) & self._class_closure(cls))
 
+    def is_instance_in(self, graph: Graph, node, cls: URIRef) -> bool:
+        """`is_instance`, asked of one metadata file instead of the merge.
+
+        For the sentences that name a file -- "product variants MUST be
+        present in the metadata.rdf" -- the merged graph cannot answer, and
+        asking whether the file *mentions* the node is a different question
+        that a node carrying only an rdfs:label passes. The closure is the
+        same one, so a package's own subclass of iirds:Component still counts
+        as one wherever it was declared.
+        """
+        return bool(set(graph.objects(node, RDF.type)) & self._class_closure(cls))
+
     def values(self, subject, prop: URIRef) -> List:
         return list(self.graph.objects(subject, prop))
 

@@ -461,12 +461,14 @@ SPARQL_FORMS = {
     # ontology's own instances of one class, and this asks whether the node is
     # an instance of any of six *classes* from a vocabulary this tool does not
     # bundle. Same three exemptions, different question.
+    # No second FILTER: the Python has no exemption either, and the pair of
+    # guards it started with left a card pointing at `iirds:Topic` reported by
+    # nothing. Both encodings ask the one question the sentence asks.
     "R12": ("subjects", "iirds:relates-to-vcard", ["""SELECT $this ?value WHERE {
   $this <%(ii)srelates-to-vcard> ?value .
   FILTER NOT EXISTS {
     ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?kind .
-    FILTER (?kind IN (%(vcard_kinds)s)) }
-  FILTER (isLiteral(?value) || EXISTS { ?value ?p2 ?o2 }) }"""]),
+    FILTER (?kind IN (%(vcard_kinds)s)) } }"""]),
 }
 
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])

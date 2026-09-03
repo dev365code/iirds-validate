@@ -200,3 +200,31 @@ def test_a_handover_jsonld_that_carries_no_iirds_metadata_is_reported(make_packa
     report = runner.check(make_package(metadata=HANDOVER_RDF, jsonld=jsonld))
     assert "C16.2" in {f.rule.id for f in errors(report)}, \
         (what, sorted({f.rule.id for f in report.findings}))
+
+
+def test_a_handover_jsonld_that_carries_less_than_the_rdf_is_reported(make_package):
+    """The threshold C16.2 uses is one iiRDS term, and one term is not the
+    metadata.
+
+    A metadata.jsonld naming `iirds:Topic` once, in the object position of
+    somebody else's property, clears that bar and hands a consumer that reads
+    JSON-LD and nothing else a package with no metadata in it -- which is what
+    the rule's own remedy says must not happen. The bar is defensible as the
+    least that can be asked of the sentence in isolation; what covers the rest
+    is L9, which reports every package whose two serialisations are not the
+    same graph, and which claims section 6.12's sentence as well as its own
+    now. Neither rule stands in for the other: a package whose files agree and
+    are both empty of iiRDS metadata is C16.2's, and this one is L9's.
+    """
+    from iirds_validate.registry import all_rules
+
+    claimants = {rule.id for rule in all_rules()
+                 if "x6-12-rdf-serialization#3" in rule.covers}
+    thin = json.dumps({"@graph": [{"@id": "urn:junk:1",
+                                   "http://example.org/p": {"@id": IIRDS_TOPIC}}]})
+    report = runner.check(make_package(metadata=HANDOVER_RDF, jsonld=thin))
+    fired = {f.rule.id for f in errors(report)}
+    assert claimants & fired, (sorted(claimants), sorted(fired))
+
+
+IIRDS_TOPIC = "http://iirds.tekom.de/iirds#Topic"

@@ -152,3 +152,67 @@ def test_the_general_sentence_reaches_further_than_this_rule(tmp_path, what, nod
     got = fired(tmp_path, "beyond_%d.iirds" % abs(hash(what)), jsonld_nodes=(node,))
     assert "R11" not in got, (what, sorted(got))
     assert "L9" in got, "the disagreement is still reported, under its own sentence"
+
+
+UNTYPED_RDF = ('  <rdf:Description rdf:about="urn:test:%s">'
+               "<rdfs:label>%s</rdfs:label></rdf:Description>\n")
+
+
+@pytest.mark.parametrize("cls,name", [("ProductVariant", "Rotor"), ("Component", "Pump")],
+                         ids=["product-variant", "component"])
+def test_a_type_declared_only_in_the_json_ld_is_reported(cls, name, tmp_path):
+    """The rule asked whether metadata.rdf *mentions* the node, not whether
+    the type declaration is there -- and mentioning is not being present.
+
+    A node carrying only `rdfs:label` in metadata.rdf and its `rdf:type` in
+    metadata.jsonld is a product variant to every rule (they read the merged
+    graph) and is not one in the file section 6.7.4 names. The subclass loop
+    beside this one, and the has-component loop added after it, both compare
+    the exact triple; this one did not, and the inconsistency is the tell.
+    """
+    key = cls.lower()
+    got = fired(tmp_path, "untyped_%s.iirds" % key,
+                rdf_body=UNTYPED_RDF % (key, name),
+                jsonld_nodes=({"@id": "urn:test:%s" % key, "@type": "iirds:" + cls,
+                               "rdfs:label": name},))
+    assert "R11" in got, sorted(got)
+
+
+@pytest.mark.parametrize("edition", ["1.2", "1.1", "1.0"])
+def test_an_older_package_carrying_both_files_is_still_reported(edition, tmp_path):
+    """The rule was scoped to 1.3 because the cached 1.0 release does not
+    mention JSON-LD, which is true and is not a reason.
+
+    It already returns unless the package carries both metadata files, so the
+    edition gate cannot prevent a false finding -- there is none to prevent --
+    and can only suppress a true one. A 1.2 package with both files and a
+    product variant in one of them breaches section 6.7.4's sentence, which
+    1.0 states in the same words. L9 needs the same two files and is scoped to
+    every edition, for the same reason: it judges the package, not the year.
+    """
+    metadata = MINIMAL_RDF.replace("<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+                                   "<iirds:iiRDSVersion>%s</iirds:iiRDSVersion>" % edition)
+    jsonld = json.dumps({"@context": {"iirds": IIRDS, "rdfs": RDFS_},
+                         "@graph": [{"@id": "urn:test:package", "@type": "iirds:Package",
+                                     "iirds:iiRDSVersion": edition,
+                                     "iirds:title": "Test package"},
+                                    {"@id": "urn:test:variant", "@type": "iirds:ProductVariant",
+                                     "rdfs:label": "Rotor"}]})
+    got = {f.rule.id for f in runner.run(
+        build_package(tmp_path, "old_%s.iirds" % edition, metadata=metadata, jsonld=jsonld),
+        runner.ALL_KINDS).findings}
+    assert "R11" in got, sorted(got)
+
+
+def test_a_blank_node_in_both_files_is_not_called_misplaced(tmp_path):
+    """rdflib labels blank nodes per parse, so the same anonymous component
+    written into both files is two nodes in the merged graph and the rule said
+    one of them was "stated outside metadata.rdf" -- which is not what
+    happened. The package fails anyway, on L9 and on the rule that requires an
+    IRI, so this is a false sentence rather than a false failure; a finding
+    that names a defect the package does not have is still worth not making.
+    """
+    got = fired(tmp_path, "blank_component.iirds",
+                rdf_body='  <iirds:Component><rdfs:label>Pump</rdfs:label></iirds:Component>\n',
+                jsonld_nodes=({"@type": "iirds:Component", "rdfs:label": "Pump"},))
+    assert "R11" not in got, sorted(got)

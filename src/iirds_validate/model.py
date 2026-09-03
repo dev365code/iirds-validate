@@ -23,12 +23,19 @@ MACH = Namespace("http://iirds.tekom.de/iirds/domain/machinery#")
 SW = Namespace("http://iirds.tekom.de/iirds/domain/software#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
-#: The classes the vCard vocabulary declares as kinds: `vcard:Kind` and the
-#: four subclasses it has and no others -- Individual, Organization, Group,
-#: Location, read from the vocabulary itself. IRIs are facts, like the iiRDS
-#: term IRIs the shapes carry, so knowing these costs no bundled file.
-VCARD_KINDS = frozenset((VCARD["Kind"], VCARD["Individual"], VCARD["Organization"],
-                         VCARD["Group"], VCARD["Location"]))
+#: The classes the vCard vocabulary declares as kinds, read from the
+#: vocabulary itself: `vcard:Kind`, the four subclasses it has -- Individual,
+#: Organization, Group, Location -- and `vcard:VCard`, which is the same class
+#: under its older name. IRIs are facts, like the iiRDS term IRIs the shapes
+#: carry, so knowing these costs no bundled file.
+#:
+#: `vcard:VCard` was missed by reading the file for `rdfs:subClassOf` and
+#: nothing else. It is not a subclass; the vocabulary states the relation the
+#: other way: `<#VCard> a owl:Class; owl:equivalentClass <#Kind>`, with a
+#: comment saying so in words. A card typed with it is conformant, and leaving
+#: it out made a rule fire on one.
+VCARD_KINDS = frozenset((VCARD["Kind"], VCARD["VCard"], VCARD["Individual"],
+                         VCARD["Organization"], VCARD["Group"], VCARD["Location"]))
 
 #: The two spellings a package uses to say "this vcard is an organisation".
 #: `vcard:Organization` is the class section 8.3.2 names. `vcard:organization`

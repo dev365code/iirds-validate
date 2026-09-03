@@ -327,7 +327,8 @@ def l7_untitled_information_units(ctx):
        prio="MUST", conformance=True,
        fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.",
        covers=("x5-1-1-metadata-location-and-rdf-serializations#2",
-               "x5-1-1-metadata-location-and-rdf-serializations#4",))
+               "x5-1-1-metadata-location-and-rdf-serializations#4",
+               "x6-12-rdf-serialization#3",))
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 
@@ -335,6 +336,17 @@ def l9_serialisations_disagree(ctx):
     conformant readers get different data from the same package and neither
     has any way to notice. Every other rule here works on the merged graph,
     which is correct — and which is precisely what makes this invisible.
+
+    Three sentences, because two of them are only observable from here.
+    Section 5.1.1 asks that metadata.rdf contain *all* metadata and that the
+    two files match; section 6.12 asks that an iiRDS/H package contain iiRDS
+    metadata in JSON-LD. C16.2 holds the last of those at the only threshold
+    that can be defended of the sentence alone — one iiRDS term — and one term
+    is not the metadata. What covers the rest is this: a metadata.jsonld
+    carrying less than metadata.rdf is a package whose serialisations are not
+    the same graph. Neither rule stands in for the other, and the pair is what
+    the claim rests on: a package whose files agree and are both empty of
+    iiRDS metadata is C16.2's, and one whose JSON-LD is thinner is this one's.
     """
     from rdflib.compare import graph_diff, to_isomorphic
 

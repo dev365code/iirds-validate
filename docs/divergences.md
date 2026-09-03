@@ -229,7 +229,7 @@ the code it describes.
 | rule | kind of leniency | claim |
 |---|---|---|
 | M17, M18 | **narrows the sentence** — the rule asks something else and the difference is unreported | withdrawn |
-| M15.7b, M15.7d, M15.8, M15.9, M15.10 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all | kept |
+| M15.7b, M15.7d, M15.8, M15.9, M15.10, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all | kept |
 | M13.1, M13.2 | **not a leniency** — Example 13 shows a `RangeSelector` carrying neither property and its two fragment selectors carrying both, which these rules check | kept |
 | M19.4 | **narrows the sentence** | never claimed |
 | M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced M5's RECOMMENDED absoluteness on top | kept |
@@ -239,11 +239,20 @@ So the rule, stated in `docs/scope.md`: a claim survives a documented
 difference only where the difference is about *how* the sentence is spelled,
 or where what is called leniency is really the correction of a strictness the
 sentence never asked for. Where the rule genuinely checks less than the
-sentence says, the claim goes with it. Two more were withdrawn on that ground
-outside this table — M23 for `x6-8-3-parties-and-roles#3`, whose second half
-asks for a "compliant vcard:kind object" and would need the vCard vocabulary
-bundled to check, and C16.2 for `x6-12-rdf-serialization#3`, which asks whether
-`metadata.jsonld` parses and not whether it contains iiRDS metadata.
+sentence says, the claim goes with it.
+
+Two claims were withdrawn on that ground outside this table and both have
+since been earned back, which is recorded because the reasons given for
+withdrawing them turned out to be wrong. M23's sentence asks for a "compliant
+vcard:kind object", and the withdrawal said checking it would need the vCard
+vocabulary bundled: it does not — the vocabulary's class IRIs are facts, the
+way iiRDS term IRIs are, and R12 names the six of them. C16.2 was said to ask
+whether `metadata.jsonld` parses and not whether it contains iiRDS metadata,
+which was true of the rule and is a thing a rule can be taught; it asks both
+now, with L9 covering what one file alone cannot show. A withdrawal is
+cheaper than a wrong claim and it is not free: it says a sentence cannot be
+checked, and twice here that was a statement about the afternoon rather than
+about the sentence.
 
 **C9, in more detail.** Section 5.1.1 asks for "RDF 1.1 XML syntax (see
 [rdf-syntax-grammar])", and the rule enforced the shape most files have

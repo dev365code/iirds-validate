@@ -34,6 +34,13 @@ HANDOVER = """<?xml version="1.0" encoding="utf-8"?>
     <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
     <iirds:formatRestriction>H</iirds:formatRestriction>
     <iirds:title>Handover</iirds:title>
+    <!-- Section 8.3.2 states its product-variant requirements twice, once for
+         the Package and once for the Document, word for word. This fixture was
+         asserted conformant for weeks while carrying only the second: the
+         Package named no variant, and no rule read that list. R13 to R16 read
+         it now. Both may name the same variant, and the simplest conformant
+         package does. -->
+    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>
     <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>
   </iirds:Package>
 
@@ -182,7 +189,13 @@ NAMED_PARTY_REMOVALS = [
 REMOVALS = NAMED_PARTY_REMOVALS + [
     ("M15.2",  '    <hov:has-document-category rdf:resource="%sOperatingInstructions"/>\n' % HOV),
     ("M15.3",  "    <iirds:language>en</iirds:language>\n"),
-    ("M15.4",  "    <iirds:title>Operating instructions</iirds:title>\n"),
+    # The Document's title, anchored on the language line below it and that
+    # line put back: the information object carries the same title text, and
+    # this removal has been taking whichever came first in the file. It was
+    # the right one, by the order the fixture happens to be written in.
+    ("M15.4",  "    <iirds:title>Operating instructions</iirds:title>\n"
+               "    <iirds:language>en</iirds:language>\n",
+               "    <iirds:language>en</iirds:language>\n"),
     ("M15.5",  '    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n'),
     ("M15.6",  """    <iirds:has-rendition>
       <iirds:Rendition>
@@ -190,15 +203,28 @@ REMOVALS = NAMED_PARTY_REMOVALS + [
         <iirds:source>content/doc1.pdf</iirds:source>
       </iirds:Rendition>
     </iirds:has-rendition>\n"""),
-    ("M15.7a", '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n'),
+    # The Document's copy. Section 8.3.2 asks for this line twice and the
+    # fixture carries it twice, so the match is anchored on the party line
+    # above it, which only the Document has, and that line is put back --
+    # otherwise this case would also remove what M15.8 asks for. Without the
+    # anchor `replace(..., 1)` took the Package's copy and R13 answered.
+    ("M15.7a", '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n'
+               '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n',
+               '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n'),
     ("M15.7c", '    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n'),
 ]
 
 
-@pytest.mark.parametrize("rule_id,line", REMOVALS, ids=[r[0] for r in REMOVALS])
-def test_removing_what_a_rule_asks_for_makes_it_fire(rule_id, line, tmp_path):
+#: Normalised to (rule, what to match, what to put back). Most entries put
+#: nothing back; two match more than they remove, because the string that
+#: identifies the right place is bigger than the line under test.
+REMOVALS = [row if len(row) == 3 else (row[0], row[1], "") for row in REMOVALS]
+
+
+@pytest.mark.parametrize("rule_id,line,keep", REMOVALS, ids=[r[0] for r in REMOVALS])
+def test_removing_what_a_rule_asks_for_makes_it_fire(rule_id, line, keep, tmp_path):
     assert line in HANDOVER, "the fixture no longer contains %r" % line
-    broken = HANDOVER.replace(line, "", 1)
+    broken = HANDOVER.replace(line, keep, 1)
     assert rule_id in _ids(tmp_path, "%s.iirds" % rule_id.replace(".", "_"), broken)
 
 
@@ -601,3 +627,20 @@ def test_a_party_with_no_vcard_at_all_does_not_name_an_organisation(tmp_path):
     fired = _ids(tmp_path, "no_vcard.iirds", broken)
     assert {"M15.9", "M15.10"} <= fired, sorted(fired)
     assert "M23" in fired, "the missing property is its own finding"
+
+
+def test_every_removal_names_exactly_one_place_in_the_fixture():
+    """A removal that matches twice silently breaks a different rule's case.
+
+    `str.replace(..., 1)` takes the first occurrence, and section 8.3.2 asks
+    for `iirds:relates-to-product-variant` on both the Package and the
+    Document -- so the moment the fixture satisfied both lists, M15.7a's case
+    started removing the Package's copy and asserting against R13's finding.
+    One that matches *zero* times is worse and quieter: the package is
+    unchanged, the rule does not fire, and the test reads as a rule that
+    stopped working.
+    """
+    for rule_id, line, _keep in REMOVALS:
+        assert HANDOVER.count(line) == 1, (
+            "%s removes a string that appears %d times in the fixture"
+            % (rule_id, HANDOVER.count(line)))

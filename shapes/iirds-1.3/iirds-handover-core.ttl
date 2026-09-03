@@ -155,7 +155,6 @@ ivs:M15.7a a sh:NodeShape ;
   ivm:ruleId "M15.7a" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible." ;
-  sh:description "Give the product variant this document names an iirds:has-identity whose iirds:IdentityDomain declares an iirds:has-identity-type of iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber, and relate that domain to an iirds:Party with iirds:has-party-role iirds:Manufacturer carrying a vcard that names an organisation -- without the party the identity answers this and M15.7b takes its place. The relation from the document is already there; what is missing is which machine, as distinct from which model." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
   ivm:covers "x8-3-2-metadata-requirements#8" ;

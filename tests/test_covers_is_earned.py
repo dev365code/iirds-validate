@@ -516,6 +516,21 @@ UNAUDITED = frozenset((
 #: `module:name` where the test lives in another file, which is where it
 #: belongs when the rule has a file of its own.
 NAMED_CASES = {
+    # Section 8.3.2's Package list: the six sentences its Document list
+    # repeats word for word, and which nothing read until R13 to R16.
+    "x8-3-2-metadata-requirements#1":
+        "test_package_product_variant:test_each_package_bullet_is_reported",
+    "x8-3-2-metadata-requirements#2":
+        "test_package_product_variant:"
+        "test_the_conformant_fixture_needs_the_packages_own_variant",
+    "x8-3-2-metadata-requirements#3":
+        "test_package_product_variant:test_the_manufacturer_bullets_are_reported",
+    "x8-3-2-metadata-requirements#4":
+        "test_package_product_variant:test_each_package_bullet_is_reported",
+    "x8-3-2-metadata-requirements#5":
+        "test_package_product_variant:test_each_package_bullet_is_reported",
+    "x8-3-2-metadata-requirements#6":
+        "test_package_product_variant:test_the_manufacturer_bullets_are_reported",
     "x6-12-rdf-serialization#3":
         "test_silent_pass:test_a_handover_jsonld_that_carries_no_iirds_metadata_is_reported",
     "x6-8-3-parties-and-roles#3":
@@ -590,7 +605,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 71, len(CLAIMED)
+    assert len(CLAIMED) == 77, len(CLAIMED)
     assert len(UNAUDITED) == 51, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

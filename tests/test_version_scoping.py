@@ -84,7 +84,14 @@ def test_every_1_3_only_rule_belongs_to_the_handover_profile():
     specification requirement the catalogue has no id for, and R4 for the same
     reason again -- it owns the softening the five named-party MUSTs share."""
     assert HANDOVER, "iiRDS/H rules must exist"
-    assert all(r.startswith("M15.") or r in SCOPED for r in HANDOVER), sorted(HANDOVER)
+    # By the profile the rule declares, not by the shape of its id. R13 to
+    # R16 are section 8.3.2's Package list and carry variants=("H",); reading
+    # the id would have made "belongs to the handover profile" mean "is
+    # called M15-something", which is a different sentence.
+    by_id = {rule.id: rule for rule in all_rules()}
+    outside = sorted(r for r in HANDOVER
+                     if "H" not in by_id[r].variants and r not in SCOPED)
+    assert outside == [], outside
 
 
 @pytest.mark.parametrize("rule_id", sorted(SCOPED), ids=sorted(SCOPED))

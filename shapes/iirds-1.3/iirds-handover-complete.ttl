@@ -2167,7 +2167,6 @@ ivs:M15.7a a sh:NodeShape ;
   ivm:ruleId "M15.7a" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible." ;
-  sh:description "Give the product variant this document names an iirds:has-identity whose iirds:IdentityDomain declares an iirds:has-identity-type of iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber, and relate that domain to an iirds:Party with iirds:has-party-role iirds:Manufacturer carrying a vcard that names an organisation -- without the party the identity answers this and M15.7b takes its place. The relation from the document is already there; what is missing is which machine, as distinct from which model." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
   ivm:covers "x8-3-2-metadata-requirements#8" ;
@@ -2395,3 +2394,116 @@ ivs:R4 a sh:NodeShape ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?value .
   FILTER NOT EXISTS { ?value ?cp ?co } }""" ] .
+
+ivs:R13 a sh:NodeShape ;
+  rdfs:label "an iiRDS/H package must name a product variant with an instance identity" ;
+  sh:severity sh:Violation ;
+  sh:message "an iiRDS/H package must name a product variant with an instance identity" ;
+  ivm:ruleId "R13" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Add iirds:relates-to-product-variant on the iirds:Package, relating it to the product variant this delivery is about, and give that variant an iirds:has-identity whose iirds:IdentityDomain declares an iirds:has-identity-type of iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber. The documents inside may name narrower variants; this says what the consignment as a whole is for." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#1" ;
+  ivm:covers "x8-3-2-metadata-requirements#2" ;
+  sh:targetNode ivs:R13 ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?variant .
+    ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+    ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
+    ?domain <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
+    FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ObjectInstanceURI>, <http://iirds.tekom.de/iirds#ObjectTypeURI>,
+                        <http://iirds.tekom.de/iirds#SerialNumber>))
+  } }""" ] .
+
+ivs:R14 a sh:NodeShape ;
+  rdfs:label "a package's instance identity domain must name its manufacturer" ;
+  sh:severity sh:Violation ;
+  sh:message "a package's instance identity domain must name its manufacturer" ;
+  ivm:ruleId "R14" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Relate the identity domain of the package's product variant to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One qualifying identity is enough." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#3" ;
+  sh:targetNode ivs:R14 ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?anyvariant .
+  ?anyvariant <http://iirds.tekom.de/iirds#has-identity> ?any . ?any <http://iirds.tekom.de/iirds#has-identity-domain> ?some .
+  ?some <http://iirds.tekom.de/iirds#has-identity-type> ?sometype .
+  FILTER (?sometype IN (<http://iirds.tekom.de/iirds#ObjectInstanceURI>, <http://iirds.tekom.de/iirds#ObjectTypeURI>, <http://iirds.tekom.de/iirds#SerialNumber>))
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?variant .
+    ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+    ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
+    ?domain <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
+    FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ObjectInstanceURI>, <http://iirds.tekom.de/iirds#ObjectTypeURI>, <http://iirds.tekom.de/iirds#SerialNumber>))
+    ?domain <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Manufacturer> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
+      FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .
+
+ivs:R15 a sh:NodeShape ;
+  rdfs:label "an iiRDS/H package must name a product variant with a product type identity" ;
+  sh:severity sh:Violation ;
+  sh:message "an iiRDS/H package must name a product variant with a product type identity" ;
+  ivm:ruleId "R15" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Give the product variant the package names a second iirds:has-identity whose iirds:IdentityDomain declares iirds:has-identity-type iirds:ProductType. The instance identity says which machine; this says which model, and a receiving plant needs both to file the delivery against its equipment." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#4" ;
+  ivm:covers "x8-3-2-metadata-requirements#5" ;
+  sh:targetNode ivs:R15 ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?anyvariant .
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?variant .
+    ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+    ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
+    ?domain <http://iirds.tekom.de/iirds#has-identity-type> <http://iirds.tekom.de/iirds#ProductType> .
+  } }""" ] .
+
+ivs:R16 a sh:NodeShape ;
+  rdfs:label "a package's product type identity domain must name its manufacturer" ;
+  sh:severity sh:Violation ;
+  sh:message "a package's product type identity domain must name its manufacturer" ;
+  ivm:ruleId "R16" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Relate the ProductType identity domain of the package's product variant to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, with an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#6" ;
+  sh:targetNode ivs:R16 ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?anyvariant .
+  ?anyvariant <http://iirds.tekom.de/iirds#has-identity> ?any . ?any <http://iirds.tekom.de/iirds#has-identity-domain> ?some .
+  ?some <http://iirds.tekom.de/iirds#has-identity-type> ?sometype .
+  FILTER (?sometype IN (<http://iirds.tekom.de/iirds#ProductType>))
+  FILTER NOT EXISTS {
+    ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?variant .
+    ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
+    ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
+    ?domain <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
+    FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ProductType>))
+    ?domain <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Manufacturer> .
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
+      FILTER NOT EXISTS { ?card ?cp ?co } }
+    UNION
+    { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
+      FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
+      ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
+  } }""" ] .

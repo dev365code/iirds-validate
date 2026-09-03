@@ -309,7 +309,7 @@ def _points_at_an_instance_of(prop, cls, instances):
           || EXISTS { ?value ?p2 ?o2 }) }""")
 
 
-def _domain_manufacturer_query(type_list):
+def _domain_manufacturer_query(type_list, subject="Document"):
     """Section 8.3.2 nests "The iirds:IdentityDomain MUST relate to an
     iirds:Party ..." under "This iirds:ProductVariant MUST relate to an
     iirds:Identity with an iirds:IdentityDomain", which is itself nested under
@@ -319,7 +319,7 @@ def _domain_manufacturer_query(type_list):
     graph. The document is bound, and DISTINCT because it would otherwise bind
     once per identity."""
     return ("""SELECT DISTINCT $this ?value WHERE {
-  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDocument> .
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + subject + """> .
   ?value <%(ii)srelates-to-product-variant> ?anyvariant .
   ?anyvariant <%(ii)shas-identity> ?any . ?any <%(ii)shas-identity-domain> ?some .
   ?some <%(ii)shas-identity-type> ?sometype .
@@ -479,15 +479,45 @@ SPARQL_FORMS["M15.10"] = ("fixed", [_INFORMATION_OBJECT_IDENTITY,
 #: this one's: the bullet this checks presupposes the variant the line above
 #: introduces. A Core qualifiedMinCount cannot tell the two apart, and said
 #: both, so this moved to SPARQL beside its siblings.
-SPARQL_FORMS["M15.7c"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
-  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDocument> .
+def _product_type_identity_query(subject="Document"):
+    """Section 8.3.2's ProductType pair, for whichever of its two lists is
+    being read. Both state it word for word, so one builder answers both."""
+    return ("""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + subject + """> .
   ?value <%(ii)srelates-to-product-variant> ?anyvariant .
   FILTER NOT EXISTS {
     ?value <%(ii)srelates-to-product-variant> ?variant .
     ?variant <%(ii)shas-identity> ?identity .
     ?identity <%(ii)shas-identity-domain> ?domain .
     ?domain <%(ii)shas-identity-type> <%(ii)sProductType> .
-  } }"""])
+  } }""")
+
+
+def _instance_identity_query(subject):
+    """"at least one iirds:relates-to-product-variant" and the instance
+    identity under it, in one query: no variant, or no variant carrying an
+    identity whose domain declares an instance identity type."""
+    return ("""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + subject + """> .
+  FILTER NOT EXISTS {
+    ?value <%(ii)srelates-to-product-variant> ?variant .
+    ?variant <%(ii)shas-identity> ?identity .
+    ?identity <%(ii)shas-identity-domain> ?domain .
+    ?domain <%(ii)shas-identity-type> ?idtype .
+    FILTER (?idtype IN (<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>,
+                        <%(ii)sSerialNumber>))
+  } }""")
+
+
+SPARQL_FORMS["M15.7c"] = ("fixed", [_product_type_identity_query()])
+# The same six sentences, for the Package. See rules/handover.py: section
+# 8.3.2 states them twice and the builders exist so one correction reaches
+# both encodings and both subjects.
+SPARQL_FORMS["R13"] = ("fixed", [_instance_identity_query("Package")])
+SPARQL_FORMS["R14"] = ("fixed", [_domain_manufacturer_query(
+    "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>", "Package")])
+SPARQL_FORMS["R15"] = ("fixed", [_product_type_identity_query("Package")])
+SPARQL_FORMS["R16"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>", "Package")])
 SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_manufacturer_query(
     "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>")])
 SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>")])

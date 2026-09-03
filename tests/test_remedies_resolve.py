@@ -105,8 +105,14 @@ def test_m15_7a_does_not_tell_a_reader_who_has_the_relation_to_add_it(tmp_path):
         assert hits, sorted({f.rule.id for f in report.findings})
         return hits[0]
 
+    # The Document's copy: section 8.3.2 asks for this line on the Package as
+    # well and the fixture carries both, so the match is anchored on the
+    # party line only the Document has and that line is put back. Without the
+    # anchor this removed the Package's and R13 answered.
     no_relation = m15_7a("m15_7a_none.iirds", HANDOVER.replace(
-        '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n', "", 1))
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n'
+        '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n',
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n', 1))
     no_identity = m15_7a("m15_7a_ident.iirds", HANDOVER.replace(
         '    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n', "", 1))
     assert no_relation.fix != no_identity.fix

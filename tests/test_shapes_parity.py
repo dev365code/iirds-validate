@@ -184,14 +184,17 @@ def test_the_conformant_handover_package_is_silent_in_both_encodings(tmp_path):
     assert _h_parity(tmp_path, "clean.iirds", HANDOVER) == set()
 
 
-H_CORE_REMOVALS = [(rid, line) for rid, line in REMOVALS if rid in EMITTED]
+#: (rule, what to match, what to put back) -- the third element is what
+#: distinguishes a removal from its anchor, since section 8.3.2 asks for the
+#: same line on the Package and on the Document and the fixture carries both.
+H_CORE_REMOVALS = [row for row in REMOVALS if row[0] in EMITTED]
 
 
-@pytest.mark.parametrize("rule_id,line", H_CORE_REMOVALS,
-                         ids=[r for r, _ in H_CORE_REMOVALS])
-def test_handover_removal_parity(rule_id, line, tmp_path):
+@pytest.mark.parametrize("rule_id,line,keep", H_CORE_REMOVALS,
+                         ids=[row[0] for row in H_CORE_REMOVALS])
+def test_handover_removal_parity(rule_id, line, keep, tmp_path):
     fired = _h_parity(tmp_path, "%s.iirds" % rule_id.replace(".", "_"),
-                      HANDOVER.replace(line, "", 1))
+                      HANDOVER.replace(line, keep, 1))
     assert rule_id in fired
 
 
@@ -1384,3 +1387,41 @@ def test_every_emitted_shape_has_fired_somewhere_in_this_file():
         "the accumulator is empty-ish; this test only means something after "
         "the whole file has run -- do not run it in isolation")
     assert never_fired == set(), sorted(never_fired)
+
+
+# ---------------------------------------------------------------------------
+# Section 8.3.2's Package list, both encodings
+#
+# The same six sentences as the Document list, so the same builders on both
+# sides — and the cases are here rather than trusted to the Document ones,
+# because "the builders are shared" is a claim about the source and not about
+# what the two encodings do.
+# ---------------------------------------------------------------------------
+
+PACKAGE_VARIANT_LINE = '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n'
+
+PACKAGE_BULLETS = [
+    ("R13", PACKAGE_VARIANT_LINE, "the Package names no product variant"),
+    ("R13", '    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n',
+     "its variant carries no instance identity"),
+    ("R15", '    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n',
+     "its variant carries no ProductType identity"),
+]
+
+
+@pytest.mark.parametrize("rule_id,line,what", PACKAGE_BULLETS,
+                         ids=["%s-%d" % (r[0], i) for i, r in enumerate(PACKAGE_BULLETS)])
+def test_the_package_list_agrees_in_both_encodings(rule_id, line, what, tmp_path):
+    assert line in HANDOVER, line
+    fired = _h_parity(tmp_path, "pkg_%d.iirds" % abs(hash(what)),
+                      HANDOVER.replace(line, "", 1))
+    assert rule_id in fired, (what, sorted(fired))
+
+
+def test_the_package_manufacturer_bullets_agree_in_both_encodings(tmp_path):
+    """One removal reaches both, because the fixture gives both identity
+    domains the same manufacturer party."""
+    line = '    <iirds:has-party-role rdf:resource="%sManufacturer"/>\n' % IIRDS_
+    assert line in HANDOVER
+    fired = _h_parity(tmp_path, "pkg_manufacturer.iirds", HANDOVER.replace(line, "", 1))
+    assert {"R14", "R16"} <= fired, sorted(fired)

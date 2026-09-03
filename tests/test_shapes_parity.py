@@ -16,6 +16,7 @@ validation, so the whole gate rides in the ordinary suite.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -1223,3 +1224,85 @@ def test_a_second_identity_is_silent_in_both_encodings(rule_id, block, tmp_path)
     report = runner.run(_package(tmp_path, "second.iirds", metadata), runner.ALL_KINDS)
     assert rule_id not in {f.rule.id for f in report.findings}
     assert rule_id not in shacl_fired(metadata, handover=True)
+
+
+# ---------------------------------------------------------------------------
+# "points at an instance of": every branch, both encodings
+#
+# The two rules of this family are one Python helper and one SPARQL builder,
+# and they drifted the moment the Python changed: the exemption was narrowed
+# on one side and not the other, and this file could not see it, because
+# `CASES` above has one case per rule and that case did not reach the
+# exemption. A rule with four branches needs four cases, not one.
+#
+# Driven by the family rather than written per rule, so a third caller gets
+# the whole set by adding a row -- and cannot be added without one.
+# ---------------------------------------------------------------------------
+
+IIRDS_ = "http://iirds.tekom.de/iirds#"
+
+#: rule -> (property, a term of this kind, a term of another kind, wrapper).
+#: The wrong term is per rule: iirds:Manufacturer is the right kind for
+#: M22.2 and the wrong kind for R10, and a shared table said "wrong" for
+#: both -- caught here, which is the argument for asserting the verdict and
+#: not only the agreement.
+POINTS_AT = {
+    "M22.2": ("iirds:has-party-role", "Author", "Approved",
+              '<iirds:Party rdf:about="urn:test:subject">%s'
+              '<iirds:relates-to-vcard rdf:resource="urn:test:card"/></iirds:Party>'),
+    "R10": ("iirds:has-content-lifecycle-status-value", "Approved", "Manufacturer",
+            '<iirds:ContentLifeCycleStatus rdf:about="urn:test:subject">%s'
+            "</iirds:ContentLifeCycleStatus>"),
+}
+
+#: Every branch of the helper, named by which referent reaches it. `fires` is
+#: what the reading says, and both encodings are asserted against it --
+#: agreement alone is satisfied by two implementations wrong together.
+BRANCHES = [
+    ("a class the ontology defines and is not one", "class", True),
+    ("a term of another kind the ontology defines", "wrong", True),
+    ("the right term", "right", False),
+    ("an IRI nothing describes", "dangling", False),
+]
+
+
+@pytest.mark.parametrize("rule_id", sorted(POINTS_AT), ids=sorted(POINTS_AT))
+@pytest.mark.parametrize("what,target,fires", BRANCHES,
+                         ids=[b[0].replace(" ", "-") for b in BRANCHES])
+def test_both_encodings_agree_on_every_branch_of_points_at_an_instance_of(
+        rule_id, what, target, fires, tmp_path):
+    prop, right, wrong, wrapper = POINTS_AT[rule_id]
+    iri = {"class": IIRDS_ + "Topic", "wrong": IIRDS_ + wrong,
+           "right": IIRDS_ + right, "dangling": "urn:test:nothing"}[target]
+    metadata = _meta(wrapper % ('<%s rdf:resource="%s"/>' % (prop, iri)))
+    py = python_fired(tmp_path, "%s_%d.iirds" % (rule_id, abs(hash(what))), metadata)
+    sh = shacl_fired(metadata)
+    assert py == sh, "%s %s: SHACL %s vs Python %s" % (
+        rule_id, what, sorted(sh - py), sorted(py - sh))
+    assert (rule_id in py) is fires, (rule_id, what, sorted(py))
+
+
+@pytest.mark.parametrize("rule_id", sorted(POINTS_AT), ids=sorted(POINTS_AT))
+def test_a_literal_where_an_instance_belongs_is_reported_in_both_encodings(rule_id, tmp_path):
+    """Its own case because it is not an IRI at all. A literal carries no
+    triples, so the branch that lets an undescribed reference through to L1
+    took it silently -- and L1 has nothing to say about a literal either."""
+    prop, _right, _wrong, wrapper = POINTS_AT[rule_id]
+    metadata = _meta(wrapper % ("<%s>Approved</%s>" % (prop, prop)))
+    py = python_fired(tmp_path, "%s_literal.iirds" % rule_id, metadata)
+    sh = shacl_fired(metadata)
+    assert py == sh, "SHACL %s vs Python %s" % (sorted(sh - py), sorted(py - sh))
+    assert rule_id in py, sorted(py)
+
+
+def test_the_points_at_family_is_the_one_this_file_knows_about():
+    """A third caller of the helper must arrive with its branches, or this
+    fails. The family is read from the generator's own table."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import emit_shacl
+
+    # The family's queries are the ones the shared builder writes, and its
+    # last FILTER is the marker no other form carries.
+    callers = {rid for rid, form in emit_shacl.SPARQL_FORMS.items()
+               if form[0] == "subjects" and any("isLiteral(?value)" in q for q in form[2])}
+    assert callers == set(POINTS_AT), sorted(callers ^ set(POINTS_AT))

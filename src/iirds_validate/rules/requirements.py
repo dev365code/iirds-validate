@@ -393,6 +393,17 @@ def r9_a_handover_package_does_not_nest(ctx):
     nothing, or metadata declaring a child that was never packed -- so neither
     branch stands in for the other.
 
+    Section 6.7.3's sentence has two limbs and this reports one of them, which
+    is the shape a coverage claim has to answer for. The positive limb, "MUST
+    use this variant of hierarchy formation", carries no content the negative
+    limb does not: "this variant" is section 6.7.3's component trees, offered
+    in the three sentences above it and every one of them a MAY, and the
+    paragraph's whole point is *component trees rather than nesting*. A
+    handover package that models no hierarchy at all has used no other variant
+    to be told off for. Read that way the sentence has one violation and this
+    reports it -- and the reading is written here rather than left implicit,
+    because the reading is what the claim covers.
+
     The opening clause of section 8.3.1.2 is why this is variant-gated rather
     than general: "While unrestricted iiRDS packages MAY be nested by nesting
     iiRDS ZIP archives in each other for compatibility reasons". Nesting is

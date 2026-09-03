@@ -75,6 +75,13 @@ SEVERITY = {Severity.ERROR: "sh:Violation",
             Severity.INFO: "sh:Info"}
 
 _ONTOLOGY = load_ontology()
+
+
+def _term_list(terms) -> str:
+    """IRIs as a SPARQL `IN (...)` list, sorted so the emitted file is stable."""
+    return ", ".join("<%s>" % term for term in sorted(str(term) for term in terms))
+
+
 IU_CLOSURE = tuple(sorted("iirds:" + str(c).split("#")[-1]
                           for c in _ONTOLOGY.subclasses_of(T.InformationUnit)))
 SELECTOR_CLOSURE = tuple(sorted("iirds:" + str(c).split("#")[-1]
@@ -277,6 +284,31 @@ def _named_party_query(cls, role):
   } }""")
 
 
+def _points_at_an_instance_of(prop, cls, instances):
+    """The SPARQL twin of `rules/schema.py::_points_at_an_instance_of`.
+
+    Written beside its Python, because the two drifted the moment the Python
+    changed and nothing noticed: this used to exempt `%(defined_terms)s`, every
+    subject in the ontology file, and the differential gate could not see the
+    difference because its cases did not reach the exemption. Both sides now
+    exempt only the ontology's instances *of this class*, and the terms the
+    ontology defines move from the exemption to the report -- `iirds:Topic` is
+    the wrong kind, not a dangling pointer. Literals likewise: they carry no
+    triples, so `EXISTS { ?value ?p ?o }` used to drop them silently.
+
+    Read as: report unless the data graph types it right, or the ontology does;
+    and among what is left, report a literal, a term the standard defines, or a
+    node this package describes -- an undescribed IRI is L1's business.
+    """
+    return ("""SELECT $this ?value WHERE {
+  $this <%(ii)s""" + prop + """> ?value .
+  FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + cls + """> }
+  FILTER (?value NOT IN (%(""" + instances + """)s))
+  FILTER (isLiteral(?value)
+          || ?value IN (%(defined_terms)s)
+          || EXISTS { ?value ?p2 ?o2 }) }""")
+
+
 def _domain_manufacturer_query(type_list):
     """Section 8.3.2 nests "The iirds:IdentityDomain MUST relate to an
     iirds:Party ..." under "This iirds:ProductVariant MUST relate to an
@@ -419,21 +451,12 @@ SPARQL_FORMS = {
     # and thereby hid misspelled terms inside the real namespace -- the exact
     # defect this rule exists to catch. (b) is now the literal
     # list, generated from the same ontology Python reads.
-    "M22.2": ("subjects", "iirds:has-party-role", ["""SELECT $this ?value WHERE {
-  $this <%(ii)shas-party-role> ?value .
-  FILTER EXISTS { ?value ?p2 ?o2 }
-  FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPartyRole> }
-  FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
+    "M22.2": ("subjects", "iirds:has-party-role",
+              [_points_at_an_instance_of("has-party-role", "PartyRole", "party_roles")]),
     # M22.2's shape, one property over: the twin sentence in section 6.8.2.
-    # Same three exemptions, same order, deliberately not generalised into a
-    # builder -- two callers is not a pattern, and the last time a shape
-    # builder was generalised for a third caller it lost a distinction.
-    "R10": ("subjects", "iirds:has-content-lifecycle-status-value", ["""SELECT $this ?value WHERE {
-  $this <%(ii)shas-content-lifecycle-status-value> ?value .
-  FILTER EXISTS { ?value ?p2 ?o2 }
-  FILTER NOT EXISTS {
-    ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sContentLifeCycleStatusValue> }
-  FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
+    "R10": ("subjects", "iirds:has-content-lifecycle-status-value",
+            [_points_at_an_instance_of("has-content-lifecycle-status-value",
+                                       "ContentLifeCycleStatusValue", "status_values")]),
 }
 
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
@@ -936,9 +959,14 @@ def build() -> dict:
                  "ns_s": _ns_test("?s"), "ns_o": _ns_test("?o"),
                  "ns_v": _ns_test("?value"), "ns_t": _ns_test("?t"),
                  "vc": "http://www.w3.org/2006/vcard/ns#",
-                 "defined_terms": ", ".join(
-                     "<%s>" % term for term in
-                     sorted(str(term) for term in _ONTOLOGY.defined_terms()))}
+                 "defined_terms": _term_list(_ONTOLOGY.defined_terms()),
+                 # The ontology's own instances of the two classes the
+                 # "points at an instance of" rules ask about. Generated from
+                 # the same ontology Python reads, and a much shorter list
+                 # than defined_terms: eight party roles, seven status values.
+                 "party_roles": _term_list(_ONTOLOGY.instances_of(T.PartyRole)),
+                 "status_values": _term_list(
+                     _ONTOLOGY.instances_of(T.ContentLifeCycleStatusValue))}
         lines = ["%s a sh:NodeShape ;" % sid]
         for item in metadata_lines(rule):
             lines.append("  %s ;" % item)

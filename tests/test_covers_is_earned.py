@@ -706,3 +706,23 @@ def test_the_divergence_document_and_the_claims_agree():
         assert not claimants, (
             "docs/divergences.md says %s is not claimed; %s claims it"
             % (requirement, claimants))
+
+
+def test_the_scope_document_says_which_claims_do_not_fail_a_package():
+    """A claim means "a violation is reported", not "the package fails".
+
+    The runner demotes content findings to warnings outside profile iiRDS/A,
+    so a package breaching one of appendix B's rules is reported and still
+    exits 0. That is deliberate and argued in docs/divergences.md -- and the
+    coverage figure is the line a reader quotes, so the count has to be beside
+    it and has to be the measured one.
+    """
+    scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
+    demoted = sorted(rule.id for rule in all_rules() if rule.covers and rule.kind == "content")
+    stated = re.search(r"(\w+) of the (\d+) are appendix B's rules", scope)
+    assert stated, "docs/scope.md no longer states how many claims are demoted outside iiRDS/A"
+    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+             "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+    said = words.get(stated.group(1).lower())
+    assert said == len(demoted), (stated.group(0), demoted)
+    assert int(stated.group(2)) == len(CLAIMED), stated.group(0)

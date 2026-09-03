@@ -131,9 +131,18 @@ gone wrong.
    does, and a documented divergence that narrows a check withdraws the claim
    with it — keeping both is exactly how a documented exemption becomes an
    undocumented hole. `tests/test_covers_is_earned.py` holds the criterion,
-   names the 6 claims a package stands behind, and names the other 62 in a
-   list called UNAUDITED. Every one of those 62 may be perfectly good; none
-   is *known* to be, and the seven that were not looked just like them.
+   names the 9 claims a package stands behind, and names the other 58 in a
+   list called UNAUDITED. Every one of those 58 may be perfectly good; none
+   is *known* to be, and the ten that were not looked just like them.
+
+   **A claim says a violation is reported. It does not say the package
+   fails.** Eight of the 67 are appendix B's rules about iiRDS XHTML5 content,
+   and outside profile iiRDS/A the runner demotes content findings to
+   warnings — so a package breaching one of those eight is reported, prints
+   `PASS`, and exits 0 unless you pass `-W`. The demotion is deliberate and
+   argued under "Content rules" in `docs/divergences.md`. It is repeated here
+   because the coverage figure is the sentence a reader is most likely to
+   quote out of this page, and "checked" and "enforced" are not the same word.
 
    Some detail on the denominator. It is derived in
    `docs/requirements.json`; the parse finds 314 absolute obligations and the

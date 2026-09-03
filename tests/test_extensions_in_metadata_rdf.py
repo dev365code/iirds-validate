@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 
@@ -82,3 +84,71 @@ def test_a_package_with_no_json_ld_at_all_is_not_reported(tmp_path):
     got = {f.rule.id for f in runner.run(
         build_package(tmp_path, "rdf_only.iirds", metadata=metadata), runner.ALL_KINDS).findings}
     assert "R11" not in got
+
+
+TREE_RDF = ('  <iirds:Component rdf:about="urn:test:pump">'
+            '<rdfs:label>Pump</rdfs:label></iirds:Component>\n'
+            '  <iirds:Component rdf:about="urn:test:motor">'
+            '<rdfs:label>Motor</rdfs:label></iirds:Component>\n')
+TREE_NODES = ({"@id": "urn:test:pump", "@type": "iirds:Component", "rdfs:label": "Pump",
+               "iirds:has-component": {"@id": "urn:test:motor"}},
+              {"@id": "urn:test:motor", "@type": "iirds:Component", "rdfs:label": "Motor"})
+
+
+def test_a_component_tree_whose_edges_are_only_in_the_json_ld_is_reported(tmp_path):
+    """Section 6.7.1 says "The component **tree** ... MUST be stored in the
+    metadata.rdf", and a tree is its nodes and its edges.
+
+    Checking the nodes alone passed a package whose components are in both
+    files and whose `iirds:has-component` relations -- the thing that makes
+    them a tree rather than a list -- are in one. A consumer reading
+    metadata.rdf gets two components and no hierarchy, which is the whole of
+    what section 6.7.1 is for.
+    """
+    assert "R11" in fired(tmp_path, "tree_edges.iirds",
+                          rdf_body=TREE_RDF, jsonld_nodes=TREE_NODES)
+
+
+def test_the_same_tree_in_both_files_is_not_reported(tmp_path):
+    edges = TREE_RDF.replace(
+        '<rdfs:label>Pump</rdfs:label>',
+        '<rdfs:label>Pump</rdfs:label><iirds:has-component rdf:resource="urn:test:motor"/>')
+    assert "R11" not in fired(tmp_path, "tree_both.iirds",
+                              rdf_body=edges, jsonld_nodes=TREE_NODES)
+
+
+#: What section 7.1's general sentence reaches and this rule does not. Kept as
+#: a test rather than a sentence, because the claim on that sentence was
+#: withdrawn on this evidence and a withdrawal with no package behind it is
+#: the thing this repository stopped doing.
+BEYOND_THE_RULE = [
+    ("a company-specific instance of an iiRDS vocabulary class",
+     {"@id": "http://my.co/ns#Handbook", "@type": "iirds:DocumentType",
+      "rdfs:label": "Handbook"}),
+    ("an instance of a proprietary class",
+     {"@id": "urn:test:doc", "@type": "http://my.co/ns#Manual", "rdfs:label": "a manual"}),
+    ("a proprietary property declaration",
+     {"@id": "http://my.co/ns#partNumber",
+      "@type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+      "rdfs:subPropertyOf": {"@id": "iirds:identifier"}}),
+]
+
+
+@pytest.mark.parametrize("what,node", BEYOND_THE_RULE,
+                         ids=[w.replace(" ", "-") for w, _ in BEYOND_THE_RULE])
+def test_the_general_sentence_reaches_further_than_this_rule(tmp_path, what, node):
+    """Section 7.1: "All proprietary extensions that are used in a package MUST
+    be contained in the file metadata.rdf", and section 7.1's own definition of
+    one is "company-specific and project-specific **instances and classes**".
+
+    This rule checks three populations and there are more. Telling a
+    proprietary vocabulary instance from an ordinary data node -- one whose
+    class the standard supplies terms for, against one whose class is a
+    document -- is a rule's worth of decision, so the claim on the general
+    sentence went instead of riding along on this one. Each case is a package
+    that breaches it and that nothing reports; L9 sees the disagreement and
+    claims a different sentence.
+    """
+    got = fired(tmp_path, "beyond_%d.iirds" % abs(hash(what)), jsonld_nodes=(node,))
+    assert "R11" not in got, (what, sorted(got))
+    assert "L9" in got, "the disagreement is still reported, under its own sentence"

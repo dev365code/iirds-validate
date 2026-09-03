@@ -435,21 +435,38 @@ def r9_a_handover_package_does_not_nest(ctx):
       title="a proprietary extension must be in metadata.rdf, not only in metadata.jsonld",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#iirds-extension-scenarios",
-      covers=("x7-1-iirds-extension-scenarios#4",
-              "x6-7-4-product-variants#1",
+      # not x7-1-iirds-extension-scenarios#4: see the docstring
+      covers=("x6-7-4-product-variants#1",
               "x6-7-1-component-trees-in-the-package#2"),
       fix="Add the statement to META-INF/metadata.rdf as well. A consumer that reads only "
           "metadata.rdf — which the standard permits, and which is the file every consumer "
           "must support — will not see your extension at all, and the classes and instances "
           "the rest of your metadata refers to will resolve to nothing.")
 def r11_extensions_live_in_metadata_rdf(ctx):
-    """Three sentences, one shape, and merged graphs are what hide it.
+    """Two sentences, one shape, and merged graphs are what hide it.
 
-    "All proprietary extensions that are used in a package MUST be contained
-    in the file metadata.rdf" (7.1); "As product variants are a proprietary
-    iiRDS extension, they MUST be present in the metadata.rdf" (6.7.4); "The
-    component tree is a proprietary iiRDS extension, it MUST be stored in the
-    metadata.rdf" (6.7.1). The general sentence and two of its instances.
+    "As product variants are a proprietary iiRDS extension, they MUST be
+    present in the metadata.rdf" (6.7.4); "The component tree is a proprietary
+    iiRDS extension, it MUST be stored in the metadata.rdf" (6.7.1).
+
+    Section 7.1's general sentence -- "All proprietary extensions that are used
+    in a package MUST be contained in the file metadata.rdf" -- was claimed
+    here too and is not. Its own definition of a proprietary extension is
+    "company-specific and project-specific *instances and classes*", and this
+    reaches three populations where there are more: a company's own instance
+    of an iiRDS vocabulary class, an instance of a proprietary class, a
+    proprietary property. Telling those from ordinary data -- a node whose
+    class the standard supplies terms for, against a node that is a document --
+    is a rule's worth of decision and not a line, so the claim went rather than
+    riding along. `tests/test_extensions_in_metadata_rdf.py` holds a package
+    for each, because a withdrawal with nothing behind it is the thing this
+    repository stopped doing.
+
+    The tree is its nodes and its edges. Checking `iirds:Component` alone
+    passed a package whose components are in both files and whose
+    `iirds:has-component` relations are in one, which leaves a consumer
+    reading metadata.rdf with the parts and no hierarchy -- the whole of what
+    section 6.7.1 is for.
 
     Every rule but L9 reads the two serialisations merged, which is right for
     every other question and is exactly what makes this invisible: a product
@@ -474,6 +491,11 @@ def r11_extensions_live_in_metadata_rdf(ctx):
                 yield Violation("%s is a proprietary iiRDS extension and is stated outside "
                                 "metadata.rdf" % label,
                                 subject=ctx.ref(subject), detail=_only_in(ctx, subject))
+    for parent, child in sorted(ctx.graph.subject_objects(T.has_component), key=str):
+        if (parent, T.has_component, child) not in inside:
+            yield Violation("the component tree is a proprietary iiRDS extension and this "
+                            "iirds:has-component relation is stated outside metadata.rdf",
+                            subject=ctx.ref(parent), detail=ctx.ref(child))
     for subject, parent in sorted(ctx.graph.subject_objects(RDFS.subClassOf), key=str):
         if ctx.ontology.is_iirds_term(subject) or not ctx.ontology.is_iirds_term(parent):
             continue

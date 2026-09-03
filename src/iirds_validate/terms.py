@@ -98,6 +98,7 @@ relates_to_party = IIRDS["relates-to-party"]
 relates_to_vcard = IIRDS["relates-to-vcard"]
 relates_to_product_variant = IIRDS["relates-to-product-variant"]
 relates_to_component = IIRDS["relates-to-component"]
+has_component = IIRDS["has-component"]
 relates_to_event = IIRDS["relates-to-event"]
 relates_to_administrative_metadata = IIRDS["relates-to-administrative-metadata"]
 

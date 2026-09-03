@@ -520,8 +520,6 @@ NAMED_CASES = {
         "test_silent_pass:test_a_handover_jsonld_that_carries_no_iirds_metadata_is_reported",
     "x6-8-3-parties-and-roles#3":
         "test_party_vcard_kind:test_a_vcard_that_is_not_a_kind_at_all_is_reported",
-    "x7-1-iirds-extension-scenarios#4":
-        "test_extensions_in_metadata_rdf:test_a_proprietary_class_only_in_the_json_ld_is_reported",
     "x6-7-4-product-variants#1":
         "test_extensions_in_metadata_rdf:test_a_product_variant_only_in_the_json_ld_is_reported",
     "x6-7-1-component-trees-in-the-package#2":
@@ -592,7 +590,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 72, len(CLAIMED)
+    assert len(CLAIMED) == 71, len(CLAIMED)
     assert len(UNAUDITED) == 51, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -632,6 +630,7 @@ REFUSAL = re.compile(r'#\s*not\s+([\w.-]+#\d+)\s*:')
 #: moves has moved away from its pin.
 REFUSED = frozenset((
     ("M17", "x6-7-2-external-product-ontology#6"),
+    ("R11", "x7-1-iirds-extension-scenarios#4"),
     ("M25", "x6-9-1-directory-nodes#3"),
 ))
 

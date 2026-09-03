@@ -73,6 +73,7 @@ ivs:M15.10 a sh:NodeShape ;
   sh:description "Give the information object an iirds:has-identity pointing at an iirds:Identity that has an IRI of its own and an iirds:identifier, and give that identity an iirds:has-identity-domain pointing at an iirds:IdentityDomain with an IRI. Then relate that domain to an iirds:Party whose iirds:has-party-role is iirds:Creator, carrying an iirds:relates-to-vcard to a vcard:Organization this package describes with a vcard:organization-name." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#13" ;
   sh:targetNode ivs:M15.10 ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> .
@@ -104,6 +105,7 @@ ivs:M15.11a a sh:NodeShape ;
   sh:description "Retype the information unit as iirds:Document or iirds:Package, or take it out of the handover package. iiRDS/H deliberately restricts the shapes a receiving system has to understand, and that restriction is the profile's whole value." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1" ;
   sh:targetNode ivs:M15.11a ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?t .
@@ -118,6 +120,7 @@ ivs:M15.7b a sh:NodeShape ;
   sh:description "Relate the identity domain of one of this variant's instance identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough; the others may carry a number that names nobody. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#9" ;
   sh:targetNode ivs:M15.7b ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Document> .
@@ -149,6 +152,7 @@ ivs:M15.7c a sh:NodeShape ;
   sh:description "Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#11" ;
   sh:targetNode ivs:M15.7c ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Document> .
@@ -169,6 +173,7 @@ ivs:M15.7d a sh:NodeShape ;
   sh:description "Relate the identity domain of one of this variant's ProductType identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#12" ;
   sh:targetNode ivs:M15.7d ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Document> .
@@ -200,6 +205,8 @@ ivs:R4 a sh:NodeShape ;
   sh:description "Describe the vcard in this package as a vcard:Organization carrying a vcard:organization-name, or drop the iirds:relates-to-vcard. A pointer at an IRI nothing here describes leaves the party unidentifiable to a reader holding only the package, which in handover is the reader it is for." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#12" ;
+  ivm:covers "x8-3-2-metadata-requirements#9" ;
   sh:targetNode ivs:R4 ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?value .

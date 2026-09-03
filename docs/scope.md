@@ -104,7 +104,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 53 of 280.** The denominator is derived in
+1. **Coverage of the standard is 72 of 280.** The denominator is derived in
    `docs/requirements.json`; the parse finds 314 absolute obligations and the
    same file names why 34 of those are one obligation counted twice — four
    from the sentence that defines the RFC 2119 keywords, which no package can

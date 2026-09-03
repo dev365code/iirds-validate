@@ -226,7 +226,7 @@ def _local(tag) -> str:
     return tag.split("}")[-1] if isinstance(tag, str) else ""
 
 
-@rule("B1", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B1", covers=("b-3-conformance-criteria#2",), kind="content", prio="MUST", versions=(), variants=(),
       title="iiRDS XHTML5 content must be a well-formed XML document",
        fix="Open the file in an XML parser and fix the syntax it rejects. iiRDS XHTML5 is XML, not HTML: every element needs a closing tag, `<br>` must be `<br/>`, and a bare `&` must be written `&amp;`.")
 def b1_well_formed(ctx):
@@ -255,7 +255,7 @@ def b1_well_formed(ctx):
                             subject=name, detail=str(exc))
 
 
-@rule("B2", kind="content", prio="MUST NOT", versions=(), variants=(),
+@rule("B2", covers=("b-3-conformance-criteria#4", "b-5-10-forms#1", "b-5-11-svg-mathml-and-iframes#1", "b-5-7-scripting#1",), kind="content", prio="MUST NOT", versions=(), variants=(),
       title="scripting, forms, svg, math and iframes must not be used",
        fix="Delete the element. These carry behaviour rather than content, so a consumer that strips them for safety renders a topic with a hole in it. Express the same thing as text, a table, or an image.")
 def b2_forbidden_elements(ctx):
@@ -267,7 +267,7 @@ def b2_forbidden_elements(ctx):
                                 subject=name, detail=FORBIDDEN[tag])
 
 
-@rule("B3", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B3", covers=("b-3-conformance-criteria#4",), kind="content", prio="MUST", versions=(), variants=(),
       title="only the elements iiRDS XHTML5 lists may be used",
        fix="Replace the element with one Appendix B lists. If it carries meaning no listed element expresses, put that meaning in the metadata graph instead, where a consumer can act on it.")
 def b3_only_listed_elements(ctx):
@@ -283,7 +283,7 @@ def b3_only_listed_elements(ctx):
             yield Violation("<%s> is not part of iiRDS XHTML5" % tag, subject=name)
 
 
-@rule("B4", kind="content", prio="MUST NOT", versions=(), variants=(),
+@rule("B4", covers=("b-5-7-scripting#1",), kind="content", prio="MUST NOT", versions=(), variants=(),
       title="event handler attributes are scripting",
        fix="Remove the attribute. Event handlers are scripting written as markup, so a consumer that blocks scripts keeps the attribute and drops the behaviour, leaving a control that looks live and is not.")
 def b4_no_event_handlers(ctx):
@@ -304,7 +304,7 @@ def b4_no_event_handlers(ctx):
                                     subject=name, detail="<%s>" % _local(element.tag))
 
 
-@rule("B5", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B5", covers=("b-5-2-document-metadata#1",), kind="content", prio="MUST", versions=(), variants=(),
       title="link must be used only with rel=\"stylesheet\"",
        fix="Use rel=\"stylesheet\", or delete the element. Other relations describe a document's place among others, and in iiRDS the metadata graph carries that; a consumer reads the graph and never sees this.")
 def b5_link_rel(ctx):
@@ -321,7 +321,7 @@ def b5_link_rel(ctx):
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
 
 
-@rule("B6", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B6", covers=("b-3-conformance-criteria#5",), kind="content", prio="MUST", versions=(), variants=(),
       title="iiRDS XHTML5 files must use the .xhtml extension",
        fix="Rename the file to end in .xhtml and update every iirds:source that points at it. Consumers select renditions by extension as well as by declared media type.")
 def b6_file_extension(ctx):
@@ -331,7 +331,7 @@ def b6_file_extension(ctx):
                             "file extension", subject=name)
 
 
-@rule("B7", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),
       title="data-role may only carry the values the hazard statement table defines",
        fix="Use one of the values from the hazard statement table, on the element that table names. data-role exists only to mark up hazard statements, so an invented value marks nothing a consumer can find.")
 def b7_data_role_values(ctx):
@@ -352,7 +352,7 @@ def b7_data_role_values(ctx):
                                 % (value, expected, _local(element.tag)), subject=name)
 
 
-@rule("B8", kind="content", prio="MUST", versions=(), variants=(),
+@rule("B8", covers=("b-6-additional-semantic-tagging-of-content#6",), kind="content", prio="MUST", versions=(), variants=(),
       title="a safety alert symbol must sit in the signal word panel, and only one",
        fix="Move the img so it is a direct child of the signal word panel, and leave one per hazard statement. A symbol outside the panel renders as a picture with no warning attached to it.")
 def b8_safety_alert_symbol(ctx):

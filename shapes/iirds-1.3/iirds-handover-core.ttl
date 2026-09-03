@@ -131,6 +131,7 @@ ivs:M15.11b a sh:NodeShape ;
   sh:description "Remove the iirds:DirectoryNode instances. iiRDS/H carries documents, not a navigation tree; a handover package is filed by the receiving system rather than browsed as authored." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#6" ;
   sh:targetClass iirds:DirectoryNode, iirds:nil ;
   sh:not [ ] .
 
@@ -143,6 +144,7 @@ ivs:M15.11c a sh:NodeShape ;
   sh:description "Remove the iirds:Selector instances. iiRDS/H delivers whole documents, so addressing a fragment inside one has no meaning on the receiving side." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#restrictions-regarding-the-use-of-classes-and-instances> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#4" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:not [ ] .
 
@@ -156,6 +158,7 @@ ivs:M15.7a a sh:NodeShape ;
   sh:description "Give the product variant this document names an iirds:has-identity whose iirds:IdentityDomain declares an iirds:has-identity-type of iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber, and relate that domain to an iirds:Party with iirds:has-party-role iirds:Manufacturer carrying a vcard that names an organisation -- without the party the identity answers this and M15.7b takes its place. The relation from the document is already there; what is missing is which machine, as distinct from which model." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#8" ;
   sh:targetClass iirds:Document ;
   sh:property ivs:M15.7a-p1 ;
   sh:property ivs:M15.7a-p2 .

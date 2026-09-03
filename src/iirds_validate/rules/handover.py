@@ -91,7 +91,7 @@ def _needs_named_party(ctx, cls, role, what):
                 subject=ctx.ref(subject), detail=ctx.label_of(subject))
 
 
-@rule("R4", kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+@rule("R4", covers=("x8-3-2-metadata-requirements#12", "x8-3-2-metadata-requirements#9",), kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
       title="a vcard a party points at must be described in the package",
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
@@ -184,7 +184,7 @@ def _identities_of_type(ctx, variant, wanted):
                 yield identity, domain
 
 
-@rule("M15.7a",
+@rule("M15.7a", covers=("x8-3-2-metadata-requirements#8",),
        fix="Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible.")
 def m15_7a_product_variant_instance_identity(ctx):
     """The document has to say which machine, not merely which model."""
@@ -229,7 +229,7 @@ def _documented_variants(ctx):
             yield doc, variants
 
 
-@rule("M15.7b", spec=_spec_sans_quote("M15.7b"),
+@rule("M15.7b", covers=("x8-3-2-metadata-requirements#9",), spec=_spec_sans_quote("M15.7b"),
        fix="Relate the identity domain of one of this variant's instance identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough; the others may carry a number that names nobody. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7b_instance_identity_manufacturer(ctx):
     """Section 8.3.2 nests this under "This iirds:ProductVariant MUST relate
@@ -253,7 +253,7 @@ def m15_7b_instance_identity_manufacturer(ctx):
                             subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
-@rule("M15.7c",
+@rule("M15.7c", covers=("x8-3-2-metadata-requirements#11",),
        fix="Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type.")
 def m15_7c_product_type_identity(ctx):
     """The second variant bullet, on the same population as the first: one of
@@ -267,7 +267,7 @@ def m15_7c_product_type_identity(ctx):
                             subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
-@rule("M15.7d", spec=_spec_sans_quote("M15.7d"),
+@rule("M15.7d", covers=("x8-3-2-metadata-requirements#12",), spec=_spec_sans_quote("M15.7d"),
        fix="Relate the identity domain of one of this variant's ProductType identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7d_product_type_manufacturer(ctx):
     """The same nesting as M15.7b, for the product type rather than the
@@ -300,7 +300,7 @@ def m15_9_package_creator(ctx):
     yield from _needs_named_party(ctx, T.Package, T.Creator, "iirds:Package")
 
 
-@rule("M15.10", spec=_spec_sans_quote("M15.10"),
+@rule("M15.10", covers=("x8-3-2-metadata-requirements#13",), spec=_spec_sans_quote("M15.10"),
       title="an information object's identity domain must name its creator",
        fix="Relate one of this information object's identity domains to an iirds:Party whose iirds:has-party-role is iirds:Creator, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One domain is enough; the others may carry an internal number and name nobody. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both, but section 8.3.2 hangs it on the identity domain rather than on the object, because what is attributed is the scheme the content is known by.")
 def m15_10_information_object_creator(ctx):
@@ -358,7 +358,7 @@ def m15_10_information_object_creator(ctx):
 # What a handover package may not contain
 # --------------------------------------------------------------------------
 
-@rule("M15.11a",
+@rule("M15.11a", covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1",),
        fix="Retype the information unit as iirds:Document or iirds:Package, or take it out of the handover package. iiRDS/H deliberately restricts the shapes a receiving system has to understand, and that restriction is the profile's whole value.")
 def m15_11a_documents_only(ctx):
     # instances_of, not typed_exactly: the profile excludes topics so that a
@@ -373,7 +373,7 @@ def m15_11a_documents_only(ctx):
                             subject=ctx.ref(unit), detail=ctx.ref(cls).split("#")[-1])
 
 
-@rule("M15.11b",
+@rule("M15.11b", covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#6",),
        fix="Remove the iirds:DirectoryNode instances. iiRDS/H carries documents, not a navigation tree; a handover package is filed by the receiving system rather than browsed as authored.")
 def m15_11b_no_directory_node(ctx):
     for node in ctx.instances_of(T.DirectoryNode):
@@ -381,7 +381,7 @@ def m15_11b_no_directory_node(ctx):
                         subject=ctx.ref(node))
 
 
-@rule("M15.11c",
+@rule("M15.11c", covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#4",),
        fix="Remove the iirds:Selector instances. iiRDS/H delivers whole documents, so addressing a fragment inside one has no meaning on the receiving side.")
 def m15_11c_no_selector(ctx):
     for selector in ctx.instances_of(T.Selector):

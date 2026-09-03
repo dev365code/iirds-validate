@@ -485,3 +485,38 @@ def test_the_named_party_rules_name_the_variant_they_are_about(rule_id, line, tm
     findings = [f for f in report.findings if f.rule.id == rule_id]
     assert findings, sorted({f.rule.id for f in report.findings})
     assert findings[0].violation.subject == "urn:test:variant"
+
+
+TYPELESS_IDENTITY = ('  <iirds:Identity rdf:about="urn:test:identity-plain">\n'
+                     '    <iirds:identifier>PLAIN-1</iirds:identifier>\n'
+                     '    <iirds:has-identity-domain rdf:resource="urn:test:domain-plain"/>\n'
+                     '  </iirds:Identity>\n\n'
+                     '  <iirds:IdentityDomain rdf:about="urn:test:domain-plain"/>\n\n')
+
+
+@pytest.mark.parametrize("block", [SECOND_INSTANCE, SECOND_TYPE, TYPELESS_IDENTITY],
+                         ids=["second serial number", "second product type", "no identity type"])
+def test_an_extra_identity_never_turns_a_conformant_package_away(block, tmp_path):
+    """Section 8.3.2 states four requirements whose subject is "**The**
+    iirds:IdentityDomain", each following a line that introduces one: the two
+    identity types (M15.7a's second half, M15.7c) and the two parties
+    (M15.7b, M15.7d, and M15.10 for the information object). Sweeping the 1.3
+    text for that construction finds exactly those four and no others, so
+    this is the whole class.
+
+    Every one of them is satisfied by an identity that qualifies, and section
+    6.8.1 lets a variant carry more. Two of the four were read over every
+    matching identity instead and failed packages that conform; this holds
+    the closure rather than the two repairs.
+    """
+    metadata = _with_second_identity(block) if "SerialNumber" in block or "ProductType" in block \
+        else HANDOVER.replace(
+            '  <iirds:Identity rdf:about="urn:test:identity-instance">',
+            block + '  <iirds:Identity rdf:about="urn:test:identity-instance">', 1).replace(
+            '    <iirds:has-identity rdf:resource="urn:test:identity-type"/>',
+            '    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n'
+            '    <iirds:has-identity rdf:resource="urn:test:identity-plain"/>', 1)
+    assert metadata != HANDOVER
+    report = _report(tmp_path, "extra_identity.iirds", metadata)
+    errors = sorted({f.rule.id for f in report.findings if str(f.severity) == "error"})
+    assert errors == [], errors

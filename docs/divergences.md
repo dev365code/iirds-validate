@@ -85,6 +85,16 @@ round. The example stays in view because a specification's own worked example
 is the cheapest oracle a validator has, and because the claim that this rule no
 longer fires on it was written before anyone ran it.
 
+The class this belongs to was enumerated rather than guessed at. Sweeping the
+1.3 text for a MUST whose subject is "The *Class*" following a line that
+introduces one — the construction that makes a requirement existential —
+finds **exactly four**, all about `iirds:IdentityDomain`: the two identity
+types (M15.7a's second half and M15.7c) and the two parties (M15.7b and
+M15.7d for the manufacturer, this rule for the creator). The two type rules
+were already read that way; the two party rules were not, and both are
+corrected. A test holds the closure by adding a further identity of each kind
+to a conformant handover package and requiring that nothing turns it away.
+
 One identity is enough. "at least one `iirds:has-identity` …" introduces the
 domain the next sentence speaks of, and section 6.8.1 says instances of
 `iirds:InformationObject` "MAY have `iirds:has-identity` relations" — plural,

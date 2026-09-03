@@ -104,7 +104,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 67 of 280.** 9 of the 67 are held by a
+1. **Coverage of the standard is 67 of 280.** 16 of the 67 are held by a
    package. The second number is the one to weigh, and it is the smaller one
    for a reason worth stating plainly: a `covers=` claim used to be made by
    reading a sentence and a rule side by side and judging them to be about the
@@ -131,8 +131,8 @@ gone wrong.
    does, and a documented divergence that narrows a check withdraws the claim
    with it — keeping both is exactly how a documented exemption becomes an
    undocumented hole. `tests/test_covers_is_earned.py` holds the criterion,
-   names the 9 claims a package stands behind, and names the other 58 in a
-   list called UNAUDITED. Every one of those 58 may be perfectly good; none
+   names the 16 claims a package stands behind, and names the other 51 in a
+   list called UNAUDITED. Every one of those 51 may be perfectly good; none
    is *known* to be, and the ten that were not looked just like them.
 
    **A claim says a violation is reported. It does not say the package

@@ -476,11 +476,9 @@ UNAUDITED = frozenset((
     "b-3-conformance-criteria#5", "b-5-10-forms#1",
     "b-5-11-svg-mathml-and-iframes#1", "b-5-2-document-metadata#1",
     "b-5-7-scripting#1", "b-6-additional-semantic-tagging-of-content#5",
-    "b-6-additional-semantic-tagging-of-content#6", "dfn-iirds-container#1",
-    "dfn-iirds-package#1", "dfn-iirds-zip-archive#2",
-    "dfn-iirds-zip-archive#3", "dfn-iirds-zip-archive#4",
-    "dfn-iirds-zip-archive#5", "dfn-iirds-zip-archive#6",
-    "rdfclasses_core_ClassificationType#1",
+    "b-6-additional-semantic-tagging-of-content#6", "dfn-iirds-package#1",
+    "dfn-iirds-zip-archive#2", "dfn-iirds-zip-archive#3",
+    "dfn-iirds-zip-archive#4", "rdfclasses_core_ClassificationType#1",
     "rdfclasses_handover_DocumentCategory#1",
     "x5-1-1-metadata-location-and-rdf-serializations#1",
     "x5-1-1-metadata-location-and-rdf-serializations#4",
@@ -489,8 +487,7 @@ UNAUDITED = frozenset((
     "x5-1-3-names-of-files-and-directories#3", "x5-2-2-content-encoding#1",
     "x5-2-2-content-encoding#2", "x5-3-nested-iirds-packages#3",
     "x6-12-rdf-serialization#1", "x6-2-information-units#1",
-    "x6-2-information-units#2", "x6-2-information-units#3",
-    "x6-2-information-units#4", "x6-2-information-units#5",
+    "x6-2-information-units#2", "x6-2-information-units#5",
     "x6-2-information-units#7", "x6-3-1-reference-part-of-file-by-selector#1",
     "x6-3-1-reference-part-of-file-by-selector#2",
     "x6-3-3-metadata-of-nested-iirds-packages#2",
@@ -503,9 +500,8 @@ UNAUDITED = frozenset((
     "x6-8-1-complex-identity#2", "x6-8-1-complex-identity#3",
     "x6-8-4-external-classification#4", "x6-8-4-external-classification#7",
     "x6-9-1-directory-nodes#5", "x6-9-2-hierarchical-navigation#1",
-    "x6-9-2-hierarchical-navigation#2", "x8-3-1-1-mandatory-content-list#1",
-    "x8-3-1-1-mandatory-content-list#2", "x8-3-1-2-nesting-of-packages#2",
-    "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1",
+    "x6-9-2-hierarchical-navigation#2", "x8-3-1-1-mandatory-content-list#2",
+    "x8-3-1-2-nesting-of-packages#2",
     "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#4",
     "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#6",
     "x8-3-2-metadata-requirements#11", "x8-3-2-metadata-requirements#8",
@@ -517,6 +513,17 @@ UNAUDITED = frozenset((
 #: test's name is here so that deleting the test is not a way of keeping the
 #: id -- a claim held by a function nobody runs is a claim held by nothing.
 NAMED_CASES = {
+    "dfn-iirds-zip-archive#5": "test_the_mimetype_sentence_is_covered_in_both_limbs",
+    "dfn-iirds-zip-archive#6": "test_the_mimetype_sentence_is_covered_in_both_limbs",
+    "dfn-iirds-container#1": "test_the_single_root_directory_sentence_is_covered",
+    "x6-2-information-units#3":
+        "test_the_information_unit_iri_sentence_is_covered_in_both_limbs",
+    "x6-2-information-units#4":
+        "test_the_information_unit_iri_sentence_is_covered_in_both_limbs",
+    "x8-3-1-1-mandatory-content-list#1":
+        "test_the_handover_content_list_sentence_is_covered",
+    "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1":
+        "test_the_handover_class_restriction_sentence_is_covered",
     "x6-3-1-reference-part-of-file-by-selector#3":
         "test_the_selector_sentence_is_covered_through_the_selectors_that_select",
     "x5-1-1-metadata-location-and-rdf-serializations#2":
@@ -571,7 +578,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
     assert len(CLAIMED) == 67, len(CLAIMED)
-    assert len(UNAUDITED) == 58, len(UNAUDITED)
+    assert len(UNAUDITED) == 51, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
     published = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)
@@ -726,3 +733,109 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     said = words.get(stated.group(1).lower())
     assert said == len(demoted), (stated.group(0), demoted)
     assert int(stated.group(2)) == len(CLAIMED), stated.group(0)
+
+
+# ---------------------------------------------------------------------------
+# The claims the risk ranking put first
+#
+# The 58 that had no package behind them were not worked in id order. They
+# were ranked by the shapes that actually failed -- a sentence with two limbs
+# and one rule, a conditional, a sentence naming a file, a rule with several
+# exemptions -- and the top of that ranking is here. All of it held, which is
+# worth as much as a hole: it says the shapes that failed were found, not that
+# the ranking was wrong.
+# ---------------------------------------------------------------------------
+
+def repacked(tmp_path, name, source, order=None, deflate=(), prefix=""):
+    """`source` rebuilt: entries reordered, some deflated, all under a prefix."""
+    import zipfile
+
+    with zipfile.ZipFile(source) as archive:
+        items = [(info.filename, archive.read(info.filename)) for info in archive.infolist()]
+    if order is not None:
+        items.sort(key=order)
+    out = tmp_path / name
+    with zipfile.ZipFile(out, "w") as archive:
+        for filename, data in items:
+            archive.writestr(prefix + filename, data,
+                             zipfile.ZIP_DEFLATED if filename in deflate else zipfile.ZIP_STORED)
+    return out
+
+
+def test_the_mimetype_sentence_is_covered_in_both_limbs(tmp_path):
+    """"The file MUST be the first entry in the ZIP file and it MUST be stored
+    uncompressed ("Stored" mode)." Two limbs, one rule, which is the shape
+    that failed three times today -- so it is asked twice."""
+    claimants = set(CLAIMED["dfn-iirds-zip-archive#5"])
+    assert claimants == set(CLAIMED["dfn-iirds-zip-archive#6"]), "the two ids share a rule"
+    source = build_package(tmp_path, "mimetype_good.iirds", metadata=MINIMAL_RDF)
+    assert not claimants & {f.rule.id for f in
+                            runner.run(source, runner.ALL_KINDS).findings}
+
+    late = repacked(tmp_path, "mimetype_late.iirds", source,
+                    order=lambda item: item[0] == "mimetype")
+    assert claimants & {f.rule.id for f in runner.run(late, runner.ALL_KINDS).findings}
+
+    squashed = repacked(tmp_path, "mimetype_deflated.iirds", source, deflate=("mimetype",))
+    assert claimants & {f.rule.id for f in runner.run(squashed, runner.ALL_KINDS).findings}
+
+
+def test_the_single_root_directory_sentence_is_covered(tmp_path):
+    """"An iiRDS container MUST have a single root directory." For a ZIP that
+    is the archive root, so the breach is an archive built from the parent
+    directory -- everything one folder down, which is what most zip tools do
+    by default and the commonest way a package arrives unreadable."""
+    claimants = set(CLAIMED["dfn-iirds-container#1"])
+    source = build_package(tmp_path, "root_good.iirds", metadata=MINIMAL_RDF)
+    nested = repacked(tmp_path, "root_nested.iirds", source, prefix="mypackage/")
+    assert claimants & {f.rule.id for f in runner.run(nested, runner.ALL_KINDS).findings}
+
+
+def test_the_information_unit_iri_sentence_is_covered_in_both_limbs(tmp_path):
+    """"An instance of an iirds:InformationUnit subclass MUST have an IRI and
+    MUST NOT be a blank node." One rule, and it answers both: a blank node has
+    no IRI, and `rdf:about=""` resolves to the parsing base, which is an IRI
+    of sorts and names nothing."""
+    claimants = set(CLAIMED["x6-2-information-units#3"])
+    for what, subject in (("a blank node", ""), ("an empty rdf:about", ' rdf:about=""')):
+        metadata = toc('  <iirds:Topic%s><iirds:title>x</iirds:title></iirds:Topic>' % subject)
+        got = fired(tmp_path, "iri_%d.iirds" % abs(hash(what)), metadata=metadata)
+        assert claimants & got, (what, sorted(got))
+
+
+def test_the_handover_content_list_sentence_is_covered(tmp_path):
+    """"An iiRDS/H package MUST contain a content list as HTML file named
+    index.html". Both halves: absent, and present but not HTML."""
+    claimants = set(CLAIMED["x8-3-1-1-mandatory-content-list#1"])
+    handover = MINIMAL_RDF.replace(
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:formatRestriction>H</iirds:formatRestriction>")
+    jsonld = json.dumps({"@context": {"iirds": "http://iirds.tekom.de/iirds#"},
+                         "@id": "urn:test:package", "@type": "iirds:Package",
+                         "iirds:iiRDSVersion": "1.3", "iirds:title": "Test package"})
+    absent = fired(tmp_path, "index_absent.iirds", metadata=handover, jsonld=jsonld)
+    assert claimants & absent, sorted(absent)
+    unusable = fired(tmp_path, "index_unusable.iirds", metadata=handover, jsonld=jsonld,
+                     extra=(("index.html", "plain text, not a content list"),))
+    assert claimants & unusable, sorted(unusable)
+
+
+def test_the_handover_class_restriction_sentence_is_covered(tmp_path):
+    """"An iiRDS/H package MUST contain only information units of the
+    subclasses iirds:Document and iirds:Package." A Topic is neither."""
+    claimants = set(CLAIMED[
+        "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1"])
+    handover = MINIMAL_RDF.replace(
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+        "    <iirds:formatRestriction>H</iirds:formatRestriction>").replace(
+        "</rdf:RDF>",
+        '  <iirds:Topic rdf:about="urn:test:t"><iirds:title>T</iirds:title></iirds:Topic>\n'
+        "</rdf:RDF>")
+    jsonld = json.dumps({"@context": {"iirds": "http://iirds.tekom.de/iirds#"},
+                         "@id": "urn:test:package", "@type": "iirds:Package",
+                         "iirds:iiRDSVersion": "1.3", "iirds:title": "Test package"})
+    got = fired(tmp_path, "handover_topic.iirds", metadata=handover, jsonld=jsonld,
+                extra=(("index.html", "<html><body><p>list</p></body></html>"),))
+    assert claimants & got, sorted(got)

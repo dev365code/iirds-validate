@@ -104,7 +104,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 25 of 280.** The denominator is derived in
+1. **Coverage of the standard is 53 of 280.** The denominator is derived in
    `docs/requirements.json`; the parse finds 314 absolute obligations and the
    same file names why 34 of those are one obligation counted twice — four
    from the sentence that defines the RFC 2119 keywords, which no package can
@@ -112,7 +112,7 @@ gone wrong.
    cardinality in the class's own table and again in the overview table. The
    figure was 314 until the duplicates were derived rather than assumed; the numerator is the union of the `covers=`
    declarations on the rules, printed by `tools/requirement_coverage.py`. The
-   figure is small because the mapping has barely started, not because the
+   figure is small because the mapping is only part done, not because the
    rules check almost nothing — 157 catalogued rules do a great deal that is
    simply not yet mapped to a requirement id. Which is the point of measuring
    it while it is embarrassing: a number that starts honest can be watched.

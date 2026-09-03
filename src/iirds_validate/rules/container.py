@@ -159,7 +159,7 @@ def c10_forbidden_chars(ctx):
 
 
 @rule("C9",
-       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2", "x6-12-rdf-serialization#1"),
        # The catalogue gives C8 and C9 identical wording, so without an
        # explicit title the two are indistinguishable in `iirds rules`. C8 is
        # presence; this is the file being RDF/XML at all.
@@ -288,7 +288,7 @@ def c15_unique_names(ctx):
 
 
 @rule("C16.1",
-       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",),
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2", "x6-12-rdf-serialization#1"),
        fix="Read the error reported alongside this: a syntax error means the markup is malformed and has to be corrected, while an encoding error means the bytes were damaged or cut short in transit and the file has to be sent again. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
@@ -311,7 +311,7 @@ def c16_1_rdf_parses(ctx):
 # package, and gating the whole rule meant a corrupt metadata.jsonld in an
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
-@rule("C16.2",
+@rule("C16.2", covers=("x6-12-rdf-serialization#3",),
        variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):

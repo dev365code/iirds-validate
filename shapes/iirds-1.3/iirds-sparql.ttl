@@ -39,6 +39,8 @@ ivs:M1 a sh:NodeShape ;
   sh:description "Retype the instance as one of the InformationUnit subclasses: Topic, Fragment, Document or Package. The parent class says only that something informational is here, which a consumer cannot route, index or display." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-package-and-container:~:text=iiRDS%20Generators%20MUST%20NOT%20use%20the%20iirds%3AInformationUnit%20class%20directly%20but%20MUST%20use%20one%20of%20the%20subclasses.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-information-units#1" ;
+  ivm:covers "x6-2-information-units#2" ;
   sh:targetNode ivs:M1 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a <http://iirds.tekom.de/iirds#InformationUnit> }""" ] .
 
@@ -51,6 +53,7 @@ ivs:M3 a sh:NodeShape ;
   sh:description "Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=Each%20iiRDS%20package%20MUST%20have%20exactly%20one%20corresponding%20iirds%3APackage%20instance%20in%20the%20metadata.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-information-units#5" ;
   sh:targetNode ivs:M3 ;
   sh:sparql [ sh:select """SELECT $this WHERE {
   FILTER NOT EXISTS { ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] ;
@@ -90,6 +93,8 @@ ivs:M12 a sh:NodeShape ;
   sh:description "Use one of the Selector subclasses instead: FragmentSelector, RangeSelector or one of the others. The base class does not say how to address the part, so a consumer cannot resolve it." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x-conformance:~:text=iirds%3ARendition%20MUST%20NOT,an%20end%20identifier> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#1" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#2" ;
   sh:targetNode ivs:M12 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a <http://iirds.tekom.de/iirds#Selector> }""" ] .
 
@@ -117,6 +122,7 @@ ivs:M17 a sh:NodeShape ;
   sh:description "Relate your product entities to iirds:ProductVariant rather than typing them with an external product ontology alone. iiRDS consumers know the iiRDS classes; the external vocabulary can stay alongside as an equivalence." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iiRDS%20package%20MUST%20NOT%20use%20an%20external%20product%20ontology%20directly.%20If%20an%20external%20product%20ontology%20is%20available%20and%20used%20in%20the%20iiRDS%20package%2C%20then%20the%20iiRDS%20package%20MUST%20also%20contain%20metadata%20labels%20as%20instances%20of%20iirds%3AComponent.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-7-2-external-product-ontology#6" ;
   sh:targetNode ivs:M17 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://iirds.tekom.de/iirds#relates-to-component> ?o .
@@ -131,6 +137,7 @@ ivs:M18 a sh:NodeShape ;
   sh:description "Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iiRDS%20provides%20the%20class%20iirds%3AProductVariant%20for%20extending%20the%20iiRDS%20vocabulary%20and%20adding%20proprietary%20product%20variants.%20As%20product%20variants%20are%20a%20proprietary%20iiRDS%20extension%2C%20they%20MUST%20be%20present%20in%20the%20metadata.rdf%20of%20the%20iiRDS%20package.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-7-4-product-variants#1" ;
   sh:targetNode ivs:M18 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?o .
@@ -161,6 +168,7 @@ ivs:M22.2 a sh:NodeShape ;
   sh:description "Point iirds:has-party-role at an instance of iirds:PartyRole or one of its subclasses. Pointing at anything else — a vCard, a plain resource — leaves the role unstated even though the property is present." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-3-parties-and-roles#2" ;
   sh:targetSubjectsOf iirds:has-party-role ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#has-party-role> ?value .

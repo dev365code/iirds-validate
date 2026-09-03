@@ -39,6 +39,8 @@ ivs:M2.1 a sh:NodeShape ;
   sh:description "Give the element an rdf:about with an IRI. Anonymous information units cannot be referenced from a table of contents, from another package, or from a later revision of this one." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=An%20instance%20of%20an%20iirds%3AInformationUnit%20subclass%20MUST%20have%20an%20IRI%20and%20MUST%20NOT%20be%20a%20blank%20node.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-information-units#3" ;
+  ivm:covers "x6-2-information-units#4" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -213,6 +215,7 @@ ivs:M6 a sh:NodeShape ;
   sh:description "Relate the information unit to exactly one information object with iirds:is-version-of. Two would make it a version of two different things at once, and a consumer merging revisions cannot resolve that." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=If%20information%20objects%20are%20used%2C%20each%20information%20unit%20MUST%20only%20be%20related%20to%20exactly%20one%20information%20object%20via%20iirds%3Ais%2Dversion%2Dof.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-2-information-objects#2" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M6-p .
 ivs:M6-p a sh:PropertyShape ;
@@ -246,6 +249,7 @@ ivs:M8 a sh:NodeShape ;
   sh:description "Remove the iirds:has-rendition relations whose subject is the iirds:Package element for this container. A rendition is the file an information unit is delivered as, and this package is what the delivery is, not something inside it. A package nested inside another one is content and may have renditions; this one is not nested inside anything." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iirds%3APackage%20elements%20representing%20the%20enclosing%20iiRDS%20package%20itself%20MUST%20NOT%20be%20subjects%20of%20any%20iirds%3Ahas%2Drendition%20relation.> ;
   ivm:versions "1.1,1.2,1.3" ;
+  ivm:covers "x6-3-content-references-of-information-units#2" ;
   sh:targetClass iirds:Package ;
   sh:or ( [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:qualifiedValueShape [ sh:class iirds:Package ] ; sh:qualifiedMinCount 2 ] ] [ sh:property [ sh:path iirds:has-rendition ; sh:maxCount 0 ] ] ) .
 
@@ -258,6 +262,7 @@ ivs:M9 a sh:NodeShape ;
   sh:description "Make the URL relative to the container root, such as content/topic1.xhtml. An absolute path or a file: URL points outside the package, where a consumer has nothing." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20URL%20MUST%20be%20relative%20to%20the%20root%20folder%20of%20the%20iiRDS%20package.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-content-references-of-information-units#4" ;
   sh:targetClass iirds:Rendition ;
   sh:property ivs:M9-p .
 ivs:M9-p a sh:PropertyShape ;
@@ -278,6 +283,7 @@ ivs:M10 a sh:NodeShape ;
   sh:description "Add iirds:source to the Rendition, naming the file inside the container it renders. A Rendition without one describes a form of the content that the package does not carry." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#properties-and-relations-overview:~:text=1-,iirds%3ARendition,1,-iirds%3ARendition> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-content-references-of-information-units#3" ;
   sh:targetClass iirds:Rendition ;
   sh:property ivs:M10-p .
 ivs:M10-p a sh:PropertyShape ;
@@ -299,6 +305,7 @@ ivs:M11 a sh:NodeShape ;
   sh:description "Give the Rendition exactly one iirds:format, holding the media type of the file it points at, for example application/xhtml+xml or application/pdf. Add one if there is none; remove the extras if there are several." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3ARendition%20MUST%20also%20have%20the%20property%20iirds%3Aformat.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-content-references-of-information-units#5" ;
   sh:targetClass iirds:Rendition ;
   sh:property ivs:M11-p .
 ivs:M11-p a sh:PropertyShape ;
@@ -320,6 +327,7 @@ ivs:M13.1 a sh:NodeShape ;
   sh:description "Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path rdf:value ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -332,6 +340,7 @@ ivs:M13.2 a sh:NodeShape ;
   sh:description "Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path <http://purl.org/dc/terms/conformsTo> ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -427,6 +436,7 @@ ivs:M19.2 a sh:NodeShape ;
   sh:description "Add iirds:identifier to the Identity, holding the value itself. The domain says what kind of identifier it is; this is the identifier." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-1-complex-identity#2" ;
   sh:targetClass iirds:Identity ;
   sh:property ivs:M19.2-p .
 ivs:M19.2-p a sh:PropertyShape ;
@@ -448,6 +458,7 @@ ivs:M19.3 a sh:NodeShape ;
   sh:description "Relate the Identity to exactly one domain with iirds:has-identity-domain, removing the extras. Two domains would make one value mean two different things at once." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-1-complex-identity#3" ;
   sh:targetClass iirds:Identity ;
   sh:property ivs:M19.3-p .
 ivs:M19.3-p a sh:PropertyShape ;
@@ -482,6 +493,7 @@ ivs:M21.1 a sh:NodeShape ;
   sh:description "Relate the ContentLifeCycleStatus to an iirds:ContentLifeCycleStatusValue with iirds:has-content-lifecycle-status-value. Without it the status object records dates for a status nobody named." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AContentLifecyleStatus%20MUST%20have%20an%20iirds%3AContentLifecyleStatusValue%20which%20is%20assigned%20by%20the%20iirds%3Ahas%2Dcontent%2Dlifecycle%2Dstatus%2Dvalue%20property.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-2-content-lifecycle-status#2" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.1-p .
 ivs:M21.1-p a sh:PropertyShape ;
@@ -603,6 +615,7 @@ ivs:M22.1 a sh:NodeShape ;
   sh:description "Add iirds:has-party-role to the Party, relating it to a PartyRole such as iirds:Author or iirds:Manufacturer. A party with no role tells a consumer that an organisation is involved and not how." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-3-parties-and-roles#2" ;
   sh:targetClass iirds:Party ;
   sh:property ivs:M22.1-p .
 ivs:M22.1-p a sh:PropertyShape ;
@@ -624,6 +637,7 @@ ivs:M23 a sh:NodeShape ;
   sh:description "Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=In%20addition%20to%20the%20role%2C%20an%20iirds%3AParty%20MUST%20also%20have%20an%20associated%20description%20of%20itself%20as%20compliant%20vcard%3Akind%20object%20which%20is%20assigned%20via%20iirds%3Arelates%2Dto%2Dvcard.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-3-parties-and-roles#3" ;
   sh:targetClass iirds:Party ;
   sh:property ivs:M23-p .
 ivs:M23-p a sh:PropertyShape ;
@@ -725,6 +739,7 @@ ivs:M24.5 a sh:NodeShape ;
   sh:description "Remove iirds:has-directory-structure-type from the node named here. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. If the node was meant to begin a structure of its own, keep the property and detach it instead -- but detaching means repairing the chain it leaves, because the node that pointed at it now points at nothing." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Only%20root%20nodes%20of%20a%20directory%20structure%20MUST%20have%20the%20property%20iirds%3Ahas%2Ddirectory%2Dstructure%2Dtype.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-9-1-directory-nodes#5" ;
   sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling ;
   sh:or ( [ sh:not [ sh:or ( [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ] [ sh:property [ sh:path iirds:has-directory-structure-type ; sh:maxCount 0 ] ] ) .
 
@@ -737,6 +752,7 @@ ivs:M25 a sh:NodeShape ;
   sh:description "Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level, or at the next iirds:DirectoryNode if the level continues. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20model%20closed%20lists%2C%20the%20last%20node%20in%20a%20list%20level%20MUST%20have%20the%20property%20iirds%3Ahas%2Dnext%2Dsibling%20relating%20to%20an%20instance%20of%20the%20class%20iirds%3Anil.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-9-1-directory-nodes#3" ;
   sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling ;
   sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:nil ] [ sh:not [ sh:or ( [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ] [ sh:property [ sh:path iirds:has-next-sibling ; sh:qualifiedValueShape [ sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ; sh:qualifiedMinCount 1 ] ] ) .
 
@@ -749,6 +765,7 @@ ivs:M26 a sh:NodeShape ;
   sh:description "Point iirds:has-first-child at an iirds:DirectoryNode. A lower level starts with a node like any other, and pointing at something else breaks the walk." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20model%20hierarchy%20levels%20in%20the%20navigation%20structure%2C%20an%20iirds%3ADirectoryNode%20instance%20MUST%20reference%20an%20iirds%3ADirectoryNode%20instance%20on%20the%20next%20lower%20level%20by%20the%20property%20iirds%3Ahas%2Dfirst%2Dchild.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-9-2-hierarchical-navigation#1" ;
   sh:targetObjectsOf iirds:has-first-child ;
   sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) .
 
@@ -761,6 +778,7 @@ ivs:M27 a sh:NodeShape ;
   sh:description "Make the first child of the lower level the head of its own sibling chain. Each level is a linked list, and the child link enters it at the first item." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20directory%20node%20on%20the%20next%20lower%20level%20MUST%20be%20the%20first%20item%20of%20another%20linked%20list.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-9-2-hierarchical-navigation#2" ;
   sh:targetObjectsOf iirds:has-first-child ;
   sh:property ivs:M27-p .
 ivs:M27-p a sh:PropertyShape ;
@@ -802,6 +820,7 @@ ivs:M36 a sh:NodeShape ;
   sh:description "Relate the Identity to an iirds:IdentityDomain. Serial numbers and asset URIs are only unique within a scheme, so the value alone is ambiguous." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfrelations_core_has-identity-domain:~:text=1%C2%A0%20iirds%3Ahas%2Didentity%2Ddomain%20property%20%2D%20iirds%3AIdentityDomain> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-1-complex-identity#3" ;
   sh:targetClass iirds:Identity ;
   sh:property ivs:M36-p .
 ivs:M36-p a sh:PropertyShape ;
@@ -1604,6 +1623,7 @@ ivs:M96.1 a sh:NodeShape ;
   sh:description "Give the external classification exactly one iirds:has-classification-domain. The domain names the scheme — eCl@ss, ETIM, or your own — and a classification identifier means nothing without it." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=An%20external%20classification%20MUST%20point%20to%20exactly%20one%20domain%20by%20the%20iirds%3Ahas%2Dclassification%2Ddomain%20property.%20The%20domain%20is%20an%20instance%20of%20the%20iirdsClassificationDomain%20class.> ;
   ivm:versions "1.2,1.3" ;
+  ivm:covers "x6-8-4-external-classification#7" ;
   sh:targetClass iirds:ExternalClassification ;
   sh:property ivs:M96.1-p .
 ivs:M96.1-p a sh:PropertyShape ;
@@ -1625,6 +1645,7 @@ ivs:M96.2 a sh:NodeShape ;
   sh:description "Give the external classification exactly one iirds:classificationIdentifier. Two identifiers in one classification leave a consumer unable to tell which one is meant." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=6.8.4%20External%20Classification> ;
   ivm:versions "1.2,1.3" ;
+  ivm:covers "x6-8-4-external-classification#4" ;
   sh:targetClass iirds:ExternalClassification ;
   sh:property ivs:M96.2-p .
 ivs:M96.2-p a sh:PropertyShape ;
@@ -1646,6 +1667,7 @@ ivs:M96.3 a sh:NodeShape ;
   sh:description "Put a non-empty string in iirds:classificationIdentifier. An empty value is worse than an absent one: it looks answered and matches nothing." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=6.8.4%20External%20Classification> ;
   ivm:versions "1.2,1.3" ;
+  ivm:covers "x6-8-4-external-classification#4" ;
   sh:targetClass iirds:ExternalClassification ;
   sh:property ivs:M96.3-p .
 ivs:M96.3-p a sh:PropertyShape ;
@@ -1777,6 +1799,8 @@ ivs:M1 a sh:NodeShape ;
   sh:description "Retype the instance as one of the InformationUnit subclasses: Topic, Fragment, Document or Package. The parent class says only that something informational is here, which a consumer cannot route, index or display." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#iirds-package-and-container:~:text=iiRDS%20Generators%20MUST%20NOT%20use%20the%20iirds%3AInformationUnit%20class%20directly%20but%20MUST%20use%20one%20of%20the%20subclasses.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-information-units#1" ;
+  ivm:covers "x6-2-information-units#2" ;
   sh:targetNode ivs:M1 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a <http://iirds.tekom.de/iirds#InformationUnit> }""" ] .
 
@@ -1789,6 +1813,7 @@ ivs:M3 a sh:NodeShape ;
   sh:description "Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#nested-iirds-packages:~:text=Each%20iiRDS%20package%20MUST%20have%20exactly%20one%20corresponding%20iirds%3APackage%20instance%20in%20the%20metadata.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-2-information-units#5" ;
   sh:targetNode ivs:M3 ;
   sh:sparql [ sh:select """SELECT $this WHERE {
   FILTER NOT EXISTS { ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] ;
@@ -1828,6 +1853,8 @@ ivs:M12 a sh:NodeShape ;
   sh:description "Use one of the Selector subclasses instead: FragmentSelector, RangeSelector or one of the others. The base class does not say how to address the part, so a consumer cannot resolve it." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x-conformance:~:text=iirds%3ARendition%20MUST%20NOT,an%20end%20identifier> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#1" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#2" ;
   sh:targetNode ivs:M12 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a <http://iirds.tekom.de/iirds#Selector> }""" ] .
 
@@ -1855,6 +1882,7 @@ ivs:M17 a sh:NodeShape ;
   sh:description "Relate your product entities to iirds:ProductVariant rather than typing them with an external product ontology alone. iiRDS consumers know the iiRDS classes; the external vocabulary can stay alongside as an equivalence." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iiRDS%20package%20MUST%20NOT%20use%20an%20external%20product%20ontology%20directly.%20If%20an%20external%20product%20ontology%20is%20available%20and%20used%20in%20the%20iiRDS%20package%2C%20then%20the%20iiRDS%20package%20MUST%20also%20contain%20metadata%20labels%20as%20instances%20of%20iirds%3AComponent.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-7-2-external-product-ontology#6" ;
   sh:targetNode ivs:M17 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://iirds.tekom.de/iirds#relates-to-component> ?o .
@@ -1869,6 +1897,7 @@ ivs:M18 a sh:NodeShape ;
   sh:description "Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iiRDS%20provides%20the%20class%20iirds%3AProductVariant%20for%20extending%20the%20iiRDS%20vocabulary%20and%20adding%20proprietary%20product%20variants.%20As%20product%20variants%20are%20a%20proprietary%20iiRDS%20extension%2C%20they%20MUST%20be%20present%20in%20the%20metadata.rdf%20of%20the%20iiRDS%20package.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-7-4-product-variants#1" ;
   sh:targetNode ivs:M18 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?o .
@@ -1899,6 +1928,7 @@ ivs:M22.2 a sh:NodeShape ;
   sh:description "Point iirds:has-party-role at an instance of iirds:PartyRole or one of its subclasses. Pointing at anything else — a vCard, a plain resource — leaves the role unstated even though the property is present." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-8-3-parties-and-roles#2" ;
   sh:targetSubjectsOf iirds:has-party-role ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#has-party-role> ?value .

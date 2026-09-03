@@ -51,7 +51,7 @@ def _at_most_one(ctx, cls, prop, label):
 # Information units
 # --------------------------------------------------------------------------
 
-@rule("M1",
+@rule("M1", covers=("x6-2-information-units#1", "x6-2-information-units#2"),
        fix="Retype the instance as one of the InformationUnit subclasses: Topic, Fragment, Document or Package. The parent class says only that something informational is here, which a consumer cannot route, index or display.")
 def m1_no_direct_information_unit(ctx):
     for subj in ctx.typed_exactly(T.InformationUnit):
@@ -59,7 +59,7 @@ def m1_no_direct_information_unit(ctx):
                         subject=ctx.ref(subj))
 
 
-@rule("M2.1",
+@rule("M2.1", covers=("x6-2-information-units#3", "x6-2-information-units#4"),
        fix="Give the element an rdf:about with an IRI. Anonymous information units cannot be referenced from a table of contents, from another package, or from a later revision of this one.")
 def m2_1_information_unit_iri(ctx):
     for subj in ctx.information_units():
@@ -117,7 +117,7 @@ def m2_9(ctx):
 # Package
 # --------------------------------------------------------------------------
 
-@rule("M3",
+@rule("M3", covers=("x6-2-information-units#5",),
        fix="Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous.")
 def m3_exactly_one_package(ctx):
     if not ctx.sources:
@@ -149,7 +149,7 @@ def m5_absolute_iris(ctx):
                             subject=ctx.ref(subj))
 
 
-@rule("M6",
+@rule("M6", covers=("x6-2-2-information-objects#2",),
        fix="Relate the information unit to exactly one information object with iirds:is-version-of. Two would make it a version of two different things at once, and a consumer merging revisions cannot resolve that.")
 def m6_one_information_object(ctx):
     for unit in ctx.information_units():
@@ -160,7 +160,7 @@ def m6_one_information_object(ctx):
                             subject=ctx.ref(unit), detail="%d objects" % len(objs))
 
 
-@rule("M8",
+@rule("M8", covers=("x6-3-content-references-of-information-units#2",),
        fix="Remove the iirds:has-rendition relations whose subject is the iirds:Package element for this container. A rendition is the file an information unit is delivered as, and this package is what the delivery is, not something inside it. A package nested inside another one is content and may have renditions; this one is not nested inside anything.")
 def m8_package_no_rendition(ctx):
     for pkg in container_packages(ctx.graph):
@@ -174,7 +174,7 @@ def m8_package_no_rendition(ctx):
 # Renditions and selectors
 # --------------------------------------------------------------------------
 
-@rule("M9",
+@rule("M9", covers=("x6-3-content-references-of-information-units#4",),
        fix="Make the URL relative to the container root, such as content/topic1.xhtml. An absolute path or a file: URL points outside the package, where a consumer has nothing.")
 def m9_relative_source(ctx):
     for rend in ctx.instances_of(T.Rendition):
@@ -185,19 +185,19 @@ def m9_relative_source(ctx):
                                 subject=ctx.ref(rend), detail=value)
 
 
-@rule("M10",
+@rule("M10", covers=("x6-3-content-references-of-information-units#3",),
        fix="Add iirds:source to the Rendition, naming the file inside the container it renders. A Rendition without one describes a form of the content that the package does not carry.")
 def m10_rendition_source(ctx):
     yield from _exactly_one(ctx, T.Rendition, T.source, "iirds:source")
 
 
-@rule("M11",
+@rule("M11", covers=("x6-3-content-references-of-information-units#5",),
        fix="Give the Rendition exactly one iirds:format, holding the media type of the file it points at, for example application/xhtml+xml or application/pdf. Add one if there is none; remove the extras if there are several.")
 def m11_rendition_format(ctx):
     yield from _exactly_one(ctx, T.Rendition, T.fmt, "iirds:format")
 
 
-@rule("M12",
+@rule("M12", covers=("x6-3-1-reference-part-of-file-by-selector#1", "x6-3-1-reference-part-of-file-by-selector#2"),
        fix="Use one of the Selector subclasses instead: FragmentSelector, RangeSelector or one of the others. The base class does not say how to address the part, so a consumer cannot resolve it.")
 def m12_no_direct_selector(ctx):
     for subj in ctx.typed_exactly(T.Selector):
@@ -216,7 +216,7 @@ def _value_selectors(ctx):
     return [s for s in ctx.instances_of(T.Selector) if s not in ranges]
 
 
-@rule("M13.1",
+@rule("M13.1", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
        fix="Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate.")
 def m13_1_selector_value(ctx):
     for sel in _value_selectors(ctx):
@@ -225,7 +225,7 @@ def m13_1_selector_value(ctx):
                             "one rdf:value", subject=ctx.ref(sel))
 
 
-@rule("M13.2",
+@rule("M13.2", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
        fix="Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression.")
 def m13_2_selector_conforms_to(ctx):
     for sel in _value_selectors(ctx):
@@ -288,7 +288,7 @@ def m19_1_identity_identifier(ctx):
                             subject=ctx.ref(ident), detail="%d found" % len(values))
 
 
-@rule("M19.3",
+@rule("M19.3", covers=("x6-8-1-complex-identity#3",),
        fix="Relate the Identity to exactly one domain with iirds:has-identity-domain, removing the extras. Two domains would make one value mean two different things at once.")
 def m19_3_identity_domain(ctx):
     for ident in ctx.instances_of(T.Identity):
@@ -298,7 +298,7 @@ def m19_3_identity_domain(ctx):
                             subject=ctx.ref(ident), detail="%d domains" % len(domains))
 
 
-@rule("M19.2",
+@rule("M19.2", covers=("x6-8-1-complex-identity#2",),
        fix="Add iirds:identifier to the Identity, holding the value itself. The domain says what kind of identifier it is; this is the identifier.")
 def m19_2_identity_value(ctx):
     for ident in ctx.instances_of(T.Identity):
@@ -344,7 +344,7 @@ def m21_6(ctx):
                             "iirds:relates-to-party")
 
 
-@rule("M22.1",
+@rule("M22.1", covers=("x6-8-3-parties-and-roles#2",),
        fix="Add iirds:has-party-role to the Party, relating it to a PartyRole such as iirds:Author or iirds:Manufacturer. A party with no role tells a consumer that an organisation is involved and not how.")
 def m22_1_party_role(ctx):
     yield from _exactly_one(ctx, T.Party, T.has_party_role, "iirds:has-party-role")
@@ -409,7 +409,7 @@ def _linked_nodes(ctx):
     return linked
 
 
-@rule("M24.5",
+@rule("M24.5", covers=("x6-9-1-directory-nodes#5",),
        fix="Remove iirds:has-directory-structure-type from the node named here. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. If the node was meant to begin a structure of its own, keep the property and detach it instead -- but detaching means repairing the chain it leaves, because the node that pointed at it now points at nothing.")
 def m24_5_only_root_has_structure_type(ctx):
     """The structure type names the whole structure, so only its root carries
@@ -446,7 +446,7 @@ def _closes_a_level(ctx):
     return {T.nil} | set(ctx.instances_of(T.nil))
 
 
-@rule("M25",
+@rule("M25", covers=("x6-9-1-directory-nodes#3",),
        fix="Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level, or at the next iirds:DirectoryNode if the level continues. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit.")
 def m25_lists_are_closed(ctx):
     """Every level is a closed list: the last node points at iirds:nil.
@@ -470,7 +470,7 @@ def m25_lists_are_closed(ctx):
                             subject=ctx.ref(node), detail=ctx.ref(siblings[0]))
 
 
-@rule("M26",
+@rule("M26", covers=("x6-9-2-hierarchical-navigation#1",),
        fix="Point iirds:has-first-child at an iirds:DirectoryNode. A lower level starts with a node like any other, and pointing at something else breaks the walk.")
 def m26_first_child_is_a_directory_node(ctx):
     nodes = set(ctx.instances_of(T.DirectoryNode))
@@ -481,7 +481,7 @@ def m26_first_child_is_a_directory_node(ctx):
                         subject=ctx.ref(parent), detail=ctx.ref(child))
 
 
-@rule("M27",
+@rule("M27", covers=("x6-9-2-hierarchical-navigation#2",),
        fix="Make the first child of the lower level the head of its own sibling chain. Each level is a linked list, and the child link enters it at the first item.")
 def m27_first_child_starts_a_new_list(ctx):
     """The node on the next level down heads its own chain. If something else
@@ -548,7 +548,7 @@ def _relies_solely_on_an_external_vocabulary(ctx, prop, cls):
     return not ctx.instances_of(cls)
 
 
-@rule("M17",
+@rule("M17", covers=("x6-7-2-external-product-ontology#6",),
        fix="Relate your product entities to iirds:ProductVariant rather than typing them with an external product ontology alone. iiRDS consumers know the iiRDS classes; the external vocabulary can stay alongside as an equivalence.")
 def m17_external_product_ontology_is_mapped(ctx):
     """Referencing an external product ontology is allowed; relying on it is not."""
@@ -559,7 +559,7 @@ def m17_external_product_ontology_is_mapped(ctx):
                         subject="iirds:relates-to-component")
 
 
-@rule("M18",
+@rule("M18", covers=("x6-7-4-product-variants#1",),
        fix="Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants.")
 def m18_product_variants_are_declared(ctx):
     """Product variants are a proprietary extension, so they travel in the package."""
@@ -652,13 +652,13 @@ def m19_4_identity_domain_is_typed(ctx):
 
 
 
-@rule("M21.1",
+@rule("M21.1", covers=("x6-8-2-content-lifecycle-status#2",),
        fix="Relate the ContentLifeCycleStatus to an iirds:ContentLifeCycleStatusValue with iirds:has-content-lifecycle-status-value. Without it the status object records dates for a status nobody named.")
 def m21_1_lifecycle_status_value(ctx):
     yield from _exactly_one(ctx, T.ContentLifeCycleStatus, T.has_content_lifecycle_status_value, "iirds:has-content-lifecycle-status-value")
 
 
-@rule("M22.2",
+@rule("M22.2", covers=("x6-8-3-parties-and-roles#2",),
        fix="Point iirds:has-party-role at an instance of iirds:PartyRole or one of its subclasses. Pointing at anything else — a vCard, a plain resource — leaves the role unstated even though the property is present.")
 def m22_2_role_is_a_party_role(ctx):
     """M22.1 asks whether the party has a role; this asks whether the thing it
@@ -673,7 +673,7 @@ def m22_2_role_is_a_party_role(ctx):
                         subject=ctx.ref(party), detail=ctx.ref(role))
 
 
-@rule("M23",
+@rule("M23", covers=("x6-8-3-parties-and-roles#3",),
        fix="Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact.")
 def m23_party_has_a_vcard(ctx):
     """A role without a description is not something anyone can act on."""
@@ -686,7 +686,7 @@ def m95_component_party(ctx):
     yield from _at_most_one(ctx, T.Component, T.relates_to_party, "iirds:relates-to-party")
 
 
-@rule("M96.1", versions=("1.2", "1.3"),  # external classification arrives in 1.2
+@rule("M96.1", covers=("x6-8-4-external-classification#7",), versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Give the external classification exactly one iirds:has-classification-domain. The domain names the scheme — eCl@ss, ETIM, or your own — and a classification identifier means nothing without it.")
 def m96_1_classification_domain(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
@@ -697,7 +697,7 @@ def m96_1_classification_domain(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(domains))
 
 
-@rule("M96.2", versions=("1.2", "1.3"),  # external classification arrives in 1.2
+@rule("M96.2", covers=("x6-8-4-external-classification#4",), versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Give the external classification exactly one iirds:classificationIdentifier. Two identifiers in one classification leave a consumer unable to tell which one is meant.")
 def m96_2_classification_identifier_count(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
@@ -708,7 +708,7 @@ def m96_2_classification_identifier_count(ctx):
                             subject=ctx.ref(classification), detail="%d found" % len(identifiers))
 
 
-@rule("M96.3", versions=("1.2", "1.3"),  # external classification arrives in 1.2
+@rule("M96.3", covers=("x6-8-4-external-classification#4",), versions=("1.2", "1.3"),  # external classification arrives in 1.2
        fix="Put a non-empty string in iirds:classificationIdentifier. An empty value is worse than an absent one: it looks answered and matches nothing.")
 def m96_3_classification_identifier_non_empty(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
@@ -748,7 +748,8 @@ def m96_4_external_classification_is_optional(ctx):
 rule("M35", fix="Add iirds:identifier to the Identity, holding the value. An identity with a "
                  "domain and no value names a scheme without saying which member of it."
      )(m19_1_identity_identifier)
-rule("M36", fix="Relate the Identity to an iirds:IdentityDomain. Serial numbers and asset "
+rule("M36", covers=("x6-8-1-complex-identity#3",),
+     fix="Relate the Identity to an iirds:IdentityDomain. Serial numbers and asset "
                  "URIs are only unique within a scheme, so the value alone is ambiguous."
      )(m19_3_identity_domain)
 

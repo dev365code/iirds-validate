@@ -38,6 +38,7 @@ follows the implementation and records the wording.
 | M19.3 | (same as M19.1) | exactly one `has-identity-domain` | domain |
 | M21.4 | at most one `purpose` | at most one `dateOfStatus` | dateOfStatus |
 | M21.5 | cardinality row for `purpose` | at most one `purpose` | purpose |
+| M24.5 | root MUST have a structure type | non-root MUST NOT have one | non-root |
 | M78–M93 | "not intended to be used directly" | element has an `rdf:about` | rdf:about |
 
 The last row was the largest single error in this project's history. Sixteen
@@ -45,6 +46,16 @@ rules were implemented from the catalogue's category label, which produced
 findings on tekom's own sample packages that no other tool reports. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
+
+M24.5 deserves the same note as `dateOfStatus`: its title is section 6.9.1's
+positive sentence and M24.6 already checks that one, so reading the title
+literally would check the same thing twice and leave "only root nodes MUST
+have the property" — the sentence immediately after it — unchecked. What the
+row cost was not the check but the remedy: the remedy followed the title and
+told a reader whose *child* node was reported to add the property to the root,
+which leaves the finding where it was. A remedy is printed under a finding and
+must resolve that finding; it now says to remove the property from the node
+named.
 
 `dateOfStatus` deserves a note: taking the wording for both M21.4 and M21.5
 would mean checking `purpose` twice and never checking `dateOfStatus` at all.

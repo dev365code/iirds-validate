@@ -60,6 +60,28 @@ def test_m24_5_only_the_root_carries_the_structure_type(make_package):
     assert "M24.5" in ids(runner.check(make_package(metadata=broken)))
 
 
+def test_m24_5_tells_the_reader_to_remove_it_from_the_node_it_named(make_package):
+    """The finding is about a node that has the property and must not, so the
+    remedy is to take it off that node. It said "Add it to the root node",
+    which is the catalogue's title -- the neighbouring sentence, about what a
+    root must have -- and following it leaves the finding exactly where it
+    was. A remedy that does not resolve the finding it is printed under is
+    worse than none: the reader does the work and the tool still refuses."""
+    broken = GOOD.replace(
+        '<iirds:DirectoryNode rdf:about="urn:test:n1">',
+        '<iirds:DirectoryNode rdf:about="urn:test:n1">\n'
+        '    <iirds:has-directory-structure-type '
+        'rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>')
+    report = runner.check(make_package(metadata=broken))
+    finding = [f for f in report.findings if f.rule.id == "M24.5"][0]
+    assert finding.violation.subject == "urn:test:n1"
+    assert finding.fix.startswith("Remove iirds:has-directory-structure-type from"), finding.fix
+    assert "Add iirds:has-directory-structure-type" not in finding.fix
+
+    # and following the remedy actually clears it
+    assert "M24.5" not in ids(runner.check(make_package(metadata=GOOD)))
+
+
 def test_m25_a_list_must_be_closed_with_nil(make_package):
     """Without a terminator a consumer cannot tell "end of list" from
     "truncated data"."""

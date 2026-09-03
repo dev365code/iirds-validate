@@ -410,10 +410,18 @@ def _linked_nodes(ctx):
 
 
 @rule("M24.5",
-       fix="Add iirds:has-directory-structure-type to the root node. It is what tells a consumer whether this structure is a table of contents, a parts list, or something else, and only the root carries it.")
+       fix="Remove iirds:has-directory-structure-type from the node named here, or take the node out of the structure it hangs in. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. Whether the structure's own root carries one is M24.6's question.")
 def m24_5_only_root_has_structure_type(ctx):
     """The structure type names the whole structure, so only its root carries
-    it. A node reachable from another node is not a root."""
+    it. A node reachable from another node is not a root.
+
+    The catalogue titles this rule with the neighbouring sentence -- what a
+    root MUST have -- and this checks what a non-root MUST NOT. The remedy
+    follows the check, because it is printed under the finding: it used to
+    follow the title and told the reader to add the property to the root,
+    which leaves the reported node exactly as it was. docs/divergences.md
+    carries the row; M24.6 is the rule for the title's own sentence.
+    """
     linked = _linked_nodes(ctx)
     for node in ctx.instances_of(T.DirectoryNode):
         if node in linked and ctx.has(node, T.has_directory_structure_type):

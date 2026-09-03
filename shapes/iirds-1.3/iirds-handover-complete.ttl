@@ -722,7 +722,7 @@ ivs:M24.5 a sh:NodeShape ;
   sh:message "The root node of a directory structure MUST have one property iirds:has-directory-structure-type." ;
   ivm:ruleId "M24.5" ;
   ivm:ruleSource "catalogue" ;
-  sh:description "Add iirds:has-directory-structure-type to the root node. It is what tells a consumer whether this structure is a table of contents, a parts list, or something else, and only the root carries it." ;
+  sh:description "Remove iirds:has-directory-structure-type from the node named here, or take the node out of the structure it hangs in. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. Whether the structure's own root carries one is M24.6's question." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Only%20root%20nodes%20of%20a%20directory%20structure%20MUST%20have%20the%20property%20iirds%3Ahas%2Ddirectory%2Dstructure%2Dtype.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling ;

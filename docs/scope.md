@@ -118,6 +118,21 @@ gone wrong.
    it while it is embarrassing: a number that starts honest can be watched.
    "157 of 157" was never embarrassing and was never coverage of the standard.
    Until this rises, "no findings" must never be presented as "conformant".
+   One claim was withdrawn while the map was being read against the
+   specification: C16.2 said it checked "If metadata is provided in the JSON-LD
+   1.1 syntax, the META-INF directory MUST contain the file metadata.jsonld",
+   and it does not — it asks whether an iiRDS/H package has that file and
+   whether the file parses. A package carrying JSON-LD metadata at
+   `META-INF/metadata.json` was built and run: nothing reads it and nothing
+   reports it. The obligation is named as a gap in
+   `tests/test_requirement_coverage.py` with what it would take, which is a
+   rule about the other files in META-INF — and section 5.1.1 recommends that
+   consumers ignore those, so the reading wants settling before the rule.
+   L12's claim on "file names ... MUST be unique within their parent
+   directories" went with it: that sentence begins "File names are
+   case-sensitive", which is the thing L12 reports, and C15 holds the
+   obligation itself.
+
    Three obligations sit outside the numerator with a reason rather than a
    gap. Two are addressed to reading applications rather than to packages: no
    artefact can satisfy or breach them. The third — a nested package must not

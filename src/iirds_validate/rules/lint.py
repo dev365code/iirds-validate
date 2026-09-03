@@ -450,7 +450,7 @@ def l11_content_hidden_from_the_content_rules(ctx):
        fix="Rename one of them so the two differ by more than case. The ZIP holds both, "
            "and Windows and macOS filesystems hold one, so the package a consumer unpacks "
            "is missing a file that validated perfectly.",
-       covers=("x5-1-3-names-of-files-and-directories#2",))
+)
 def l12_case_only_collisions(ctx):
     """C15 asks whether the same path appears twice, and it is right to: within
     the archive those really are one entry claimed twice.

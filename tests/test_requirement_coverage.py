@@ -168,14 +168,27 @@ def test_the_undecidable_sentence_is_the_nested_package_one():
     assert sorted(NOT_DECIDABLE_ALONE) == ["x5-3-nested-iirds-packages#2"]
 
 
-def test_chapter_five_is_mapped_apart_from_its_three_gaps():
-    """The first section taken end to end. 21 obligations: 16 have a rule, two
-    are addressed to consumers, and the rest are things this validator does not
-    check and could. The single-root requirement became R3; what remains are
-    the two prohibitions on what a nested package may say about its
-    neighbours.
+#: Chapter five obligations nothing checks, each with what it would take.
+CHAPTER_FIVE_GAPS = {
+    # "If metadata is provided in the JSON-LD 1.1 syntax, the META-INF
+    # directory MUST contain the file metadata.jsonld." C16.2 claimed this and
+    # does not check it: it asks whether an iiRDS/H package has the file and
+    # whether the file parses, and the reader opens two fixed paths, so a
+    # package carrying JSON-LD metadata at META-INF/metadata.json is read by
+    # nothing and reported by nothing -- built and run, it passes clean. What
+    # would close it is a rule about the other files in META-INF, and section
+    # 5.1.1 recommends consumers ignore them, so the reading wants settling
+    # before a rule is written.
+    "x5-1-1-metadata-location-and-rdf-serializations#3",
+}
 
-    Pinned so the gaps cannot be closed by accident or reopened by one.
+
+def test_chapter_five_is_mapped_apart_from_its_gaps():
+    """The first section taken end to end. 21 obligations: most have a rule,
+    two are addressed to consumers, one cannot be decided by anything holding
+    a single container, and the rest are named above.
+
+    Pinned so a gap cannot be closed by accident or opened by one.
     """
     from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE, NOT_DECIDABLE_ALONE
 
@@ -186,9 +199,9 @@ def test_chapter_five_is_mapped_apart_from_its_three_gaps():
     gaps = sorted(r["id"] for r in chapter
                   if r["id"] not in COVERED and r["id"] not in NOT_ABOUT_THE_PACKAGE
                   and r["id"] not in NOT_DECIDABLE_ALONE)
-    assert gaps == [], \
+    assert gaps == sorted(CHAPTER_FIVE_GAPS), \
         "the single-root requirement is R3, the outer-must-not-describe-the-child " \
-        "prohibition is R6, and the remaining one is recorded as undecidable"
+        "prohibition is R6, one is recorded as undecidable, and the rest are named here"
 
 
 def test_the_scope_document_publishes_the_coverage_it_has():

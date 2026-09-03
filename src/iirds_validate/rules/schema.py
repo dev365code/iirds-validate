@@ -570,7 +570,7 @@ def m18_product_variants_are_declared(ctx):
                         subject="iirds:relates-to-product-variant")
 
 
-@rule("M30",
+@rule("M30", covers=("x7-1-iirds-extension-scenarios#5",),
        fix="Remove the statement. It restates a relationship the iiRDS ontology already defines, which bloats every package and lets a stale copy contradict the real one. Linking your own class to an iiRDS class is a different thing and is allowed.")
 def m30_no_schema_in_metadata(ctx):
     """metadata.rdf carries a package's metadata, not a copy of the standard.

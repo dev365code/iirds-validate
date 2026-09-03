@@ -312,7 +312,7 @@ def c16_1_rdf_parses(ctx):
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
 @rule("C16.2",
-       covers=("x5-1-1-metadata-location-and-rdf-serializations#3",), variants=(),
+       variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):

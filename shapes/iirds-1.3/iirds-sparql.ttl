@@ -194,6 +194,7 @@ ivs:M30 a sh:NodeShape ;
   sh:description "Remove the statement. It restates a relationship the iiRDS ontology already defines, which bloats every package and lets a stale copy contradict the real one. Linking your own class to an iiRDS class is a different thing and is allowed." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20file%20metadata.rdf%20MUST%20NOT%20contain%20the%20iiRDS%20schema%20or%20iiRDS%20domain%20extensions.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x7-1-iirds-extension-scenarios#5" ;
   sh:targetNode ivs:M30 ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   { ?value a <http://www.w3.org/2000/01/rdf-schema#Class> } UNION { ?value a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> }

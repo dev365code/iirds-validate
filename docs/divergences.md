@@ -216,9 +216,27 @@ or, for C9, until the grammar the obligation cites was read.
 | M17, M18 | every externally referenced IRI had to be declared locally | fires only when a package references such a vocabulary and declares none of its own | the strict reading fails tekom's own external-product-ontology sample |
 | M13.1, M13.2 | every Selector needed `rdf:value` and `dcterms:conformsTo` | RangeSelector exempt | a range is addressed by its start and end selectors, which M14.1 and M14.2 check |
 | M19.4 | the identity domain had to be typed here | undescribed domains left to L1 | a reference out of the package is not a typing error |
-| M15.7b/d, M15.8/9/10 | required a typed `vcard:Organization` | requires a stated `vcard:organization-name` | the reference's handover fixtures type the node `vcard:organization` — the property, lower case; the substance is that the party can be identified |
+| M15.7b/d, M15.8/9/10 | required the class `vcard:Organization` | accepts `vcard:Organization` **or** `vcard:organization` — the vcard *property* IRI used where the class belongs — and still requires a stated `vcard:organization-name` | every handover fixture the reference ships writes the lower-case spelling; both say "organisation" and one is a misspelling of the other |
 | "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | absoluteness is M5's question, and M5 is RECOMMENDED. Conflating them turned one recommendation into sixty MUSTs |
 | C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
+
+**A leniency and a coverage claim cannot both stand.** Every row above narrows
+what its rule checks against the sentence the rule is about, so none of those
+rules covers that sentence, and `covers=` was withdrawn from the three that
+had claimed one: M13.1 and M13.2 for `x6-3-1-reference-part-of-file-by-selector#3`
+(a `RangeSelector` with no `rdf:value` breaches the sentence and nothing
+reports it), M17 for `x6-7-2-external-product-ontology#6`, M18 for
+`x6-7-4-product-variants#1`. The exception is the vcard row, which was rewritten
+rather than withdrawn: dropping the class altogether let a card typed
+`vcard:Individual` breach three of section 8.3.2's sentences in silence, and
+accommodating a spelling is not the same as dropping the word. Across every
+corpus in this repository no described card carries an organisation name
+without one of the two spellings, so the narrowing costs nothing observable.
+
+The general rule, now stated in `docs/scope.md` and gated in
+`tests/test_covers_is_earned.py`: a claim survives a documented leniency only
+if the leniency is about *how* the sentence is spelled, never about *what* it
+asks for.
 
 **C9, in more detail.** Section 5.1.1 asks for "RDF 1.1 XML syntax (see
 [rdf-syntax-grammar])", and the rule enforced the shape most files have
@@ -664,9 +682,29 @@ straight at the class IRI. Both close a level here.
 The rule does not claim `covers=x6-9-1-directory-nodes#3`, because it does not
 cover all of it. A node nothing points at is a root, and M25 exempts roots --
 tekom's own `iirds-sample-1` has twenty-seven directory nodes, exactly one
-root, and that root carries no `iirds:has-next-sibling` at all. A reading that
-made the requirement reach the root would fail the Consortium's own sample, so
-the exemption stays and the citation would be an overclaim.
+root, and that root carries no `iirds:has-next-sibling` at all, in every one
+of the fifty-one fixtures built from it. A reading that made the requirement
+reach the root would fail the Consortium's own sample, so the exemption stays
+and the citation would be an overclaim.
+
+Which cuts against the specification's own worked examples, and the tension is
+worth stating rather than smoothing. Example 47 tells a consumer to *find* the
+root by querying for the node whose `iirds:has-next-sibling` relates to
+`iirds:nil`, and Example 48 says outright: "As the root directory node has no
+following sibling on the same hierarchy level, it forms a linked list with only
+one member. To close the linked list with only one element, the root directory
+node has `iirds:nil` as the next sibling." On that reading a root is the last
+node of the top level and the sentence reaches it. Against that: the sentence
+opens "To model closed lists", which is purposive rather than unconditional,
+and the Consortium ships packages that do not do it. Firing on tekom's own
+sample needs better evidence than a reading, so the rule stays where it is and
+the disagreement is recorded here instead of resolved in silence.
+
+This paragraph was written before a mapping pass added the very claim it
+refuses, and nothing read it — a document is not a gate. It is one now:
+`tests/test_covers_is_earned.py` reads this file for the phrase "does not
+claim `covers=…`" and fails if any rule claims what a paragraph here says it
+does not.
 
 Its only fixture, `Example 38 - Table of contents-M36_false.rdf`, is one of the
 eleven that do not parse — `mismatched tag` at line 27. There is nothing to run,

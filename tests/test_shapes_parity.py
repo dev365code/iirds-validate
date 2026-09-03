@@ -280,6 +280,17 @@ SPARQL_CASES = [
     <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>
   </iirds:Party>
 """)),
+    # R10 is M22.2's shape one property over, so the pair is written the same
+    # way: a status pointing at something that is described and is not a status
+    # value, against one pointing at the ontology's own term.
+    ("R10", _meta("""  <iirds:ContentLifeCycleStatus rdf:about="urn:test:s1">
+    <iirds:has-content-lifecycle-status-value rdf:resource="urn:test:v1"/>
+  </iirds:ContentLifeCycleStatus>
+  <iirds:Component rdf:about="urn:test:v1"><rdfs:label xml:lang="en">nv</rdfs:label></iirds:Component>
+"""), _meta("""  <iirds:ContentLifeCycleStatus rdf:about="urn:test:s1">
+    <iirds:has-content-lifecycle-status-value rdf:resource="http://iirds.tekom.de/iirds#Approved"/>
+  </iirds:ContentLifeCycleStatus>
+""")),
     ("M24.6", _meta("""  <iirds:DirectoryNode rdf:about="urn:test:n1">
     <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
   </iirds:DirectoryNode>

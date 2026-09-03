@@ -104,7 +104,33 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 72 of 280.** The denominator is derived in
+1. **Coverage of the standard is 68 of 280.** 6 of the 68 are held by a
+   package. The second number is the one to weigh, and it is the smaller
+   one for a reason worth stating plainly: a `covers=` claim used to be made
+   by reading a sentence and a rule side by side and judging them to be about
+   the same thing. Seven claims made that way turned out to be wrong — a
+   sentence asking for a `vcard:Organization` claimed by rules that
+   deliberately did not check the class, a sentence naming a class and a
+   property claimed by a rule that counted the property, a conditional
+   obligation claimed by a rule triggering on a different condition, and one
+   claimed over a paragraph of `docs/divergences.md` that said in those words
+   that it must not be. Four were withdrawn, three were earned by fixing the
+   rule. What separates the two groups is not a better reading; it is that
+   somebody built the package that breaks the sentence and watched what
+   happened.
+
+   So the criterion is written down, and it is one sentence: **a rule covers
+   an obligation when every package violating that obligation's sentence is
+   reported by that rule or by another rule claiming the same id.** Reporting
+   more than the sentence asks does not disqualify a claim; reporting less
+   does, and a documented divergence that narrows a check withdraws the claim
+   with it — keeping both is exactly how a documented exemption becomes an
+   undocumented hole. `tests/test_covers_is_earned.py` holds the criterion,
+   names the 6 claims a package stands behind, and names the other 62 in a
+   list called UNAUDITED. Every one of those 62 may be perfectly good; none
+   is *known* to be, and the seven that were not looked just like them.
+
+   Some detail on the denominator. It is derived in
    `docs/requirements.json`; the parse finds 314 absolute obligations and the
    same file names why 34 of those are one obligation counted twice — four
    from the sentence that defines the RFC 2119 keywords, which no package can

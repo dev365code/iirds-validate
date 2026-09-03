@@ -19,6 +19,14 @@ from ..registry import CATALOG, rule
 
 ORGANISATION_NAME = VCARD["organization-name"]
 
+#: The two spellings a package uses to say "this vcard is an organisation".
+#: `vcard:Organization` is the class the standard names. `vcard:organization`
+#: is the vcard *property* IRI used where the class belongs -- what every one
+#: of the reference tool's handover fixtures writes, and what tekom's own
+#: samples write. Accepting the second is a divergence, recorded as one; it is
+#: a misspelling of this requirement, not a different requirement.
+ORGANISATION_TYPES = frozenset((VCARD["Organization"], VCARD["organization"]))
+
 
 def _spec_sans_quote(rule_id: str):
     """The catalogue's link, minus its text fragment. For four rules here
@@ -43,19 +51,34 @@ def _names_an_organisation(ctx, party) -> bool:
     A handover package outlives the project that produced it, so "Author" with
     nothing behind it is not something anyone can follow up on.
 
-    Two deliberate softenings, both found by running the reference tool's own
+    The sentence asks for three things and all three are asked here: a vcard,
+    an organisation, a stated name.
+
+    One deliberate softening, found by running the reference tool's own
     handover fixtures. If the vcard reference resolves to nothing the package
     describes, this stays quiet and R4 reports the dangling pointer once: one
     unresolvable pointer should not produce the same finding five times and
     bury the real problem. That case used to be left to L1, which is a lint and
     does not run under `check` -- so a handover package whose manufacturer,
     author and creator all pointed at nothing passed conformance in silence.
-    Softening it was right; giving it away was not. And the test is for a stated organisation name
-    rather than a declared vcard:Organization type, because those fixtures type
-    the node `vcard:organization` — the property, lower case, not the class.
-    The substance of the requirement is that the party is identifiable, and
-    quibbling with the vocabulary spelling fails packages over something no
-    other tool checks.
+    Softening it was right; giving it away was not.
+
+    And one deliberate widening: the organisation may be typed
+    `vcard:Organization`, the class the standard names, or `vcard:organization`
+    — the vcard *property* IRI, lower case, which is what every handover
+    fixture the reference ships actually writes. Both say "organisation"; one
+    is a misspelling of the other.
+
+    The type used to go unasked altogether, on the reasoning that the substance
+    of the requirement is that the party can be identified. It is not: a card
+    typed `vcard:Individual` and stating an `organization-name` breached all
+    three of section 8.3.2's named-party sentences and passed in silence, and
+    those sentences are the whole reason a handover package can be traced to
+    the firm that shipped it. Accommodating a spelling is not the same as
+    dropping the word. Across every corpus this repository holds -- ours,
+    tekom's samples, the reference's fixtures -- no described card carries an
+    organisation name without one of the two spellings, so nothing that passed
+    before fails now.
     """
     cards = ctx.values(party, T.relates_to_vcard)
     if not cards:
@@ -63,7 +86,8 @@ def _names_an_organisation(ctx, party) -> bool:
     for card in cards:
         if not _describes(ctx, card):
             return True                     # undescribed: R4 owns it
-        if ctx.has(card, ORGANISATION_NAME):
+        if ORGANISATION_TYPES & set(ctx.values(card, T.RDF_TYPE)) \
+                and ctx.has(card, ORGANISATION_NAME):
             return True
     return False
 
@@ -91,7 +115,9 @@ def _needs_named_party(ctx, cls, role, what):
                 subject=ctx.ref(subject), detail=ctx.label_of(subject))
 
 
-@rule("R4", covers=("x8-3-2-metadata-requirements#12", "x8-3-2-metadata-requirements#9",), kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+@rule("R4", covers=("x8-3-2-metadata-requirements#9", "x8-3-2-metadata-requirements#12",
+                    "x8-3-2-metadata-requirements#13",),
+      kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
       title="a vcard a party points at must be described in the package",
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
@@ -111,6 +137,14 @@ def r4_party_vcard_is_described(ctx):
     all about a package whose manufacturer, author and creator each pointed at
     an IRI the package never mentions again. Reported here once per vcard, as
     a cause, which is what the five findings would have been consequences of.
+
+    Three of section 8.3.2's sentences are covered by this rule together with
+    the one that softens for them -- #9 and #12 with M15.7b and M15.7d, #13
+    with M15.10. #13 was claimed by M15.10 alone, which meant the one shape
+    M15.10 deliberately stays quiet about was claimed by a rule that cannot
+    report it. The pairing holds because both sides ask `_describes` the same
+    question over the same population: whatever the five let through, this
+    reports.
     """
     cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)}
     for card in sorted((c for c in cards if not _describes(ctx, c)), key=ctx.ref):

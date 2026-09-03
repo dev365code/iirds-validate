@@ -13,7 +13,7 @@ from rdflib.namespace import RDF, RDFS
 from .. import terms as T
 from ..context import container_packages, package_nodes
 from ..model import DCTERMS, PACKAGE_BASE, Violation, is_absolute_iri, is_named
-from ..registry import rule
+from ..registry import CATALOG, rule
 
 
 def _exactly_one(ctx, cls, prop, label):
@@ -216,7 +216,7 @@ def _value_selectors(ctx):
     return [s for s in ctx.instances_of(T.Selector) if s not in ranges]
 
 
-@rule("M13.1", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
+@rule("M13.1",   # not x6-3-1-reference-part-of-file-by-selector#3: RangeSelector is exempt
        fix="Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate.")
 def m13_1_selector_value(ctx):
     for sel in _value_selectors(ctx):
@@ -225,7 +225,7 @@ def m13_1_selector_value(ctx):
                             "one rdf:value", subject=ctx.ref(sel))
 
 
-@rule("M13.2", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
+@rule("M13.2",   # not x6-3-1-reference-part-of-file-by-selector#3: RangeSelector is exempt
        fix="Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression.")
 def m13_2_selector_conforms_to(ctx):
     for sel in _value_selectors(ctx):
@@ -446,7 +446,7 @@ def _closes_a_level(ctx):
     return {T.nil} | set(ctx.instances_of(T.nil))
 
 
-@rule("M25", covers=("x6-9-1-directory-nodes#3",),
+@rule("M25",   # not x6-9-1-directory-nodes#3: see the docstring, and docs/divergences.md
        fix="Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level, or at the next iirds:DirectoryNode if the level continues. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit.")
 def m25_lists_are_closed(ctx):
     """Every level is a closed list: the last node points at iirds:nil.
@@ -455,6 +455,16 @@ def m25_lists_are_closed(ctx):
     truncated data -- and a sibling link that lands on neither a node nor the
     terminator leaves exactly that ambiguity while satisfying a check that
     asks only whether the property is present.
+
+    Roots are exempt, so this does not cover section 6.9.1's sentence and does
+    not claim it. The specification's own Example 48 says a root closes its
+    one-element level at `iirds:nil`, and its Example 47 finds the root by that
+    very property -- but tekom's `iirds-sample-1` has twenty-seven nodes, one
+    root, and no `iirds:has-next-sibling` on it at all, in every one of the
+    fifty-one fixtures built from it. Reaching the root would fail the
+    Consortium's own package, so the exemption stays and the citation goes.
+    `docs/divergences.md` said so before the mapping pass added the claim over
+    it; the claim, not the paragraph, was the thing that was wrong.
     """
     closers = _closes_a_level(ctx)
     nodes = set(ctx.instances_of(T.DirectoryNode))
@@ -548,10 +558,24 @@ def _relies_solely_on_an_external_vocabulary(ctx, prop, cls):
     return not ctx.instances_of(cls)
 
 
-@rule("M17", covers=("x6-7-2-external-product-ontology#6",),
+@rule("M17",   # not x6-7-2-external-product-ontology#6: see the docstring
        fix="Relate your product entities to iirds:ProductVariant rather than typing them with an external product ontology alone. iiRDS consumers know the iiRDS classes; the external vocabulary can stay alongside as an equivalence.")
 def m17_external_product_ontology_is_mapped(ctx):
-    """Referencing an external product ontology is allowed; relying on it is not."""
+    """Referencing an external product ontology is allowed; relying on it is not.
+
+    This does not cover section 6.7.2's sentence, and claiming it was an
+    overclaim now withdrawn. The obligation is conditioned on "an external
+    product ontology is available and used in the iiRDS package"; the trigger
+    here is `iirds:relates-to-component`, an iiRDS-internal relation. A package
+    shaped like the standard's own Example 26 -- foreign `rdfs:Class` product
+    entities, referenced by the package's own property, no `iirds:Component`
+    anywhere and no `iirds:relates-to-component` either -- violates the
+    sentence and is reported by nothing here.
+
+    Recognising "a vocabulary that is a product ontology" is not something a
+    rule can do without being told which vocabularies those are, so the gap is
+    recorded rather than papered over.
+    """
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_component, T.Component):
         yield Violation("the package relates to components but declares no iirds:Component "
                         "of its own, so a consumer without the external ontology has nothing "
@@ -559,15 +583,38 @@ def m17_external_product_ontology_is_mapped(ctx):
                         subject="iirds:relates-to-component")
 
 
-@rule("M18", covers=("x6-7-4-product-variants#1",),
+@rule("M18",   # not x6-7-4-product-variants#1: see the docstring
        fix="Add proprietary product classes as subclasses of iirds:ProductVariant. That way a consumer with no knowledge of your vocabulary still recognises the instances as product variants.")
 def m18_product_variants_are_declared(ctx):
-    """Product variants are a proprietary extension, so they travel in the package."""
+    """Product variants are a proprietary extension, so they travel in the package.
+
+    Section 6.7.4 says they "MUST be present in the metadata.rdf of the iiRDS
+    package", and this reads the merged graph: a variant declared only in
+    metadata.jsonld satisfies this rule and breaches that sentence. The claim
+    is withdrawn rather than the reading changed, because which file is
+    authoritative when the two disagree is a design question of its own -- L9
+    reports the disagreement, and answering it inside a mapping correction
+    would be deciding it by accident.
+    """
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_product_variant,
                                                 T.ProductVariant):
         yield Violation("the package relates to product variants but declares no "
                         "iirds:ProductVariant of its own",
                         subject="iirds:relates-to-product-variant")
+
+
+def _where_stated(ctx, triple) -> str:
+    """The metadata file a statement is actually in.
+
+    Every rule but L9 reads the merged graph, which is right -- and it means a
+    finding cannot name a file unless it looks. Section 7.1 names one:
+    "The file metadata.rdf MUST NOT contain the iiRDS schema", so a finding
+    about it has to say which file, and saying the wrong one sends a reader to
+    open a file that is clean.
+    """
+    names = sorted(name.rpartition("/")[2] for name, graph in ctx.per_source.items()
+                   if triple in graph)
+    return " and ".join(names) or "the package metadata"
 
 
 @rule("M30", covers=("x7-1-iirds-extension-scenarios#5",),
@@ -591,6 +638,12 @@ def m30_no_schema_in_metadata(ctx):
     equivalent class" — as a violation. It also contradicted L5, which asks for
     exactly that link. Found by running the standard's own examples through
     this validator; see tests/test_spec_examples.py.
+
+    The finding names the file the statement is in, which it used to assert
+    rather than look up: a schema restated only in metadata.jsonld was reported
+    as "metadata.rdf must not redeclare the iiRDS schema", sending a reader to
+    open a file that was clean. What is detected has not changed -- the merged
+    graph decides, as everywhere else -- only what the message says it found.
     """
     schema_predicates = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
     for subject in sorted(ctx.iirds_subjects() | {s for s in ctx.graph.subjects()
@@ -598,8 +651,11 @@ def m30_no_schema_in_metadata(ctx):
         if not ctx.ontology.is_iirds_term(subject):
             continue
         types = ctx.values(subject, T.RDF_TYPE)
-        if RDFS.Class in types or RDF.Property in types:
-            yield Violation("metadata.rdf must not redeclare the iiRDS schema",
+        declared = RDFS.Class if RDFS.Class in types else (
+            RDF.Property if RDF.Property in types else None)
+        if declared is not None:
+            yield Violation("%s must not redeclare the iiRDS schema"
+                            % _where_stated(ctx, (subject, T.RDF_TYPE, declared)),
                             subject=ctx.ref(subject), detail="declared as a class or property here")
             continue
         for predicate in schema_predicates:
@@ -608,7 +664,8 @@ def m30_no_schema_in_metadata(ctx):
                 # an extension, which iiRDS sanctions and L5 recommends.
                 if not ctx.ontology.is_iirds_term(obj):
                     continue
-                yield Violation("metadata.rdf must not redeclare the iiRDS schema",
+                yield Violation("%s must not redeclare the iiRDS schema"
+                                % _where_stated(ctx, (subject, predicate, obj)),
                                 subject=ctx.ref(subject),
                                 detail="states %s %s" % (str(predicate).split("#")[-1],
                                                          str(obj).split("#")[-1]))
@@ -656,6 +713,44 @@ def m19_4_identity_domain_is_typed(ctx):
        fix="Relate the ContentLifeCycleStatus to an iirds:ContentLifeCycleStatusValue with iirds:has-content-lifecycle-status-value. Without it the status object records dates for a status nobody named.")
 def m21_1_lifecycle_status_value(ctx):
     yield from _exactly_one(ctx, T.ContentLifeCycleStatus, T.has_content_lifecycle_status_value, "iirds:has-content-lifecycle-status-value")
+
+
+@rule("R10", covers=("x6-8-2-content-lifecycle-status#2",), kind="schema", prio="MUST",
+      title="iirds:has-content-lifecycle-status-value must point at a status value",
+      spec=CATALOG.get("M21.1", {}).get("spec"),   # the same sentence M21.1 counts
+      fix="Point iirds:has-content-lifecycle-status-value at an instance of "
+          "iirds:ContentLifeCycleStatusValue or one of its subclasses. Pointing at anything "
+          "else leaves the status unnamed even though the property is present, and a consumer "
+          "sorting by lifecycle state has nothing to sort on.")
+def r10_lifecycle_value_is_a_status_value(ctx):
+    """The twin of M22.2, for the sentence one section earlier.
+
+    Two sentences in chapter 6 have the same shape. 6.8.3: "An iirds:Party MUST
+    have a related iirds:PartyRole that is assigned by the property
+    iirds:has-party-role". 6.8.2: "An iirds:ContentLifecyleStatus MUST have an
+    iirds:ContentLifecyleStatusValue which is assigned by the
+    iirds:has-content-lifecycle-status-value property". Each names a class and
+    a property, so each is two questions: is the property there, and does it
+    point at that class.
+
+    The party sentence got both -- M22.1 asks the first, M22.2 the second, and
+    M22.2 exists because they were once one function. The lifecycle sentence
+    got only M21.1, which counts the property, so a status pointing at a Topic
+    passed. The asymmetry is the whole evidence: the same reading applied to
+    the same shape in the same chapter, one section apart.
+
+    Follows M22.2 exactly, including where it stops. An undescribed referent is
+    a dangling reference and L1's business, not a typing error.
+    """
+    for status, value in ctx.graph.subject_objects(T.has_content_lifecycle_status_value):
+        if ctx.is_instance(value, T.ContentLifeCycleStatusValue) \
+                or value in ctx.ontology.defined_terms():
+            continue
+        if (value, None, None) not in ctx.graph:
+            continue          # undescribed reference: L1's business
+        yield Violation("iirds:has-content-lifecycle-status-value must point to an "
+                        "iirds:ContentLifeCycleStatusValue",
+                        subject=ctx.ref(status), detail=ctx.ref(value))
 
 
 @rule("M22.2", covers=("x6-8-3-parties-and-roles#2",),

@@ -327,7 +327,6 @@ ivs:M13.1 a sh:NodeShape ;
   sh:description "Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
-  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path rdf:value ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -340,7 +339,6 @@ ivs:M13.2 a sh:NodeShape ;
   sh:description "Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
-  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path <http://purl.org/dc/terms/conformsTo> ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -752,7 +750,6 @@ ivs:M25 a sh:NodeShape ;
   sh:description "Add iirds:has-next-sibling pointing at iirds:nil on the last node of the level, or at the next iirds:DirectoryNode if the level continues. Without the terminator a consumer cannot distinguish the end of a list from data that was truncated in transit." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20model%20closed%20lists%2C%20the%20last%20node%20in%20a%20list%20level%20MUST%20have%20the%20property%20iirds%3Ahas%2Dnext%2Dsibling%20relating%20to%20an%20instance%20of%20the%20class%20iirds%3Anil.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
-  ivm:covers "x6-9-1-directory-nodes#3" ;
   sh:targetObjectsOf iirds:has-first-child, iirds:has-next-sibling ;
   sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:nil ] [ sh:not [ sh:or ( [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ] [ sh:property [ sh:path iirds:has-next-sibling ; sh:qualifiedValueShape [ sh:or ( [ sh:in ( iirds:nil ) ] [ sh:class iirds:DirectoryNode ] [ sh:class iirds:nil ] ) ] ; sh:qualifiedMinCount 1 ] ] ) .
 

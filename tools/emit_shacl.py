@@ -252,10 +252,17 @@ def _ns_test(var):
 #: empty", which it never is. Each branch therefore carries its own
 #: relates-to-vcard triple, binding the card before testing it (found by
 #: the softening pin the moment these shapes first ran).
+#: The second branch asks for the type as well as the name, as the sentence
+#: does. Bare rdf:type, not the subClassOf closure, because Python asks
+#: `ctx.values(card, RDF_TYPE)` -- the two encodings have to ask the same
+#: question or the differential gate is measuring itself. Both spellings are
+#: accepted; see ORGANISATION_TYPES in rules/handover.py for why.
 _NAMED_VCARD = ("{ ?party <%(ii)srelates-to-vcard> ?card .\n"
                 "      FILTER NOT EXISTS { ?card ?cp ?co } }\n"
                 "    UNION\n"
                 "    { ?party <%(ii)srelates-to-vcard> ?namedcard .\n"
+                "      ?namedcard <%(rdf)stype> ?cardtype .\n"
+                "      FILTER (?cardtype IN (<%(vc)sOrganization>, <%(vc)sorganization>))\n"
                 "      ?namedcard <%(vc)sorganization-name> ?orgname }")
 
 
@@ -415,6 +422,16 @@ SPARQL_FORMS = {
   $this <%(ii)shas-party-role> ?value .
   FILTER EXISTS { ?value ?p2 ?o2 }
   FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPartyRole> }
+  FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
+    # M22.2's shape, one property over: the twin sentence in section 6.8.2.
+    # Same three exemptions, same order, deliberately not generalised into a
+    # builder -- two callers is not a pattern, and the last time a shape
+    # builder was generalised for a third caller it lost a distinction.
+    "R10": ("subjects", "iirds:has-content-lifecycle-status-value", ["""SELECT $this ?value WHERE {
+  $this <%(ii)shas-content-lifecycle-status-value> ?value .
+  FILTER EXISTS { ?value ?p2 ?o2 }
+  FILTER NOT EXISTS {
+    ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sContentLifeCycleStatusValue> }
   FILTER (?value NOT IN (%(defined_terms)s)) }"""]),
 }
 

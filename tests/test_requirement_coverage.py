@@ -60,6 +60,10 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
     It cannot tell a correct mapping from a plausible one either -- that is the
     reading problem no single reader can solve. It catches a citation pasted
     from the wrong row.
+
+    And it is nearly always inapplicable, which is the thing to know about it:
+    see `test_how_far_the_name_heuristic_actually_reaches` below. A gate whose
+    reach is not stated is read as a gate over everything it iterates.
     """
     rule = next(r for r in all_rules() if r.id == rule_id)
     for rid in sorted(CLAIMED[rule_id]):
@@ -70,10 +74,31 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
             "%s claims %s, which is about %s" % (rule_id, rid, subject)
 
 
+def test_how_far_the_name_heuristic_actually_reaches():
+    """The gate above asserts something for two of eighty claims.
+
+    It looked like a gate over all of them: parametrised by rule, iterating
+    every claim, green. The `continue` for a requirement whose subject is not
+    a qualified name is not an oversight -- most of the index has no subject
+    to name -- but the number was nowhere, so seven wrong claims passed under
+    a heuristic that had never been applied to any of them.
+
+    Pinned in both directions. If a change makes it reach further, this
+    number goes up on purpose; if a change to `docs/requirements.json` empties
+    the subject column, it goes to zero and says so instead of staying green.
+    Any gate that can be inapplicable should have to say how often it is.
+    """
+    pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
+    asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
+    assert len(pairs) == 80, len(pairs)
+    assert len(asserted) == 2, sorted(asserted)
+    assert sorted(rid for rid, _ in asserted) == ["R1", "R2"], sorted(asserted)
+
+
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 72
+    assert len(COVERED) == 68
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 

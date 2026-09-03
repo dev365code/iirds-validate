@@ -61,8 +61,6 @@ SCOPED = {
     "R1":    (("1.2", "1.3"), "iirds:ClassificationType arrives in 1.2 with the rest of "
                               "the external classification vocabulary"),
     "R2":    (("1.3",), "iirdsHov:DocumentCategory is part of iiRDS/H, which arrives in 1.3"),
-    "R4":    (("1.3",), "the vcard a party points at is an iiRDS/H requirement, and the "
-                        "profile arrives in 1.3"),
 }
 
 #: iiRDS/H arrived with 1.3, so its rules cannot apply to anything earlier.

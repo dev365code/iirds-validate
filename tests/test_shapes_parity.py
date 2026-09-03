@@ -1296,13 +1296,15 @@ def test_the_points_at_family_is_the_one_this_file_knows_about():
     sys.path.insert(0, str(ROOT / "tools"))
     import emit_shacl
 
-    # The family's queries are the ones the shared builder writes. The marker
-    # is its defined_terms disjunct: `isLiteral` alone matched R12, which
-    # shares the exemptions and not the builder, and a detector that drags in
-    # a neighbour reports the wrong rule as missing its branches.
+    # The family's queries are the ones the shared builder writes. Two markers
+    # have already been wrong: `isLiteral(?value)` matched R12, and so did the
+    # defined_terms disjunct once R12 grew one. The marker is now the builder's
+    # own exemption list, which no other form writes -- and the lesson is that
+    # a detector keyed on a fragment of generated text is a detector that
+    # drifts, so this asserts the whole family by name.
     callers = {rid for rid, form in emit_shacl.SPARQL_FORMS.items()
                if form[0] == "subjects"
-               and any("|| ?value IN (%(defined_terms)s)" in q for q in form[2])}
+               and any("FILTER (?value NOT IN (" in q for q in form[2])}
     assert callers == set(POINTS_AT), sorted(callers ^ set(POINTS_AT))
 
 
@@ -1366,11 +1368,10 @@ def test_a_vcard_declared_beneath_a_kind_is_one_in_both_encodings(tmp_path):
     assert "R12" not in py, sorted(py)
 
 
-def test_a_vcard_nothing_describes_is_reported_in_both_encodings(tmp_path):
-    """This asserted the opposite when it was written. The exemption it
-    encoded left `iirds check` silent about a party described as nothing --
-    L1 reports the pointer and L1 is a lint that check does not run -- so it
-    is gone from both encodings, and the pair has to move together."""
+def test_a_vcard_nothing_describes_is_left_to_r4_in_both_encodings(tmp_path):
+    """Where this case belongs has moved twice; both encodings moved with it.
+    A pointer at nothing is R4's, once, in every profile -- reporting it here
+    as well put two findings on one defect."""
     metadata = _meta('''  <iirds:Party rdf:about="urn:test:party">
     <iirds:has-party-role rdf:resource="%sAuthor"/>
     <iirds:relates-to-vcard rdf:resource="urn:test:nothing"/>
@@ -1378,7 +1379,8 @@ def test_a_vcard_nothing_describes_is_reported_in_both_encodings(tmp_path):
 ''' % IIRDS_)
     py = python_fired(tmp_path, "vcard_dangling.iirds", metadata)
     assert py == shacl_fired(metadata)
-    assert "R12" in py, sorted(py)
+    assert "R12" not in py, sorted(py)
+    assert "R4" in py, sorted(py)
 
 
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():

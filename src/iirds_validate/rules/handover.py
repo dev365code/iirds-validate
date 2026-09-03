@@ -13,6 +13,8 @@ them share a shape that is worth writing once.
 """
 from __future__ import annotations
 
+from rdflib import Literal
+
 from .. import terms as T
 from ..model import ORGANISATION_TYPES, VCARD, Violation
 from ..registry import CATALOG, rule
@@ -117,7 +119,8 @@ def _needs_named_party(ctx, cls, role, what):
 
 @rule("R4", covers=("x8-3-2-metadata-requirements#9", "x8-3-2-metadata-requirements#12",
                     "x8-3-2-metadata-requirements#13",),
-      kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+      kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"), variants=(),
       title="a vcard a party points at must be described in the package",
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
@@ -146,7 +149,17 @@ def r4_party_vcard_is_described(ctx):
     question over the same population: whatever the five let through, this
     reports.
     """
-    cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)}
+    # Every profile, not only iiRDS/H. The softening this owns belongs to
+    # section 8.3.2's five, which are iiRDS/H -- but a pointer at nothing is a
+    # pointer at nothing anywhere, and gating the cause to the profile left
+    # `check` silent about it outside and let R12 answer it instead, which
+    # reported the same defect twice inside. A rule may run wider than the
+    # sentences it claims.
+    #
+    # Literals are R12's: "points at a vcard this package never describes" is
+    # the wrong sentence for a value that is not a pointer at all.
+    cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)
+             if not isinstance(o, Literal)}
     for card in sorted((c for c in cards if not _describes(ctx, c)), key=ctx.ref):
         users = sorted(ctx.ref(p) for p in ctx.graph.subjects(T.relates_to_vcard, card))
         yield Violation("iiRDS/H: iirds:relates-to-vcard points at a vcard this package "

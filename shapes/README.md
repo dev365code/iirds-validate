@@ -19,9 +19,9 @@ demonstrated.
 | `iirds-1.3/iirds-complete.ttl` | SHACL-AF engine | **start here**: core + SPARQL in one file, for any package that does not declare iiRDS/H |
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
 | `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 112 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
-| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 16 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
+| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 17 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 8 iiRDS/H additions — apply **only** under iiRDS/H |
-| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 12 iiRDS/H additions (SPARQL): M15.11a, M15.7c, the five named-party MUSTs, and R4 |
+| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 11 iiRDS/H additions (SPARQL): M15.11a, M15.7c, the five named-party MUSTs, and R4 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
 
 The `-complete` files exist because the pySHACL command line takes **one**
@@ -179,7 +179,7 @@ each listed with its reason in `MANIFEST.json`:
 ## Why you can trust the translation
 
 **These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
-33 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
+32 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
 carries, so running them against a package that declares an older edition
 reports rules that edition does not have. The Python validator gates on the
 declared version and stays silent on those. Gating the shapes themselves would

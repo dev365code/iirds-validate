@@ -16,6 +16,7 @@ from ..model import (
     DCTERMS,
     ORGANISATION_TYPES,
     PACKAGE_BASE,
+    VCARD,
     VCARD_KINDS,
     Violation,
     is_absolute_iri,
@@ -972,6 +973,39 @@ def r12_party_vcard_is_a_kind(ctx):
     """
     acceptable = VCARD_KINDS | ORGANISATION_TYPES
     for party, card in sorted(ctx.graph.subject_objects(T.relates_to_vcard), key=str):
-        if not any(ctx.is_instance(card, cls) for cls in acceptable):
-            yield Violation("iirds:relates-to-vcard must point to a vcard kind",
-                            subject=ctx.ref(party), detail=ctx.ref(card))
+        if any(ctx.is_instance(card, cls) for cls in acceptable):
+            continue
+        if isinstance(card, Literal):
+            # The shape the specification's own Example 63 has: a JSON-LD
+            # string where an object belongs, because its @context maps three
+            # prefixes and declares no "@type": "@id". The remedy has to say
+            # that, not repeat the sentence.
+            yield Violation("iirds:relates-to-vcard has a literal value, so it points at no "
+                            "vcard at all",
+                            subject=ctx.ref(party), detail=ctx.ref(card),
+                            fix="Write the value as a reference rather than a string. In "
+                                "JSON-LD that is {\"@id\": \"https://example.com/card\"}, or a "
+                                "context entry declaring \"iirds:relates-to-vcard\": "
+                                "{\"@type\": \"@id\"}; in RDF/XML it is rdf:resource. A string "
+                                "is data about the party, not a link a consumer can follow to "
+                                "a vcard.")
+            continue
+        if not _describes_here(ctx, card) and not _is_vocabulary_term(ctx, card):
+            continue          # a pointer at nothing: R4 reports that once, as a cause
+        yield Violation("iirds:relates-to-vcard must point to a vcard kind",
+                        subject=ctx.ref(party), detail=ctx.ref(card))
+
+
+def _describes_here(ctx, node) -> bool:
+    return (node, None, None) in ctx.graph
+
+
+def _is_vocabulary_term(ctx, node) -> bool:
+    """A name the standard or the vCard vocabulary defines.
+
+    Such a node is not a dangling pointer -- something describes it, just not
+    this package -- so it is the wrong term rather than a missing one, and
+    saying "this package never describes it" would send a reader to add a
+    description of `iirds:Topic`.
+    """
+    return ctx.ontology.is_defined(node) or str(node).startswith(str(VCARD))

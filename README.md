@@ -48,7 +48,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  180 rules checked, 25 not applicable to this version/variant (23 for iiRDS/H, 2 for other editions)
+  181 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```

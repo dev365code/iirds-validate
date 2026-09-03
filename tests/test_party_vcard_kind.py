@@ -102,12 +102,18 @@ def test_a_vcard_the_package_never_describes_is_reported_here_too(tmp_path):
     nothing at all -- L1 reports the pointer and L1 is a lint that `check`
     does not run.
 
-    A pointer at nothing is not a description of the party as a vcard kind.
-    Both rules speak now: L1 about the pointer, this about the sentence.
+    The reading has moved twice and this records where it settled. It first
+    exempted a dangling pointer, which left `iirds check` silent outside
+    iiRDS/H because L1 is a lint and R4 was gated to the profile. Then it
+    reported everything, which made R4 and this rule say the same thing twice
+    inside the profile and put a finding on the specification's Example 63.
+
+    Now the referent decides: a pointer at nothing is R4's, in every profile,
+    once. What matters and is asserted here is that `check` is not silent.
     """
     got = fired(tmp_path, "kind_dangling.iirds", "")
-    assert "R12" in got, sorted(got)
-    assert "L1" in got, "the dangling pointer is still reported, by its own rule"
+    assert "R4" in got, sorted(got)
+    assert "R12" not in got, "one finding for one defect"
 
 
 def test_a_literal_where_a_vcard_belongs_is_reported(tmp_path):
@@ -143,10 +149,18 @@ def test_a_vcard_the_vocabulary_calls_a_kind_by_its_other_name_is_accepted(tmp_p
 
 
 #: What the rule must report, and what each would have been mistaken for.
+#: Referents something already describes -- the standard or the vCard
+#: vocabulary -- so they are the wrong term rather than a missing one, and
+#: telling a reader "this package never describes it" would send them to
+#: describe `iirds:Topic`.
 NOT_A_KIND = [
     ("a term of the standard's own vocabulary", IIRDS + "Topic"),
     ("a named individual of the standard's", IIRDS + "Manufacturer"),
     ("the vcard class itself rather than an instance of it", VCARD + "Organization"),
+]
+
+#: Referents nothing describes. R4's, once, in every profile.
+DANGLING = [
     ("an IRI the package never describes", "urn:test:nowhere"),
     ("an http IRI the package never describes", "http://example.com/card"),
 ]
@@ -171,11 +185,21 @@ def test_a_card_that_is_not_a_kind_is_reported_whoever_else_describes_it(what, i
         assert "R12" in got, (what, mode, sorted(got))
 
 
+@pytest.mark.parametrize("what,iri", DANGLING, ids=[w.replace(" ", "-") for w, _ in DANGLING])
+def test_a_card_nothing_describes_is_reported_by_the_rule_that_owns_that(what, iri, tmp_path):
+    """R4's, and `check` must not be silent about it in any profile."""
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (PARTY % "") + "</rdf:RDF>").replace(
+        'rdf:resource="urn:test:card"', 'rdf:resource="%s"' % iri)
+    package = build_package(tmp_path, "dangling_%d.iirds" % abs(hash(what)), metadata=metadata)
+    got = {f.rule.id for f in runner.run(package, runner.CONFORMANCE_KINDS).findings}
+    assert got == {"R4"}, (what, sorted(got))
+
+
 def test_a_blank_node_card_with_no_type_is_reported(tmp_path):
-    """The worst of them: `<iirds:relates-to-vcard><rdf:Description/></...>`
-    produced no finding anywhere. R12 read it as undescribed, L1 requires a
-    URIRef and never sees a blank node, and M23 counts one value and is
-    satisfied."""
+    """`<iirds:relates-to-vcard><rdf:Description/></...>` produced no finding
+    anywhere: R12 read it as undescribed, L1 requires a URIRef and never sees
+    a blank node, and M23 counts one value and is satisfied. It is R4's, since
+    nothing describes it, and `check` says so now."""
     metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
   <iirds:Party rdf:about="urn:test:p">
     <iirds:has-party-role rdf:resource="%sAuthor"/>
@@ -185,4 +209,55 @@ def test_a_blank_node_card_with_no_type_is_reported(tmp_path):
     got = {f.rule.id for f in runner.run(
         build_package(tmp_path, "blank_card.iirds", metadata=metadata),
         runner.CONFORMANCE_KINDS).findings}
-    assert "R12" in got, sorted(got)
+    assert got == {"R4"}, sorted(got)
+
+
+def test_the_specifications_own_example_63_is_reported_once_and_says_why(tmp_path):
+    """Example 63, the standard's own iiRDS/H package in JSON-LD, writes
+
+        "iirds:relates-to-vcard": "https://suppco.com/about"
+
+    and its `@context` maps three prefixes and declares no `"@type": "@id"`,
+    so that value is a **string literal** in the specification's own example.
+    No consumer can dereference it, and the sentence asks for an object.
+
+    `docs/scope.md` says a finding on one of tekom's examples means a rule is
+    too broad. Here it means the example is defective, which this project has
+    recorded of Example 63 once before -- the http/https mismatch between its
+    creator party and its identity domain. The claim is not free, so the
+    finding has to earn it: it says what a JSON-LD author must change.
+    """
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <iirds:Party rdf:about="urn:test:p">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard>https://suppco.com/about</iirds:relates-to-vcard>
+  </iirds:Party>
+</rdf:RDF>""" % IIRDS)
+    report = runner.run(build_package(tmp_path, "example63.iirds", metadata=metadata),
+                        runner.CONFORMANCE_KINDS)
+    hits = [f for f in report.findings if f.rule.id == "R12"]
+    assert len(hits) == 1, sorted(f.rule.id for f in report.findings)
+    assert "@id" in hits[0].fix, hits[0].fix
+    assert {f.rule.id for f in report.findings} == {"R12"}, "one finding, not two"
+
+
+def test_a_dangling_vcard_is_r4s_and_is_reported_outside_the_handover_profile(tmp_path):
+    """R4 exists so that one unresolvable pointer arrives once rather than
+    five times, and it was gated to iiRDS/H -- so outside that profile the
+    case reached `check` through nothing at all, and R12 answered it instead
+    and doubled the finding inside the profile.
+
+    The division is by what the referent is: a pointer at nothing is R4's, in
+    every profile; a literal, a term of a vocabulary, or a described node that
+    is not a kind is this rule's.
+    """
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <iirds:Party rdf:about="urn:test:p">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="urn:test:nowhere"/>
+  </iirds:Party>
+</rdf:RDF>""" % IIRDS)
+    got = {f.rule.id for f in runner.run(
+        build_package(tmp_path, "dangling.iirds", metadata=metadata),
+        runner.CONFORMANCE_KINDS).findings}
+    assert got == {"R4"}, sorted(got)

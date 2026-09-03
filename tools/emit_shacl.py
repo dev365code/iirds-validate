@@ -464,11 +464,20 @@ SPARQL_FORMS = {
     # No second FILTER: the Python has no exemption either, and the pair of
     # guards it started with left a card pointing at `iirds:Topic` reported by
     # nothing. Both encodings ask the one question the sentence asks.
+    # The referent decides who reports. A literal or a node something already
+    # describes -- this package, the standard, or the vCard vocabulary -- is
+    # the wrong kind and is this rule's. A pointer at nothing is R4's, once,
+    # which is why that rule exists; reporting both put two findings on one
+    # defect and a finding on the specification's own Example 63.
     "R12": ("subjects", "iirds:relates-to-vcard", ["""SELECT $this ?value WHERE {
   $this <%(ii)srelates-to-vcard> ?value .
   FILTER NOT EXISTS {
     ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?kind .
-    FILTER (?kind IN (%(vcard_kinds)s)) } }"""]),
+    FILTER (?kind IN (%(vcard_kinds)s)) }
+  FILTER (isLiteral(?value)
+          || EXISTS { ?value ?p2 ?o2 }
+          || ?value IN (%(defined_terms)s)
+          || STRSTARTS(STR(?value), "%(vc)s")) }"""]),
 }
 
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
@@ -528,6 +537,7 @@ SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductTy
 #: of "the package never describes it" are deliberately identical.
 SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   ?party <%(ii)srelates-to-vcard> ?value .
+  FILTER (!isLiteral(?value))
   FILTER NOT EXISTS { ?value ?cp ?co } }"""])
 
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,

@@ -75,11 +75,16 @@ def test_m24_5_tells_the_reader_to_remove_it_from_the_node_it_named(make_package
     report = runner.check(make_package(metadata=broken))
     finding = [f for f in report.findings if f.rule.id == "M24.5"][0]
     assert finding.violation.subject == "urn:test:n1"
-    assert finding.fix.startswith("Remove iirds:has-directory-structure-type from"), finding.fix
+    # following the remedy clears the finding, which is the whole test: the
+    # remedy is read off the finding and applied to the metadata it names
+    mended = broken.replace(
+        '    <iirds:has-directory-structure-type '
+        'rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>\n'
+        '    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>',
+        '    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>')
+    assert mended != broken
+    assert "M24.5" not in ids(runner.check(make_package(metadata=mended)))
     assert "Add iirds:has-directory-structure-type" not in finding.fix
-
-    # and following the remedy actually clears it
-    assert "M24.5" not in ids(runner.check(make_package(metadata=GOOD)))
 
 
 def test_m25_a_list_must_be_closed_with_nil(make_package):

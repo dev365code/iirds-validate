@@ -410,7 +410,7 @@ def _linked_nodes(ctx):
 
 
 @rule("M24.5",
-       fix="Remove iirds:has-directory-structure-type from the node named here, or take the node out of the structure it hangs in. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. Whether the structure's own root carries one is M24.6's question.")
+       fix="Remove iirds:has-directory-structure-type from the node named here. The property names a whole structure and marks where it begins, so a node another node points at cannot carry it: a consumer walking the structure would find two beginnings and no way to choose. If the node was meant to begin a structure of its own, keep the property and detach it instead -- but detaching means repairing the chain it leaves, because the node that pointed at it now points at nothing.")
 def m24_5_only_root_has_structure_type(ctx):
     """The structure type names the whole structure, so only its root carries
     it. A node reachable from another node is not a root.

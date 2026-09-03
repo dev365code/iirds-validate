@@ -39,7 +39,6 @@ follows the implementation and records the wording.
 | M21.4 | at most one `purpose` | at most one `dateOfStatus` | dateOfStatus |
 | M21.5 | cardinality row for `purpose` | at most one `purpose` | purpose |
 | M24.5 | root MUST have a structure type | non-root MUST NOT have one | non-root |
-| M15.10 | party on the InformationObject | party on the InformationObject | party on its identity domain |
 | M78–M93 | "not intended to be used directly" | element has an `rdf:about` | rdf:about |
 
 The last row was the largest single error in this project's history. Sixteen
@@ -48,9 +47,12 @@ findings on tekom's own sample packages that no other tool reports. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
 
-M15.10 is the row where the reference and this project disagree with the
-specification rather than with each other, and the evidence is the reference's
-own fixture. Its catalogue wording asks an `iirds:InformationObject` for
+**M15.10** is not in that table, because the table's middle column is what the
+reference checks and this project cannot read the reference's source — only its
+fixtures, which say the opposite of its catalogue wording. What follows is a
+disagreement with the *catalogue*, settled from the specification.
+
+Its catalogue wording asks an `iirds:InformationObject` for
 `iirds:relates-to-Party` with role Creator. Section 8.3.2 asks something else:
 "at least one `iirds:has-identity` relating to an `iirds:Identity` with an
 `iirds:IdentityDomain`. The `iirds:IdentityDomain` MUST relate to an
@@ -62,11 +64,24 @@ appears exactly twice in those mandatory lists, for the Package's Creator and
 the Document's Author; section 6.8.3 permits — MAY, not MUST — a party on
 `iirds:InformationUnit`, `iirds:ContentLifecycleStatus`, `iirds:Component`,
 `iirds:ProductVariant` or `iirds:IdentityDomain`, and `iirds:InformationObject`
-is none of those, being a subclass of `iirds:iirdsDomainEntity`; the catalogue's
-own specification link for M15.10 points at the *Document* list; and
-`metadata_iirds-H_pass.rdf`, which the catalogue marks as passing, has an
-information object carrying an identity and no party of its own — on which this
-rule reported a MUST-level error until it was corrected.
+is none of those, being a subclass of `iirds:iirdsDomainEntity`. Appendix A
+settles it without needing the permission read at all: `iirds:relates-to-party`
+is declared with **Has Domain** `iirds:Component`, `iirds:IdentityDomain`,
+`iirds:ClassificationDomain`, `iirds:InformationUnit`,
+`iirds:ContentLifeCycleStatus`, `iirds:ProductVariant` — the property does not
+reach an information object at all. And the material agrees: *both* fixtures the
+catalogue lists as passing for M15.10 have an information object carrying an
+identity and no party of its own, as does **Example 63**, the specification's
+own iiRDS/H package with mandatory metadata. This rule reported a MUST-level
+error on all three until it was corrected.
+
+One identity is enough. "at least one `iirds:has-identity` …" introduces the
+domain the next sentence speaks of, and section 6.8.1 says instances of
+`iirds:InformationObject` "MAY have `iirds:has-identity` relations" — plural —
+so an object may carry a second identity, an internal number naming nobody,
+which a reading over every domain would fail. The finding names the object
+rather than a domain: which domain to mend is the author's, and two objects
+sharing one unmended domain are two failures.
 
 Correcting it moved `docs/agreement.json` by exactly two pairs, both of them
 `M15.10` against a fixture the catalogue marks as passing, and both classified
@@ -77,15 +92,27 @@ wrong about the standard while both implementations are wrong together; what
 found it was reading section 8.3.2 and then noticing that the reference's own
 passing fixture was one this rule failed.
 
-M24.5 deserves the same note as `dateOfStatus`: its title is section 6.9.1's
-positive sentence and M24.6 already checks that one, so reading the title
-literally would check the same thing twice and leave "only root nodes MUST
-have the property" — the sentence immediately after it — unchecked. What the
-row cost was not the check but the remedy: the remedy followed the title and
-told a reader whose *child* node was reported to add the property to the root,
-which leaves the finding where it was. A remedy is printed under a finding and
-must resolve that finding; it now says to remove the property from the node
-named.
+M24.5 deserves the same note as `dateOfStatus`, with one correction to it.
+Its title is section 6.9.1's positive sentence, "The root node of a directory
+structure MUST have one property `iirds:has-directory-structure-type`", and the
+rule checks the sentence immediately after, "Only root nodes of a directory
+structure MUST have" it. What the row cost was not the check but the remedy:
+the remedy followed the title and told a reader whose *child* node was reported
+to add the property to the root, which leaves the finding where it was. A
+remedy is printed under a finding and has to resolve that finding; it now says
+to remove the property from the node named.
+
+The correction is that **M24.6 does not cover the title's sentence either**, so
+that sentence is unchecked. M24.6 asks whether *a* root with the property
+exists — one existential check for the whole graph — while 6.9.1's first
+sentence binds every root. A package with two directory structures, the second
+of whose roots carries no structure type, is reported by nothing: M24.5 is
+silent because that node is not reachable from another, M24.6 is satisfied by
+the first root, and L3 says something adjacent but is a lint and does not run
+under `check`. It is recorded here rather than fixed, because the fix is a
+rule about what a root is, and this project has one already — `_linked_nodes`
+computes exactly the set — but a new MUST is not something to add inside a
+commit about a remedy.
 
 `dateOfStatus` deserves a note: taking the wording for both M21.4 and M21.5
 would mean checking `purpose` twice and never checking `dateOfStatus` at all.
@@ -966,8 +993,11 @@ zero-byte files, which nothing can test. Of the remaining **103 pairs, across
 | 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |
 | 1 | silent — **unclassified** | M25, whose only fixture is one of the nine malformed |
 
-Two findings fire on fixtures the reference says should pass, both M15.10, both
-traceable to a row in this document.
+No finding fires on a fixture the reference says should pass. Two did, both
+M15.10, and both were this project's error rather than the reference's: the
+rule asked an information object for a party section 8.3.2 hangs on its
+identity domain. Correcting it emptied that category, which had existed since
+the measurement began.
 
 ### Three numbers, and why only one of them is the honest headline
 

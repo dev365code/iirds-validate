@@ -360,18 +360,63 @@ def test_m15_10_does_not_fire_on_the_references_own_passing_package(tmp_path):
     assert "M15.10" not in {f.rule.id for f in report.findings}
 
 
+def test_m15_10_is_satisfied_by_one_identity_domain_among_several(tmp_path):
+    """"at least one iirds:has-identity relating to an iirds:Identity with an
+    iirds:IdentityDomain. **The** iirds:IdentityDomain MUST relate to ..." --
+    the definite article points back at the one the first clause introduced,
+    not at every domain the object happens to carry. Section 6.8.1 says an
+    information object "MAY be related to additional identifications via the
+    iirds:has-identity property", and lists the classes that "MAY have
+    iirds:has-identity relations" in the plural. So a second identity -- an
+    internal CMS number, say -- must not fail a handover package."""
+    extra = ('  <iirds:Identity rdf:about="urn:test:identity-cms">\n'
+             '    <iirds:identifier>CMS-9912</iirds:identifier>\n'
+             '    <iirds:has-identity-domain rdf:resource="urn:test:domain-cms"/>\n'
+             '  </iirds:Identity>\n\n'
+             '  <iirds:IdentityDomain rdf:about="urn:test:domain-cms"/>\n\n')
+    metadata = HANDOVER.replace(
+        '  <iirds:Identity rdf:about="urn:test:identity-object">', extra +
+        '  <iirds:Identity rdf:about="urn:test:identity-object">', 1).replace(
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>',
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
+        '    <iirds:has-identity rdf:resource="urn:test:identity-cms"/>', 1)
+    assert metadata != HANDOVER
+    report = _report(tmp_path, "m15_10_two.iirds", metadata)
+    assert "M15.10" not in {f.rule.id for f in report.findings}, [
+        (f.rule.id, f.violation.subject) for f in report.findings]
+
+
+def test_m15_10_names_the_information_object_not_the_domain(tmp_path):
+    """The finding is that this object has no identity domain naming a
+    creator; which of its domains to mend is the author's choice, and two
+    objects sharing one unmended domain are two findings, not one -- each
+    object is the thing that fails."""
+    broken = HANDOVER.replace(
+        '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n'
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n'
+        '  </iirds:IdentityDomain>',
+        '  <iirds:IdentityDomain rdf:about="urn:test:domain-object"/>')
+    assert broken != HANDOVER
+    report = _report(tmp_path, "m15_10_subject.iirds", broken)
+    findings = [f for f in report.findings if f.rule.id == "M15.10"]
+    assert [f.violation.subject for f in findings] == ["urn:test:io1"]
+
+
 def test_m15_10_asks_the_identity_domain_for_the_creator(tmp_path):
     """"at least one iirds:has-identity relating to an iirds:Identity with an
     iirds:IdentityDomain. The iirds:IdentityDomain MUST relate to an
     iirds:Party with iirds:has-party-role iirds:Creator ..." -- section 8.3.2.
-    The finding names the domain, because that is where the party belongs and
-    where the reader must put it."""
+    Taking the party off the domain is what provokes it; putting one on the
+    object instead does not answer it, which is the whole correction."""
     broken = HANDOVER.replace(
         '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n'
         '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>',
         '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">')
     assert broken != HANDOVER, "the fixture no longer has the object's identity domain"
-    report = _report(tmp_path, "m15_10_domain.iirds", broken)
-    findings = [f for f in report.findings if f.rule.id == "M15.10"]
-    assert findings, [f.rule.id for f in report.findings]
-    assert findings[0].violation.subject == "urn:test:domain-object"
+    assert "M15.10" in _ids(tmp_path, "m15_10_domain.iirds", broken)
+
+    on_the_object = broken.replace(
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>',
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>')
+    assert "M15.10" in _ids(tmp_path, "m15_10_object.iirds", on_the_object)

@@ -64,27 +64,28 @@ ivs:M15.9 a sh:NodeShape ;
   } }""" ] .
 
 ivs:M15.10 a sh:NodeShape ;
-  rdfs:label "In iiRDS/H each iirds:InformationObject must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  rdfs:label "an information object's identity domain must name its creator" ;
   sh:severity sh:Violation ;
-  sh:message "In iiRDS/H each iirds:InformationObject must have at least one iirds:relates-to-Party relating to an iirds:Party with iirds:has-party-role iirds:Creator and iirds:relates-to-vcard relating to a vcard:Organization which states vcard:organization-name." ;
+  sh:message "an information object's identity domain must name its creator" ;
   ivm:ruleId "M15.10" ;
   ivm:ruleSource "catalogue" ;
-  sh:description "Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both -- but section 8.3.2 hangs it on the identity domain, not on the object, because what is being attributed is the identifier scheme the content is known by." ;
+  sh:description "Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. One such identity is enough; others may carry an internal number and need name nobody. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both, but section 8.3.2 hangs it on the identity domain rather than on the object, because what is attributed is the scheme the content is known by." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.10 ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> .
   FILTER NOT EXISTS {
     ?value <http://iirds.tekom.de/iirds#has-identity> ?identity .
     ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
   } }""" ] ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?subject <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> .
-  ?subject <http://iirds.tekom.de/iirds#has-identity> ?identity .
-  ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> .
+  ?value <http://iirds.tekom.de/iirds#has-identity> ?any . ?any <http://iirds.tekom.de/iirds#has-identity-domain> ?some .
   FILTER NOT EXISTS {
-    ?value <http://iirds.tekom.de/iirds#relates-to-party> ?party .
+    ?value <http://iirds.tekom.de/iirds#has-identity> ?identity .
+    ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?domain .
+    ?domain <http://iirds.tekom.de/iirds#relates-to-party> ?party .
     ?party <http://iirds.tekom.de/iirds#has-party-role> <http://iirds.tekom.de/iirds#Creator> .
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?card .
       FILTER NOT EXISTS { ?card ?cp ?co } }
@@ -118,8 +119,8 @@ ivs:M15.7b a sh:NodeShape ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.7b ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?subject <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
-  ?subject <http://iirds.tekom.de/iirds#has-identity> ?identity .
+  ?variant <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
+  ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
   ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
   ?value <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
   FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ObjectInstanceURI>, <http://iirds.tekom.de/iirds#ObjectTypeURI>, <http://iirds.tekom.de/iirds#SerialNumber>))
@@ -144,8 +145,8 @@ ivs:M15.7d a sh:NodeShape ;
   ivm:versions "1.3" ;
   sh:targetNode ivs:M15.7d ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?subject <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
-  ?subject <http://iirds.tekom.de/iirds#has-identity> ?identity .
+  ?variant <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> .
+  ?variant <http://iirds.tekom.de/iirds#has-identity> ?identity .
   ?identity <http://iirds.tekom.de/iirds#has-identity-domain> ?value .
   ?value <http://iirds.tekom.de/iirds#has-identity-type> ?idtype .
   FILTER (?idtype IN (<http://iirds.tekom.de/iirds#ProductType>))

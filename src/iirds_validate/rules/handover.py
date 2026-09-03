@@ -256,7 +256,8 @@ def m15_9_package_creator(ctx):
 
 
 @rule("M15.10", spec=_spec_sans_quote("M15.10"),
-       fix="Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both -- but section 8.3.2 hangs it on the identity domain, not on the object, because what is being attributed is the identifier scheme the content is known by.")
+      title="an information object's identity domain must name its creator",
+       fix="Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. One such identity is enough; others may carry an internal number and need name nobody. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both, but section 8.3.2 hangs it on the identity domain rather than on the object, because what is attributed is the scheme the content is known by.")
 def m15_10_information_object_creator(ctx):
     """"The following metadata is mandatory for each iirds:InformationObject:
     at least one iirds:has-identity relating to an iirds:Identity with an
@@ -264,17 +265,23 @@ def m15_10_information_object_creator(ctx):
     iirds:Party with iirds:has-party-role iirds:Creator ..." (section 8.3.2).
 
     The party hangs off the domain, which is the shape M15.7b and M15.7d
-    already follow for the manufacturer; the Package and Document bullets are
-    the other shape, a party on the subject itself, and those are M15.9 and
-    M15.8. This rule used to read the object's own iirds:relates-to-party --
-    the catalogue's wording, which is a sentence the specification does not
-    contain, and whose own link points at the Document list. It therefore
-    reported a MUST-level error on the reference's own passing handover
-    fixture, whose information object carries an identity and no party of its
-    own; section 6.8.3 does not even permit a party there, listing
-    iirds:InformationUnit and iirds:IdentityDomain among the classes one may
-    be assigned to, and iirds:InformationObject is not an InformationUnit.
-    docs/divergences.md carries the row.
+    already follow for the manufacturer; the Package and Document bullets put
+    a party on the subject itself, and those are M15.9 and M15.8. This rule
+    read the object's own iirds:relates-to-party, which is the catalogue's
+    wording and a sentence the specification does not contain: appendix A
+    gives iirds:relates-to-party the domain iirds:Component,
+    iirds:IdentityDomain, iirds:ClassificationDomain, iirds:InformationUnit,
+    iirds:ContentLifeCycleStatus and iirds:ProductVariant, and an information
+    object is none of those. It therefore reported a MUST-level error on both
+    of the fixtures the catalogue marks as passing for it, and on Example 63,
+    the specification's own iiRDS/H package.
+
+    One identity satisfies it. "at least one" introduces the domain the next
+    sentence speaks of, and section 6.8.1 lets an object carry further
+    identities -- an internal number that names nobody -- which a reading over
+    every domain would fail. The finding names the object, because which of
+    its domains to mend is the author's choice, and because two objects
+    sharing one unmended domain are two failures rather than one.
     """
     for obj in ctx.instances_of(T.InformationObject):
         domains = [domain for identity in ctx.values(obj, T.has_identity)
@@ -283,15 +290,12 @@ def m15_10_information_object_creator(ctx):
             yield Violation("iiRDS/H: iirds:InformationObject must relate to an iirds:Identity "
                             "with an iirds:IdentityDomain",
                             subject=ctx.ref(obj), detail=ctx.label_of(obj))
-            continue
-        for domain in domains:
-            named = [p for p in _parties(ctx, domain, T.Creator)
-                     if _names_an_organisation(ctx, p)]
-            if not named:
-                yield Violation("iiRDS/H: the identity domain of an iirds:InformationObject "
-                                "must relate to an iirds:Party with role Creator that names a "
-                                "vcard:Organization",
-                                subject=ctx.ref(domain), detail=ctx.label_of(obj))
+        elif not any(_names_an_organisation(ctx, party)
+                     for domain in domains for party in _parties(ctx, domain, T.Creator)):
+            yield Violation("iiRDS/H: no iirds:IdentityDomain of this iirds:InformationObject "
+                            "relates to an iirds:Party with role Creator that names a "
+                            "vcard:Organization",
+                            subject=ctx.ref(obj), detail=ctx.label_of(obj))
 
 
 # --------------------------------------------------------------------------

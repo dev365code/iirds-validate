@@ -19,6 +19,7 @@ import pytest
 from conftest import ROOT, build_package
 from iirds_validate import runner
 
+IIRDS = "http://iirds.tekom.de/iirds#"
 HOV = "http://iirds.tekom.de/iirds/domain/handover#"
 
 #: A conformant iiRDS/H package. Every block carries the rule it satisfies, so
@@ -364,9 +365,9 @@ def test_m15_10_is_satisfied_by_one_identity_domain_among_several(tmp_path):
     """"at least one iirds:has-identity relating to an iirds:Identity with an
     iirds:IdentityDomain. **The** iirds:IdentityDomain MUST relate to ..." --
     the definite article points back at the one the first clause introduced,
-    not at every domain the object happens to carry. Section 6.8.1 says an
+    not at every domain the object happens to carry. Section 6.2.2 says an
     information object "MAY be related to additional identifications via the
-    iirds:has-identity property", and lists the classes that "MAY have
+    iirds:has-identity property", and 6.8.1 lists the classes that "MAY have
     iirds:has-identity relations" in the plural. So a second identity -- an
     internal CMS number, say -- must not fail a handover package."""
     extra = ('  <iirds:Identity rdf:about="urn:test:identity-cms">\n'
@@ -420,3 +421,67 @@ def test_m15_10_asks_the_identity_domain_for_the_creator(tmp_path):
         '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
         '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>')
     assert "M15.10" in _ids(tmp_path, "m15_10_object.iirds", on_the_object)
+
+
+# ---------------------------------------------------------------------------
+# One identity satisfies each bullet, not every identity of its kind
+# ---------------------------------------------------------------------------
+
+SECOND_INSTANCE = ('  <iirds:Identity rdf:about="urn:test:identity-second">\n'
+                   '    <iirds:identifier>ALT-77</iirds:identifier>\n'
+                   '    <iirds:has-identity-domain rdf:resource="urn:test:domain-second"/>\n'
+                   '  </iirds:Identity>\n\n'
+                   '  <iirds:IdentityDomain rdf:about="urn:test:domain-second">\n'
+                   '    <iirds:has-identity-type rdf:resource="%sSerialNumber"/>\n'
+                   '  </iirds:IdentityDomain>\n\n' % IIRDS)
+
+SECOND_TYPE = SECOND_INSTANCE.replace("identity-second", "identity-alt-type").replace(
+    "domain-second", "domain-alt-type").replace("SerialNumber", "ProductType").replace(
+    "ALT-77", "TYPE-ALT")
+
+
+def _with_second_identity(block):
+    metadata = HANDOVER.replace(
+        '  <iirds:Identity rdf:about="urn:test:identity-instance">',
+        block + '  <iirds:Identity rdf:about="urn:test:identity-instance">', 1)
+    name = "urn:test:identity-second" if "identity-second" in block else "urn:test:identity-alt-type"
+    return metadata.replace(
+        '    <iirds:has-identity rdf:resource="urn:test:identity-type"/>',
+        '    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n'
+        '    <iirds:has-identity rdf:resource="%s"/>' % name, 1)
+
+
+@pytest.mark.parametrize("rule_id,block", [("M15.7b", SECOND_INSTANCE), ("M15.7d", SECOND_TYPE)])
+def test_a_second_identity_of_the_same_kind_does_not_fail_the_package(rule_id, block, tmp_path):
+    """Section 8.3.2 nests these: "This iirds:ProductVariant MUST relate to an
+    iirds:Identity with an iirds:IdentityDomain" and, under it, "**The**
+    iirds:IdentityDomain MUST relate to an iirds:Party ...". The definite
+    article points at the identity the line above introduced, so one
+    qualifying identity satisfies the bullet. A variant that also carries an
+    alternative serial number naming nobody is conformant, and section 6.8.1
+    lets it: instances "MAY have iirds:has-identity relations", plural.
+
+    This is the reading M15.10 was corrected to; its two siblings kept the
+    other one, which is why the same package failed here and passed there.
+    """
+    metadata = _with_second_identity(block)
+    assert metadata != HANDOVER
+    report = _report(tmp_path, "%s_second.iirds" % rule_id.replace(".", "_"), metadata)
+    assert rule_id not in {f.rule.id for f in report.findings}, [
+        (f.rule.id, f.violation.subject) for f in report.findings]
+
+
+@pytest.mark.parametrize("rule_id,line", [
+    ("M15.7b", '    <iirds:has-identity-type rdf:resource="%sSerialNumber"/>\n' % IIRDS),
+    ("M15.7d", '    <iirds:has-identity-type rdf:resource="%sProductType"/>\n' % IIRDS),
+])
+def test_the_named_party_rules_name_the_variant_they_are_about(rule_id, line, tmp_path):
+    """With one identity of the kind and no manufacturer on it, the bullet is
+    unsatisfied. The finding names the product variant: which of its domains
+    to mend is the author's, as with M15.10 and its information object."""
+    broken = HANDOVER.replace(
+        '    <iirds:has-party-role rdf:resource="%sManufacturer"/>\n' % IIRDS, "", 1)
+    report = _report(tmp_path, "%s_subject.iirds" % rule_id.replace(".", "_"), broken)
+    findings = [f for f in report.findings if f.rule.id == rule_id]
+    assert findings, sorted({f.rule.id for f in report.findings})
+    assert findings[0].violation.subject == "urn:test:variant"

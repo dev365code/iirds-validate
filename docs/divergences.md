@@ -59,7 +59,8 @@ Its catalogue wording asks an `iirds:InformationObject` for
 `iirds:Party` with `iirds:has-party-role` `iirds:Creator`". The party hangs off
 the domain, which is the shape M15.7b and M15.7d already follow for the
 manufacturer, while the Package and Document bullets put a party on the subject
-itself and those are M15.9 and M15.8. Four more things agree: `relates-to-Party`
+itself and those are M15.9 and M15.8 — the only two that still do. Four more
+things agree: `relates-to-Party`
 appears exactly twice in those mandatory lists, for the Package's Creator and
 the Document's Author; section 6.8.3 permits — MAY, not MUST — a party on
 `iirds:InformationUnit`, `iirds:ContentLifecycleStatus`, `iirds:Component`,
@@ -73,11 +74,22 @@ reach an information object at all. And the material agrees: *both* fixtures the
 catalogue lists as passing for M15.10 have an information object carrying an
 identity and no party of its own, as does **Example 63**, the specification's
 own iiRDS/H package with mandatory metadata. This rule reported a MUST-level
-error on all three until it was corrected.
+error on all three.
+
+Two of the three are silent now. Example 63 is not, and not because of this
+rule: the example declares its creator party at `http://iirds.org/example/…`
+while the identity domain points at `https://iirds.org/example/…`, so the party
+the domain names is a resource the package never describes. Reconcile the two
+schemes and it goes quiet; the author party carries the same typo the other way
+round. The example stays in view because a specification's own worked example
+is the cheapest oracle a validator has, and because the claim that this rule no
+longer fires on it was written before anyone ran it.
 
 One identity is enough. "at least one `iirds:has-identity` …" introduces the
 domain the next sentence speaks of, and section 6.8.1 says instances of
-`iirds:InformationObject` "MAY have `iirds:has-identity` relations" — plural —
+`iirds:InformationObject` "MAY have `iirds:has-identity` relations" — plural,
+and 6.2.2 says an information object "MAY be related to additional
+identifications via the `iirds:has-identity` property" —
 so an object may carry a second identity, an internal number naming nobody,
 which a reading over every domain would fail. The finding names the object
 rather than a domain: which domain to mend is the author's, and two objects

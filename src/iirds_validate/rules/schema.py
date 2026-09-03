@@ -420,7 +420,9 @@ def m24_5_only_root_has_structure_type(ctx):
     follows the check, because it is printed under the finding: it used to
     follow the title and told the reader to add the property to the root,
     which leaves the reported node exactly as it was. docs/divergences.md
-    carries the row; M24.6 is the rule for the title's own sentence.
+    carries the row -- and the note that the title's own sentence is checked
+    by nobody: M24.6 asks whether *a* root carries the property, while
+    section 6.9.1 binds every root.
     """
     linked = _linked_nodes(ctx)
     for node in ctx.instances_of(T.DirectoryNode):

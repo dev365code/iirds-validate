@@ -210,17 +210,26 @@ def m15_7a_product_variant_instance_identity(ctx):
 
 
 @rule("M15.7b", spec=_spec_sans_quote("M15.7b"),
-       fix="Give the instance Identity an iirds:IdentityDomain that names one of ObjectInstanceURI, ObjectTypeURI or SerialNumber. The domain says which identifier scheme the value belongs to; without it a serial number and an asset URI are indistinguishable strings.")
+       fix="Relate the identity domain of one of this variant's instance identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough; the others may carry a number that names nobody. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7b_instance_identity_manufacturer(ctx):
+    """Section 8.3.2 nests this under "This iirds:ProductVariant MUST relate
+    to an iirds:Identity with an iirds:IdentityDomain": the definite article
+    in "The iirds:IdentityDomain MUST relate to an iirds:Party ..." points at
+    the identity the line above introduced, so one qualifying identity
+    satisfies it and a second serial number naming nobody does not fail the
+    package. Read over every matching domain, this reported conformant
+    packages -- the reading M15.10 was corrected away from, kept here until
+    the same review looked at the siblings.
+    """
     for variant in ctx.instances_of(T.ProductVariant):
-        for _identity, domain in _identities_of_type(ctx, variant, T.INSTANCE_IDENTITY_TYPES):
-            named = [p for p in _parties(ctx, domain, T.Manufacturer)
-                     if _names_an_organisation(ctx, p)]
-            if not named:
-                yield Violation("iiRDS/H: the identity domain of an instance identity must "
-                                "relate to an iirds:Party with role Manufacturer that names a "
-                                "vcard:Organization",
-                                subject=ctx.ref(domain), detail=ctx.label_of(variant))
+        domains = [d for _i, d in _identities_of_type(ctx, variant, T.INSTANCE_IDENTITY_TYPES)]
+        if domains and not any(_names_an_organisation(ctx, party)
+                               for domain in domains
+                               for party in _parties(ctx, domain, T.Manufacturer)):
+            yield Violation("iiRDS/H: no identity domain of an instance identity of this "
+                            "iirds:ProductVariant relates to an iirds:Party with role "
+                            "Manufacturer that names a vcard:Organization",
+                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
 
 
 @rule("M15.7c",
@@ -234,17 +243,19 @@ def m15_7c_product_type_identity(ctx):
 
 
 @rule("M15.7d", spec=_spec_sans_quote("M15.7d"),
-       fix="Relate the ProductType IdentityDomain to an iirds:Party with iirds:has-party-role. Identifier schemes are only unique within the organisation that issues them, so the domain has to say whose scheme it is.")
+       fix="Relate the identity domain of one of this variant's ProductType identities to an iirds:Party whose iirds:has-party-role is iirds:Manufacturer, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One identity is enough. Identifier schemes are unique only within the organisation that issues them, so the domain has to say whose scheme it is.")
 def m15_7d_product_type_manufacturer(ctx):
+    """The same nesting as M15.7b, for the product type rather than the
+    instance: one qualifying identity satisfies the bullet."""
     for variant in ctx.instances_of(T.ProductVariant):
-        for _identity, domain in _identities_of_type(ctx, variant, (T.ProductType,)):
-            named = [p for p in _parties(ctx, domain, T.Manufacturer)
-                     if _names_an_organisation(ctx, p)]
-            if not named:
-                yield Violation("iiRDS/H: the identity domain of a ProductType identity must "
-                                "relate to an iirds:Party with role Manufacturer that names a "
-                                "vcard:Organization",
-                                subject=ctx.ref(domain), detail=ctx.label_of(variant))
+        domains = [d for _i, d in _identities_of_type(ctx, variant, (T.ProductType,))]
+        if domains and not any(_names_an_organisation(ctx, party)
+                               for domain in domains
+                               for party in _parties(ctx, domain, T.Manufacturer)):
+            yield Violation("iiRDS/H: no identity domain of a ProductType identity of this "
+                            "iirds:ProductVariant relates to an iirds:Party with role "
+                            "Manufacturer that names a vcard:Organization",
+                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
 
 
 # --------------------------------------------------------------------------
@@ -252,20 +263,20 @@ def m15_7d_product_type_manufacturer(ctx):
 # --------------------------------------------------------------------------
 
 @rule("M15.8",
-       fix="Add iirds:relates-to-party on the Document, relating it to a Party with a role. A handover document with no responsible organisation leaves the receiving plant with nobody to ask about it.")
+       fix="Relate the Document to an iirds:Party whose iirds:has-party-role is iirds:Author, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. A role alone does not answer this: a handover document with no responsible organisation leaves the receiving plant with nobody to ask about it.")
 def m15_8_document_author(ctx):
     yield from _needs_named_party(ctx, T.Document, T.Author, "iirds:Document")
 
 
 @rule("M15.9", spec=_spec_sans_quote("M15.9"),
-       fix="Add iirds:relates-to-party on the Package, relating it to a Party with a role. It names who delivered this consignment, as distinct from who authored any one document inside it.")
+       fix="Relate the Package to an iirds:Party whose iirds:has-party-role is iirds:Creator, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. A role alone does not answer this. It names who delivered this consignment, as distinct from who authored any one document inside it.")
 def m15_9_package_creator(ctx):
     yield from _needs_named_party(ctx, T.Package, T.Creator, "iirds:Package")
 
 
 @rule("M15.10", spec=_spec_sans_quote("M15.10"),
       title="an information object's identity domain must name its creator",
-       fix="Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. One such identity is enough; others may carry an internal number and need name nobody. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both, but section 8.3.2 hangs it on the identity domain rather than on the object, because what is attributed is the scheme the content is known by.")
+       fix="Relate one of this information object's identity domains to an iirds:Party whose iirds:has-party-role is iirds:Creator, and give that party an iirds:relates-to-vcard pointing at a vcard:Organization this package describes with a vcard:organization-name. One domain is enough; the others may carry an internal number and name nobody. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both, but section 8.3.2 hangs it on the identity domain rather than on the object, because what is attributed is the scheme the content is known by.")
 def m15_10_information_object_creator(ctx):
     """"The following metadata is mandatory for each iirds:InformationObject:
     at least one iirds:has-identity relating to an iirds:Identity with an
@@ -295,9 +306,20 @@ def m15_10_information_object_creator(ctx):
         domains = [domain for identity in ctx.values(obj, T.has_identity)
                    for domain in ctx.values(identity, T.has_identity_domain)]
         if not domains:
+            # Its own remedy: there is no domain here to relate a party to, and
+            # an Identity minted without an IRI or an iirds:identifier trades
+            # this finding for M19.1, M19.2 and M35.
             yield Violation("iiRDS/H: iirds:InformationObject must relate to an iirds:Identity "
                             "with an iirds:IdentityDomain",
-                            subject=ctx.ref(obj), detail=ctx.label_of(obj))
+                            subject=ctx.ref(obj), detail=ctx.label_of(obj),
+                            fix="Give the information object an iirds:has-identity pointing at "
+                                "an iirds:Identity that has an IRI of its own and an "
+                                "iirds:identifier, and give that identity an "
+                                "iirds:has-identity-domain pointing at an iirds:IdentityDomain "
+                                "with an IRI. Then relate that domain to an iirds:Party whose "
+                                "iirds:has-party-role is iirds:Creator, carrying an "
+                                "iirds:relates-to-vcard to a vcard:Organization this package "
+                                "describes with a vcard:organization-name.")
         elif not any(_names_an_organisation(ctx, party)
                      for domain in domains for party in _parties(ctx, domain, T.Creator)):
             yield Violation("iiRDS/H: no iirds:IdentityDomain of this iirds:InformationObject "

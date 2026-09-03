@@ -1172,3 +1172,43 @@ def test_the_container_package_is_not_inside_another_in_either_encoding(tmp_path
     assert "R7" not in assert_parity(tmp_path, "r7_loop.iirds", loop), (
         "itself is not another package; R5 answers for the self-loop"
     )
+
+
+@pytest.mark.parametrize("rule_id,block", [
+    ("M15.7b", "SECOND_INSTANCE"), ("M15.7d", "SECOND_TYPE"), ("M15.10", "SECOND_OBJECT"),
+])
+def test_a_second_identity_is_silent_in_both_encodings(rule_id, block, tmp_path):
+    """Section 8.3.2's bullets are existential: one qualifying identity
+    satisfies each. The Python rules were read over every matching domain and
+    corrected; the shapes were read the same way and were not, and this file
+    could not see it — no fixture here carried a second identity, and the
+    comparison is over the *set* of rule ids, so a rule that fires in one
+    encoding and not the other is only visible when it is the only difference.
+    """
+    from test_handover_rules_fire import (
+        SECOND_INSTANCE,
+        SECOND_TYPE,
+        _package,
+        _with_second_identity,
+    )
+
+    blocks = {"SECOND_INSTANCE": SECOND_INSTANCE, "SECOND_TYPE": SECOND_TYPE}
+    if block == "SECOND_OBJECT":
+        from test_handover_rules_fire import HANDOVER
+        metadata = HANDOVER.replace(
+            '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">',
+            '  <iirds:Identity rdf:about="urn:test:identity-io2">\n'
+            '    <iirds:identifier>IO-ALT</iirds:identifier>\n'
+            '    <iirds:has-identity-domain rdf:resource="urn:test:domain-io2"/>\n'
+            '  </iirds:Identity>\n\n'
+            '  <iirds:IdentityDomain rdf:about="urn:test:domain-io2"/>\n\n'
+            '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">', 1).replace(
+            '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>',
+            '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
+            '    <iirds:has-identity rdf:resource="urn:test:identity-io2"/>', 1)
+    else:
+        metadata = _with_second_identity(blocks[block])
+
+    report = runner.run(_package(tmp_path, "second.iirds", metadata), runner.ALL_KINDS)
+    assert rule_id not in {f.rule.id for f in report.findings}
+    assert rule_id not in shacl_fired(metadata, handover=True)

@@ -123,3 +123,62 @@ def test_every_remedy_in_this_family_is_an_imperative(rule_id):
     rule = next(r for r in all_rules() if r.id == rule_id)
     assert rule.fix, rule_id
     assert rule.fix[0].isupper() and not rule.fix.startswith("The "), rule.fix[:40]
+
+
+# ---------------------------------------------------------------------------
+# The five named-party MUSTs of section 8.3.2
+#
+# Each remedy is applied literally to the package that provoked it. A remedy
+# that under-specifies -- "a Party with a role", where the rule wants one
+# named role and a vcard naming an organisation -- leaves the finding, and a
+# reader who follows it exactly is told nothing changed.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("rule_id,removal,restore", [
+    ("M15.8", '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n', None),
+    ("M15.9", None, None),
+    ("M15.10", None, None),
+    ("M15.7b", None, None),
+    ("M15.7d", None, None),
+])
+def test_the_named_party_remedies_name_the_role_and_the_vcard(rule_id, removal, restore):
+    """Every one of the five requires a *named* role and a vcard that names an
+    organisation. A remedy that says "a Party with a role" is followed exactly
+    and the finding stays."""
+    from iirds_validate.registry import all_rules
+
+    rule = next(r for r in all_rules() if r.id == rule_id)
+    assert "has-party-role" in rule.fix, rule.fix
+    assert "vcard:organization-name" in rule.fix, rule.fix
+    assert "with a role." not in rule.fix, rule.fix
+
+
+def test_m15_7b_remedy_is_about_the_party_not_the_identity_type():
+    """Its finding is that no domain names a manufacturer. The remedy used to
+    be M15.7c's -- "give the identity a domain that names one of
+    ObjectInstanceURI, ObjectTypeURI or SerialNumber" -- which is a different
+    rule's requirement and already satisfied wherever this one can fire."""
+    from iirds_validate.registry import all_rules
+
+    fix = next(r for r in all_rules() if r.id == "M15.7b").fix
+    assert "Manufacturer" in fix
+    assert "ObjectInstanceURI" not in fix
+
+
+def test_following_m15_10s_remedy_clears_it_without_trading_it_for_others(tmp_path):
+    """The branch with no identity at all: minting a bare iirds:Identity
+    answers this rule and provokes M19.1, M19.2 and M35, so the remedy has to
+    say what a complete identity carries."""
+    from test_handover_rules_fire import HANDOVER, _package
+
+    stripped = HANDOVER.replace(
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
+        "  </iirds:InformationObject>", "  </iirds:InformationObject>", 1)
+    report = runner.run(_package(tmp_path, "m15_10_bare.iirds", stripped), runner.ALL_KINDS)
+    hit = [f for f in report.findings if f.rule.id == "M15.10"]
+    assert hit and "iirds:identifier" in hit[0].fix and "IRI" in hit[0].fix
+
+    # the remedy, followed: the fixture's own identity chain is what it describes
+    back = runner.run(_package(tmp_path, "m15_10_back.iirds", HANDOVER), runner.ALL_KINDS)
+    errors = sorted({f.rule.id for f in back.findings if str(f.severity) == "error"})
+    assert errors == [], errors

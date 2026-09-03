@@ -271,14 +271,23 @@ def _named_party_query(cls, role):
 
 
 def _domain_manufacturer_query(type_list):
-    return ("""SELECT $this ?value WHERE {
-  ?variant <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> .
-  ?variant <%(ii)shas-identity> ?identity .
-  ?identity <%(ii)shas-identity-domain> ?value .
-  ?value <%(ii)shas-identity-type> ?idtype .
-  FILTER (?idtype IN (""" + type_list + """))
+    """Section 8.3.2 nests "The iirds:IdentityDomain MUST relate to an
+    iirds:Party ..." under "This iirds:ProductVariant MUST relate to an
+    iirds:Identity with an iirds:IdentityDomain", so one qualifying identity
+    satisfies it. The variant is bound, not the domain: which of its domains
+    to mend is the author's, and DISTINCT because it would otherwise bind
+    once per identity."""
+    return ("""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> .
+  ?value <%(ii)shas-identity> ?any . ?any <%(ii)shas-identity-domain> ?some .
+  ?some <%(ii)shas-identity-type> ?sometype .
+  FILTER (?sometype IN (""" + type_list + """))
   FILTER NOT EXISTS {
-    ?value <%(ii)srelates-to-party> ?party .
+    ?value <%(ii)shas-identity> ?identity .
+    ?identity <%(ii)shas-identity-domain> ?domain .
+    ?domain <%(ii)shas-identity-type> ?idtype .
+    FILTER (?idtype IN (""" + type_list + """))
+    ?domain <%(ii)srelates-to-party> ?party .
     ?party <%(ii)shas-party-role> <%(ii)sManufacturer> .
     """ + _NAMED_VCARD + """
   } }""")

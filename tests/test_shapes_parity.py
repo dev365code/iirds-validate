@@ -1146,14 +1146,6 @@ def test_an_older_package_is_outside_what_the_shapes_encode(tmp_path):
 # this test alone is meaningless and it says so.)
 # ---------------------------------------------------------------------------
 
-def test_every_emitted_shape_has_fired_somewhere_in_this_file():
-    never_fired = EMITTED - SH_FIRED_EVER
-    assert len(SH_FIRED_EVER) > 50, (
-        "the accumulator is empty-ish; this test only means something after "
-        "the whole file has run -- do not run it in isolation")
-    assert never_fired == set(), sorted(never_fired)
-
-
 def test_the_container_package_is_not_inside_another_in_either_encoding(tmp_path):
     """§6.2: "The corresponding iirds:Package instance of an iiRDS package
     MUST NOT be a member of another iiRDS package expressed by the property
@@ -1301,8 +1293,89 @@ def test_the_points_at_family_is_the_one_this_file_knows_about():
     sys.path.insert(0, str(ROOT / "tools"))
     import emit_shacl
 
-    # The family's queries are the ones the shared builder writes, and its
-    # last FILTER is the marker no other form carries.
+    # The family's queries are the ones the shared builder writes. The marker
+    # is its defined_terms disjunct: `isLiteral` alone matched R12, which
+    # shares the exemptions and not the builder, and a detector that drags in
+    # a neighbour reports the wrong rule as missing its branches.
     callers = {rid for rid, form in emit_shacl.SPARQL_FORMS.items()
-               if form[0] == "subjects" and any("isLiteral(?value)" in q for q in form[2])}
+               if form[0] == "subjects"
+               and any("|| ?value IN (%(defined_terms)s)" in q for q in form[2])}
     assert callers == set(POINTS_AT), sorted(callers ^ set(POINTS_AT))
+
+
+# ---------------------------------------------------------------------------
+# R12: a party's vcard must be a vcard kind
+#
+# Its own table rather than the family's above: that builder exempts the
+# ontology's instances of one class, and this asks whether a node is an
+# instance of any of six classes from a vocabulary this tool does not bundle.
+# The same three exemptions, a different question, so the same branch-per-case
+# discipline and no shared row to get one of them wrong in.
+# ---------------------------------------------------------------------------
+
+VCARD_ = "http://www.w3.org/2006/vcard/ns#"
+
+#: (what the card is, the block describing it, whether R12 fires)
+VCARD_BRANCHES = [
+    ("vcard:Organization", '<rdf:type rdf:resource="%sOrganization"/>' % VCARD_, False),
+    ("vcard:Individual", '<rdf:type rdf:resource="%sIndividual"/>' % VCARD_, False),
+    ("vcard:Group", '<rdf:type rdf:resource="%sGroup"/>' % VCARD_, False),
+    ("vcard:Location", '<rdf:type rdf:resource="%sLocation"/>' % VCARD_, False),
+    ("vcard:Kind itself", '<rdf:type rdf:resource="%sKind"/>' % VCARD_, False),
+    ("the lower-case spelling", '<rdf:type rdf:resource="%sorganization"/>' % VCARD_, False),
+    ("an iiRDS class", '<rdf:type rdf:resource="%sTopic"/>' % IIRDS_, True),
+    ("described and untyped", "<rdfs:label>a card, allegedly</rdfs:label>", True),
+]
+
+
+@pytest.mark.parametrize("what,block,fires", VCARD_BRANCHES,
+                         ids=[b[0].replace(" ", "-").replace(":", "") for b in VCARD_BRANCHES])
+def test_both_encodings_agree_on_what_counts_as_a_vcard_kind(what, block, fires, tmp_path):
+    metadata = _meta('''  <iirds:Party rdf:about="urn:test:party">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="urn:test:card"/>
+  </iirds:Party>
+  <rdf:Description rdf:about="urn:test:card">%s</rdf:Description>
+''' % (IIRDS_, block))
+    py = python_fired(tmp_path, "vcard_%d.iirds" % abs(hash(what)), metadata)
+    sh = shacl_fired(metadata)
+    assert py == sh, "%s: SHACL %s vs Python %s" % (what, sorted(sh - py), sorted(py - sh))
+    assert ("R12" in py) is fires, (what, sorted(py))
+
+
+def test_a_vcard_declared_beneath_a_kind_is_one_in_both_encodings(tmp_path):
+    """Section 7's subclassing, which `rdf:type` comparison would report and
+    the subClassOf closure must not."""
+    metadata = _meta('''  <iirds:Party rdf:about="urn:test:party">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="urn:test:card"/>
+  </iirds:Party>
+  <rdf:Description rdf:about="http://my.co/ns#Supplier">
+    <rdfs:subClassOf rdf:resource="%sOrganization"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="urn:test:card">
+    <rdf:type rdf:resource="http://my.co/ns#Supplier"/>
+  </rdf:Description>
+''' % (IIRDS_, VCARD_))
+    py = python_fired(tmp_path, "vcard_subclass.iirds", metadata)
+    assert py == shacl_fired(metadata)
+    assert "R12" not in py, sorted(py)
+
+
+def test_a_vcard_nothing_describes_is_left_to_l1_in_both_encodings(tmp_path):
+    metadata = _meta('''  <iirds:Party rdf:about="urn:test:party">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="urn:test:nothing"/>
+  </iirds:Party>
+''' % IIRDS_)
+    py = python_fired(tmp_path, "vcard_dangling.iirds", metadata)
+    assert py == shacl_fired(metadata)
+    assert "R12" not in py, sorted(py)
+
+
+def test_every_emitted_shape_has_fired_somewhere_in_this_file():
+    never_fired = EMITTED - SH_FIRED_EVER
+    assert len(SH_FIRED_EVER) > 50, (
+        "the accumulator is empty-ish; this test only means something after "
+        "the whole file has run -- do not run it in isolation")
+    assert never_fired == set(), sorted(never_fired)

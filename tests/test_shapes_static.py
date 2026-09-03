@@ -50,7 +50,7 @@ def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
     assert counts["core_emitted"] == 120
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 23
+    assert counts["sparql_emitted"] == 24
     assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 45
     assert counts["noop"] == 1
@@ -222,7 +222,7 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     # The 53-rule remainder is broken out by category, and the five deferred
     # iiRDS/H MUSTs are named -- a reader under H must know to keep the
     # Python validator in the loop.
-    assert "57 of the %d" % rules in readme
+    assert "58 of the %d" % rules in readme
     assert len(MANIFEST["deferred_v1.1"]) == 9
     # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
     # that once demanded they be named as missing now demands the opposite.
@@ -263,8 +263,8 @@ EMITTED_IDS = frozenset((
     "M71", "M72", "M73", "M74", "M75", "M76", "M77", "M78", "M79", "M8",
     "M80", "M81", "M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89",
     "M9", "M90", "M91", "M92", "M93", "M94", "M95", "M96.1", "M96.2",
-    "M96.3", "M97.1", "M97.2", "R1", "R10", "R2", "R4", "R5", "R6",
-    "R7", "S4", "S5"))
+    "M96.3", "M97.1", "M97.2", "R1", "R10", "R12", "R2", "R4", "R5",
+    "R6", "R7", "S4", "S5"))
 
 
 def test_the_emitted_rule_set_is_pinned_by_name():

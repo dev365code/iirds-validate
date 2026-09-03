@@ -8,7 +8,7 @@
  "counts": {
   "core_emitted": 120,
   "version_excluded": 2,
-  "sparql_emitted": 23,
+  "sparql_emitted": 24,
   "deferred_v1.1": 9,
   "not_expressible": 45,
   "noop": 1
@@ -157,6 +157,7 @@
   "M30",
   "R4",
   "R10",
+  "R12",
   "S4",
   "S5"
  ],
@@ -796,6 +797,10 @@
   },
   "R10": {
    "iri": "https://w3id.org/iirds-validate/shapes#R10",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "R12": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R12",
    "file": "iirds-1.3/iirds-sparql.ttl"
   },
   "S4": {

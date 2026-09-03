@@ -7,6 +7,7 @@ findings again, the project has lost its argument.
 """
 from __future__ import annotations
 
+import json
 import multiprocessing
 
 import pytest
@@ -164,3 +165,38 @@ def test_lint_does_not_report_clean_on_metadata_that_is_not_rdfxml(make_package,
     assert not report.ok
     found = {f.rule.id for f in report.findings}
     assert "C9" in found and "S2" in found and "L5" not in found
+
+
+#: An iiRDS/H package's metadata.jsonld: well-formed JSON-LD 1.1, a graph with
+#: statements in it, and not one term of the iiRDS vocabulary anywhere.
+NO_IIRDS_JSONLD = json.dumps({
+    "@context": {"dc": "http://purl.org/dc/terms/"},
+    "@graph": [{"@id": "urn:test:package", "dc:title": "a package, allegedly"}]})
+
+EMPTY_JSONLD = json.dumps({"@context": {"iirds": "http://iirds.tekom.de/iirds#"},
+                           "@graph": []})
+
+HANDOVER_RDF = MINIMAL_RDF.replace(
+    "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
+    "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+    "    <iirds:formatRestriction>H</iirds:formatRestriction>")
+
+
+@pytest.mark.parametrize("what,jsonld", [("an empty graph", EMPTY_JSONLD),
+                                         ("statements, none of them iiRDS", NO_IIRDS_JSONLD)],
+                         ids=["empty-graph", "no-iirds-terms"])
+def test_a_handover_jsonld_that_carries_no_iirds_metadata_is_reported(make_package, what, jsonld):
+    """Section 6.12: "iiRDS/H packages MUST contain iiRDS metadata in JSON-LD
+    1.1 syntax."
+
+    The file is there and it parses, which is what was asked, and it contains
+    no iiRDS metadata, which is what the sentence asks. A package like this
+    satisfied every check and printed PASS -- the shape this file exists for.
+
+    Both ends of "contains nothing": a graph with no statements at all, and a
+    graph whose statements are all in somebody else's vocabulary. The second
+    is the one a threshold of "is the graph non-empty" would let through.
+    """
+    report = runner.check(make_package(metadata=HANDOVER_RDF, jsonld=jsonld))
+    assert "C16.2" in {f.rule.id for f in errors(report)}, \
+        (what, sorted({f.rule.id for f in report.findings}))

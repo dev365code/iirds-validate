@@ -14,23 +14,13 @@ them share a shape that is worth writing once.
 from __future__ import annotations
 
 from .. import terms as T
-from ..model import VCARD, Violation
+from ..model import ORGANISATION_TYPES, VCARD, Violation
 from ..registry import CATALOG, rule
 
 ORGANISATION_NAME = VCARD["organization-name"]
 
-#: The two spellings a package uses to say "this vcard is an organisation".
-#: `vcard:Organization` is the class section 8.3.2 names. `vcard:organization`
-#: is not a term of the vCard vocabulary at all -- that file declares the class
-#: `vcard:Organization`, the object property `vcard:org` and the datatype
-#: property `vcard:organization-name`, and nothing between them -- so a card
-#: typed with it has named an IRI nobody defines, differing from the one the
-#: sentence asks for by one letter's case. It is what every handover fixture
-#: the reference tool ships writes, so it is accepted, and recorded as a
-#: divergence. That is a misspelling of this requirement, not a different one;
-#: `vcard:Individual`, which the vocabulary does define and defines as a
-#: person, is a different one.
-ORGANISATION_TYPES = frozenset((VCARD["Organization"], VCARD["organization"]))
+# ORGANISATION_TYPES is in model.py, beside the namespace and the divergence
+# it records; section 6.8.3's R12 reads it too.
 
 
 def _spec_sans_quote(rule_id: str):

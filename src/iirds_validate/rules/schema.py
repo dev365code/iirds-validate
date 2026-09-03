@@ -12,7 +12,15 @@ from rdflib.namespace import RDF, RDFS
 
 from .. import terms as T
 from ..context import container_packages, package_nodes
-from ..model import DCTERMS, PACKAGE_BASE, Violation, is_absolute_iri, is_named
+from ..model import (
+    DCTERMS,
+    ORGANISATION_TYPES,
+    PACKAGE_BASE,
+    VCARD_KINDS,
+    Violation,
+    is_absolute_iri,
+    is_named,
+)
 from ..registry import CATALOG, rule
 
 
@@ -826,7 +834,7 @@ def m22_2_role_is_a_party_role(ctx):
         "iirds:has-party-role must point to an iirds:PartyRole")
 
 
-@rule("M23",   # not x6-8-3-parties-and-roles#3: see the docstring
+@rule("M23", covers=("x6-8-3-parties-and-roles#3",),
        fix="Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact.")
 def m23_party_has_a_vcard(ctx):
     """A role without a description is not something anyone can act on.
@@ -838,12 +846,10 @@ def m23_party_has_a_vcard(ctx):
     property and not the object, and nothing reports it -- the same shape
     R10 was written for, one sentence further down the same section.
 
-    Not fixed here, and the claim withdrawn instead, because the companion
-    needs something this repository does not have: the vCard vocabulary, to
-    say which classes are kinds. `Ontology.instances_of` reads the bundled
-    iiRDS files and vCard is not among them, and bundling a second vocabulary
-    is a decision about what this tool ships, not a rider on a mapping
-    correction.
+    That companion is R12, below. The two together cover the sentence: this
+    one reports the missing relation, R12 what it points at. Neither stands in
+    for the other -- a party with no vcard reaches only this, and a party
+    whose vcard is a Topic reaches only that.
     """
     yield from _exactly_one(ctx, T.Party, T.relates_to_vcard, "iirds:relates-to-vcard")
 
@@ -922,3 +928,41 @@ rule("M36", covers=("x6-8-1-complex-identity#3",),
      )(m19_3_identity_domain)
 
 
+
+
+@rule("R12", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("x6-8-3-parties-and-roles#3",),
+      title="iirds:relates-to-vcard must point at a vcard kind",
+      spec=CATALOG.get("M23", {}).get("spec"),   # the same sentence M23 counts
+      fix="Type the vcard as one of the vCard kinds — vcard:Organization for a firm, "
+          "vcard:Individual for a person, vcard:Group or vcard:Location — or as a class "
+          "your package declares beneath one of them. A party pointing at something that "
+          "is not a vcard tells a consumer an organisation is involved and gives it "
+          "nothing it can render, export or contact.")
+def r12_party_vcard_is_a_kind(ctx):
+    """M23 asks whether the relation is there; this asks what it points at.
+
+    Section 6.8.3: "In addition to the role, an iirds:Party MUST also have an
+    associated description of itself as compliant **vcard:kind object** which
+    is assigned via iirds:relates-to-vcard." A class and a property, which is
+    the shape R10 was written for one sentence earlier in this same section --
+    and which is how this one was noticed.
+
+    The acceptable classes are `vcard:Kind` and the four subclasses the vCard
+    vocabulary declares, plus the lower-case spelling ORGANISATION_TYPES
+    records. Asked through `is_instance`, so a class the package declares
+    beneath one of them is one, as section 7 requires.
+
+    Exemptions, as elsewhere in this family: an IRI the package never
+    describes is a dangling pointer and L1's, not a typing error. A literal is
+    neither -- L1 says nothing about one and no literal is an instance of
+    anything -- so it is reported here.
+    """
+    acceptable = VCARD_KINDS | ORGANISATION_TYPES
+    for party, card in sorted(ctx.graph.subject_objects(T.relates_to_vcard), key=str):
+        if any(ctx.is_instance(card, cls) for cls in acceptable):
+            continue
+        if not isinstance(card, Literal) and (card, None, None) not in ctx.graph:
+            continue          # undescribed reference: L1's business
+        yield Violation("iirds:relates-to-vcard must point to a vcard kind",
+                        subject=ctx.ref(party), detail=ctx.ref(card))

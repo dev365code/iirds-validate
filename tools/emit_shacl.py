@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate import terms as T  # noqa: E402
 from iirds_validate.model import IIRDS_NAMESPACES as _IIRDS_NS  # noqa: E402
-from iirds_validate.model import Severity  # noqa: E402
+from iirds_validate.model import ORGANISATION_TYPES, VCARD_KINDS, Severity  # noqa: E402
 from iirds_validate.ontology import load as load_ontology  # noqa: E402
 from iirds_validate.registry import PROVENANCE, all_rules  # noqa: E402
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
@@ -457,6 +457,16 @@ SPARQL_FORMS = {
     "R10": ("subjects", "iirds:has-content-lifecycle-status-value",
             [_points_at_an_instance_of("has-content-lifecycle-status-value",
                                        "ContentLifeCycleStatusValue", "status_values")]),
+    # Section 6.8.3's other half. Not the shared builder: that one exempts the
+    # ontology's own instances of one class, and this asks whether the node is
+    # an instance of any of six *classes* from a vocabulary this tool does not
+    # bundle. Same three exemptions, different question.
+    "R12": ("subjects", "iirds:relates-to-vcard", ["""SELECT $this ?value WHERE {
+  $this <%(ii)srelates-to-vcard> ?value .
+  FILTER NOT EXISTS {
+    ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?kind .
+    FILTER (?kind IN (%(vcard_kinds)s)) }
+  FILTER (isLiteral(?value) || EXISTS { ?value ?p2 ?o2 }) }"""]),
 }
 
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
@@ -968,7 +978,8 @@ def build() -> dict:
                  # than defined_terms: eight party roles, seven status values.
                  "party_roles": _term_list(_ONTOLOGY.instances_of(T.PartyRole)),
                  "status_values": _term_list(
-                     _ONTOLOGY.instances_of(T.ContentLifeCycleStatusValue))}
+                     _ONTOLOGY.instances_of(T.ContentLifeCycleStatusValue)),
+                 "vcard_kinds": _term_list(VCARD_KINDS | ORGANISATION_TYPES)}
         lines = ["%s a sh:NodeShape ;" % sid]
         for item in metadata_lines(rule):
             lines.append("  %s ;" % item)

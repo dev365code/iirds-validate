@@ -23,6 +23,30 @@ MACH = Namespace("http://iirds.tekom.de/iirds/domain/machinery#")
 SW = Namespace("http://iirds.tekom.de/iirds/domain/software#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
+#: The classes the vCard vocabulary declares as kinds: `vcard:Kind` and the
+#: four subclasses it has and no others -- Individual, Organization, Group,
+#: Location, read from the vocabulary itself. IRIs are facts, like the iiRDS
+#: term IRIs the shapes carry, so knowing these costs no bundled file.
+VCARD_KINDS = frozenset((VCARD["Kind"], VCARD["Individual"], VCARD["Organization"],
+                         VCARD["Group"], VCARD["Location"]))
+
+#: The two spellings a package uses to say "this vcard is an organisation".
+#: `vcard:Organization` is the class section 8.3.2 names. `vcard:organization`
+#: is not a term of the vCard vocabulary at all -- that file declares the class
+#: `vcard:Organization`, the object property `vcard:org` and the datatype
+#: property `vcard:organization-name`, and nothing between them -- so a card
+#: typed with it has named an IRI nobody defines, differing from the one the
+#: sentence asks for by one letter's case. It is what every handover fixture
+#: the reference tool ships writes, so it is accepted, and recorded as a
+#: divergence. That is a misspelling of this requirement, not a different one;
+#: `vcard:Individual`, which the vocabulary does define and defines as a
+#: person, is a different one.
+#:
+#: Here rather than beside either rule that reads it: section 8.3.2's
+#: named-party MUSTs want an organisation and section 6.8.3's wants any kind,
+#: and one divergence stated twice is one that drifts.
+ORGANISATION_TYPES = frozenset((VCARD["Organization"], VCARD["organization"]))
+
 IIRDS_NAMESPACES = (str(IIRDS), str(HOV), str(MACH), str(SW))
 
 VERSIONS: Tuple[str, ...] = ("1.0", "1.0.1", "1.1", "1.2", "1.3")

@@ -22,7 +22,7 @@ specification and still be unreadable to whoever receives it.** This checks for
 both, from the command line, on a machine with no internet connection, as a step
 in a build.
 
-> **At a glance** — 200 rules across five editions and three profiles · one
+> **At a glance** — 201 rules across five editions and three profiles · one
 > pure-Python dependency (rdflib), zero for the single-file `.pyz` ·
 > [what it checks](#what-it-checks) · [limits, measured](#limits-measured) ·
 > [how it knows it is right](https://github.com/dev365code/iirds-validate/blob/main/docs/scope.md) · every number in this file is
@@ -48,7 +48,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  179 rules checked, 21 not applicable to this version/variant (19 for iiRDS/H, 2 for other editions)
+  180 rules checked, 21 not applicable to this version/variant (19 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```
@@ -272,18 +272,18 @@ a request that passes review at a manufacturer.
 ```console
 $ iirds rules
 container  19/19    the ZIP and its layout  +3 of its own
-schema     135/135  the metadata graph  +8 of its own
+schema     135/135  the metadata graph  +9 of its own
 system     3/3      the run itself  +7 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +10 of its own
 lint       -        will a consumer be able to use it  +15 of its own
 ```
 
-157 of 157 catalogued rules, plus 43 of this project's own.
+157 of 157 catalogued rules, plus 44 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 3 |
-| schema (M\*) | 135 / 135 | 8 |
+| schema (M\*) | 135 / 135 | 9 |
 | system (S\*) | 3 / 3 | 7 |
 | content (B\*) | — | 10 |
 | interoperability (L\*) | — | 15 |
@@ -326,7 +326,7 @@ borrows its class hierarchy; the report says so when it happens.
 
 ## The rules as SHACL — for everyone who is not running Python
 
-[`shapes/`](https://github.com/dev365code/iirds-validate/tree/main/shapes) carries the language-neutral encoding: 143 SHACL shapes
+[`shapes/`](https://github.com/dev365code/iirds-validate/tree/main/shapes) carries the language-neutral encoding: 144 SHACL shapes
 generated from the same sources as the rules, written to SHACL Core and
 SHACL-AF and tested on pySHACL 0.40, so a SHACL engine can check the graph
 half of iiRDS conformance without this project's code. Every shape carries
@@ -420,13 +420,13 @@ the repository.
   directory too high used to open with three findings telling you to add files
   you already had; it now opens with the one saying your package is fine and
   merely misplaced.
-- **Every finding says what to do about it.** All 200 rules carry one imperative
+- **Every finding says what to do about it.** All 201 rules carry one imperative
   sentence naming the change, and `tests/test_remediation.py` refuses a rule
   that does not. A validator that names a defect and not the remedy has told
   you that something is wrong and left you the specification to search, which
   is most of the work and all of the expertise.
 - **Every rule has been watched fire.** The suite records which rule ids
-  actually produce a finding, and 199 of the 200 have — the remaining one is a
+  actually produce a finding, and 200 of the 201 have — the remaining one is a
   `MAY` with nothing to violate. It began at 63. A rule that fires nowhere is
   not known to work: S8 was exactly backwards from the day it was written, able to fire only on
   archives that were correct, and no test would have caught it because no test
@@ -445,7 +445,7 @@ the repository.
   a clean environment, and the single-file form run with `python -S` so anything
   that works came out of the archive.
 
-**What is not established.** The 43 rules this project invented have no second
+**What is not established.** The 44 rules this project invented have no second
 implementation anywhere to be compared against. They have tests in both
 directions, and those tests were checked by breaking each rule in turn, which is
 weaker evidence than the catalogued rules have.

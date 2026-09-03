@@ -311,24 +311,43 @@ def c16_1_rdf_parses(ctx):
 # package, and gating the whole rule meant a corrupt metadata.jsonld in an
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
-@rule("C16.2",   # not x6-12-rdf-serialization#3: see the docstring
+@rule("C16.2", covers=("x6-12-rdf-serialization#3",),
        variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):
     """Section 6.12: "iiRDS/H packages MUST contain iiRDS metadata in JSON-LD
-    1.1 syntax." This asks whether the file is there and whether it reads,
-    which is most of that sentence and not the whole of it: an iiRDS/H package
-    whose metadata.jsonld is a well-formed empty `@graph` satisfies both and
-    contains no iiRDS metadata at all. L9 reports the disagreement with
-    metadata.rdf, and L9 does not claim this obligation.
+    1.1 syntax." Three things, and the third went unasked for a while: the
+    file is there, it reads, and it *contains iiRDS metadata*. An iiRDS/H
+    package whose metadata.jsonld is a well-formed empty `@graph` satisfied
+    the first two and printed PASS.
 
-    The claim is withdrawn rather than the rule extended, because "contains
-    iiRDS metadata" needs a threshold -- one triple in an iiRDS namespace, one
-    typed instance, a Package node -- and choosing it is a rule's worth of
-    decision, not a line.
+    The threshold is one statement mentioning a term of an iiRDS vocabulary,
+    in any position, and it is deliberately the lowest one that can be
+    defended. "Non-empty" is weaker than the sentence: a graph of Dublin Core
+    is not iiRDS metadata. Anything stronger -- a typed instance, a Package
+    node, the same graph as metadata.rdf -- starts checking a different
+    sentence, and the last of those is section 5.1.1's, which is L9's. A file
+    carrying some of the metadata carries iiRDS metadata; whether it carries
+    *all* of it is the question L9 answers.
+
+    Asked of `ctx.per_source`, not of the merged graph, because the merged
+    graph is mostly metadata.rdf and would answer yes for a JSON-LD file that
+    says nothing at all -- which is the whole defect.
     """
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):
         yield Violation("iiRDS/H packages must contain META-INF/metadata.jsonld")
+    elif ctx.variant == "H" and METADATA_JSONLD in ctx.per_source:
+        graph = ctx.per_source[METADATA_JSONLD]
+        if not any(ctx.ontology.is_iirds_term(term)
+                   for triple in graph for term in triple):
+            yield Violation("metadata.jsonld carries no iiRDS metadata",
+                            subject=METADATA_JSONLD,
+                            detail="%d statement(s), none mentioning an iiRDS term" % len(graph),
+                            fix="Serialise the package's metadata into "
+                                "META-INF/metadata.jsonld as well as META-INF/metadata.rdf. "
+                                "An iiRDS/H consumer that prefers JSON-LD reads this file and "
+                                "no other, so an empty one hands it a package with no metadata "
+                                "at all.")
     for err in ctx.parse_errors:
         if err.startswith(METADATA_JSONLD):
             # Same correction as C16.1 twenty lines up, for the same reason:

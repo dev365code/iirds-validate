@@ -309,3 +309,38 @@ def test_an_offset_the_directory_cannot_express_yields_no_header(tmp_path):
         pkg.infos[1].header_offset = -5
         headers = [header for _info, header, _descriptor in pkg.local_headers()]
     assert headers[1] is None and headers[0] is not None
+
+
+def test_the_last_entrys_data_running_into_the_directory_is_reported(tmp_path):
+    """The one branch of this rule no test had ever reached.
+
+    Every other extent check compares one entry against the next; the last
+    entry has no next, and is compared against the central directory instead.
+    A tool that measured the check on the whole rule saw it exercised, because
+    the rule fires elsewhere -- what was never exercised is this `yield`, and
+    a branch nobody has run is a branch nobody knows the sign of. S8 was
+    backwards for months in exactly that state.
+
+    Both records are bent, not one: `_disagreements` compares the sizes and
+    would report the mismatch and skip the extent, so a fixture that changed
+    the directory alone would test the other branch and look like this one.
+    """
+    def change(data):
+        name = max(_infos(data), key=lambda entry: entry[1])[0]
+        grown = Z.le(Z.u32(data, Z.central_entry(data, name) + 20) + 4096, 4)
+        data = Z.bend(data, Z.central_entry(data, name) + 20, grown)
+        return Z.bend(data, Z.local_header(data, name) + 18, grown)
+
+    findings = s10(runner.check(patched(tmp_path, change, "overrun.iirds")))
+    assert findings, "the last entry's data now ends past the central directory"
+    assert any("runs into the central directory" in f.violation.message for f in findings), \
+        [f.violation.message for f in findings]
+
+
+def _infos(data):
+    """(name, header offset) for every entry, read from the central directory."""
+    import io
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        return [(info.filename, info.header_offset) for info in archive.infolist()]

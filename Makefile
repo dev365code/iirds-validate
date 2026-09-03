@@ -38,6 +38,7 @@ help:
 	@echo "make generated  the generated rule table still matches its generator"
 	@echo "make corpus  the vendored reference fixtures are still upstream's"
 	@echo "make exercised  no rule has quietly stopped firing anywhere"
+	@echo "make silent-paths  no line that decides 'no finding' is unrun (slow, not in check)"
 	@echo "make versions  no rule claims a version whose vocabulary it predates"
 	@echo "make requirements  the specification index is internally consistent"
 	@echo "make shapes  the emitted SHACL shapes still match their generator"
@@ -70,6 +71,14 @@ generated:
 # exactly backwards. Depends on `test` having run, which writes the record.
 exercised:
 	$(PYTHON) tools/rule_coverage.py --check
+
+# The other half of that question: not "has this rule ever fired" but "has this
+# *line* ever run". Deliberately NOT in `check` -- it re-runs the suite under a
+# line tracer at three times the cost, which is fine for a maintainer once in a
+# while and not fine on every commit. The baseline is committed so the number
+# can be watched; run this when a rule grows a branch.
+silent-paths:
+	$(PYTHON) tools/silent_paths.py --check
 
 # Every `versions` array came from the reference tool and none had been checked.
 # A rule applicable to a version whose ontology lacked its class runs, matches

@@ -544,16 +544,6 @@ def m16_3_event_extension_is_a_class(ctx):
                             detail="add rdf:type rdfs:Class")
 
 
-def _referenced_but_not_typed(ctx, prop, cls):
-    typed = set(ctx.instances_of(cls))
-    seen = set()
-    for _subject, obj in ctx.graph.subject_objects(prop):
-        if obj in typed or obj in seen:
-            continue
-        seen.add(obj)
-        yield obj
-
-
 def _relies_solely_on_an_external_vocabulary(ctx, prop, cls):
     """The package points outward and declares nothing of its own.
 

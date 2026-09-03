@@ -577,3 +577,27 @@ def test_the_variant_rules_name_the_document_whose_variants_fall_short(rule_id, 
     findings = [f for f in report.findings if f.rule.id == rule_id]
     assert findings, sorted({f.rule.id for f in report.findings})
     assert findings[0].violation.subject == "urn:test:doc1"
+
+
+def test_a_party_with_no_vcard_at_all_does_not_name_an_organisation(tmp_path):
+    """The branch of `_names_an_organisation` that no test had reached.
+
+    Its other paths were covered: a vcard that names an organisation, one that
+    does not, one the package never describes. A party carrying *no*
+    `iirds:relates-to-vcard` took the first line of the function and nothing
+    exercised it -- and that line decides whether five MUSTs fire, so its sign
+    had never been observed. It returns False, which is the sign that makes
+    them fire; the opposite would have been five silent passes on a party that
+    identifies nobody.
+
+    M23 reports the missing property as its own finding. This asserts the
+    consequence, which is a different rule and the point of the branch.
+    """
+    broken = HANDOVER.replace(
+        '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n'
+        '    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
+        '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>')
+    assert broken != HANDOVER
+    fired = _ids(tmp_path, "no_vcard.iirds", broken)
+    assert {"M15.9", "M15.10"} <= fired, sorted(fired)
+    assert "M23" in fired, "the missing property is its own finding"

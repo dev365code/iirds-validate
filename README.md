@@ -289,17 +289,21 @@ lint       -        will a consumer be able to use it  +15 of its own
 | interoperability (L\*) | — | 15 |
 
 Coverage of the catalogue is not coverage of the standard. The specification
-states **314 absolute obligations**, counted by
+states **280 absolute obligations**, counted by
 [`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
-[docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json) — 254 marked with an RFC 2119
-keyword and 60 more stated as `0..1` in the property tables, which carry no
-keyword at all and are obligations regardless. This README carried 254 from its first day
-with nothing behind it; the figure was right about what it counted and counted
-the wrong thing.
+[docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json). The parse
+finds 314 — 254 marked with an RFC 2119 keyword and 60 more stated as `0..1`
+in the property tables, which carry no keyword at all and are obligations
+regardless — and the same file derives why 34 of those are one obligation
+counted twice: four come from the sentence that defines the RFC 2119 keywords,
+which no package can satisfy or breach, and thirty from appendix A stating each
+property's cardinality once in the class's own table and again in the overview
+table. This README carried 254 from its first day with nothing behind it, then
+314 without asking what it had counted twice.
 
 That is the denominator, not a score. One rule can cover several statements and
 several rules one statement, and some requirements are not machine-checkable at
-all. Mapping the 314 to rules is not done, so **this tool cannot tell you what
+all. Mapping the 280 to rules is not done, so **this tool cannot tell you what
 share of the standard it checks**, and "no findings" must not be read as
 "conformant". `iirds rules -v` prints the specification link behind each rule. Three of
 the 157 are aliases of rules with identical wording, one is a `MAY` with nothing

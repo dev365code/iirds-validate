@@ -275,6 +275,41 @@ def fetch() -> str:
     return body
 
 
+#: The section that gives the RFC 2119 keywords their meaning. Its one
+#: sentence carries all seven of them, so the parse makes seven entries out
+#: of it and four of those are "absolute" -- of a sentence that defines the
+#: words rather than using them, and that no package can satisfy or violate.
+KEYWORD_DEFINITION = "are to be interpreted as described in"
+
+#: A.5 tabulates every property with its cardinality; A.1.1 and its domain
+#: counterparts give the same cardinality inside each class's own definition.
+#: The same obligation, written twice, and counting both inflates the
+#: denominator by the size of the overview.
+OVERVIEW_SECTION = "a-5-properties-and-relations-overview"
+
+
+def _reductions(hits):
+    """The two ways this parse counts one obligation more than once.
+
+    Derived, not judged: the first is the sentence that cites RFC 2119 while
+    naming every keyword, the second is an overview row whose subject and
+    sentence already appear in a class definition. Both are reported rather
+    than removed -- the enumeration stays a parse, and the honest denominator
+    is stated beside it with its reasons.
+    """
+    absolute = [h for h in hits if h["absolute"]]
+    defining = [h["id"] for h in absolute if KEYWORD_DEFINITION in h["sentence"]]
+    elsewhere = {(h.get("subject"), " ".join(h["sentence"].split()))
+                 for h in absolute if h["section"] != OVERVIEW_SECTION}
+    restated = [h["id"] for h in absolute if h["section"] == OVERVIEW_SECTION
+                and (h.get("subject"), " ".join(h["sentence"].split())) in elsewhere]
+    return {
+        "keyword_definition": sorted(defining),
+        "restated_in_the_overview": sorted(restated),
+        "distinct": len(absolute) - len(defining) - len(restated),
+    }
+
+
 def build(html: str) -> dict:
     parser = Requirements()
     parser.feed(html)
@@ -300,6 +335,7 @@ def build(html: str) -> dict:
         "counts": dict(sorted(counts.items())),
         "stated_as": dict(sorted(by_form.items())),
         "absolute": len(absolute),
+        "reductions": _reductions(hits),
         "total": len(hits),
         "requirements": hits,
     }
@@ -318,6 +354,18 @@ def check() -> int:
     expected = sum(index["counts"].get(k, 0) for k in ABSOLUTE) + index["counts"].get("0..1", 0)
     if index["absolute"] != expected:
         problems.append("the absolute count does not match the per-keyword counts")
+    reductions = index.get("reductions") or {}
+    if not reductions.get("keyword_definition"):
+        problems.append("the sentence that defines the RFC 2119 keywords is no longer "
+                        "recognised; it is not an obligation and the honest denominator "
+                        "excludes it")
+    if not reductions.get("restated_in_the_overview"):
+        problems.append("no overview row is recognised as a restatement; appendix A states "
+                        "each property cardinality twice and counting both inflates the "
+                        "denominator")
+    if reductions.get("distinct") != (index["absolute"] - len(reductions["keyword_definition"])
+                                      - len(reductions["restated_in_the_overview"])):
+        problems.append("the distinct count does not follow from the reductions")
     if not index["counts"].get("0..1"):
         problems.append("no cardinality obligations found; the property tables state sixty "
                         "of them and they carry no RFC 2119 keyword, so losing them would "

@@ -46,6 +46,13 @@ def test_the_specification_also_states_obligations_with_no_keyword_at_all():
     """
     assert INDEX["counts"]["0..1"] == 60
     assert INDEX["absolute"] == 314
+    # and what the parse counts twice, derived rather than assumed: the
+    # sentence that defines the RFC 2119 keywords, and appendix A's overview
+    # restating each cardinality the class tables already give.
+    reductions = INDEX["reductions"]
+    assert len(reductions["keyword_definition"]) == 4
+    assert len(reductions["restated_in_the_overview"]) == 30
+    assert reductions["distinct"] == 280
 
     cardinality = [r for r in REQUIREMENTS if r["stated_as"] == "cardinality"]
     marked = [r for r in REQUIREMENTS if r["stated_as"] == "rfc2119"]

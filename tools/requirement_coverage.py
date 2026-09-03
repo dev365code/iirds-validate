@@ -39,8 +39,16 @@ def main() -> int:
     ap.add_argument("--section", help="restrict to one section anchor")
     args = ap.parse_args()
 
-    requirements = [r for r in json.loads(INDEX.read_text("utf-8"))["requirements"]
-                    if r["absolute"]]
+    index = json.loads(INDEX.read_text("utf-8"))
+    # The parse counts one obligation twice in two ways it derives itself --
+    # the sentence that defines the RFC 2119 keywords, and appendix A's
+    # overview restating cardinalities the class tables already give. The
+    # denominator this prints is the one docs/scope.md and the README publish,
+    # so a reader running this arrives at the figure they were shown.
+    counted_twice = set(index["reductions"]["keyword_definition"])
+    counted_twice |= set(index["reductions"]["restated_in_the_overview"])
+    requirements = [r for r in index["requirements"]
+                    if r["absolute"] and r["id"] not in counted_twice]
     covered = defaultdict(list)
     for rule in all_rules():
         for rid in rule.covers:
@@ -78,6 +86,10 @@ def main() -> int:
 
     print()
     print("  %d of %d absolute obligations are claimed by a rule" % (done, total))
+    print("  (%d more are the same obligations counted twice by the parse: %d from the "
+          "sentence that defines the RFC 2119 keywords, %d restated in appendix A's overview)"
+          % (len(counted_twice), len(index["reductions"]["keyword_definition"]),
+             len(index["reductions"]["restated_in_the_overview"])))
     if elsewhere:
         print("  %d more %s addressed to consumers rather than to packages, so no "
               "validator can check them."

@@ -1,6 +1,6 @@
 """The map from the standard to the rules, as far as it goes.
 
-`docs/requirements.json` enumerates what iiRDS requires: 314 absolute
+`docs/requirements.json` enumerates what iiRDS requires: 314 parsed absolute
 obligations. Rules declare, in `covers=`, which of them they implement. The
 size of the union is the only honest coverage figure this project can quote,
 and today it is small -- the enumeration is finished and the mapping has barely
@@ -75,6 +75,7 @@ def test_the_coverage_figure_is_what_is_published():
     deliberate edit rather than a side effect."""
     assert len(COVERED) == 25
     assert len(ABSOLUTE) == 314
+    assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 
 
 def test_no_rule_claims_a_requirement_twice_over():
@@ -204,9 +205,11 @@ def test_the_scope_document_publishes_the_coverage_it_has():
     assert int(found.group(1)) == len(COVERED), (
         "docs/scope.md says %s requirements are covered and the rules claim %d"
         % (found.group(1), len(COVERED)))
-    assert int(found.group(2)) == INDEX["absolute"], (
-        "docs/scope.md says %s absolute requirements and the index has %d"
-        % (found.group(2), INDEX["absolute"]))
+    # The distinct count, not the parse: the parse counts one obligation twice
+    # in two derived ways, and the published denominator is the honest one.
+    assert int(found.group(2)) == INDEX["reductions"]["distinct"], (
+        "docs/scope.md says %s absolute requirements and the index has %d distinct"
+        % (found.group(2), INDEX["reductions"]["distinct"]))
 
 
 def test_the_scope_document_counts_the_excused_obligations_correctly():

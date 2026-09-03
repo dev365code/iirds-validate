@@ -256,9 +256,42 @@ def m15_9_package_creator(ctx):
 
 
 @rule("M15.10", spec=_spec_sans_quote("M15.10"),
-       fix="Add iirds:relates-to-party on the InformationObject, relating it to a Party with a role. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both.")
+       fix="Give the information object an iirds:has-identity whose iirds:IdentityDomain relates to an iirds:Party with iirds:has-party-role iirds:Creator and a vcard that names an organisation. Responsibility for the underlying content can differ from responsibility for the delivered document, and a plant needs both -- but section 8.3.2 hangs it on the identity domain, not on the object, because what is being attributed is the identifier scheme the content is known by.")
 def m15_10_information_object_creator(ctx):
-    yield from _needs_named_party(ctx, T.InformationObject, T.Creator, "iirds:InformationObject")
+    """"The following metadata is mandatory for each iirds:InformationObject:
+    at least one iirds:has-identity relating to an iirds:Identity with an
+    iirds:IdentityDomain. The iirds:IdentityDomain MUST relate to an
+    iirds:Party with iirds:has-party-role iirds:Creator ..." (section 8.3.2).
+
+    The party hangs off the domain, which is the shape M15.7b and M15.7d
+    already follow for the manufacturer; the Package and Document bullets are
+    the other shape, a party on the subject itself, and those are M15.9 and
+    M15.8. This rule used to read the object's own iirds:relates-to-party --
+    the catalogue's wording, which is a sentence the specification does not
+    contain, and whose own link points at the Document list. It therefore
+    reported a MUST-level error on the reference's own passing handover
+    fixture, whose information object carries an identity and no party of its
+    own; section 6.8.3 does not even permit a party there, listing
+    iirds:InformationUnit and iirds:IdentityDomain among the classes one may
+    be assigned to, and iirds:InformationObject is not an InformationUnit.
+    docs/divergences.md carries the row.
+    """
+    for obj in ctx.instances_of(T.InformationObject):
+        domains = [domain for identity in ctx.values(obj, T.has_identity)
+                   for domain in ctx.values(identity, T.has_identity_domain)]
+        if not domains:
+            yield Violation("iiRDS/H: iirds:InformationObject must relate to an iirds:Identity "
+                            "with an iirds:IdentityDomain",
+                            subject=ctx.ref(obj), detail=ctx.label_of(obj))
+            continue
+        for domain in domains:
+            named = [p for p in _parties(ctx, domain, T.Creator)
+                     if _names_an_organisation(ctx, p)]
+            if not named:
+                yield Violation("iiRDS/H: the identity domain of an iirds:InformationObject "
+                                "must relate to an iirds:Party with role Creator that names a "
+                                "vcard:Organization",
+                                subject=ctx.ref(domain), detail=ctx.label_of(obj))
 
 
 # --------------------------------------------------------------------------

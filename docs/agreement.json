@@ -4,7 +4,6 @@
  "_note": "Per-pair agreement with the reference tool over the vendored corpus. Regenerate deliberately, never to make CI green: a pair moving from agree to silent is a regression, and a pair moving the other way still wants a look at why.",
  "counts": {
   "agree": 42,
-  "extra": 2,
   "silent": 61,
   "untestable": 10
  },
@@ -15,9 +14,7 @@
   "M13.1|metadata_iirds_sample_has-selector-M14.1_false.rdf": "agree",
   "M14.1|metadata_iirds_sample_has-selector-M15.1_false.rdf": "agree",
   "M14.2|metadata_iirds_sample_has-selector-M15.2_false.rdf": "agree",
-  "M15.10|metadata_iirds-H_M15.7_pass.rdf": "extra",
   "M15.10|metadata_iirds-H_M15.7d_false.rdf": "untestable",
-  "M15.10|metadata_iirds-H_pass.rdf": "extra",
   "M15.11a|metadata_iirds-H_M15.7d_false.rdf": "untestable",
   "M15.11b|metadata_iirds-H_M15.7d_false.rdf": "untestable",
   "M15.11c|metadata_iirds-H_M15.7d_false.rdf": "untestable",

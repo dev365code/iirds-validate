@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import build_package
+from conftest import ROOT, build_package
 from iirds_validate import runner
 
 HOV = "http://iirds.tekom.de/iirds/domain/handover#"
@@ -52,10 +52,24 @@ HANDOVER = """<?xml version="1.0" encoding="utf-8"?>
     </iirds:has-rendition>
   </iirds:Document>
 
+  <!-- Section 8.3.2 puts the creator of an information object on the identity
+       domain, not on the object: what is attributed is the scheme the content
+       is known by. The domain carries no iirds:has-identity-type, which is
+       what the reference's own passing fixture does; the type is required of
+       a product variant's domains (M15.7b, M15.7d), not of this one. -->
   <iirds:InformationObject rdf:about="urn:test:io1">
     <iirds:title>Operating instructions</iirds:title>
-    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>
+    <iirds:has-identity rdf:resource="urn:test:identity-object"/>
   </iirds:InformationObject>
+
+  <iirds:Identity rdf:about="urn:test:identity-object">
+    <iirds:identifier>OI-2026</iirds:identifier>
+    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>
+  </iirds:Identity>
+
+  <iirds:IdentityDomain rdf:about="urn:test:domain-object">
+    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>
+  </iirds:IdentityDomain>
 
   <iirds:ProductVariant rdf:about="urn:test:variant">
     <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>
@@ -132,9 +146,12 @@ def _package(tmp_path, name, metadata):
                                             ("index.html", "<html/>")))
 
 
+def _report(tmp_path, name, metadata):
+    return runner.run(_package(tmp_path, name, metadata), runner.ALL_KINDS)
+
+
 def _ids(tmp_path, name, metadata):
-    report = runner.run(_package(tmp_path, name, metadata), runner.ALL_KINDS)
-    return {f.rule.id for f in report.findings}
+    return {f.rule.id for f in _report(tmp_path, name, metadata).findings}
 
 
 def test_the_fixture_is_a_conformant_handover_package(tmp_path):
@@ -149,10 +166,10 @@ def test_the_fixture_is_a_conformant_handover_package(tmp_path):
 
 #: (rule, the line whose removal is exactly that rule's requirement)
 #: The five named-party MUSTs, provoked by breaking the chain at its most
-#: telling link: the Author party line for M15.8; the shared Creator role
-#: for M15.9/M15.10 (one party serves Package and InformationObject, so one
-#: removal provokes both -- each row asserts only its own rule); the shared
-#: Manufacturer role for M15.7b/M15.7d likewise.
+#: telling link: the Author party line for M15.8; the shared Creator role for
+#: M15.9 and M15.10 (one party serves the Package and the information object's
+#: identity domain, so one removal provokes both -- each row asserts only its
+#: own rule); the shared Manufacturer role for M15.7b/M15.7d likewise.
 NAMED_PARTY_REMOVALS = [
     ("M15.8", '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>'),
     ("M15.9", '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>'),
@@ -202,11 +219,16 @@ def test_m15_9_a_package_with_no_party(tmp_path):
     assert "M15.9" in _ids(tmp_path, "m15_9.iirds", broken)
 
 
-def test_m15_10_an_information_object_with_no_party(tmp_path):
+def test_m15_10_an_information_object_with_no_identity_at_all(tmp_path):
+    """The bullet's first half: "at least one iirds:has-identity relating to an
+    iirds:Identity with an iirds:IdentityDomain". With no identity there is no
+    domain to carry the creator, so the object itself is named."""
     broken = HANDOVER.replace(
-        '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n'
+        '    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n'
         "  </iirds:InformationObject>", "  </iirds:InformationObject>", 1)
-    assert "M15.10" in _ids(tmp_path, "m15_10.iirds", broken)
+    report = _report(tmp_path, "m15_10_none.iirds", broken)
+    findings = [f for f in report.findings if f.rule.id == "M15.10"]
+    assert findings and findings[0].violation.subject == "urn:test:io1"
 
 
 def test_m15_7b_an_instance_identity_domain_with_no_manufacturer(tmp_path):
@@ -316,3 +338,40 @@ def test_r4_leaves_a_described_but_unnamed_vcard_to_the_five(tmp_path):
     ids = _ids(tmp_path, "unnamed.iirds", unnamed)
     assert "R4" not in ids
     assert FIVE & ids
+
+
+# ---------------------------------------------------------------------------
+# Where section 8.3.2 puts the creator of an information object
+# ---------------------------------------------------------------------------
+
+def test_m15_10_does_not_fire_on_the_references_own_passing_package(tmp_path):
+    """The catalogue marks `metadata_iirds-H_pass.rdf` as passing, and its
+    iirds:InformationObject carries `iirds:has-identity` and nothing else --
+    no party of its own. Section 8.3.2 is why: for an information object the
+    creator hangs off the identity domain, not off the object.
+
+    M15.10 read the object's own `iirds:relates-to-party`, which is the shape
+    of the Package and Document bullets, and so reported a MUST-level error on
+    a conformant handover package.
+    """
+    report = runner.run_fragment(
+        str(ROOT / "tests" / "corpus" / "plusmeta" / "files" / "metadata_iirds-H_pass.rdf"),
+        runner.ALL_KINDS)
+    assert "M15.10" not in {f.rule.id for f in report.findings}
+
+
+def test_m15_10_asks_the_identity_domain_for_the_creator(tmp_path):
+    """"at least one iirds:has-identity relating to an iirds:Identity with an
+    iirds:IdentityDomain. The iirds:IdentityDomain MUST relate to an
+    iirds:Party with iirds:has-party-role iirds:Creator ..." -- section 8.3.2.
+    The finding names the domain, because that is where the party belongs and
+    where the reader must put it."""
+    broken = HANDOVER.replace(
+        '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n'
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>',
+        '  <iirds:IdentityDomain rdf:about="urn:test:domain-object">')
+    assert broken != HANDOVER, "the fixture no longer has the object's identity domain"
+    report = _report(tmp_path, "m15_10_domain.iirds", broken)
+    findings = [f for f in report.findings if f.rule.id == "M15.10"]
+    assert findings, [f.rule.id for f in report.findings]
+    assert findings[0].violation.subject == "urn:test:domain-object"

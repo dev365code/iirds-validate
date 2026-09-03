@@ -270,17 +270,34 @@ def _named_party_query(cls, role):
   } }""")
 
 
-def _domain_manufacturer_query(type_list):
-    return ("""SELECT $this ?value WHERE {
-  ?variant <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> .
-  ?variant <%(ii)shas-identity> ?identity .
-  ?identity <%(ii)shas-identity-domain> ?value .
-  ?value <%(ii)shas-identity-type> ?idtype .
+def _domain_party_query(subject_class, role, type_list=None):
+    """A party the specification hangs on the identity domain, not on the
+    subject: section 8.3.2 does that for the manufacturer of a product
+    variant's identities and for the creator of an information object's.
+    `type_list` narrows to the identity types the variant rules are about;
+    the information object's bullet names no type, so it passes none."""
+    narrowing = "" if type_list is None else ("""  ?value <%(ii)shas-identity-type> ?idtype .
   FILTER (?idtype IN (""" + type_list + """))
-  FILTER NOT EXISTS {
+""")
+    return ("""SELECT $this ?value WHERE {
+  ?subject <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + subject_class + """> .
+  ?subject <%(ii)shas-identity> ?identity .
+  ?identity <%(ii)shas-identity-domain> ?value .
+""" + narrowing + """  FILTER NOT EXISTS {
     ?value <%(ii)srelates-to-party> ?party .
-    ?party <%(ii)shas-party-role> <%(ii)sManufacturer> .
+    ?party <%(ii)shas-party-role> <%(ii)s""" + role + """> .
     """ + _NAMED_VCARD + """
+  } }""")
+
+
+def _no_identity_domain_query(subject_class):
+    """The first half of the same bullet: "at least one iirds:has-identity
+    relating to an iirds:Identity with an iirds:IdentityDomain"."""
+    return ("""SELECT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + subject_class + """> .
+  FILTER NOT EXISTS {
+    ?value <%(ii)shas-identity> ?identity .
+    ?identity <%(ii)shas-identity-domain> ?domain .
   } }""")
 
 
@@ -385,10 +402,13 @@ SPARQL_FORMS = {
 
 SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
 SPARQL_FORMS["M15.9"] = ("fixed", [_named_party_query("Package", "Creator")])
-SPARQL_FORMS["M15.10"] = ("fixed", [_named_party_query("InformationObject", "Creator")])
-SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_manufacturer_query(
+SPARQL_FORMS["M15.10"] = ("fixed", [_no_identity_domain_query("InformationObject"),
+                                    _domain_party_query("InformationObject", "Creator")])
+SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_party_query(
+    "ProductVariant", "Manufacturer",
     "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>")])
-SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>")])
+SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_party_query(
+    "ProductVariant", "Manufacturer", "<%(ii)sProductType>")])
 
 #: The other half of _NAMED_VCARD. Its first branch lets an undescribed card
 #: satisfy all five queries above, so that one broken pointer does not arrive

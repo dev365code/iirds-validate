@@ -39,6 +39,7 @@ follows the implementation and records the wording.
 | M21.4 | at most one `purpose` | at most one `dateOfStatus` | dateOfStatus |
 | M21.5 | cardinality row for `purpose` | at most one `purpose` | purpose |
 | M24.5 | root MUST have a structure type | non-root MUST NOT have one | non-root |
+| M15.10 | party on the InformationObject | party on the InformationObject | party on its identity domain |
 | M78–M93 | "not intended to be used directly" | element has an `rdf:about` | rdf:about |
 
 The last row was the largest single error in this project's history. Sixteen
@@ -46,6 +47,35 @@ rules were implemented from the catalogue's category label, which produced
 findings on tekom's own sample packages that no other tool reports. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
+
+M15.10 is the row where the reference and this project disagree with the
+specification rather than with each other, and the evidence is the reference's
+own fixture. Its catalogue wording asks an `iirds:InformationObject` for
+`iirds:relates-to-Party` with role Creator. Section 8.3.2 asks something else:
+"at least one `iirds:has-identity` relating to an `iirds:Identity` with an
+`iirds:IdentityDomain`. The `iirds:IdentityDomain` MUST relate to an
+`iirds:Party` with `iirds:has-party-role` `iirds:Creator`". The party hangs off
+the domain, which is the shape M15.7b and M15.7d already follow for the
+manufacturer, while the Package and Document bullets put a party on the subject
+itself and those are M15.9 and M15.8. Four more things agree: `relates-to-Party`
+appears exactly twice in those mandatory lists, for the Package's Creator and
+the Document's Author; section 6.8.3 permits — MAY, not MUST — a party on
+`iirds:InformationUnit`, `iirds:ContentLifecycleStatus`, `iirds:Component`,
+`iirds:ProductVariant` or `iirds:IdentityDomain`, and `iirds:InformationObject`
+is none of those, being a subclass of `iirds:iirdsDomainEntity`; the catalogue's
+own specification link for M15.10 points at the *Document* list; and
+`metadata_iirds-H_pass.rdf`, which the catalogue marks as passing, has an
+information object carrying an identity and no party of its own — on which this
+rule reported a MUST-level error until it was corrected.
+
+Correcting it moved `docs/agreement.json` by exactly two pairs, both of them
+`M15.10` against a fixture the catalogue marks as passing, and both classified
+`extra` — the category for a finding this project reports and the reference
+does not. The file now records none: 113 pairs, `agree` 42, `silent` 61,
+`untestable` 10. Cross-validation did not find this, because a rule can be
+wrong about the standard while both implementations are wrong together; what
+found it was reading section 8.3.2 and then noticing that the reference's own
+passing fixture was one this rule failed.
 
 M24.5 deserves the same note as `dateOfStatus`: its title is section 6.9.1's
 positive sentence and M24.6 already checks that one, so reading the title
@@ -103,9 +133,18 @@ Each is implemented here from the specification text instead.
 
 ## Rules where this project is stricter, deliberately
 
+This table had a third row, for M15.10, claiming that the reference's
+`hasValidIdentity` was "a different requirement" and that the catalogue's
+wording was "explicit". The wording was explicit and it was not the
+specification's; both of the reference's handover fixtures failed this rule
+because the rule was wrong, and one of them is marked as passing. The row
+above, in the wording table, records what section 8.3.2 actually says. Being
+stricter than the reference is a position this project takes on purpose and
+has to defend from the specification; when the defence is the catalogue's own
+sentence, there is no defence.
+
 | rule | difference | why |
 |---|---|---|
-| M15.10 | requires the InformationObject to relate to a Creator party | the reference checks `hasValidIdentity`, which is a different requirement; the wording is explicit and both handover fixtures fail it |
 | M22.1 | counts roles on the party in the graph | the reference counts child elements, so a party written as several repeated `<iirds:Party rdf:about="…"/>` declarations is counted many times; both find the sample's role-less party, but only one of them says so once |
 | M30 | only flags redeclared **iiRDS** terms | the reference rejects any `subClassOf`/`domain`/`range` element at all, which would forbid the proprietary subclasses section 7 explicitly permits |
 

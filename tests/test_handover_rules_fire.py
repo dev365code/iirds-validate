@@ -471,20 +471,18 @@ def test_a_second_identity_of_the_same_kind_does_not_fail_the_package(rule_id, b
         (f.rule.id, f.violation.subject) for f in report.findings]
 
 
-@pytest.mark.parametrize("rule_id,line", [
-    ("M15.7b", '    <iirds:has-identity-type rdf:resource="%sSerialNumber"/>\n' % IIRDS),
-    ("M15.7d", '    <iirds:has-identity-type rdf:resource="%sProductType"/>\n' % IIRDS),
-])
-def test_the_named_party_rules_name_the_variant_they_are_about(rule_id, line, tmp_path):
+@pytest.mark.parametrize("rule_id", ["M15.7b", "M15.7d"])
+def test_the_named_party_rules_name_the_document_they_are_about(rule_id, tmp_path):
     """With one identity of the kind and no manufacturer on it, the bullet is
-    unsatisfied. The finding names the product variant: which of its domains
-    to mend is the author's, as with M15.10 and its information object."""
+    unsatisfied. The finding names the document: section 8.3.2 states these of
+    a document, and which of the variants it names to mend is the author's --
+    the shape M15.7a already had."""
     broken = HANDOVER.replace(
         '    <iirds:has-party-role rdf:resource="%sManufacturer"/>\n' % IIRDS, "", 1)
     report = _report(tmp_path, "%s_subject.iirds" % rule_id.replace(".", "_"), broken)
     findings = [f for f in report.findings if f.rule.id == rule_id]
     assert findings, sorted({f.rule.id for f in report.findings})
-    assert findings[0].violation.subject == "urn:test:variant"
+    assert findings[0].violation.subject == "urn:test:doc1"
 
 
 TYPELESS_IDENTITY = ('  <iirds:Identity rdf:about="urn:test:identity-plain">\n'
@@ -497,17 +495,19 @@ TYPELESS_IDENTITY = ('  <iirds:Identity rdf:about="urn:test:identity-plain">\n'
 @pytest.mark.parametrize("block", [SECOND_INSTANCE, SECOND_TYPE, TYPELESS_IDENTITY],
                          ids=["second serial number", "second product type", "no identity type"])
 def test_an_extra_identity_never_turns_a_conformant_package_away(block, tmp_path):
-    """Section 8.3.2 states four requirements whose subject is "**The**
-    iirds:IdentityDomain", each following a line that introduces one: the two
-    identity types (M15.7a's second half, M15.7c) and the two parties
-    (M15.7b, M15.7d, and M15.10 for the information object). Sweeping the 1.3
-    text for that construction finds exactly those four and no others, so
-    this is the whole class.
+    """Section 8.3.2 states five requirements whose subject points back at
+    something the line above introduced. Four say "**The** iirds:IdentityDomain
+    MUST ..." -- the two identity types (M15.7a's second half, M15.7c) and the
+    two parties (M15.7b, M15.7d, and M15.10 for the information object) -- and
+    the fifth wraps them: "**This** iirds:ProductVariant MUST relate to an
+    iirds:Identity with an iirds:IdentityDomain", under "at least one
+    iirds:relates-to-product-variant relating to an iirds:ProductVariant".
 
-    Every one of them is satisfied by an identity that qualifies, and section
-    6.8.1 lets a variant carry more. Two of the four were read over every
-    matching identity instead and failed packages that conform; this holds
-    the closure rather than the two repairs.
+    A first sweep looked for "The" and reported the class closed at four. The
+    demonstrative is what makes a sentence anaphoric, not the article, and the
+    fifth is the one that also fixes the population: the variants a document
+    names. Every one of the five is satisfied by something that qualifies, and
+    section 6.8.1 lets a variant carry more.
     """
     metadata = _with_second_identity(block) if "SerialNumber" in block or "ProductType" in block \
         else HANDOVER.replace(
@@ -520,3 +520,60 @@ def test_an_extra_identity_never_turns_a_conformant_package_away(block, tmp_path
     report = _report(tmp_path, "extra_identity.iirds", metadata)
     errors = sorted({f.rule.id for f in report.findings if str(f.severity) == "error"})
     assert errors == [], errors
+
+
+# ---------------------------------------------------------------------------
+# Which product variants section 8.3.2 binds
+# ---------------------------------------------------------------------------
+
+UNRELATED_VARIANT = ('  <iirds:ProductVariant rdf:about="urn:test:variant-other">\n'
+                     '    <rdfs:label xml:lang="en">A model nobody documents here</rdfs:label>\n'
+                     '  </iirds:ProductVariant>\n\n')
+
+
+def _with_variant(block, related=False):
+    metadata = HANDOVER.replace(
+        '  <iirds:ProductVariant rdf:about="urn:test:variant">',
+        block + '  <iirds:ProductVariant rdf:about="urn:test:variant">', 1)
+    if related:
+        metadata = metadata.replace(
+            '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>',
+            '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n'
+            '    <iirds:relates-to-product-variant rdf:resource="urn:test:variant-other"/>', 1)
+    return metadata
+
+
+def test_a_product_variant_no_document_names_is_not_this_sections_business(tmp_path):
+    """Section 8.3.2 opens each of its variant requirements with "at least one
+    `iirds:relates-to-product-variant` relating to an `iirds:ProductVariant`",
+    and then says "**This** `iirds:ProductVariant` MUST relate to an
+    `iirds:Identity` ...". The variant it binds is the one the document names.
+    A package may carry others -- a component's variant, a model documented
+    elsewhere -- and they are not the handover document's identity."""
+    report = _report(tmp_path, "unrelated_variant.iirds", _with_variant(UNRELATED_VARIANT))
+    errors = sorted({f.rule.id for f in report.findings if str(f.severity) == "error"})
+    assert errors == [], errors
+
+
+def test_one_complete_variant_among_several_satisfies_the_bullet(tmp_path):
+    """"at least one" introduces it and "This" points back at it, as with the
+    identity bullets. A document naming a second variant does not have to
+    complete both."""
+    report = _report(tmp_path, "two_variants.iirds",
+                     _with_variant(UNRELATED_VARIANT, related=True))
+    errors = sorted({f.rule.id for f in report.findings if str(f.severity) == "error"})
+    assert errors == [], errors
+
+
+@pytest.mark.parametrize("rule_id,line", [
+    ("M15.7b", '    <iirds:has-party-role rdf:resource="%sManufacturer"/>\n' % IIRDS),
+    ("M15.7c", '    <iirds:has-identity-type rdf:resource="%sProductType"/>\n' % IIRDS),
+])
+def test_the_variant_rules_name_the_document_whose_variants_fall_short(rule_id, line, tmp_path):
+    """The finding is about a document that names no complete variant, which
+    is what the bullet requires of it. M15.7a already reads that way."""
+    report = _report(tmp_path, "%s_doc.iirds" % rule_id.replace(".", "_"),
+                     HANDOVER.replace(line, "", 1))
+    findings = [f for f in report.findings if f.rule.id == rule_id]
+    assert findings, sorted({f.rule.id for f in report.findings})
+    assert findings[0].violation.subject == "urn:test:doc1"

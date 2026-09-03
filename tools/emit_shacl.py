@@ -205,7 +205,6 @@ CORE_FORMS["M15.5"] = ("qualified_class_min1", {
     "cls": "iirds:InformationObject"})
 CORE_FORMS["M15.7a"] = ("product_variant_identity", {
     "types": ("iirds:ObjectInstanceURI", "iirds:ObjectTypeURI", "iirds:SerialNumber")})
-CORE_FORMS["M15.7c"] = ("variant_type_identity", {"types": ("iirds:ProductType",)})
 CORE_FORMS["M15.11b"] = ("class_forbidden", {"targets": ("iirds:DirectoryNode", "iirds:nil")})
 CORE_FORMS["M15.11c"] = ("class_forbidden", {"targets": SELECTOR_CLOSURE})
 
@@ -273,17 +272,21 @@ def _named_party_query(cls, role):
 def _domain_manufacturer_query(type_list):
     """Section 8.3.2 nests "The iirds:IdentityDomain MUST relate to an
     iirds:Party ..." under "This iirds:ProductVariant MUST relate to an
-    iirds:Identity with an iirds:IdentityDomain", so one qualifying identity
-    satisfies it. The variant is bound, not the domain: which of its domains
-    to mend is the author's, and DISTINCT because it would otherwise bind
+    iirds:Identity with an iirds:IdentityDomain", which is itself nested under
+    "at least one iirds:relates-to-product-variant relating to an
+    iirds:ProductVariant". Both are existential and the outer one also fixes
+    the population: the variants a document names, not every variant in the
+    graph. The document is bound, and DISTINCT because it would otherwise bind
     once per identity."""
     return ("""SELECT DISTINCT $this ?value WHERE {
-  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> .
-  ?value <%(ii)shas-identity> ?any . ?any <%(ii)shas-identity-domain> ?some .
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDocument> .
+  ?value <%(ii)srelates-to-product-variant> ?anyvariant .
+  ?anyvariant <%(ii)shas-identity> ?any . ?any <%(ii)shas-identity-domain> ?some .
   ?some <%(ii)shas-identity-type> ?sometype .
   FILTER (?sometype IN (""" + type_list + """))
   FILTER NOT EXISTS {
-    ?value <%(ii)shas-identity> ?identity .
+    ?value <%(ii)srelates-to-product-variant> ?variant .
+    ?variant <%(ii)shas-identity> ?identity .
     ?identity <%(ii)shas-identity-domain> ?domain .
     ?domain <%(ii)shas-identity-type> ?idtype .
     FILTER (?idtype IN (""" + type_list + """))
@@ -419,6 +422,19 @@ SPARQL_FORMS["M15.8"] = ("fixed", [_named_party_query("Document", "Author")])
 SPARQL_FORMS["M15.9"] = ("fixed", [_named_party_query("Package", "Creator")])
 SPARQL_FORMS["M15.10"] = ("fixed", [_INFORMATION_OBJECT_IDENTITY,
                                     _INFORMATION_OBJECT_CREATOR])
+#: A document that names no product variant at all is M15.7a's finding, not
+#: this one's: the bullet this checks presupposes the variant the line above
+#: introduces. A Core qualifiedMinCount cannot tell the two apart, and said
+#: both, so this moved to SPARQL beside its siblings.
+SPARQL_FORMS["M15.7c"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDocument> .
+  ?value <%(ii)srelates-to-product-variant> ?anyvariant .
+  FILTER NOT EXISTS {
+    ?value <%(ii)srelates-to-product-variant> ?variant .
+    ?variant <%(ii)shas-identity> ?identity .
+    ?identity <%(ii)shas-identity-domain> ?domain .
+    ?domain <%(ii)shas-identity-type> <%(ii)sProductType> .
+  } }"""])
 SPARQL_FORMS["M15.7b"] = ("fixed", [_domain_manufacturer_query(
     "<%(ii)sObjectInstanceURI>, <%(ii)sObjectTypeURI>, <%(ii)sSerialNumber>")])
 SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductType>")])
@@ -735,15 +751,6 @@ def family_product_variant_identity(sid, p):
                   "sh:qualifiedMinCount 1")
     return (["sh:targetClass iirds:Document",
              "sh:property %s" % pid1, "sh:property %s" % pid2], body)
-
-
-def family_variant_type_identity(sid, p):
-    pid = sid + "-p"
-    return (["sh:targetClass iirds:ProductVariant", "sh:property %s" % pid],
-            _prop(pid, "( iirds:has-identity iirds:has-identity-domain "
-                       "iirds:has-identity-type )",
-                  "sh:qualifiedValueShape [ sh:in ( %s ) ]" % " ".join(p["types"]),
-                  "sh:qualifiedMinCount 1"))
 
 
 def family_class_forbidden(sid, p):

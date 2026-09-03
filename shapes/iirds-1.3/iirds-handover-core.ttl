@@ -175,24 +175,3 @@ ivs:M15.7a-p2 a sh:PropertyShape ;
   sh:path ( iirds:relates-to-product-variant iirds:has-identity iirds:has-identity-domain iirds:has-identity-type ) ;
   sh:qualifiedValueShape [ sh:in ( iirds:ObjectInstanceURI iirds:ObjectTypeURI iirds:SerialNumber ) ] ;
   sh:qualifiedMinCount 1 .
-
-ivs:M15.7c a sh:NodeShape ;
-  rdfs:label "The iirds:ProductVariant MUST relate to another iirds:Identity with an iirds:IdentityDomain that has an iirds:has-identity-type of iirds:ProductType." ;
-  sh:severity sh:Violation ;
-  sh:message "The iirds:ProductVariant MUST relate to another iirds:Identity with an iirds:IdentityDomain that has an iirds:has-identity-type of iirds:ProductType." ;
-  ivm:ruleId "M15.7c" ;
-  ivm:ruleSource "catalogue" ;
-  sh:description "Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
-  ivm:versions "1.3" ;
-  sh:targetClass iirds:ProductVariant ;
-  sh:property ivs:M15.7c-p .
-ivs:M15.7c-p a sh:PropertyShape ;
-  sh:message "The iirds:ProductVariant MUST relate to another iirds:Identity with an iirds:IdentityDomain that has an iirds:has-identity-type of iirds:ProductType." ;
-  sh:severity sh:Violation ;
-  ivm:ruleId "M15.7c" ;
-  sh:description "Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type." ;
-  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
-  sh:path ( iirds:has-identity iirds:has-identity-domain iirds:has-identity-type ) ;
-  sh:qualifiedValueShape [ sh:in ( iirds:ProductType ) ] ;
-  sh:qualifiedMinCount 1 .

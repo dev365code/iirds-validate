@@ -20,8 +20,8 @@ demonstrated.
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
 | `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 112 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
 | `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 14 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
-| `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
-| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 7 iiRDS/H additions (SPARQL): M15.11a, the five named-party MUSTs, and R4 |
+| `iirds-1.3/iirds-handover-core.ttl` | Core | 8 iiRDS/H additions — apply **only** under iiRDS/H |
+| `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 8 iiRDS/H additions (SPARQL): M15.11a, M15.7c, the five named-party MUSTs, and R4 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
 
 The `-complete` files exist because the pySHACL command line takes **one**

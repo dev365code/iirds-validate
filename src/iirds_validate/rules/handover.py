@@ -204,9 +204,29 @@ def m15_7a_product_variant_instance_identity(ctx):
                             fix="Give the product variant this document names an "
                                 "iirds:has-identity whose iirds:IdentityDomain declares an "
                                 "iirds:has-identity-type of iirds:ObjectInstanceURI, "
-                                "iirds:ObjectTypeURI or iirds:SerialNumber. The relation from "
-                                "the document is already there; what is missing is which "
-                                "machine, as distinct from which model.")
+                                "iirds:ObjectTypeURI or iirds:SerialNumber, and relate that "
+                                "domain to an iirds:Party with iirds:has-party-role "
+                                "iirds:Manufacturer carrying a vcard that names an "
+                                "organisation -- without the party the identity answers this "
+                                "and M15.7b takes its place. The relation from the document is "
+                                "already there; what is missing is which machine, as distinct "
+                                "from which model.")
+
+
+def _documented_variants(ctx):
+    """The product variants section 8.3.2 binds: the ones a document names.
+
+    Each of its variant requirements opens "at least one
+    iirds:relates-to-product-variant relating to an iirds:ProductVariant" and
+    continues "**This** iirds:ProductVariant MUST relate to ...", so the
+    subject is the variant the document points at, and "at least one"
+    introduces it. Read over every iirds:ProductVariant in the graph instead,
+    these rules failed a package for carrying a model it documents elsewhere.
+    """
+    for doc in ctx.instances_of(T.Document):
+        variants = list(ctx.values(doc, T.relates_to_product_variant))
+        if variants:
+            yield doc, variants
 
 
 @rule("M15.7b", spec=_spec_sans_quote("M15.7b"),
@@ -221,25 +241,30 @@ def m15_7b_instance_identity_manufacturer(ctx):
     packages -- the reading M15.10 was corrected away from, kept here until
     the same review looked at the siblings.
     """
-    for variant in ctx.instances_of(T.ProductVariant):
-        domains = [d for _i, d in _identities_of_type(ctx, variant, T.INSTANCE_IDENTITY_TYPES)]
+    for doc, variants in _documented_variants(ctx):
+        domains = [d for variant in variants
+                   for _i, d in _identities_of_type(ctx, variant, T.INSTANCE_IDENTITY_TYPES)]
         if domains and not any(_names_an_organisation(ctx, party)
                                for domain in domains
                                for party in _parties(ctx, domain, T.Manufacturer)):
-            yield Violation("iiRDS/H: no identity domain of an instance identity of this "
-                            "iirds:ProductVariant relates to an iirds:Party with role "
-                            "Manufacturer that names a vcard:Organization",
-                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
+            yield Violation("iiRDS/H: no instance identity of a product variant this "
+                            "iirds:Document names has an identity domain relating to an "
+                            "iirds:Party with role Manufacturer that names a vcard:Organization",
+                            subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
 @rule("M15.7c",
        fix="Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type.")
 def m15_7c_product_type_identity(ctx):
-    for variant in ctx.instances_of(T.ProductVariant):
-        if not any(_identities_of_type(ctx, variant, (T.ProductType,))):
-            yield Violation("iiRDS/H: iirds:ProductVariant must also carry an identity whose "
-                            "domain has an identity type of iirds:ProductType",
-                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
+    """The second variant bullet, on the same population as the first: one of
+    the variants the document names has to carry the product type as well as
+    the instance."""
+    for doc, variants in _documented_variants(ctx):
+        if not any(any(_identities_of_type(ctx, variant, (T.ProductType,)))
+                   for variant in variants):
+            yield Violation("iiRDS/H: no product variant this iirds:Document names carries an "
+                            "identity whose domain has an identity type of iirds:ProductType",
+                            subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
 @rule("M15.7d", spec=_spec_sans_quote("M15.7d"),
@@ -247,15 +272,16 @@ def m15_7c_product_type_identity(ctx):
 def m15_7d_product_type_manufacturer(ctx):
     """The same nesting as M15.7b, for the product type rather than the
     instance: one qualifying identity satisfies the bullet."""
-    for variant in ctx.instances_of(T.ProductVariant):
-        domains = [d for _i, d in _identities_of_type(ctx, variant, (T.ProductType,))]
+    for doc, variants in _documented_variants(ctx):
+        domains = [d for variant in variants
+                   for _i, d in _identities_of_type(ctx, variant, (T.ProductType,))]
         if domains and not any(_names_an_organisation(ctx, party)
                                for domain in domains
                                for party in _parties(ctx, domain, T.Manufacturer)):
-            yield Violation("iiRDS/H: no identity domain of a ProductType identity of this "
-                            "iirds:ProductVariant relates to an iirds:Party with role "
-                            "Manufacturer that names a vcard:Organization",
-                            subject=ctx.ref(variant), detail=ctx.label_of(variant))
+            yield Violation("iiRDS/H: no ProductType identity of a product variant this "
+                            "iirds:Document names has an identity domain relating to an "
+                            "iirds:Party with role Manufacturer that names a vcard:Organization",
+                            subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
 # --------------------------------------------------------------------------

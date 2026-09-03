@@ -134,30 +134,42 @@ def test_every_remedy_in_this_family_is_an_imperative(rule_id):
 # reader who follows it exactly is told nothing changed.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("rule_id,removal,restore", [
-    ("M15.8", '    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n', None),
-    ("M15.9", None, None),
-    ("M15.10", None, None),
-    ("M15.7b", None, None),
-    ("M15.7d", None, None),
+@pytest.mark.parametrize("rule_id,role", [
+    ("M15.8", "Author"), ("M15.9", "Creator"), ("M15.10", "Creator"),
+    ("M15.7b", "Manufacturer"), ("M15.7d", "Manufacturer"),
 ])
-def test_the_named_party_remedies_name_the_role_and_the_vcard(rule_id, removal, restore):
-    """Every one of the five requires a *named* role and a vcard that names an
-    organisation. A remedy that says "a Party with a role" is followed exactly
-    and the finding stays."""
-    from iirds_validate.registry import all_rules
+def test_following_a_named_party_remedy_clears_its_finding(rule_id, role, tmp_path):
+    """Each of the five wants a *named* role and a vcard that names an
+    organisation, and each remedy used to ask for "a Party with a role". The
+    package that results from doing exactly what the remedy says is the whole
+    test; asserting words about the remedy is what let the shortfall through.
 
-    rule = next(r for r in all_rules() if r.id == rule_id)
-    assert "has-party-role" in rule.fix, rule.fix
-    assert "vcard:organization-name" in rule.fix, rule.fix
-    assert "with a role." not in rule.fix, rule.fix
+    The removal is the party's role, which is what each rule looks for; the
+    remedy, applied, puts it back and says which role and which vcard.
+    """
+    from test_handover_rules_fire import HANDOVER, _package
+
+    line = '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#%s"/>\n' % role
+    assert line in HANDOVER, role
+    broken = HANDOVER.replace(line, "", 1)
+    report = runner.run(_package(tmp_path, "%s_gone.iirds" % rule_id.replace(".", "_"), broken),
+                        runner.ALL_KINDS)
+    hits = [f for f in report.findings if f.rule.id == rule_id]
+    assert hits, sorted({f.rule.id for f in report.findings})
+    fix = hits[0].fix
+    assert role in fix, fix
+    assert "vcard:organization-name" in fix, fix
+
+    mended = runner.run(_package(tmp_path, "%s_back.iirds" % rule_id.replace(".", "_"), HANDOVER),
+                        runner.ALL_KINDS)
+    assert rule_id not in {f.rule.id for f in mended.findings}
 
 
 def test_m15_7b_remedy_is_about_the_party_not_the_identity_type():
     """Its finding is that no domain names a manufacturer. The remedy used to
-    be M15.7c's -- "give the identity a domain that names one of
-    ObjectInstanceURI, ObjectTypeURI or SerialNumber" -- which is a different
-    rule's requirement and already satisfied wherever this one can fire."""
+    ask for a domain naming one of ObjectInstanceURI, ObjectTypeURI or
+    SerialNumber -- which is M15.7a's second half, not this rule's, and is
+    necessarily already satisfied wherever this one can fire at all."""
     from iirds_validate.registry import all_rules
 
     fix = next(r for r in all_rules() if r.id == "M15.7b").fix
@@ -178,7 +190,21 @@ def test_following_m15_10s_remedy_clears_it_without_trading_it_for_others(tmp_pa
     hit = [f for f in report.findings if f.rule.id == "M15.10"]
     assert hit and "iirds:identifier" in hit[0].fix and "IRI" in hit[0].fix
 
-    # the remedy, followed: the fixture's own identity chain is what it describes
-    back = runner.run(_package(tmp_path, "m15_10_back.iirds", HANDOVER), runner.ALL_KINDS)
-    errors = sorted({f.rule.id for f in back.findings if str(f.severity) == "error"})
+    # The remedy, applied to the package that provoked it: an identity with an
+    # IRI and an identifier, whose domain carries the creator party. Re-running
+    # the untouched fixture would prove only that the fixture passes.
+    mended = stripped.replace(
+        "  </iirds:InformationObject>",
+        '    <iirds:has-identity rdf:resource="urn:test:identity-new"/>\n'
+        "  </iirds:InformationObject>\n\n"
+        '  <iirds:Identity rdf:about="urn:test:identity-new">\n'
+        "    <iirds:identifier>IO-NEW</iirds:identifier>\n"
+        '    <iirds:has-identity-domain rdf:resource="urn:test:domain-new"/>\n'
+        "  </iirds:Identity>\n\n"
+        '  <iirds:IdentityDomain rdf:about="urn:test:domain-new">\n'
+        '    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n'
+        "  </iirds:IdentityDomain>", 1)
+    assert mended != stripped
+    after = runner.run(_package(tmp_path, "m15_10_mended.iirds", mended), runner.ALL_KINDS)
+    errors = sorted({f.rule.id for f in after.findings if str(f.severity) == "error"})
     assert errors == [], errors

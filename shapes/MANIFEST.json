@@ -6,9 +6,9 @@
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
  "_note": "Every registered rule appears in exactly one bucket; the emitter refuses to run otherwise. not_expressible reasons are the differential gate's exclusion list — one source, no ad-hoc skips.",
  "counts": {
-  "core_emitted": 121,
+  "core_emitted": 120,
   "version_excluded": 2,
-  "sparql_emitted": 21,
+  "sparql_emitted": 22,
   "deferred_v1.1": 9,
   "not_expressible": 44,
   "noop": 1
@@ -43,7 +43,6 @@
   "M15.11b",
   "M15.11c",
   "M15.7a",
-  "M15.7c",
   "M19.1",
   "M19.2",
   "M19.3",
@@ -147,6 +146,7 @@
   "M15.10",
   "M15.11a",
   "M15.7b",
+  "M15.7c",
   "M15.7d",
   "M16.3",
   "M17",
@@ -346,10 +346,6 @@
   },
   "M15.7a": {
    "iri": "https://w3id.org/iirds-validate/shapes#M15.7a",
-   "file": "iirds-1.3/iirds-handover-core.ttl"
-  },
-  "M15.7c": {
-   "iri": "https://w3id.org/iirds-validate/shapes#M15.7c",
    "file": "iirds-1.3/iirds-handover-core.ttl"
   },
   "M19.1": {
@@ -754,6 +750,10 @@
   },
   "M15.7b": {
    "iri": "https://w3id.org/iirds-validate/shapes#M15.7b",
+   "file": "iirds-1.3/iirds-handover-sparql.ttl"
+  },
+  "M15.7c": {
+   "iri": "https://w3id.org/iirds-validate/shapes#M15.7c",
    "file": "iirds-1.3/iirds-handover-sparql.ttl"
   },
   "M15.7d": {

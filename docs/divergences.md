@@ -85,15 +85,24 @@ round. The example stays in view because a specification's own worked example
 is the cheapest oracle a validator has, and because the claim that this rule no
 longer fires on it was written before anyone ran it.
 
-The class this belongs to was enumerated rather than guessed at. Sweeping the
-1.3 text for a MUST whose subject is "The *Class*" following a line that
-introduces one — the construction that makes a requirement existential —
-finds **exactly four**, all about `iirds:IdentityDomain`: the two identity
-types (M15.7a's second half and M15.7c) and the two parties (M15.7b and
-M15.7d for the manufacturer, this rule for the creator). The two type rules
-were already read that way; the two party rules were not, and both are
-corrected. A test holds the closure by adding a further identity of each kind
-to a conformant handover package and requiring that nothing turns it away.
+The class this belongs to was enumerated, and the first enumeration was
+wrong in a way worth recording. Sweeping the 1.3 text for a MUST whose subject
+is "**The** *Class*" following a line that introduces one — the construction
+that makes a requirement existential — finds four, all about
+`iirds:IdentityDomain`: the two identity types (M15.7a's second half and
+M15.7c) and the two parties (M15.7b and M15.7d for the manufacturer, this rule
+for the creator). The sweep looked for the article and missed the
+demonstrative. The fifth is the shell the other four sit inside: "**This**
+`iirds:ProductVariant` MUST relate to an `iirds:Identity` with an
+`iirds:IdentityDomain`", under "at least one
+`iirds:relates-to-product-variant` relating to an `iirds:ProductVariant`" —
+and that one fixes the population as well as the quantifier. Read over every
+`iirds:ProductVariant` in the graph, M15.7b, M15.7c and M15.7d failed a
+package for carrying a model it documents elsewhere; they read the variants a
+document names now, and name the document, which is the shape M15.7a always
+had. A test holds the closure by adding a further identity of each kind, and a
+further variant, to a conformant handover package and requiring that nothing
+turns it away.
 
 One identity is enough. "at least one `iirds:has-identity` …" introduces the
 domain the next sentence speaks of, and section 6.8.1 says instances of

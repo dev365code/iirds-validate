@@ -48,9 +48,9 @@ def test_every_rule_is_classified_exactly_once():
 
 def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
-    assert counts["core_emitted"] == 121
+    assert counts["core_emitted"] == 120
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 21
+    assert counts["sparql_emitted"] == 22
     assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 44
     assert counts["noop"] == 1

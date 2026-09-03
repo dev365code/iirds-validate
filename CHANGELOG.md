@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-09-03
 
 The first release in which the checker and the library ship as one
 distribution: `pip install iirds` installs both. The command is `iirds`;

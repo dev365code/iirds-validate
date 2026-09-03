@@ -41,7 +41,7 @@ from ._package import (
 )
 from ._package import open_package as open  # noqa: A001 - deliberate, like gzip.open
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 __all__ = ["IIRDS", "IirdsError", "MAX_METADATA_BYTES", "METADATA_JSONLD",
            "METADATA_RDF", "NOT_RDFXML", "PACKAGE_BASE", "PackError", "Package",
            "__version__", "instances_of", "is_absolute_name",

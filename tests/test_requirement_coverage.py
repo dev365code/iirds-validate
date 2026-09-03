@@ -80,8 +80,8 @@ def test_how_far_the_name_heuristic_actually_reaches():
     It looked like a gate over all of them: parametrised by rule, iterating
     every claim, green. The `continue` for a requirement whose subject is not
     a qualified name is not an oversight -- most of the index has no subject
-    to name -- but the number was nowhere, so seven wrong claims passed under
-    a heuristic that had never been applied to any of them.
+    to name -- but the number was nowhere, so ten wrong claims passed under a
+    heuristic that had never been applied to any of them.
 
     Pinned in both directions. If a change makes it reach further, this
     number goes up on purpose; if a change to `docs/requirements.json` empties
@@ -90,7 +90,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 80, len(pairs)
+    assert len(pairs) == 81, len(pairs)
     assert len(asserted) == 2, sorted(asserted)
     assert sorted(rid for rid, _ in asserted) == ["R1", "R2"], sorted(asserted)
 
@@ -98,7 +98,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 68
+    assert len(COVERED) == 67
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 

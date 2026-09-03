@@ -38,7 +38,7 @@ ivs:M15.8 a sh:NodeShape ;
       FILTER NOT EXISTS { ?card ?cp ?co } }
     UNION
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
-      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cardtype .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .
@@ -62,7 +62,7 @@ ivs:M15.9 a sh:NodeShape ;
       FILTER NOT EXISTS { ?card ?cp ?co } }
     UNION
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
-      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cardtype .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .
@@ -97,7 +97,7 @@ ivs:M15.10 a sh:NodeShape ;
       FILTER NOT EXISTS { ?card ?cp ?co } }
     UNION
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
-      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cardtype .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .
@@ -146,7 +146,7 @@ ivs:M15.7b a sh:NodeShape ;
       FILTER NOT EXISTS { ?card ?cp ?co } }
     UNION
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
-      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cardtype .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .
@@ -201,7 +201,7 @@ ivs:M15.7d a sh:NodeShape ;
       FILTER NOT EXISTS { ?card ?cp ?co } }
     UNION
     { ?party <http://iirds.tekom.de/iirds#relates-to-vcard> ?namedcard .
-      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cardtype .
+      ?namedcard <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?cardtype .
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .

@@ -326,7 +326,8 @@ def l7_untitled_information_units(ctx):
 @_lint("L9", "the RDF/XML and JSON-LD metadata must describe the same graph",
        prio="MUST", conformance=True,
        fix="Regenerate both files from one source, or delete one of them. A consumer may read either, so two that disagree hand two readers different data with no way to tell which was meant.",
-       covers=("x5-1-1-metadata-location-and-rdf-serializations#4",))
+       covers=("x5-1-1-metadata-location-and-rdf-serializations#2",
+               "x5-1-1-metadata-location-and-rdf-serializations#4",))
 def l9_serialisations_disagree(ctx):
     """iiRDS 1.3 lets a package state its metadata twice.
 

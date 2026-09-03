@@ -20,11 +20,16 @@ from ..registry import CATALOG, rule
 ORGANISATION_NAME = VCARD["organization-name"]
 
 #: The two spellings a package uses to say "this vcard is an organisation".
-#: `vcard:Organization` is the class the standard names. `vcard:organization`
-#: is the vcard *property* IRI used where the class belongs -- what every one
-#: of the reference tool's handover fixtures writes, and what tekom's own
-#: samples write. Accepting the second is a divergence, recorded as one; it is
-#: a misspelling of this requirement, not a different requirement.
+#: `vcard:Organization` is the class section 8.3.2 names. `vcard:organization`
+#: is not a term of the vCard vocabulary at all -- that file declares the class
+#: `vcard:Organization`, the object property `vcard:org` and the datatype
+#: property `vcard:organization-name`, and nothing between them -- so a card
+#: typed with it has named an IRI nobody defines, differing from the one the
+#: sentence asks for by one letter's case. It is what every handover fixture
+#: the reference tool ships writes, so it is accepted, and recorded as a
+#: divergence. That is a misspelling of this requirement, not a different one;
+#: `vcard:Individual`, which the vocabulary does define and defines as a
+#: person, is a different one.
 ORGANISATION_TYPES = frozenset((VCARD["Organization"], VCARD["organization"]))
 
 
@@ -63,11 +68,8 @@ def _names_an_organisation(ctx, party) -> bool:
     author and creator all pointed at nothing passed conformance in silence.
     Softening it was right; giving it away was not.
 
-    And one deliberate widening: the organisation may be typed
-    `vcard:Organization`, the class the standard names, or `vcard:organization`
-    — the vcard *property* IRI, lower case, which is what every handover
-    fixture the reference ships actually writes. Both say "organisation"; one
-    is a misspelling of the other.
+    And one deliberate widening: either spelling in ORGANISATION_TYPES will
+    do, for the reasons recorded there.
 
     The type used to go unasked altogether, on the reasoning that the substance
     of the requirement is that the party can be identified. It is not: a card
@@ -76,9 +78,17 @@ def _names_an_organisation(ctx, party) -> bool:
     those sentences are the whole reason a handover package can be traced to
     the firm that shipped it. Accommodating a spelling is not the same as
     dropping the word. Across every corpus this repository holds -- ours,
-    tekom's samples, the reference's fixtures -- no described card carries an
-    organisation name without one of the two spellings, so nothing that passed
-    before fails now.
+    tekom's samples, the reference's fixtures -- every card carrying an
+    organisation name carries one of the two spellings too, so nothing that
+    passed before fails now.
+
+    The type is asked through `is_instance`, not by comparing `rdf:type`
+    values, which was the first form of this check and was wrong for the
+    reason `Context.is_instance` states: "exact typing is how section 7 gets
+    forgotten one rule at a time". A package that declares its own class a
+    subclass of `vcard:Organization` and types the card with it has said the
+    card is an organisation, and reporting it beside the `vcard:Individual`
+    case would put a conformant package and a broken one under one finding.
     """
     cards = ctx.values(party, T.relates_to_vcard)
     if not cards:
@@ -86,8 +96,8 @@ def _names_an_organisation(ctx, party) -> bool:
     for card in cards:
         if not _describes(ctx, card):
             return True                     # undescribed: R4 owns it
-        if ORGANISATION_TYPES & set(ctx.values(card, T.RDF_TYPE)) \
-                and ctx.has(card, ORGANISATION_NAME):
+        if ctx.has(card, ORGANISATION_NAME) \
+                and any(ctx.is_instance(card, cls) for cls in ORGANISATION_TYPES):
             return True
     return False
 

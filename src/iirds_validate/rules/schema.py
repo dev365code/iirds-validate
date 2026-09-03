@@ -7,7 +7,7 @@ from the two tools can be compared directly.
 """
 from __future__ import annotations
 
-from rdflib import URIRef
+from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from .. import terms as T
@@ -152,6 +152,20 @@ def m5_absolute_iris(ctx):
 @rule("M6", covers=("x6-2-2-information-objects#2",),
        fix="Relate the information unit to exactly one information object with iirds:is-version-of. Two would make it a version of two different things at once, and a consumer merging revisions cannot resolve that.")
 def m6_one_information_object(ctx):
+    """"MUST only be related to exactly one" is read as "to at most one".
+
+    Section 6.2.2: "If information objects are used, each information unit
+    MUST only be related to exactly one information object via
+    iirds:is-version-of." Read as "must have one", it would require every
+    information unit in a package that uses information objects to be a
+    version of one -- including the `iirds:Package` itself, which is an
+    information unit and is a version of nothing. The weight of the sentence
+    is on *only*: a unit that is a version of two things is what a consumer
+    merging revisions cannot resolve, and that is what this reports.
+
+    Recorded because the reading decides what the claim on this obligation
+    covers, and an unwritten reading is a claim nobody can check.
+    """
     for unit in ctx.information_units():
         objs = ctx.values(unit, T.is_version_of)
         if len(objs) > 1:
@@ -216,7 +230,7 @@ def _value_selectors(ctx):
     return [s for s in ctx.instances_of(T.Selector) if s not in ranges]
 
 
-@rule("M13.1",   # not x6-3-1-reference-part-of-file-by-selector#3: RangeSelector is exempt
+@rule("M13.1", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
        fix="Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate.")
 def m13_1_selector_value(ctx):
     for sel in _value_selectors(ctx):
@@ -225,7 +239,7 @@ def m13_1_selector_value(ctx):
                             "one rdf:value", subject=ctx.ref(sel))
 
 
-@rule("M13.2",   # not x6-3-1-reference-part-of-file-by-selector#3: RangeSelector is exempt
+@rule("M13.2", covers=("x6-3-1-reference-part-of-file-by-selector#3",),
        fix="Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression.")
 def m13_2_selector_conforms_to(ctx):
     for sel in _value_selectors(ctx):
@@ -589,12 +603,13 @@ def m18_product_variants_are_declared(ctx):
     """Product variants are a proprietary extension, so they travel in the package.
 
     Section 6.7.4 says they "MUST be present in the metadata.rdf of the iiRDS
-    package", and this reads the merged graph: a variant declared only in
-    metadata.jsonld satisfies this rule and breaches that sentence. The claim
-    is withdrawn rather than the reading changed, because which file is
-    authoritative when the two disagree is a design question of its own -- L9
-    reports the disagreement, and answering it inside a mapping correction
-    would be deciding it by accident.
+    package", and this asks something else entirely: whether the package leans
+    on an outside vocabulary while declaring no `iirds:ProductVariant` of its
+    own. Those coincide only by accident. A variant declared in metadata.jsonld
+    alone satisfies this rule and breaches that sentence -- and `_where_stated`,
+    three functions up, would answer the file question in one line, so the
+    reason this is withdrawn is not that the question is hard. It is that this
+    rule was never about it.
     """
     if _relies_solely_on_an_external_vocabulary(ctx, T.relates_to_product_variant,
                                                 T.ProductVariant):
@@ -603,17 +618,28 @@ def m18_product_variants_are_declared(ctx):
                         subject="iirds:relates-to-product-variant")
 
 
-def _where_stated(ctx, triple) -> str:
-    """The metadata file a statement is actually in.
+def _where_stated(ctx, *triples) -> str:
+    """The metadata file or files these statements are actually in.
 
     Every rule but L9 reads the merged graph, which is right -- and it means a
     finding cannot name a file unless it looks. Section 7.1 names one:
     "The file metadata.rdf MUST NOT contain the iiRDS schema", so a finding
     about it has to say which file, and saying the wrong one sends a reader to
     open a file that is clean.
+
+    Several triples, not one, because a finding can rest on more than one and
+    naming the file of only the first is the same defect in a smaller place: a
+    subject declared `rdf:Property` in metadata.rdf and `rdfs:Class` in
+    metadata.jsonld was reported against metadata.jsonld alone, which is the
+    file section 7.1 does *not* name.
+
+    Callers pass triples of URIRefs. A statement whose subject is a blank node
+    would not be found here -- rdflib labels blank nodes per parse, so the same
+    logical node has different labels in two separately parsed files -- and no
+    caller has one, because M30 reaches only iiRDS terms.
     """
-    names = sorted(name.rpartition("/")[2] for name, graph in ctx.per_source.items()
-                   if triple in graph)
+    names = sorted({name.rpartition("/")[2] for name, graph in ctx.per_source.items()
+                    for triple in triples if triple in graph})
     return " and ".join(names) or "the package metadata"
 
 
@@ -651,11 +677,13 @@ def m30_no_schema_in_metadata(ctx):
         if not ctx.ontology.is_iirds_term(subject):
             continue
         types = ctx.values(subject, T.RDF_TYPE)
-        declared = RDFS.Class if RDFS.Class in types else (
-            RDF.Property if RDF.Property in types else None)
-        if declared is not None:
+        # Both, not the first: a subject declared a property in one file and a
+        # class in the other is one finding that belongs to two files.
+        declared = [(subject, T.RDF_TYPE, kind) for kind in (RDFS.Class, RDF.Property)
+                    if kind in types]
+        if declared:
             yield Violation("%s must not redeclare the iiRDS schema"
-                            % _where_stated(ctx, (subject, T.RDF_TYPE, declared)),
+                            % _where_stated(ctx, *declared),
                             subject=ctx.ref(subject), detail="declared as a class or property here")
             continue
         for predicate in schema_predicates:
@@ -715,7 +743,56 @@ def m21_1_lifecycle_status_value(ctx):
     yield from _exactly_one(ctx, T.ContentLifeCycleStatus, T.has_content_lifecycle_status_value, "iirds:has-content-lifecycle-status-value")
 
 
+def _points_at_an_instance_of(ctx, prop, cls, message):
+    """"MUST have an X which is assigned by property P" -- the X half.
+
+    Three sentences of chapter 6 have this shape and each needs two rules: one
+    to count the property, one to ask what it points at. This is the second,
+    written once because the third caller arrived and the first two had drifted
+    apart on the exemptions.
+
+    The exemptions, and what each is for.
+
+    A term the *ontology* types as the class: `Context.is_instance` reads the
+    package's graph and nothing else, so a package pointing
+    `iirds:has-party-role` at `iirds:Author` -- the term the standard supplies
+    for exactly this -- has said nothing its own graph can confirm. This used
+    to be `ctx.ontology.defined_terms()`, which is every subject in the
+    ontology file: 327 IRIs, classes and properties included. It let
+    `iirds:has-content-lifecycle-status-value` point at `iirds:Topic` and
+    `iirds:has-party-role` point at `iirds:Package`, in both encodings, with
+    no finding -- a hole of exactly the shape this rule family exists to
+    close, held open by the exemption meant to keep it honest. Narrowed to the
+    terms the ontology declares to be instances of the class asked about. On
+    every corpus here that reclassifies nothing: all 1201 referents were
+    already either a genuine instance or undescribed.
+
+    An undescribed IRI: a dangling reference, which is L1's business and not a
+    typing error. Two things are not that, and both used to fall out of this
+    branch because neither carries triples of its own in the package:
+
+    a *literal*, which L1 says nothing about and which no class can have as an
+    instance -- `<iirds:has-content-lifecycle-status-value>Approved</...>` was
+    reported by nothing at all; and
+
+    a term the standard itself defines. `iirds:Topic` is not a dangling
+    pointer -- the ontology describes it at length -- it is the wrong term,
+    which is this rule's whole subject. Sending it to L1 meant the narrowed
+    exemption above changed nothing: the second exemption caught what the
+    first stopped catching.
+    """
+    for subject, value in ctx.graph.subject_objects(prop):
+        if ctx.is_instance(value, cls) or value in ctx.ontology.instances_of(cls):
+            continue
+        if (not isinstance(value, Literal)
+                and not ctx.ontology.is_defined(value)
+                and (value, None, None) not in ctx.graph):
+            continue          # undescribed reference: L1's business
+        yield Violation(message, subject=ctx.ref(subject), detail=ctx.ref(value))
+
+
 @rule("R10", covers=("x6-8-2-content-lifecycle-status#2",), kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),   # as M21.1 and M22.2, its neighbours
       title="iirds:has-content-lifecycle-status-value must point at a status value",
       spec=CATALOG.get("M21.1", {}).get("spec"),   # the same sentence M21.1 counts
       fix="Point iirds:has-content-lifecycle-status-value at an instance of "
@@ -739,18 +816,15 @@ def r10_lifecycle_value_is_a_status_value(ctx):
     passed. The asymmetry is the whole evidence: the same reading applied to
     the same shape in the same chapter, one section apart.
 
-    Follows M22.2 exactly, including where it stops. An undescribed referent is
-    a dangling reference and L1's business, not a typing error.
+    Follows M22.2 exactly, including where it stops. An undescribed *IRI* is a
+    dangling reference and L1's business, not a typing error -- a literal is
+    neither, and is reported here, because L1 has nothing to say about one and
+    a literal can never be an instance of anything.
     """
-    for status, value in ctx.graph.subject_objects(T.has_content_lifecycle_status_value):
-        if ctx.is_instance(value, T.ContentLifeCycleStatusValue) \
-                or value in ctx.ontology.defined_terms():
-            continue
-        if (value, None, None) not in ctx.graph:
-            continue          # undescribed reference: L1's business
-        yield Violation("iirds:has-content-lifecycle-status-value must point to an "
-                        "iirds:ContentLifeCycleStatusValue",
-                        subject=ctx.ref(status), detail=ctx.ref(value))
+    yield from _points_at_an_instance_of(
+        ctx, T.has_content_lifecycle_status_value, T.ContentLifeCycleStatusValue,
+        "iirds:has-content-lifecycle-status-value must point to an "
+        "iirds:ContentLifeCycleStatusValue")
 
 
 @rule("M22.2", covers=("x6-8-3-parties-and-roles#2",),
@@ -759,19 +833,30 @@ def m22_2_role_is_a_party_role(ctx):
     """M22.1 asks whether the party has a role; this asks whether the thing it
     points at is one. They were the same function here, which double-reported
     one defect and left the actual check missing."""
-    for party, role in ctx.graph.subject_objects(T.has_party_role):
-        if ctx.is_instance(role, T.PartyRole) or role in ctx.ontology.defined_terms():
-            continue
-        if (role, None, None) not in ctx.graph:
-            continue          # undescribed reference: L1's business
-        yield Violation("iirds:has-party-role must point to an iirds:PartyRole",
-                        subject=ctx.ref(party), detail=ctx.ref(role))
+    yield from _points_at_an_instance_of(
+        ctx, T.has_party_role, T.PartyRole,
+        "iirds:has-party-role must point to an iirds:PartyRole")
 
 
-@rule("M23", covers=("x6-8-3-parties-and-roles#3",),
+@rule("M23",   # not x6-8-3-parties-and-roles#3: see the docstring
        fix="Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact.")
 def m23_party_has_a_vcard(ctx):
-    """A role without a description is not something anyone can act on."""
+    """A role without a description is not something anyone can act on.
+
+    Section 6.8.3's sentence has two halves and this counts one: "an
+    iirds:Party MUST also have an associated description of itself as
+    compliant **vcard:kind object** which is assigned via
+    iirds:relates-to-vcard". A party whose vcard is an `iirds:Topic` has the
+    property and not the object, and nothing reports it -- the same shape
+    R10 was written for, one sentence further down the same section.
+
+    Not fixed here, and the claim withdrawn instead, because the companion
+    needs something this repository does not have: the vCard vocabulary, to
+    say which classes are kinds. `Ontology.instances_of` reads the bundled
+    iiRDS files and vCard is not among them, and bundling a second vocabulary
+    is a decision about what this tool ships, not a rider on a mapping
+    correction.
+    """
     yield from _exactly_one(ctx, T.Party, T.relates_to_vcard, "iirds:relates-to-vcard")
 
 

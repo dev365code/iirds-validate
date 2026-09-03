@@ -104,20 +104,25 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 68 of 280.** 6 of the 68 are held by a
-   package. The second number is the one to weigh, and it is the smaller
-   one for a reason worth stating plainly: a `covers=` claim used to be made
-   by reading a sentence and a rule side by side and judging them to be about
-   the same thing. Seven claims made that way turned out to be wrong — a
-   sentence asking for a `vcard:Organization` claimed by rules that
-   deliberately did not check the class, a sentence naming a class and a
-   property claimed by a rule that counted the property, a conditional
-   obligation claimed by a rule triggering on a different condition, and one
-   claimed over a paragraph of `docs/divergences.md` that said in those words
-   that it must not be. Four were withdrawn, three were earned by fixing the
-   rule. What separates the two groups is not a better reading; it is that
-   somebody built the package that breaks the sentence and watched what
-   happened.
+1. **Coverage of the standard is 67 of 280.** 9 of the 67 are held by a
+   package. The second number is the one to weigh, and it is the smaller one
+   for a reason worth stating plainly: a `covers=` claim used to be made by
+   reading a sentence and a rule side by side and judging them to be about the
+   same thing. Ten claims made that way turned out to be wrong — a sentence
+   asking for a `vcard:Organization` claimed by rules that deliberately did
+   not check the class, two sentences naming a class and a property claimed by
+   rules that counted the property, a conditional obligation claimed by a rule
+   triggering on a different condition, a sentence about what a file contains
+   claimed by a rule that asks whether the file parses, and one claimed over a
+   paragraph of `docs/divergences.md` that said in those words that it must
+   not be. Five were withdrawn, five were earned by fixing the rule or by
+   giving the sentence to a rule that could already see it. An eleventh claim
+   had been withdrawn and should not have been: `iirds:RangeSelector` is
+   exempt from M13.1 and M13.2 because the specification's own Example 13 is
+   a range selector carrying neither property, and the two fragment selectors
+   it points at carry both — which those rules do check. What separates the
+   groups is not a better reading; it is that somebody built the package that
+   breaks the sentence and watched what happened.
 
    So the criterion is written down, and it is one sentence: **a rule covers
    an obligation when every package violating that obligation's sentence is

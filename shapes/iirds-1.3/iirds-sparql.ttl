@@ -218,6 +218,7 @@ ivs:R10 a sh:NodeShape ;
   ivm:ruleSource "iirds-validate" ;
   sh:description "Point iirds:has-content-lifecycle-status-value at an instance of iirds:ContentLifeCycleStatusValue or one of its subclasses. Pointing at anything else leaves the status unnamed even though the property is present, and a consumer sorting by lifecycle state has nothing to sort on." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AContentLifecyleStatus%20MUST%20have%20an%20iirds%3AContentLifecyleStatusValue%20which%20is%20assigned%20by%20the%20iirds%3Ahas%2Dcontent%2Dlifecycle%2Dstatus%2Dvalue%20property.> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   ivm:covers "x6-8-2-content-lifecycle-status#2" ;
   sh:targetSubjectsOf iirds:has-content-lifecycle-status-value ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {

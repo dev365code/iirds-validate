@@ -46,6 +46,7 @@ class Ontology:
         # triples each — is retained for the life of the process.
         self._subclasses = {}
         self._subproperties = {}
+        self._instances = {}
         self._defined = None
         for name in files:
             if resources.exists(ONTOLOGIES, self.version_dir, name):
@@ -70,6 +71,32 @@ class Ontology:
         if self._defined is None:
             self._defined = frozenset(s for s in self.graph.subjects() if isinstance(s, URIRef))
         return self._defined
+
+    def instances_of(self, cls: URIRef) -> frozenset:
+        """Terms the ontology itself types as `cls`, or as a class beneath it.
+
+        The narrow companion to `defined_terms`, for the rules that ask "is
+        the thing this property points at the right *kind* of thing".
+        `Context.is_instance` reads the package's graph and nothing else, so
+        a package pointing `iirds:has-party-role` at `iirds:Author` -- the
+        term the standard supplies for exactly that purpose -- has said
+        nothing the package's own graph can confirm, and those rules
+        exempted every term the ontology mentions instead.
+
+        That whitelist is `frozenset(self.graph.subjects())`: 327 IRIs, every
+        class and property and instance in the file. It let
+        `iirds:has-content-lifecycle-status-value` point at `iirds:Topic`,
+        and `iirds:has-party-role` point at `iirds:Manufacturer`'s
+        neighbours, without a finding. This asks the question the rules
+        meant: not "does the standard mention this name" but "does the
+        standard say this name is one of these".
+        """
+        if cls not in self._instances:
+            self._instances[cls] = frozenset(
+                subject for below in self.subclasses_of(cls)
+                for subject in self.graph.subjects(RDF.type, below)
+                if isinstance(subject, URIRef))
+        return self._instances[cls]
 
     def requires_an_iri(self, cls: URIRef) -> bool:
         """Does the standard say instances of this class must be named?

@@ -311,10 +311,22 @@ def c16_1_rdf_parses(ctx):
 # package, and gating the whole rule meant a corrupt metadata.jsonld in an
 # ordinary package was parsed, failed, and silently discarded. The rule runs
 # everywhere; the mandatory-file branch checks the variant itself.
-@rule("C16.2", covers=("x6-12-rdf-serialization#3",),
+@rule("C16.2",   # not x6-12-rdf-serialization#3: see the docstring
        variants=(),
        fix="Name the JSON-LD file META-INF/metadata.jsonld exactly. A consumer that supports JSON-LD looks for that path only, and one that does not will use metadata.rdf, which must still be present.")
 def c16_2_jsonld(ctx):
+    """Section 6.12: "iiRDS/H packages MUST contain iiRDS metadata in JSON-LD
+    1.1 syntax." This asks whether the file is there and whether it reads,
+    which is most of that sentence and not the whole of it: an iiRDS/H package
+    whose metadata.jsonld is a well-formed empty `@graph` satisfies both and
+    contains no iiRDS metadata at all. L9 reports the disagreement with
+    metadata.rdf, and L9 does not claim this obligation.
+
+    The claim is withdrawn rather than the rule extended, because "contains
+    iiRDS metadata" needs a threshold -- one triple in an iiRDS namespace, one
+    typed instance, a Package node -- and choosing it is a rule's worth of
+    decision, not a line.
+    """
     if ctx.variant == "H" and not ctx.package.has(METADATA_JSONLD):
         yield Violation("iiRDS/H packages must contain META-INF/metadata.jsonld")
     for err in ctx.parse_errors:

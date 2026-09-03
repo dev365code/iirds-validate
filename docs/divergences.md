@@ -220,23 +220,30 @@ or, for C9, until the grammar the obligation cites was read.
 | "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | absoluteness is M5's question, and M5 is RECOMMENDED. Conflating them turned one recommendation into sixty MUSTs |
 | C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
 
-**A leniency and a coverage claim cannot both stand.** Every row above narrows
-what its rule checks against the sentence the rule is about, so none of those
-rules covers that sentence, and `covers=` was withdrawn from the three that
-had claimed one: M13.1 and M13.2 for `x6-3-1-reference-part-of-file-by-selector#3`
-(a `RangeSelector` with no `rdf:value` breaches the sentence and nothing
-reports it), M17 for `x6-7-2-external-product-ontology#6`, M18 for
-`x6-7-4-product-variants#1`. The exception is the vcard row, which was rewritten
-rather than withdrawn: dropping the class altogether let a card typed
-`vcard:Individual` breach three of section 8.3.2's sentences in silence, and
-accommodating a spelling is not the same as dropping the word. Across every
-corpus in this repository no described card carries an organisation name
-without one of the two spellings, so the narrowing costs nothing observable.
+**What a row here does to a coverage claim.** "More lenient" covers three
+different things, and only one of them costs a claim. The `claim` column says
+which each row is; `tests/test_covers_is_earned.py` reads that column, because
+a table nothing runs is how the M25 paragraph below came to be contradicted by
+the code it describes.
 
-The general rule, now stated in `docs/scope.md` and gated in
-`tests/test_covers_is_earned.py`: a claim survives a documented leniency only
-if the leniency is about *how* the sentence is spelled, never about *what* it
-asks for.
+| rule | kind of leniency | claim |
+|---|---|---|
+| M17, M18 | **narrows the sentence** — the rule asks something else and the difference is unreported | withdrawn |
+| M15.7b, M15.7d, M15.8, M15.9, M15.10 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all | kept |
+| M13.1, M13.2 | **not a leniency** — Example 13 shows a `RangeSelector` carrying neither property and its two fragment selectors carrying both, which these rules check | kept |
+| M19.4 | **narrows the sentence** | never claimed |
+| M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced M5's RECOMMENDED absoluteness on top | kept |
+| C9 | **not a leniency** — the earlier rule enforced the shape most files have rather than the grammar the obligation cites | kept |
+
+So the rule, stated in `docs/scope.md`: a claim survives a documented
+difference only where the difference is about *how* the sentence is spelled,
+or where what is called leniency is really the correction of a strictness the
+sentence never asked for. Where the rule genuinely checks less than the
+sentence says, the claim goes with it. Two more were withdrawn on that ground
+outside this table — M23 for `x6-8-3-parties-and-roles#3`, whose second half
+asks for a "compliant vcard:kind object" and would need the vCard vocabulary
+bundled to check, and C16.2 for `x6-12-rdf-serialization#3`, which asks whether
+`metadata.jsonld` parses and not whether it contains iiRDS metadata.
 
 **C9, in more detail.** Section 5.1.1 asks for "RDF 1.1 XML syntax (see
 [rdf-syntax-grammar])", and the rule enforced the shape most files have

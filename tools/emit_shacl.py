@@ -253,15 +253,16 @@ def _ns_test(var):
 #: relates-to-vcard triple, binding the card before testing it (found by
 #: the softening pin the moment these shapes first ran).
 #: The second branch asks for the type as well as the name, as the sentence
-#: does. Bare rdf:type, not the subClassOf closure, because Python asks
-#: `ctx.values(card, RDF_TYPE)` -- the two encodings have to ask the same
-#: question or the differential gate is measuring itself. Both spellings are
+#: does, and asks it through the subClassOf closure because Python asks
+#: `ctx.is_instance` -- a package may declare its own class a subclass of
+#: vcard:Organization and type the card with it (section 7), and both
+#: encodings have to accept that or one of them is wrong. Both spellings are
 #: accepted; see ORGANISATION_TYPES in rules/handover.py for why.
 _NAMED_VCARD = ("{ ?party <%(ii)srelates-to-vcard> ?card .\n"
                 "      FILTER NOT EXISTS { ?card ?cp ?co } }\n"
                 "    UNION\n"
                 "    { ?party <%(ii)srelates-to-vcard> ?namedcard .\n"
-                "      ?namedcard <%(rdf)stype> ?cardtype .\n"
+                "      ?namedcard <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?cardtype .\n"
                 "      FILTER (?cardtype IN (<%(vc)sOrganization>, <%(vc)sorganization>))\n"
                 "      ?namedcard <%(vc)sorganization-name> ?orgname }")
 

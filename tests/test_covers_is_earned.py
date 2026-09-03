@@ -7,23 +7,36 @@ added by reading a sentence and a rule side by side and judging them to be
 about the same thing, and the only mechanical gate on them --
 `test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing` --
 skips any requirement whose subject is not a qualified name, which is 78 of
-the 80 claims. It asserted nothing about them and read like a gate over all.
+the 80 claims it saw. It asserted nothing about them and read like a gate over
+all of them.
 
-Seven claims failed that criterion, and each failed it in silence:
+Ten claims failed that criterion -- five withdrawn, five repaired -- and each
+failed it in silence:
 
   * three sentences of section 8.3.2 ask for a `vcard:Organization`, and the
     rules deliberately did not check the class, so a card typed
     `vcard:Individual` broke all three and the package passed;
   * one of those three was claimed by a rule that stays quiet in exactly the
     case its partner rule exists to report, and the partner did not claim it;
-  * section 6.8.2's sentence names a class and a property, and the rule
-    counted the property only -- while the identically shaped sentence one
-    section later had two rules, one for each half;
+  * two sentences name a class and a property -- section 6.8.2's status value
+    and section 6.8.3's vcard kind -- and the rule for each counted the
+    property. The first got the missing half; the second needs a vocabulary
+    this tool does not ship, so its claim went instead;
   * section 6.7.2's obligation begins "If an external product ontology is
     ... used", and the rule triggers on an iiRDS-internal relation instead;
+  * section 6.7.4 and section 7.1 name `metadata.rdf`, and the rules read the
+    merged graph;
+  * section 6.12 asks whether a package *contains* iiRDS metadata in JSON-LD,
+    and the rule asks whether the file parses;
   * section 6.9.1 binds every node in a list level, and the rule exempts
     roots -- which `docs/divergences.md` said, in those words, before the
     claim was added over it.
+
+And one claim was withdrawn that should not have been, which is the same
+failure pointing the other way: `iirds:RangeSelector` is exempt from M13.1 and
+M13.2, and that is not a narrowing -- the specification's own Example 13 is a
+range selector carrying neither property, with both on the fragment selectors
+it points at, and those these rules do check. Restored, with the package.
 
 So the criterion is written down, here and in `docs/scope.md`:
 
@@ -95,6 +108,22 @@ def _handover(kind):
         # No vcard class at all. The sentence asks for one.
         return HANDOVER.replace("<vcard:Organization ", "<rdf:Description ").replace(
             "</vcard:Organization>", "</rdf:Description>")
+    if kind == "subclass":
+        # NOT a breach: the package declares its own class beneath
+        # vcard:Organization and types the card with it, which section 7
+        # sanctions and which says the card is an organisation. Here so that
+        # the class check cannot be satisfied by comparing rdf:type values,
+        # which is the form it took first and which reported this beside the
+        # vcard:Individual case.
+        return HANDOVER.replace(
+            '  <vcard:Organization rdf:about="urn:test:supplier-card">',
+            '  <rdf:Description rdf:about="http://my.co/ns#Supplier">\n'
+            '    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>\n'
+            '    <rdfs:subClassOf rdf:resource="http://www.w3.org/2006/vcard/ns#Organization"/>\n'
+            '  </rdf:Description>\n'
+            '  <rdf:Description rdf:about="urn:test:supplier-card">\n'
+            '    <rdf:type rdf:resource="http://my.co/ns#Supplier"/>'
+        ).replace("</vcard:Organization>", "</rdf:Description>")
     if kind == "undescribed":
         # The pointer resolves to nothing. The five named-party rules soften
         # here by agreement and R4 owns it -- which is why R4 has to claim
@@ -141,13 +170,42 @@ def test_a_package_that_breaks_the_sentence_is_reported_by_a_rule_claiming_it(
     from test_handover_rules_fire import _package
 
     claimants = set(CLAIMED[requirement])
-    assert claimants, requirement
     report = runner.run(_package(tmp_path, "%s.iirds" % kind, _handover(kind)),
                         runner.ALL_KINDS)
     got = {f.rule.id for f in report.findings}
     assert claimants & got, (
         "%s: %s, and no rule claiming it fired (claimed by %s; fired: %s)"
         % (requirement, what, sorted(claimants), sorted(got)))
+
+
+def wrong_status_value(tmp_path, claimants, what, value, extra=""):
+    """A status whose value is `value`; True when a claiming rule reports it."""
+    metadata = toc("""
+  <iirds:ContentLifeCycleStatus rdf:about="urn:test:status">
+    %s
+  </iirds:ContentLifeCycleStatus>
+  %s""" % (value, extra))
+    return bool(claimants & fired(tmp_path, "lifecycle_%d.iirds" % abs(hash(what)),
+                                  metadata=metadata))
+
+
+def test_a_card_typed_with_a_declared_subclass_of_an_organisation_is_one(tmp_path):
+    """The other side of the class check, and the one a package pays for.
+
+    Section 7 lets a package declare its own class beneath an existing one and
+    requires consumers to treat instances of it as the parent. A card typed
+    with such a subclass of `vcard:Organization`, stating an organisation name,
+    satisfies section 8.3.2 -- and the first form of this check compared
+    `rdf:type` values directly, so it reported that package beside the one
+    typed `vcard:Individual`. `Context.is_instance` says why in one line:
+    "exact typing is how section 7 gets forgotten one rule at a time".
+    """
+    from test_handover_rules_fire import _package
+
+    report = runner.run(_package(tmp_path, "vcard_subclass.iirds", _handover("subclass")),
+                        runner.ALL_KINDS)
+    errors = sorted({f.rule.id for f in report.findings if str(f.severity) == "error"})
+    assert errors == [], errors
 
 
 def test_the_lifecycle_status_value_sentence_is_covered_in_both_halves(tmp_path):
@@ -169,16 +227,156 @@ def test_the_lifecycle_status_value_sentence_is_covered_in_both_halves(tmp_path)
   </iirds:ContentLifeCycleStatus>"""))
     assert claimants & absent, ("the property is absent", sorted(absent))
 
-    wrong_type = fired(tmp_path, "lifecycle_wrong_type.iirds", metadata=toc("""
-  <iirds:ContentLifeCycleStatus rdf:about="urn:test:status">
-    <iirds:has-content-lifecycle-status-value rdf:resource="urn:test:notavalue"/>
-  </iirds:ContentLifeCycleStatus>
-  <iirds:Topic rdf:about="urn:test:notavalue">
-    <iirds:title>not a status value</iirds:title>
-  </iirds:Topic>"""))
-    assert claimants & wrong_type, (
-        "the property points at something that is not a status value",
-        sorted(wrong_type))
+    # Four wrong referents, not one. The first is what a rule catches almost by
+    # accident; the other three are the exemptions, and each let this sentence
+    # through while the claim stood. `iirds:Topic` and `iirds:Manufacturer` are
+    # terms the ontology defines and neither is a status value; a literal is
+    # not an instance of anything.
+    assert wrong_status_value(tmp_path, claimants, "a local instance of another class",
+                              '<iirds:has-content-lifecycle-status-value '
+                              'rdf:resource="urn:test:notavalue"/>',
+                              extra='<iirds:Topic rdf:about="urn:test:notavalue">'
+                                    "<iirds:title>x</iirds:title></iirds:Topic>")
+    for what, iri in (("the ontology's own class iirds:Topic", "Topic"),
+                      ("an ontology term of the wrong kind", "Manufacturer")):
+        assert wrong_status_value(tmp_path, claimants, what,
+                                  '<iirds:has-content-lifecycle-status-value '
+                                  'rdf:resource="http://iirds.tekom.de/iirds#%s"/>' % iri)
+    assert wrong_status_value(tmp_path, claimants, "a literal",
+                              "<iirds:has-content-lifecycle-status-value>Approved"
+                              "</iirds:has-content-lifecycle-status-value>")
+
+    # And the right referent stays silent, or the rule is not checking a kind.
+    assert not wrong_status_value(
+        tmp_path, claimants, "iirds:Approved, which is one",
+        '<iirds:has-content-lifecycle-status-value '
+        'rdf:resource="http://iirds.tekom.de/iirds#Approved"/>')
+
+
+SELECTOR_NS = MINIMAL_RDF.replace(
+    "xmlns:iirds=", 'xmlns:dcterms="http://purl.org/dc/terms/"\n         xmlns:iirds=', 1)
+
+RANGE = """
+  <iirds:Topic rdf:about="urn:test:t">
+    <iirds:title>T</iirds:title>
+    <iirds:has-rendition>
+      <iirds:Rendition>
+        <iirds:format>application/pdf</iirds:format>
+        <iirds:source>content/topic1.xhtml</iirds:source>
+        <iirds:has-selector>
+          <iirds:RangeSelector>
+            <iirds:has-start-selector>
+              <iirds:FragmentSelector>%s</iirds:FragmentSelector>
+            </iirds:has-start-selector>
+            <iirds:has-end-selector>
+              <iirds:FragmentSelector>
+                <dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>
+                <rdf:value>page=17</rdf:value>
+              </iirds:FragmentSelector>
+            </iirds:has-end-selector>
+          </iirds:RangeSelector>
+        </iirds:has-selector>
+      </iirds:Rendition>
+    </iirds:has-rendition>
+  </iirds:Topic>
+"""
+
+
+def test_the_selector_sentence_is_covered_through_the_selectors_that_select(tmp_path):
+    """"To select parts of a file, an iirds:Selector MUST have an rdf:value and
+    dcterms:conformsTo" -- two limbs, M13.1 and M13.2 one each.
+
+    This claim was withdrawn once, on the ground that M13.1 and M13.2 exempt
+    `iirds:RangeSelector` and the sentence names every Selector. The exemption
+    is right and the withdrawal was not: the specification's own Example 13 is
+    a range selector carrying neither property, with both on the two fragment
+    selectors it points at, and those are Selectors that these rules do check.
+    A range does not select by a value; it selects by its endpoints, and the
+    endpoints are where the sentence bites.
+
+    So all three shapes: the specification's own example is clean, and a
+    missing property on an endpoint is reported -- one rule for each limb.
+    """
+    claimants = set(CLAIMED["x6-3-1-reference-part-of-file-by-selector#3"])
+
+    def run(name, start):
+        metadata = SELECTOR_NS.replace("</rdf:RDF>", (RANGE % start) + "</rdf:RDF>")
+        return {f.rule.id for f in runner.run(build_package(tmp_path, name, metadata=metadata),
+                                              runner.ALL_KINDS).findings}
+
+    both = ('<dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>'
+            "<rdf:value>page=10</rdf:value>")
+    assert not claimants & run("selector_example13.iirds", both), \
+        "the specification's own Example 13 must not be reported"
+    # Through `claimants`, not by naming M13.1 and M13.2 directly: asserting
+    # the rule id says the rule fires, which it would go on doing after the
+    # claim was dropped. The claim is what this file is about.
+    no_value = run("selector_no_value.iirds",
+                   '<dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>')
+    assert claimants & no_value, ("no rdf:value on the start selector", sorted(no_value))
+    no_conforms = run("selector_no_conforms.iirds", "<rdf:value>page=10</rdf:value>")
+    assert claimants & no_conforms, ("no dcterms:conformsTo", sorted(no_conforms))
+    assert claimants == {"M13.1", "M13.2"}, sorted(claimants)
+    assert "M13.1" in no_value and "M13.2" in no_conforms, "one rule per limb"
+
+
+def test_the_all_metadata_limb_belongs_to_the_rule_that_can_see_it(tmp_path):
+    """"The META-INF directory MUST contain the file metadata.rdf containing
+    **all metadata** in RDF 1.1 XML syntax."
+
+    C8, C9 and C16.1 hold the file's presence and its syntax. The "all
+    metadata" limb is not a fact about metadata.rdf alone -- it is only
+    observable against the other serialisation, and L9 is the one rule that
+    reads the two files apart instead of merged. Where only metadata.rdf
+    exists the limb is satisfied by construction; where both exist and one
+    carries something the other does not, L9 reports it. So L9 claims this
+    sentence as well as the one about the two agreeing.
+    """
+    claimants = set(CLAIMED["x5-1-1-metadata-location-and-rdf-serializations#2"])
+    jsonld = json.dumps({
+        "@context": {"iirds": "http://iirds.tekom.de/iirds#"},
+        "@graph": [{"@id": "urn:test:package", "@type": "iirds:Package",
+                    "iirds:iiRDSVersion": "1.3", "iirds:title": "Test package"},
+                   {"@id": "urn:test:extra", "@type": "iirds:Topic",
+                    "iirds:title": "stated only in the JSON-LD"}]})
+    got = fired(tmp_path, "all_metadata.iirds", metadata=MINIMAL_RDF, jsonld=jsonld)
+    assert claimants & got, ("a statement metadata.rdf does not carry", sorted(got))
+
+
+def test_the_one_information_object_sentence_is_covered_as_it_is_read(tmp_path):
+    """"If information objects are used, each information unit MUST only be
+    related to exactly one information object via iirds:is-version-of."
+
+    M6 reads that as "at most one", for the reason recorded in its docstring:
+    the other reading makes the `iirds:Package` -- an information unit, and a
+    version of nothing -- fail every package that uses information objects.
+    Under the reading, the sentence has one violation and M6 reports it.
+
+    Both directions, because the reading is the claim: a unit that is a version
+    of two things is reported, and a unit that is a version of none is not.
+    """
+    claimants = set(CLAIMED["x6-2-2-information-objects#2"])
+    objects = """
+  <iirds:InformationObject rdf:about="urn:test:io1"><iirds:title>A</iirds:title></iirds:InformationObject>
+  <iirds:InformationObject rdf:about="urn:test:io2"><iirds:title>B</iirds:title></iirds:InformationObject>
+"""
+    two = fired(tmp_path, "two_objects.iirds", metadata=MINIMAL_RDF.replace("</rdf:RDF>", objects + """
+  <iirds:Topic rdf:about="urn:test:t1">
+    <iirds:title>a version of two things</iirds:title>
+    <iirds:is-version-of rdf:resource="urn:test:io1"/>
+    <iirds:is-version-of rdf:resource="urn:test:io2"/>
+  </iirds:Topic>
+</rdf:RDF>"""))
+    assert claimants & two, sorted(two)
+
+    none = fired(tmp_path, "no_object.iirds", metadata=MINIMAL_RDF.replace("</rdf:RDF>", objects + """
+  <iirds:Topic rdf:about="urn:test:t1">
+    <iirds:title>a version of nothing</iirds:title>
+    <iirds:is-version-of rdf:resource="urn:test:io1"/>
+  </iirds:Topic>
+  <iirds:Topic rdf:about="urn:test:t2"><iirds:title>plain</iirds:title></iirds:Topic>
+</rdf:RDF>"""))
+    assert not claimants & none, ("the reading admits this package", sorted(none))
 
 
 def test_the_party_role_sentence_is_covered_in_both_halves(tmp_path):
@@ -239,6 +437,28 @@ def test_the_schema_prohibition_names_the_file_it_found_the_schema_in(tmp_path):
     assert hits, sorted({f.rule.id for f in report.findings})
     assert "metadata.jsonld must not redeclare" in hits[0].violation.message
 
+    # And the case that survived naming one file: the same subject declared a
+    # property in metadata.rdf and a class in metadata.jsonld is one finding
+    # belonging to both, and naming whichever came first named metadata.jsonld
+    # -- the file section 7.1 does not name -- while metadata.rdf carried the
+    # breach.
+    both = json.dumps({
+        "@context": {"iirds": "http://iirds.tekom.de/iirds#",
+                     "rdfs": "http://www.w3.org/2000/01/rdf-schema#"},
+        "@graph": [{"@id": "urn:test:package", "@type": "iirds:Package",
+                    "iirds:iiRDSVersion": "1.3", "iirds:title": "Test package"},
+                   {"@id": "iirds:Component", "@type": "rdfs:Class"}]})
+    as_property = toc("""
+  <rdf:Description rdf:about="http://iirds.tekom.de/iirds#Component">
+    <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
+  </rdf:Description>""")
+    report = runner.run(build_package(tmp_path, "schema_in_both.iirds",
+                                      metadata=as_property, jsonld=both), runner.ALL_KINDS)
+    hits = [f for f in report.findings if f.rule.id in claimants]
+    assert hits, sorted({f.rule.id for f in report.findings})
+    assert "metadata.jsonld and metadata.rdf must not redeclare" in hits[0].violation.message, \
+        hits[0].violation.message
+
 
 # ---------------------------------------------------------------------------
 # What is not held by a package yet
@@ -263,14 +483,12 @@ UNAUDITED = frozenset((
     "rdfclasses_core_ClassificationType#1",
     "rdfclasses_handover_DocumentCategory#1",
     "x5-1-1-metadata-location-and-rdf-serializations#1",
-    "x5-1-1-metadata-location-and-rdf-serializations#2",
     "x5-1-1-metadata-location-and-rdf-serializations#4",
     "x5-1-2-content-location#1", "x5-1-2-content-location#2",
     "x5-1-3-names-of-files-and-directories#2",
     "x5-1-3-names-of-files-and-directories#3", "x5-2-2-content-encoding#1",
     "x5-2-2-content-encoding#2", "x5-3-nested-iirds-packages#3",
-    "x6-12-rdf-serialization#1", "x6-12-rdf-serialization#3",
-    "x6-2-2-information-objects#2", "x6-2-information-units#1",
+    "x6-12-rdf-serialization#1", "x6-2-information-units#1",
     "x6-2-information-units#2", "x6-2-information-units#3",
     "x6-2-information-units#4", "x6-2-information-units#5",
     "x6-2-information-units#7", "x6-3-1-reference-part-of-file-by-selector#1",
@@ -283,11 +501,10 @@ UNAUDITED = frozenset((
     "x6-3-content-references-of-information-units#5",
     "x6-7-3-packages-related-to-component-trees#5",
     "x6-8-1-complex-identity#2", "x6-8-1-complex-identity#3",
-    "x6-8-3-parties-and-roles#3", "x6-8-4-external-classification#4",
-    "x6-8-4-external-classification#7", "x6-9-1-directory-nodes#5",
-    "x6-9-2-hierarchical-navigation#1", "x6-9-2-hierarchical-navigation#2",
-    "x8-3-1-1-mandatory-content-list#1", "x8-3-1-1-mandatory-content-list#2",
-    "x8-3-1-2-nesting-of-packages#2",
+    "x6-8-4-external-classification#4", "x6-8-4-external-classification#7",
+    "x6-9-1-directory-nodes#5", "x6-9-2-hierarchical-navigation#1",
+    "x6-9-2-hierarchical-navigation#2", "x8-3-1-1-mandatory-content-list#1",
+    "x8-3-1-1-mandatory-content-list#2", "x8-3-1-2-nesting-of-packages#2",
     "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#1",
     "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#4",
     "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#6",
@@ -295,30 +512,76 @@ UNAUDITED = frozenset((
 ))
 
 
+#: The claims a package stands behind that are not in COUNTEREXAMPLES: each
+#: needs a shape the table cannot express, so each has a test of its own. The
+#: test's name is here so that deleting the test is not a way of keeping the
+#: id -- a claim held by a function nobody runs is a claim held by nothing.
+NAMED_CASES = {
+    "x6-3-1-reference-part-of-file-by-selector#3":
+        "test_the_selector_sentence_is_covered_through_the_selectors_that_select",
+    "x5-1-1-metadata-location-and-rdf-serializations#2":
+        "test_the_all_metadata_limb_belongs_to_the_rule_that_can_see_it",
+    "x6-2-2-information-objects#2":
+        "test_the_one_information_object_sentence_is_covered_as_it_is_read",
+    "x6-8-2-content-lifecycle-status#2":
+        "test_the_lifecycle_status_value_sentence_is_covered_in_both_halves",
+    "x6-8-3-parties-and-roles#2":
+        "test_the_party_role_sentence_is_covered_in_both_halves",
+    "x7-1-iirds-extension-scenarios#5":
+        "test_the_schema_prohibition_names_the_file_it_found_the_schema_in",
+}
+
+
+def held():
+    """The claims with evidence behind them, derived rather than listed.
+
+    This was a set literal written by hand beside the two sources it was
+    supposed to summarise, and it summarised nothing: an entry could be added
+    to COUNTEREXAMPLES with an empty list of cases, or a named test deleted, or
+    an id put here that no rule claims at all, and this file stayed green while
+    `docs/scope.md` went on publishing the number. The literal is gone; what is
+    left asserts.
+    """
+    for requirement, cases in COUNTEREXAMPLES.items():
+        assert cases, "%s is listed with no counterexample at all" % requirement
+    for requirement, test_name in NAMED_CASES.items():
+        assert callable(globals().get(test_name)), \
+            "%s is held by %s, which is not in this module" % (requirement, test_name)
+    return set(COUNTEREXAMPLES) | set(NAMED_CASES)
+
+
 def test_every_claim_is_either_held_by_a_package_or_named_as_unaudited():
     """No third category. A claim that is neither evidenced nor listed is a
     claim nobody decided about, which is how all seven arrived."""
-    held = set(COUNTEREXAMPLES) | {
-        "x6-8-2-content-lifecycle-status#2", "x6-8-3-parties-and-roles#2",
-        "x7-1-iirds-extension-scenarios#5"}
-    unexplained = sorted(set(CLAIMED) - held - UNAUDITED)
+    evidenced = held()
+    unexplained = sorted(set(CLAIMED) - evidenced - UNAUDITED)
     assert unexplained == [], (
         "claimed with neither a counterexample nor a place in UNAUDITED: %s" % unexplained)
     stale = sorted(UNAUDITED - set(CLAIMED))
     assert stale == [], "listed as unaudited but no longer claimed: %s" % stale
-    assert sorted(UNAUDITED & held) == [], "both audited and listed as unaudited"
+    assert sorted(UNAUDITED & evidenced) == [], "both audited and listed as unaudited"
+    unclaimed = sorted(evidenced - set(CLAIMED))
+    assert unclaimed == [], "held by a package but claimed by no rule: %s" % unclaimed
 
 
 def test_the_audited_share_is_what_the_scope_document_publishes():
-    """Two numbers, and the second is the one a reader should weigh. Pinned
-    together so raising the first without raising the second is an edit
-    somebody had to make on purpose."""
+    """Two numbers, and the second is the one a reader should weigh. Read out
+    of the document rather than compared to a constant, because pinning the
+    document to a literal 6 pins the document and not the set: the two moved
+    apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 68, len(CLAIMED)
-    assert len(UNAUDITED) == 62, len(UNAUDITED)
-    assert "**Coverage of the standard is 68 of 280.**" in scope
-    assert "6 of the 68 are held by a\n   package" in scope, \
-        "docs/scope.md no longer states how many claims are evidenced"
+    assert len(CLAIMED) == 67, len(CLAIMED)
+    assert len(UNAUDITED) == 58, len(UNAUDITED)
+    assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
+
+    published = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)
+    assert published, "docs/scope.md no longer states coverage in the expected shape"
+    assert int(published.group(1)) == len(CLAIMED), published.group(0)
+
+    evidenced = re.search(r"(\d+) of the (\d+) are held by a\s+package", scope)
+    assert evidenced, "docs/scope.md no longer states how many claims are evidenced"
+    assert (int(evidenced.group(1)), int(evidenced.group(2))) == (len(held()), len(CLAIMED)), \
+        evidenced.group(0)
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +601,20 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
 #: somebody has to make on purpose rather than a silent loss of the guard.
 RULE_HEAD = re.compile(r'@rule\(\s*"([^"]+)"')
 REFUSAL = re.compile(r'#\s*not\s+([\w.-]+#\d+)\s*:')
-REFUSALS_EXPECTED = 5     # M13.1, M13.2, M17, M18, M25
+
+#: The withdrawals, by name and not by count. Counting was the second version
+#: of this guard and it was bypassable in one move: carry the refusal comment
+#: over to another rule's decorator, restore the claim on its own, and the
+#: count is still five while the sentence explaining the withdrawal now sits
+#: above a rule it says nothing about. Pinned as pairs, so a comment that
+#: moves has moved away from its pin.
+REFUSED = frozenset((
+    ("C16.2", "x6-12-rdf-serialization#3"),
+    ("M17", "x6-7-2-external-product-ontology#6"),
+    ("M18", "x6-7-4-product-variants#1"),
+    ("M23", "x6-8-3-parties-and-roles#3"),
+    ("M25", "x6-9-1-directory-nodes#3"),
+))
 
 
 def refusals():
@@ -360,13 +636,61 @@ def test_a_claim_a_rule_refuses_in_its_own_source_is_not_made_elsewhere():
     covered, and the reason is written where the claim would go. A later pass
     that adds one back -- to raise a number, most likely -- has to delete the
     sentence saying why it was refused."""
-    found = sorted(refusals())
-    assert len(found) == REFUSALS_EXPECTED, found
-    for rule_id, requirement in found:
+    index = json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))
+    known = {r["id"] for r in index["requirements"]}
+    found = set(refusals())
+    assert found == REFUSED, (
+        "refusal comments moved: extra %s, missing %s"
+        % (sorted(found - REFUSED), sorted(REFUSED - found)))
+    for rule_id, requirement in sorted(found):
         rule = next((r for r in all_rules() if r.id == rule_id), None)
         assert rule is not None, "%s: no such rule" % rule_id
+        # A mistyped id refuses nothing, and reads as though it refused
+        # something. Checked against the index the claims are made against.
+        assert requirement in known, "%s refuses %s, which is not an obligation" % (
+            rule_id, requirement)
         assert requirement not in rule.covers, (
             "%s says it does not claim %s and claims it" % (rule_id, requirement))
+
+
+#: The `claim` column of the leniency table in docs/divergences.md, read as
+#: an assertion. A row saying "withdrawn" whose rules still claim something
+#: from that section is the shape the M25 paragraph was in.
+LENIENCY_ROW = re.compile(r"^\| ([^|]+?) \| \*\*[^|]+\*\*[^|]*\| (withdrawn|kept|never claimed) \|$",
+                          re.M)
+
+
+def test_the_leniency_table_says_what_the_rules_do():
+    """`docs/divergences.md` records every place a reading was narrowed, and
+    each row now says whether the rule still claims the sentence. The first
+    version of that paragraph said all of them had been withdrawn, which was
+    false of three rows -- written confidently, contradicted by the tree it
+    described, and read by nothing. Read here.
+
+    Only the claim's presence is checkable, not its correctness: whether a
+    kept claim deserves to be kept is what the counterexamples above are for.
+    """
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    rows = LENIENCY_ROW.findall(text)
+    assert len(rows) == 6, [r[0] for r in rows]
+    by_id = {rule.id: rule for rule in all_rules()}
+    for names, verdict in rows:
+        ids = re.findall(r"\b[CMR]\d+(?:\.\d+[a-z]?)?(?![\w/])", names)
+        assert ids, names
+        for rule_id in ids:
+            assert rule_id in by_id, "%s names %s, which is not a rule" % (names, rule_id)
+        claims = {rule_id: set(by_id[rule_id].covers) for rule_id in ids}
+        if verdict in ("withdrawn", "never claimed"):
+            for rule_id, claimed in claims.items():
+                refused = {req for rid, req in refusals() if rid == rule_id}
+                assert not (claimed & refused), \
+                    "%s is listed %s and claims %s" % (rule_id, verdict, sorted(claimed & refused))
+        else:
+            # The row's reading is shared; the claim sits on whichever rules
+            # have a sentence in the index. M15.8 and M15.9 have none -- their
+            # sentences carry no RFC 2119 markup, so the parse never saw them.
+            assert any(claims.values()), \
+                "%s is listed as keeping a claim and none of them claims anything" % names
 
 
 def test_the_divergence_document_and_the_claims_agree():

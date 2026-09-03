@@ -327,6 +327,7 @@ ivs:M13.1 a sh:NodeShape ;
   sh:description "Add rdf:value to the Selector, holding the expression that picks out the part, and dcterms:conformsTo naming the scheme it is written in. Without the value there is nothing to evaluate." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path rdf:value ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -339,6 +340,7 @@ ivs:M13.2 a sh:NodeShape ;
   sh:description "Add dcterms:conformsTo to the Selector, naming the scheme its rdf:value is written in, such as an XPath or media fragment specification. Without it a consumer cannot tell how to interpret the expression." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=To%20select%20parts,fragment%2Dselector%5D.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#3" ;
   sh:targetClass iirds:FragmentSelector, iirds:RangeSelector, iirds:Selector ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path <http://purl.org/dc/terms/conformsTo> ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
@@ -635,7 +637,6 @@ ivs:M23 a sh:NodeShape ;
   sh:description "Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=In%20addition%20to%20the%20role%2C%20an%20iirds%3AParty%20MUST%20also%20have%20an%20associated%20description%20of%20itself%20as%20compliant%20vcard%3Akind%20object%20which%20is%20assigned%20via%20iirds%3Arelates%2Dto%2Dvcard.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
-  ivm:covers "x6-8-3-parties-and-roles#3" ;
   sh:targetClass iirds:Party ;
   sh:property ivs:M23-p .
 ivs:M23-p a sh:PropertyShape ;
@@ -1975,6 +1976,7 @@ ivs:R10 a sh:NodeShape ;
   ivm:ruleSource "iirds-validate" ;
   sh:description "Point iirds:has-content-lifecycle-status-value at an instance of iirds:ContentLifeCycleStatusValue or one of its subclasses. Pointing at anything else leaves the status unnamed even though the property is present, and a consumer sorting by lifecycle state has nothing to sort on." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AContentLifecyleStatus%20MUST%20have%20an%20iirds%3AContentLifecyleStatusValue%20which%20is%20assigned%20by%20the%20iirds%3Ahas%2Dcontent%2Dlifecycle%2Dstatus%2Dvalue%20property.> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   ivm:covers "x6-8-2-content-lifecycle-status#2" ;
   sh:targetSubjectsOf iirds:has-content-lifecycle-status-value ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {

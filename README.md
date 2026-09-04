@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/door.svg?v=fa76ed92" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
+  <img src="docs/assets/door.svg?v=c31c4de1" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)

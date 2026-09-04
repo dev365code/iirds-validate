@@ -961,6 +961,45 @@ prohibition is not ambiguous. The cost is real: a genuinely stray attribute
 goes unreported. The alternative cost was failing conformant packages on a
 reading nobody else holds, which is worse.
 
+### R18 — a name referred to and typed by nobody is not an extension
+
+> All proprietary extensions that are used in a package MUST be contained in
+> the file metadata.rdf in the iiRDS package. (7.1)
+
+Section 7.3 says what one is in three kinds, and the third — "instances
+directly as an instance of an iiRDS class" — reads at face value as every node
+in every package: a document is an instance of an iiRDS class. Read that way
+the sentence says nothing section 5.1.1 does not already say about all
+metadata, and the claim on it was withdrawn once for that reason.
+
+What the standard does not spell out, its own vocabulary settles: **a class is
+a vocabulary class when the ontology supplies instances of it.** Twenty
+document types ship with the standard, eight party roles, eight identity
+types, five classification types. No documents ship, and no topics, because
+those are data. A company adding a term of the first kind extends the
+vocabulary; a company adding a document does not. The set is derived from the
+ontology rather than listed, so a class the standard starts supplying terms
+for joins it without anybody remembering to say so.
+
+One narrowing sits on top of that, and it is the correction of an over-strict
+reading rather than a leniency. A name referred to in a vocabulary slot and
+typed by nobody is a dangling reference, not a misplaced extension: the
+package never adds the extension, so there is nothing of the package's for
+this sentence to place. L1 owns that, and `tests/test_lint.py` pins in its own
+words that "a reference to an undescribed IRI breaks no MUST". The first form
+of this rule reversed that decision as a side effect —
+`iirds:relates-to-event` takes an `iirds:Event`, the ontology seeds that class
+with one generic term, and a reference to an event that does not exist became
+a MUST breach. The existing test caught it.
+
+Two results are worth recording because they were measured rather than
+argued. `iirds:ClassificationDomain` and `iirds:ExternalClassification` carry
+no ontology instances and are therefore data classes, which is what keeps an
+eCl@ss IRI out of this rule — section 6.8.4 being entirely about pointing
+outside. And `iirds:ProductVariant` and `iirds:Component` are data classes
+too, though sections 6.7.4 and 6.7.1 call them proprietary extensions in so
+many words; those sentences are R11's and it reports them by name.
+
 ### B6 — the file extension is compared without regard to case
 
 > The iiRDS XHTML5 content filename MUST use the file extension `.xhtml`.

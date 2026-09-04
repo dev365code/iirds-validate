@@ -435,7 +435,6 @@ def r9_a_handover_package_does_not_nest(ctx):
       title="a proprietary extension must be in metadata.rdf, not only in metadata.jsonld",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#iirds-extension-scenarios",
-      # not x7-1-iirds-extension-scenarios#4: see the docstring
       covers=("x6-7-4-product-variants#1",
               "x6-7-1-component-trees-in-the-package#2"),
       fix="Add the statement to META-INF/metadata.rdf as well. A consumer that reads only "
@@ -503,13 +502,6 @@ def r11_extensions_live_in_metadata_rdf(ctx):
             yield Violation("the component tree is a proprietary iiRDS extension and this "
                             "iirds:has-component relation is stated outside metadata.rdf",
                             subject=ctx.ref(parent), detail=ctx.ref(child))
-    for subject, parent in sorted(ctx.graph.subject_objects(RDFS.subClassOf), key=str):
-        if ctx.ontology.is_iirds_term(subject) or not ctx.ontology.is_iirds_term(parent):
-            continue
-        if (subject, RDFS.subClassOf, parent) not in inside:
-            yield Violation("a proprietary class of the iiRDS vocabulary is declared outside "
-                            "metadata.rdf",
-                            subject=ctx.ref(subject), detail=_only_in(ctx, subject))
 
 
 def _only_in(ctx, subject) -> str:
@@ -517,3 +509,134 @@ def _only_in(ctx, subject) -> str:
     names = sorted(name.rpartition("/")[2] for name, graph in ctx.per_source.items()
                    if (subject, None, None) in graph)
     return "stated in %s" % " and ".join(names) if names else None
+
+
+#: Vocabularies the standard itself uses. A name from one of these is not a
+#: proprietary extension however it is used, and the list is shared with L5
+#: rather than copied, because two copies of "what counts as somebody else's
+#: vocabulary" is two answers waiting to differ.
+from .lint import WELL_KNOWN  # noqa: E402
+
+
+def vocabulary_classes(ontology) -> frozenset:
+    """The iiRDS classes whose instances are vocabulary terms.
+
+    Section 7.3.1 permits a proprietary extension to add "instances directly
+    as an instance of an iiRDS class", which read at face value is every node
+    in every package -- a document is an instance of an iiRDS class. Read that
+    way the sentence says nothing that section 5.1.1 does not already say
+    about all metadata, and a rule built on it would report a rendition
+    referred to by a relative IRI as a proprietary extension. That reading is
+    why the claim on section 7.1 was withdrawn.
+
+    The distinction the standard does not spell out, its own vocabulary makes:
+    **a class is a vocabulary class when the ontology supplies instances of
+    it.** Twenty document types ship with the standard, eight party roles,
+    eight identity types, five classification types; no documents ship, and no
+    topics, because those are data. A company adding a term of the first kind
+    extends the vocabulary. A company adding a document does not.
+
+    Derived rather than listed, so that a class the standard starts supplying
+    terms for becomes a vocabulary class without anybody remembering to say
+    so. Two results are worth knowing and were measured, not assumed:
+    `iirds:ClassificationDomain` and `iirds:ExternalClassification` carry no
+    instances and are therefore data classes, which is what keeps an eCl@ss
+    IRI -- section 6.8.4's entire purpose -- out of this rule; and
+    `iirds:ProductVariant` and `iirds:Component` are data classes too, though
+    sections 6.7.4 and 6.7.1 call them proprietary extensions in so many
+    words. Those two have their own sentences and R11 reports them by name.
+    """
+    return frozenset(cls for cls in ontology.classes()
+                     if ontology.instances_of(cls))
+
+
+def _foreign(ctx, node) -> bool:
+    """A name from neither the iiRDS vocabulary nor a standard one."""
+    return (isinstance(node, URIRef)
+            and not ctx.ontology.is_iirds_term(node)
+            and not str(node).startswith(WELL_KNOWN))
+
+
+@rule("R18", covers=("x7-1-iirds-extension-scenarios#4",),
+      kind="schema", prio="MUST", versions=(), variants=(),
+      title="a proprietary extension used here must be described in metadata.rdf",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#iirds-extension-scenarios",
+      fix="Describe the extension in META-INF/metadata.rdf — the class with its "
+          "rdfs:subClassOf, the property with its rdfs:subPropertyOf, the instance with "
+          "its rdf:type. metadata.rdf is the file every consumer must read and the one "
+          "section 5.1.1 requires to hold all metadata; a name defined anywhere else, or "
+          "nowhere, reaches a consumer as a bare IRI it has no rules for.")
+def r18_extensions_are_described_in_metadata_rdf(ctx):
+    """Section 7.1: "All proprietary extensions that are used in a package MUST
+    be contained in the file metadata.rdf in the iiRDS package."
+
+    The sentence pairs with the one after it -- "the file metadata.rdf MUST NOT
+    contain the iiRDS schema or iiRDS domain extensions" -- so the pair is
+    about where a vocabulary lives: yours in metadata.rdf, the standard's not.
+    Section 7.3 says what yours is, in three kinds, and each has a position in
+    the graph that identifies it without a judgement about the node:
+
+      a class     used as an rdf:type
+      a property  used as a predicate
+      an instance used as the value of a property whose range is a vocabulary
+                  class -- see `vocabulary_classes` for the reading, which is
+                  the one the withdrawal was waiting for
+
+    Reported when metadata.rdf does not describe the name, which is one
+    condition covering two shapes: described in metadata.jsonld only, and
+    described in no file this validator reads -- a side ontology in META-INF,
+    which section 5.1.1 tells consumers to ignore, or nothing at all. Both
+    leave a consumer reading metadata.rdf with a name and no rules for it.
+
+    `iirds check` was silent about all three, and the property one was
+    reported by nothing in any mode: L5 sees an unlinked proprietary class and
+    is a lint, and there is no L5 for properties. That is the shape R4 exists
+    for one section over -- a real defect owned by a rule `check` does not run.
+
+    R11 keeps sections 6.7.4 and 6.7.1, which name product variants and
+    component trees as proprietary extensions although they are data classes
+    here. Their instances are not vocabulary terms and this rule leaves them
+    alone; between the two rules the three sentences are covered once each.
+    """
+    inside = ctx.per_source.get(METADATA_RDF)
+    if inside is None:
+        return          # C8 reports the missing file; every name is "outside" it
+    vocabulary = vocabulary_classes(ctx.ontology)
+
+    def undescribed(node):
+        return (node, None, None) not in inside
+
+    seen = set()
+    for subject, predicate, obj in sorted(ctx.graph, key=str):
+        found = []
+        # Declaring one is using it. Section 7.3 defines an extension by how it
+        # attaches -- a subclass of an iiRDS class, a subproperty of an iiRDS
+        # property -- so the attachment is the declaration, and both ends have
+        # to be checked: `my:Bolt rdfs:subClassOf my:Fastener` is a package
+        # describing its own vocabulary to itself and extends iiRDS in no way.
+        if predicate in (RDFS.subClassOf, RDFS.subPropertyOf) \
+                and _foreign(ctx, subject) and ctx.ontology.is_iirds_term(obj):
+            found.append((subject, "a proprietary %s is declared here"
+                          % ("class" if predicate == RDFS.subClassOf else "property")))
+        if predicate == T.RDF_TYPE and _foreign(ctx, obj):
+            found.append((obj, "a proprietary class is used here as a type"))
+        if _foreign(ctx, predicate):
+            found.append((predicate, "a proprietary property is used here"))
+        # Typed as one, not merely referred to as one. A bare reference to a
+        # name nothing defines is a dangling reference, which L1 has its own
+        # sentence for and which this project has already decided breaks no
+        # MUST; reading it as an extension would reverse that decision by a
+        # side effect, and did -- `iirds:relates-to-event` takes an
+        # `iirds:Event`, the ontology seeds that class with one generic term,
+        # and a reference to an event that does not exist became a MUST.
+        # The package has an extension when the package says what it is.
+        if predicate == T.RDF_TYPE and obj in vocabulary and _foreign(ctx, subject):
+            found.append((subject, "a proprietary instance of iirds:%s is declared here"
+                                   % str(obj).rpartition("#")[2]))
+        for node, what in found:
+            if node in seen or not undescribed(node):
+                continue
+            seen.add(node)
+            yield Violation("%s, and metadata.rdf does not describe it" % what,
+                            subject=ctx.ref(node), detail=_only_in(ctx, node))

@@ -47,7 +47,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  183 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
+  184 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```
@@ -129,7 +129,7 @@ flowchart LR
 
 ## Honest coverage
 
-> **At a glance** — 207 rules across five editions and three profiles · 149 SHACL shapes
+> **At a glance** — 208 rules across five editions and three profiles · 149 SHACL shapes
 > carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
 > the single-file `.pyz` · every number in this section is read by a test that fails the
 > build when it goes stale.
@@ -137,18 +137,18 @@ flowchart LR
 ```console
 $ iirds rules
 container  19/19    the ZIP and its layout  +3 of its own
-schema     135/135  the metadata graph  +14 of its own
+schema     135/135  the metadata graph  +15 of its own
 system     3/3      the run itself  +7 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +11 of its own
 lint       -        will a consumer be able to use it  +15 of its own
 ```
 
-157 of 157 catalogued rules, plus 50 of this project's own.
+157 of 157 catalogued rules, plus 51 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 3 |
-| schema (M\*) | 135 / 135 | 14 |
+| schema (M\*) | 135 / 135 | 15 |
 | system (S\*) | 3 / 3 | 7 |
 | content (B\*) | — | 11 |
 | interoperability (L\*) | — | 15 |
@@ -157,18 +157,18 @@ Coverage of the catalogue is not coverage of the standard. The specification sta
 **280 absolute obligations**, counted by
 [`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
 [docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json); the rules currently cover
-**80 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
+**81 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
 re-measured on every release.
 
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
-- **Every finding says what to do about it.** All 207 rules carry one imperative
+- **Every finding says what to do about it.** All 208 rules carry one imperative
   sentence naming the change, and a test refuses a rule that does not.
 - **Every rule has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 206 of the 207 have — the remaining one is a `MAY` with
+  produce a finding, and 207 of the 208 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 50 rules this project invented have no second
+- **What is not established.** The 51 rules this project invented have no second
   implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
   records where this project reads the specification differently, with reasons.
 

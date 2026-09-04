@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 28,
   "deferred_v1.1": 9,
-  "not_expressible": 46,
+  "not_expressible": 47,
   "noop": 1
  },
  "core_emitted": [
@@ -235,7 +235,8 @@
   "R8": "graph×ZIP join: the verdict depends on which files the archive carries",
   "R9": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L9": "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate",
-  "R11": "asks which metadata file a statement is in; a shapes file validates one graph and the file it came from is not in it"
+  "R11": "asks which metadata file a statement is in; a shapes file validates one graph and the file it came from is not in it",
+  "R18": "asks which metadata file a statement is in; a shapes file validates one graph and the file it came from is not in it"
  },
  "noop": {
   "M96.4": "a MAY with nothing to violate; registered so `iirds rules` lists the catalogue"

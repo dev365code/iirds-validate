@@ -619,6 +619,13 @@ NAMED_CASES = {
         "test_the_lifecycle_status_value_sentence_is_covered_in_both_halves",
     "x6-8-3-parties-and-roles#2":
         "test_the_party_role_sentence_is_covered_in_both_halves",
+    # Section 7.1's general sentence, claimed again after a withdrawal --
+    # the reading it was waiting for is `vocabulary_classes`, and the
+    # module holds a package for each of section 7.3's three kinds in
+    # both shapes: described only in metadata.jsonld, and described in
+    # no file at all.
+    "x7-1-iirds-extension-scenarios#4":
+        "test_proprietary_extensions:test_an_extension_described_in_no_file_is_reported",
     "x7-1-iirds-extension-scenarios#5":
         "test_the_schema_prohibition_names_the_file_it_found_the_schema_in",
 }
@@ -664,7 +671,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 80, len(CLAIMED)
+    assert len(CLAIMED) == 81, len(CLAIMED)
     assert len(UNAUDITED) == 39, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -715,7 +722,6 @@ WITHDRAWN_ELSEWHERE = {"M18": ("x6-7-4-product-variants#1", "R11")}
 #: moves has moved away from its pin.
 REFUSED = frozenset((
     ("M17", "x6-7-2-external-product-ontology#6"),
-    ("R11", "x7-1-iirds-extension-scenarios#4"),
     ("M25", "x6-9-1-directory-nodes#3"),
 ))
 

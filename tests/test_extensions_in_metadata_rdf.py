@@ -69,7 +69,11 @@ def test_a_component_only_in_the_json_ld_is_reported(tmp_path):
 
 
 def test_a_proprietary_class_only_in_the_json_ld_is_reported(tmp_path):
-    assert "R11" in fired(tmp_path, "subclass.iirds", jsonld_nodes=(SUBCLASS,))
+    """R18's now: a proprietary class is section 7.1's sentence, not 6.7.4's or
+    6.7.1's, and this rule claims only those two. The limb lived here while the
+    claim on section 7.1 was withdrawn, and reported the same defect twice once
+    R18 arrived."""
+    assert "R18" in fired(tmp_path, "subclass.iirds", jsonld_nodes=(SUBCLASS,))
 
 
 def test_the_same_extensions_in_both_files_are_not_reported(tmp_path):
@@ -261,7 +265,7 @@ def test_a_class_the_package_declares_beneath_its_own_is_not_an_iirds_extension(
     """
     got = fired(tmp_path, "own_hierarchy.iirds", jsonld_nodes=(
         {"@id": "http://my.co/ns#Bolt", "rdfs:subClassOf": {"@id": "http://my.co/ns#Fastener"}},))
-    assert "R11" not in got, sorted(got)
+    assert not ({"R11", "R18"} & got), sorted(got)
 
 
 def test_the_finding_names_the_file_the_statement_is_actually_in(tmp_path):

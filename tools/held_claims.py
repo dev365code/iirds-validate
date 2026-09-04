@@ -17,6 +17,13 @@ every test that passed, and this compares that record against the named cases,
 after the run, exactly as `tools/rule_coverage.py` compares what fired.
 
     python tools/held_claims.py --check      # after the suite has run
+
+One thing it does not distinguish: the record drops the parameters, so a
+parametrised case counts as passed when any one of its parameters did. That is
+safe only because `make check` stops on the first failure, and this runs after
+a green suite -- there is no state where some parameters failed and this still
+reports the claim as held. Written down because the guard is the sequencing,
+not the check, and sequencing is easier to change by accident.
 """
 from __future__ import annotations
 

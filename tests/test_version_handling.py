@@ -417,9 +417,18 @@ def test_two_packages_nested_inside_each_other_still_declare_themselves(make_pac
 
     report = runner.run(package, runner.ALL_KINDS)
     assert (report.version, report.variant) == ("1.0", "unrestricted")
-    assert "M3" not in _ids(report), (
-        "M3 asks about container packages and there are none; that silence is "
-        "the fallback's premise rather than an oversight")
+
+    # This line used to read `"M3" not in ...`, on the reasoning that "M3 asks
+    # about container packages and there are none; that silence is the
+    # fallback's premise rather than an oversight". The first half is true and
+    # the second does not follow from it. Version detection needs the empty
+    # answer to be *reachable*, which it still is -- every assertion above this
+    # one is unchanged -- and it does not need the empty answer to go
+    # unreported. What §6.2 asks for is exactly one corresponding instance, and
+    # here there are none, so the sentence M3 claims is broken and M3 is the
+    # rule that claims it. R5 reports the nesting; nothing reported the count.
+    assert "M3" in _ids(report), (
+        "no package represents this container, which is the sentence M3 covers")
 
 
 def test_a_self_loop_does_not_push_a_package_below_the_root(make_package):

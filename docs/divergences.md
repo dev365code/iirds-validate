@@ -234,6 +234,7 @@ the code it describes.
 | M19.4 | **narrows the sentence** | never claimed |
 | M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced M5's RECOMMENDED absoluteness on top | kept |
 | C9 | **not a leniency** — the earlier rule enforced the shape most files have rather than the grammar the obligation cites | kept |
+| B6 | **a spelling** — the extension is compared case-insensitively, so `.XHTML` passes where B.3 writes `.xhtml` | kept |
 
 So the rule, stated in `docs/scope.md`: a claim survives a documented
 difference only where the difference is about *how* the sentence is spelled,
@@ -959,6 +960,23 @@ So attribute checking is limited to event-handler attributes, where the
 prohibition is not ambiguous. The cost is real: a genuinely stray attribute
 goes unreported. The alternative cost was failing conformant packages on a
 reading nobody else holds, which is worse.
+
+### B6 — the file extension is compared without regard to case
+
+> The iiRDS XHTML5 content filename MUST use the file extension `.xhtml`.
+
+B.3 writes the extension in lower case and section 5.1.3 says file names are
+case-sensitive, so `.XHTML` is arguably a different extension and a breach.
+The rule lower-cases before comparing, and therefore accepts it.
+
+The reason is which mistake costs more. A package whose files end in `.XHTML`
+is readable by every consumer that matches extensions the way every operating
+system tool does; reporting it would fail a package nothing else objects to,
+over the shift key. A package that genuinely uses the wrong extension --
+`.html`, `.htm` -- is still reported, which is the case the sentence is about.
+
+This is a spelling, so the claim on the sentence stands. It is one call to
+`.lower()` if the Consortium reads it the other way.
 
 ### B8 — "only one" is scoped to a hazard statement, not to a file
 

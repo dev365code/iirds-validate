@@ -113,6 +113,60 @@ def test_m3_counts_a_package_whose_named_parent_is_not_here(tmp_path, shape):
     assert "M3" in ids(tmp_path, "m3_%s.iirds" % abs(hash(shape)), body)
 
 
+def test_the_one_package_per_container_sentence_is_covered_in_both_limbs(tmp_path):
+    """§6.2#5 -- "Each iiRDS package MUST have exactly one corresponding
+    iirds:Package instance in the metadata" -- is violated by a count, and a
+    count is wrong in two directions. Claiming the sentence means reporting
+    both, so both are written here rather than the one that was easy.
+
+    The third shape is the one that looks like a hole and is not. A lone
+    package naming a parent leaves `container_packages()` empty, and M3 says
+    nothing -- but that package is still *the* corresponding instance, wrongly
+    declaring itself a member of another. That is §6.2#7, word for word, and
+    R7 reports it. Counting it as a missing correspondence would put two
+    findings on one mistake and claim a sentence M3 does not check.
+    """
+    import re
+
+    none = re.sub(r"\s*<iirds:Package[\s\S]*?</iirds:Package>\n", "\n", MINIMAL_RDF)
+    assert "<iirds:Package" not in none, "the fixture edit matched nothing"
+    empty = {f.rule.id for f in runner.check(
+        build_package(tmp_path, "m3_none.iirds", metadata=none)).findings}
+    assert "M3" in empty, "no iirds:Package at all"
+
+    two = ids(tmp_path, "m3_two.iirds",
+              '  <iirds:Package rdf:about="urn:test:second">\n'
+              "    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
+              "  </iirds:Package>\n")
+    assert "M3" in two, "two packages representing one container"
+
+    cycle = MINIMAL_RDF.replace("</rdf:RDF>", '''
+  <iirds:Package rdf:about="urn:test:b">
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+    <iirds:is-part-of-package rdf:resource="urn:test:package"/>
+  </iirds:Package>
+</rdf:RDF>''').replace(
+        "</iirds:Package>",
+        '  <iirds:is-part-of-package rdf:resource="urn:test:b"/>\n'
+        "    </iirds:Package>", 1)
+    assert "urn:test:b" in cycle, "the fixture edit matched nothing"
+    circular = {f.rule.id for f in runner.check(
+        build_package(tmp_path, "m3_cycle.iirds", metadata=cycle)).findings}
+    assert "M3" in circular, (
+        "two packages naming each other as parent leave the container with no "
+        "corresponding instance at all, which is the same sentence: %s"
+        % sorted(circular))
+
+    orphan = MINIMAL_RDF.replace(
+        "</iirds:Package>",
+        '  <iirds:is-part-of-package rdf:resource="urn:test:elsewhere"/>\n'
+        "    </iirds:Package>")
+    assert orphan != MINIMAL_RDF, "the fixture edit matched nothing"
+    astray = {f.rule.id for f in runner.check(
+        build_package(tmp_path, "m3_orphan.iirds", metadata=orphan)).findings}
+    assert "R7" in astray and "M3" not in astray, sorted(astray)
+
+
 def test_m8_is_not_silenced_by_a_package_that_is_part_of_itself(tmp_path):
     """§6.2 draws the line with one word: the container's own instance "MUST
     NOT be a member of *another* iiRDS package expressed by the property
@@ -292,6 +346,72 @@ def test_m96_3_an_empty_classification_identifier(tmp_path):
     <iirds:has-classification-domain rdf:resource="urn:test:d1"/>
   </iirds:ExternalClassification>
 ''')
+
+
+# ---------------------------------------------------------------------------
+# "MUST be provided as a non-empty string" -- said twice, about two properties,
+# and read two different ways until these two tests were written side by side.
+#
+# Four shapes break such a sentence: the property is absent, it holds an empty
+# string, it holds an empty string beside a good one, and it holds something
+# that is not a string at all. The last was silent in both properties and in
+# both encodings -- `str(value).strip()` is happy with an IRI, and SHACL's
+# sh:pattern matches the IRI's own text -- so the differential gate saw two
+# implementations agreeing, which is all it can see.
+#
+# The ontology settles it rather than a reading: both properties are declared
+# `rdfs:range rdfs:Literal`, and iirds:classificationIdentifier's own
+# description asks for "a string conforming to a non-IRI identifier".
+# ---------------------------------------------------------------------------
+
+def _identity(inner):
+    return ('  <iirds:IdentityDomain rdf:about="urn:test:dom"/>\n'
+            '  <iirds:Identity rdf:about="urn:test:ident">\n'
+            '    <iirds:has-identity-domain rdf:resource="urn:test:dom"/>\n'
+            + inner + "  </iirds:Identity>\n")
+
+
+def _classification(inner):
+    return ('  <iirds:ClassificationDomain rdf:about="urn:test:cdom"/>\n'
+            '  <iirds:ExternalClassification rdf:about="urn:test:xc">\n'
+            '    <iirds:has-classification-domain rdf:resource="urn:test:cdom"/>\n'
+            + inner + "  </iirds:ExternalClassification>\n")
+
+
+#: property -> (builder, the rules that together claim the sentence). The
+#: absent limb belongs to a different rule in each family -- M19.2 answers it
+#: for the identity, M96.2 for the classification -- which is exactly why the
+#: claim is checked over the rules that claim the id, not over one of them.
+NON_EMPTY_STRING = {
+    "iirds:identifier": (_identity, {"M19.2"}),
+    "iirds:classificationIdentifier": (_classification, {"M96.2", "M96.3"}),
+}
+
+
+@pytest.mark.parametrize("prop", sorted(NON_EMPTY_STRING), ids=sorted(NON_EMPTY_STRING))
+def test_the_non_empty_string_sentence_is_covered_in_every_limb(tmp_path, prop):
+    build, claimants = NON_EMPTY_STRING[prop]
+    seen = {}
+
+    def limb(name, inner):
+        got = ids(tmp_path, "nes_%d.iirds" % abs(hash((prop, name))), build(inner))
+        seen[name] = sorted(claimants & got)
+        assert claimants & got, "%s, %s: reported by nobody who claims the sentence: %s" % (
+            prop, name, sorted(got))
+
+    limb("absent", "")
+    limb("empty", "    <%s></%s>\n" % (prop, prop))
+    limb("empty beside a good one",
+         "    <%s></%s>\n    <%s>A-1</%s>\n" % (prop, prop, prop, prop))
+    limb("an IRI, which is not a string",
+         '    <%s rdf:resource="urn:test:elsewhere"/>\n' % prop)
+    limb("a blank node, which is not a string either",
+         "    <%s rdf:parseType=\"Resource\"><rdfs:label>x</rdfs:label></%s>\n"
+         % (prop, prop))
+
+    good = ids(tmp_path, "nes_ok_%d.iirds" % abs(hash(prop)),
+               build("    <%s>A-1</%s>\n" % (prop, prop)))
+    assert not (claimants & good), "the control fires: %s" % sorted(claimants & good)
 
 
 #: §6.3.3: "the referenced parent iiRDS container MUST NOT have any outgoing

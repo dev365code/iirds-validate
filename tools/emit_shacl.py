@@ -167,7 +167,8 @@ for _rid, _target, _path in (
         ("M24.2", "iirds:DirectoryNode", "iirds:has-directory-structure-type"),
         ("M24.3", "iirds:DirectoryNode", "iirds:has-first-child"),
         ("M24.4", "iirds:DirectoryNode", "iirds:relates-to-information-unit"),
-        ("M95", "iirds:Component", "iirds:relates-to-party")):
+        ("M95", "iirds:Component", "iirds:relates-to-party"),
+        ("R17", "iirds:IdentityDomain", "iirds:has-identity-type")):
     CORE_FORMS[_rid] = ("at_most_one", {"targets": (_target,), "path": _path})
 
 for _rid, _target, _path in (
@@ -375,6 +376,17 @@ SPARQL_FORMS = {
     # direction, the worst one.
     "M3": ("fixed", ["""SELECT $this WHERE {
   FILTER NOT EXISTS { ?p <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> } }""",
+                     # Packages, and none of them represents this container.
+                     # Reports an absence like the query above, so it binds no
+                     # ?value either -- the nodes are all present, it is the
+                     # correspondence that is missing.
+                     """SELECT $this WHERE {
+  ?p <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  FILTER NOT EXISTS {
+    ?q <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+    FILTER NOT EXISTS { ?q <%(ii)sis-part-of-package> ?x .
+                        ?x <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+                        FILTER (!sameTerm(?x, ?q)) } } }""",
                      """SELECT $this ?value WHERE {
   ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
   FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 .
@@ -574,7 +586,7 @@ NOT_EXPRESSIBLE = {}
 for _rid in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11.1",
              "C11.1H", "C11.2", "C12", "C13", "C14", "C15", "C16.1", "C16.2", "R3"):
     NOT_EXPRESSIBLE[_rid] = "container: the subject is ZIP bytes and entry metadata; no graph exists yet"
-for _rid in ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10"):
+for _rid in ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11"):
     NOT_EXPRESSIBLE[_rid] = "content: the subject is XHTML files inside the archive"
 for _rid in ("S1", "S2", "S3", "S9"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
@@ -649,20 +661,25 @@ def family_min_one(sid, p):
             _prop(pid, p["path"], "sh:minCount 1"))
 
 
+# sh:nodeKind sh:Literal is the half sh:pattern cannot do. The pattern matches
+# an IRI's own text, so it passed `<iirds:identifier rdf:resource="urn:x"/>` --
+# and so did Python, which is why the differential gate saw agreement. Both
+# properties are declared `rdfs:range rdfs:Literal` by the ontology. The
+# blank-node exemption that used to sit here existed only to mirror the Python
+# and went with it.
+_NON_EMPTY_STRING = ("sh:nodeKind sh:Literal", 'sh:pattern "\\\\S"')
+
+
 def family_nonempty_min1(sid, p):
-    # sh:pattern violates on blank nodes per spec; Python's str(value).strip()
-    # treats a bnode id as non-empty. Blank values pass here, as there.
     pid = sid + "-p"
     return (["%s" % _targets(p["targets"]), "sh:property %s" % pid],
-            _prop(pid, p["path"], "sh:minCount 1",
-                  'sh:or ( [ sh:nodeKind sh:BlankNode ] [ sh:pattern "\\\\S" ] )'))
+            _prop(pid, p["path"], "sh:minCount 1", *_NON_EMPTY_STRING))
 
 
 def family_nonempty_values(sid, p):
     pid = sid + "-p"
     return (["%s" % _targets(p["targets"]), "sh:property %s" % pid],
-            _prop(pid, p["path"],
-                  'sh:or ( [ sh:nodeKind sh:BlankNode ] [ sh:pattern "\\\\S" ] )'))
+            _prop(pid, p["path"], *_NON_EMPTY_STRING))
 
 
 def family_no_absolute_source(sid, p):

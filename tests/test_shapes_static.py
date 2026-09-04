@@ -48,11 +48,11 @@ def test_every_rule_is_classified_exactly_once():
 
 def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
-    assert counts["core_emitted"] == 120
+    assert counts["core_emitted"] == 121
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 28
     assert counts["deferred_v1.1"] == 9
-    assert counts["not_expressible"] == 45
+    assert counts["not_expressible"] == 46
     assert counts["noop"] == 1
 
 
@@ -274,7 +274,7 @@ EMITTED_IDS = frozenset((
     "M80", "M81", "M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89",
     "M9", "M90", "M91", "M92", "M93", "M94", "M95", "M96.1", "M96.2",
     "M96.3", "M97.1", "M97.2", "R1", "R10", "R12", "R2", "R4", "R5",
-    "R13", "R14", "R15", "R16", "R6", "R7", "S4", "S5"))
+    "R13", "R14", "R15", "R16", "R17", "R6", "R7", "S4", "S5"))
 
 
 def test_the_emitted_rule_set_is_pinned_by_name():

@@ -57,6 +57,13 @@ ivs:M3 a sh:NodeShape ;
   sh:targetNode ivs:M3 ;
   sh:sparql [ sh:select """SELECT $this WHERE {
   FILTER NOT EXISTS { ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> } }""" ] ;
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS {
+    ?q <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+    FILTER NOT EXISTS { ?q <http://iirds.tekom.de/iirds#is-part-of-package> ?x .
+                        ?x <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+                        FILTER (!sameTerm(?x, ?q)) } } }""" ] ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
   FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 .

@@ -447,7 +447,8 @@ ivs:M19.2-p a sh:PropertyShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AIdentity%20instance%20consists,of%20the%20iirdsIdentityDomain%20class.> ;
   sh:path iirds:identifier ;
   sh:minCount 1 ;
-  sh:or ( [ sh:nodeKind sh:BlankNode ] [ sh:pattern "\\S" ] ) .
+  sh:nodeKind sh:Literal ;
+  sh:pattern "\\S" .
 
 ivs:M19.3 a sh:NodeShape ;
   rdfs:label "An identity MUST point to exactly one domain by the iirds:has-identity-domain property." ;
@@ -1676,7 +1677,8 @@ ivs:M96.3-p a sh:PropertyShape ;
   sh:description "Put a non-empty string in iirds:classificationIdentifier. An empty value is worse than an absent one: it looks answered and matches nothing." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=6.8.4%20External%20Classification> ;
   sh:path iirds:classificationIdentifier ;
-  sh:or ( [ sh:nodeKind sh:BlankNode ] [ sh:pattern "\\S" ] ) .
+  sh:nodeKind sh:Literal ;
+  sh:pattern "\\S" .
 
 ivs:M97.1 a sh:NodeShape ;
   rdfs:label "instances of ClassificationDomain must have an IRI" ;
@@ -1777,3 +1779,24 @@ ivs:R7 a sh:NodeShape ;
   ivm:covers "x6-2-information-units#7" ;
   sh:targetClass iirds:Package ;
   sh:or ( [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:maxCount 1 ] ] [ sh:property [ sh:path [ sh:zeroOrOnePath iirds:is-part-of-package ] ; sh:qualifiedValueShape [ sh:class iirds:Package ] ; sh:qualifiedMinCount 2 ] ] ) .
+
+ivs:R17 a sh:NodeShape ;
+  rdfs:label "an iirds:IdentityDomain must not name more than one identity type" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:IdentityDomain must not name more than one identity type" ;
+  ivm:ruleId "R17" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:has-identity-type on the domain and give the other identities a domain of their own. A domain is the scheme a number is issued under, and a serial number and a product type are two schemes: merged, a reader cannot tell which scheme any identifier in it belongs to." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_IdentityDomain#2" ;
+  sh:targetClass iirds:IdentityDomain ;
+  sh:property ivs:R17-p .
+ivs:R17-p a sh:PropertyShape ;
+  sh:message "an iirds:IdentityDomain must not name more than one identity type" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R17" ;
+  sh:description "Keep one iirds:has-identity-type on the domain and give the other identities a domain of their own. A domain is the scheme a number is issued under, and a serial number and a product type are two schemes: merged, a reader cannot tell which scheme any identifier in it belongs to." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:has-identity-type ;
+  sh:maxCount 1 .

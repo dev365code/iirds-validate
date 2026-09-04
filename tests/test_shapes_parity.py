@@ -1044,6 +1044,78 @@ def test_both_of_m3s_class_tests_are_load_bearing(tmp_path, shape):
                                  _with_parent(shape, SECOND_ALSO_BOGUS))
 
 
+#: rule -> (the class that carries it, the property, what a good value is).
+#: Both sentences say "MUST be provided as a non-empty string" and both
+#: encodings read only the text: `str(value).strip()` on one side, `sh:pattern`
+#: on the other, and sh:pattern matches an IRI's own characters. So the gate
+#: saw agreement across every case in this file, which is the failure mode it
+#: was built for and cannot detect on its own -- the cases have to arrive.
+NON_EMPTY_STRING = {
+    "M19.2": ("iirds:Identity", "iirds:identifier", "A-1"),
+    "M96.3": ("iirds:ExternalClassification", "iirds:classificationIdentifier", "X-9"),
+}
+
+
+@pytest.mark.parametrize("rule_id", sorted(NON_EMPTY_STRING), ids=sorted(NON_EMPTY_STRING))
+@pytest.mark.parametrize("what", ["an IRI", "a blank node", "an empty string",
+                                  "an empty string beside a good one", "a good one"])
+def test_a_non_empty_string_is_a_literal_in_both_encodings(tmp_path, rule_id, what):
+    cls, prop, good = NON_EMPTY_STRING[rule_id]
+    value = {
+        "an IRI": '<%s rdf:resource="urn:test:elsewhere"/>' % prop,
+        "a blank node": '<%s rdf:parseType="Resource"><rdfs:label>x</rdfs:label></%s>'
+                        % (prop, prop),
+        "an empty string": "<%s></%s>" % (prop, prop),
+        "an empty string beside a good one":
+            "<%s></%s><%s>%s</%s>" % (prop, prop, prop, good, prop),
+        "a good one": "<%s>%s</%s>" % (prop, good, prop),
+    }[what]
+    metadata = _meta('  <%s rdf:about="urn:test:subject">%s</%s>\n' % (cls, value, cls))
+    fired = assert_parity(tmp_path, "nes_%s_%d.iirds" % (rule_id, abs(hash(what))), metadata)
+    assert (rule_id in fired) is (what != "a good one"), (rule_id, what, sorted(fired))
+
+
+def test_packages_that_name_each_other_leave_no_container_in_either_encoding(tmp_path):
+    """M3's third limb. Its other two ask for none and for two; this graph has
+    two packages and no *container* package, because each names the other as
+    its parent and each name is a real one. `container_packages` answers with
+    the empty list, which the rule now reads and the query has to find the
+    same way -- an absence, so neither encoding names a node.
+
+    Written as a parity case rather than a Python test alone because the limb
+    was added to both at once, and a limb added to one is exactly what this
+    file exists to catch."""
+    cycle = MINIMAL_RDF.replace("</rdf:RDF>", '''
+  <iirds:Package rdf:about="urn:test:b">
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+    <iirds:is-part-of-package rdf:resource="urn:test:package"/>
+  </iirds:Package>
+</rdf:RDF>''').replace(
+        "</iirds:Package>",
+        '  <iirds:is-part-of-package rdf:resource="urn:test:b"/>\n'
+        "    </iirds:Package>", 1)
+    assert "urn:test:b" in cycle, "the fixture edit matched nothing"
+    assert "M3" in assert_parity(tmp_path, "m3_cycle.iirds", cycle)
+
+    assert "M3" not in assert_parity(tmp_path, "m3_clean.iirds", MINIMAL_RDF), (
+        "the control: one package, no parent, is the shape every conformant "
+        "container has")
+
+    # The control that holds the class test on the parent. Both parents in the
+    # cycle above are packages, so dropping that test leaves the cycle firing
+    # and the limb looks pinned when it is not. Here the named parent is an
+    # IRI nothing describes: the package stays the container's own, Python is
+    # silent, and a query that read the bare predicate would report it.
+    orphan = MINIMAL_RDF.replace(
+        "</iirds:Package>",
+        '  <iirds:is-part-of-package rdf:resource="urn:test:elsewhere"/>\n'
+        "    </iirds:Package>")
+    assert orphan != MINIMAL_RDF, "the fixture edit matched nothing"
+    assert "M3" not in assert_parity(tmp_path, "m3_orphan.iirds", orphan), (
+        "a parent that is not here leaves the package the corresponding "
+        "instance; naming one wrongly is section 6.2's next sentence")
+
+
 def test_the_content_of_a_nested_package_is_not_described_here_in_either_encoding(tmp_path):
     """§5.3: "An iiRDS package that contains a nested iiRDS package MUST NOT
     contain metadata about the content of the nested iiRDS package."
@@ -1383,14 +1455,6 @@ def test_a_vcard_nothing_describes_is_left_to_r4_in_both_encodings(tmp_path):
     assert "R4" in py, sorted(py)
 
 
-def test_every_emitted_shape_has_fired_somewhere_in_this_file():
-    never_fired = EMITTED - SH_FIRED_EVER
-    assert len(SH_FIRED_EVER) > 50, (
-        "the accumulator is empty-ish; this test only means something after "
-        "the whole file has run -- do not run it in isolation")
-    assert never_fired == set(), sorted(never_fired)
-
-
 # ---------------------------------------------------------------------------
 # Section 8.3.2's Package list, both encodings
 #
@@ -1427,3 +1491,49 @@ def test_the_package_manufacturer_bullets_agree_in_both_encodings(tmp_path):
     assert line in HANDOVER
     fired = _h_parity(tmp_path, "pkg_manufacturer.iirds", HANDOVER.replace(line, "", 1))
     assert {"R14", "R16"} <= fired, sorted(fired)
+
+
+def test_two_identity_types_on_one_domain_agree_in_both_encodings(tmp_path):
+    """Appendix A's `0..1`, which nothing asked until R17. Both encodings say
+    the same thing about one, two and none."""
+    def domain(types):
+        lines = "".join('    <iirds:has-identity-type rdf:resource="%s%s"/>\n' % (IIRDS_, t)
+                        for t in types)
+        return _meta('  <iirds:IdentityDomain rdf:about="urn:test:d">\n'
+                     '    <rdfs:label xml:lang="en">D</rdfs:label>\n%s  </iirds:IdentityDomain>\n'
+                     % lines)
+
+    for types, fires in ((("SerialNumber",), False), ((), False),
+                         (("SerialNumber", "ProductType"), True)):
+        metadata = domain(types)
+        py = python_fired(tmp_path, "domain_%d.iirds" % len(types), metadata)
+        sh = shacl_fired(metadata)
+        assert py == sh, (types, sorted(sh - py), sorted(py - sh))
+        assert ("R17" in py) is fires, (types, sorted(py))
+
+
+def test_every_emitted_shape_has_fired_somewhere_in_this_file():
+    never_fired = EMITTED - SH_FIRED_EVER
+    assert len(SH_FIRED_EVER) > 50, (
+        "the accumulator is empty-ish; this test only means something after "
+        "the whole file has run -- do not run it in isolation")
+    assert never_fired == set(), sorted(never_fired)
+
+
+def test_the_accumulator_test_is_the_last_one_in_this_file():
+    """`test_every_emitted_shape_has_fired_somewhere_in_this_file` reads a set
+    filled as the file runs, so a case appended after it does not count.
+
+    That has now happened twice -- R12's cases and R17's -- and both times the
+    symptom was a shape reported as never firing while its case sat a few
+    lines below. The docstring said "do not run it in isolation" and assumed
+    position; this asserts it.
+    """
+    import ast
+
+    source = (ROOT / "tests" / "test_shapes_parity.py").read_text("utf-8")
+    tests = [node.name for node in ast.parse(source).body
+             if isinstance(node, ast.FunctionDef) and node.name.startswith("test_")]
+    assert tests[-1] == "test_the_accumulator_test_is_the_last_one_in_this_file"
+    assert tests[-2] == "test_every_emitted_shape_has_fired_somewhere_in_this_file", \
+        "the accumulator must be the last test that reads it: %s" % tests[-3:]

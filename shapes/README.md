@@ -18,7 +18,7 @@ demonstrated.
 |---|---|---|
 | `iirds-1.3/iirds-complete.ttl` | SHACL-AF engine | **start here**: core + SPARQL in one file, for any package that does not declare iiRDS/H |
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
-| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 112 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
+| `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 113 shapes: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
 | `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 17 shapes: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 8 iiRDS/H additions — apply **only** under iiRDS/H |
 | `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 11 iiRDS/H additions (SPARQL): M15.11a, M15.7c, the five named-party MUSTs, and R4 |
@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-57 of the 205 rules have no shape, in four honest categories,
+58 of the 207 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **45 not expressible** — 45 of the 205 rules are about ZIP bytes, content
+- **46 not expressible** — 46 of the 207 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, files present
   in the container. None of that
@@ -179,7 +179,7 @@ each listed with its reason in `MANIFEST.json`:
 ## Why you can trust the translation
 
 **These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
-32 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
+33 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
 carries, so running them against a package that declares an older edition
 reports rules that edition does not have. The Python validator gates on the
 declared version and stays silent on those. Gating the shapes themselves would
@@ -188,7 +188,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 205-rule Python
+Every emitted shape is **differentially tested against the 207-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

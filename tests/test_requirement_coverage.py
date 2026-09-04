@@ -90,15 +90,15 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 93, len(pairs)
-    assert len(asserted) == 2, sorted(asserted)
-    assert sorted(rid for rid, _ in asserted) == ["R1", "R2"], sorted(asserted)
+    assert len(pairs) == 95, len(pairs)
+    assert len(asserted) == 3, sorted(asserted)
+    assert sorted(rid for rid, _ in asserted) == ["R1", "R17", "R2"], sorted(asserted)
 
 
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 77
+    assert len(COVERED) == 78
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 

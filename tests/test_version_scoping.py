@@ -61,6 +61,9 @@ SCOPED = {
     "R1":    (("1.2", "1.3"), "iirds:ClassificationType arrives in 1.2 with the rest of "
                               "the external classification vocabulary"),
     "R2":    (("1.3",), "iirdsHov:DocumentCategory is part of iiRDS/H, which arrives in 1.3"),
+    "R17":   (("1.1", "1.2", "1.3"),
+              "iirds:has-identity-type arrives in 1.1 with the identity-type system, "
+              "which is M49's reason as well"),
 }
 
 #: iiRDS/H arrived with 1.3, so its rules cannot apply to anything earlier.

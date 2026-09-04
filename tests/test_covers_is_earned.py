@@ -473,13 +473,9 @@ def test_the_schema_prohibition_names_the_file_it_found_the_schema_in(tmp_path):
 #: is the point: the cost of an unevidenced claim is now a line in a list
 #: called UNAUDITED rather than nothing at all.
 UNAUDITED = frozenset((
-    "b-3-conformance-criteria#2", "b-3-conformance-criteria#4",
-    "b-3-conformance-criteria#5", "b-5-10-forms#1",
-    "b-5-11-svg-mathml-and-iframes#1", "b-5-2-document-metadata#1",
-    "b-5-7-scripting#1", "b-6-additional-semantic-tagging-of-content#5",
-    "b-6-additional-semantic-tagging-of-content#6", "dfn-iirds-package#1",
-    "dfn-iirds-zip-archive#2", "dfn-iirds-zip-archive#3",
-    "dfn-iirds-zip-archive#4", "rdfclasses_core_ClassificationType#1",
+    "dfn-iirds-package#1", "dfn-iirds-zip-archive#2",
+    "dfn-iirds-zip-archive#3", "dfn-iirds-zip-archive#4",
+    "rdfclasses_core_ClassificationType#1",
     "rdfclasses_handover_DocumentCategory#1",
     "x5-1-1-metadata-location-and-rdf-serializations#1",
     "x5-1-1-metadata-location-and-rdf-serializations#4",
@@ -488,8 +484,8 @@ UNAUDITED = frozenset((
     "x5-1-3-names-of-files-and-directories#3", "x5-2-2-content-encoding#1",
     "x5-2-2-content-encoding#2", "x5-3-nested-iirds-packages#3",
     "x6-12-rdf-serialization#1", "x6-2-information-units#1",
-    "x6-2-information-units#2", "x6-2-information-units#5",
-    "x6-2-information-units#7", "x6-3-1-reference-part-of-file-by-selector#1",
+    "x6-2-information-units#2", "x6-2-information-units#7",
+    "x6-3-1-reference-part-of-file-by-selector#1",
     "x6-3-1-reference-part-of-file-by-selector#2",
     "x6-3-3-metadata-of-nested-iirds-packages#2",
     "x6-3-3-metadata-of-nested-iirds-packages#4",
@@ -498,8 +494,7 @@ UNAUDITED = frozenset((
     "x6-3-content-references-of-information-units#4",
     "x6-3-content-references-of-information-units#5",
     "x6-7-3-packages-related-to-component-trees#5",
-    "x6-8-1-complex-identity#2", "x6-8-1-complex-identity#3",
-    "x6-8-4-external-classification#4", "x6-8-4-external-classification#7",
+    "x6-8-1-complex-identity#3", "x6-8-4-external-classification#7",
     "x6-9-1-directory-nodes#5", "x6-9-2-hierarchical-navigation#1",
     "x6-9-2-hierarchical-navigation#2", "x8-3-1-1-mandatory-content-list#2",
     "x8-3-1-2-nesting-of-packages#2",
@@ -516,6 +511,8 @@ UNAUDITED = frozenset((
 #: `module:name` where the test lives in another file, which is where it
 #: belongs when the rule has a file of its own.
 NAMED_CASES = {
+    "rdfclasses_core_IdentityDomain#2":
+        "test_identity_domain_cardinality:test_two_identity_types_are_reported",
     # Section 8.3.2's Package list: the six sentences its Document list
     # repeats word for word, and which nothing read until R13 to R16.
     "x8-3-2-metadata-requirements#1":
@@ -539,6 +536,33 @@ NAMED_CASES = {
         "test_extensions_in_metadata_rdf:test_a_product_variant_only_in_the_json_ld_is_reported",
     "x6-7-1-component-trees-in-the-package#2":
         "test_extensions_in_metadata_rdf:test_a_component_only_in_the_json_ld_is_reported",
+    # Two sentences of the same shape, held by one parametrised case so the
+    # readings cannot drift apart again.
+    # Appendix B, all nine, held by one case list: every sentence with
+    # every shape that breaks it, and a clean control beside them.
+    "b-3-conformance-criteria#2":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-3-conformance-criteria#4":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-3-conformance-criteria#5":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-5-2-document-metadata#1":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-5-7-scripting#1":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-5-10-forms#1":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-5-11-svg-mathml-and-iframes#1":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-6-additional-semantic-tagging-of-content#5":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "b-6-additional-semantic-tagging-of-content#6":
+        "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    "x6-8-1-complex-identity#2": "test_remaining_rules_fire:test_the_non_empty_string_sentence_is_covered_in_every_limb",
+    "x6-8-4-external-classification#4": "test_remaining_rules_fire:test_the_non_empty_string_sentence_is_covered_in_every_limb",
+    "x6-2-information-units#5":
+        "test_remaining_rules_fire:"
+        "test_the_one_package_per_container_sentence_is_covered_in_both_limbs",
     "dfn-iirds-zip-archive#5": "test_the_mimetype_sentence_is_covered_in_both_limbs",
     "dfn-iirds-zip-archive#6": "test_the_mimetype_sentence_is_covered_in_both_limbs",
     "dfn-iirds-container#1": "test_the_single_root_directory_sentence_is_covered",
@@ -605,8 +629,8 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 77, len(CLAIMED)
-    assert len(UNAUDITED) == 51, len(UNAUDITED)
+    assert len(CLAIMED) == 78, len(CLAIMED)
+    assert len(UNAUDITED) == 39, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
     published = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)
@@ -725,7 +749,7 @@ def test_the_leniency_table_says_what_the_rules_do():
     """
     text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
     rows = LENIENCY_ROW.findall(text)
-    assert len(rows) == 6, [r[0] for r in rows]
+    assert len(rows) == 7, [r[0] for r in rows]
     by_id = {rule.id: rule for rule in all_rules()}
     for names, verdict in rows:
         # Every prefix this project uses, not the three that happened to be in

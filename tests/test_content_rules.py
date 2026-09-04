@@ -84,6 +84,51 @@ def test_content_that_is_not_well_formed_xml(make_package):
     assert "B1" in ids(make_package, "<html><p>unclosed")
 
 
+#: B.5.7 is four words -- "Scripting MUST NOT be used in iiRDS XHTML5" -- and
+#: has three routes into a document. Two were checked: the `<script>` element
+#: (B2, by the element list) and event-handler attributes (B4). The third is a
+#: URL whose scheme *is* a script, which no element list and no attribute name
+#: can see, because the element and the attribute are both perfectly ordinary.
+#:
+#: The last two entries are the same value written the way a browser reads it:
+#: the URL parser strips ASCII whitespace, including a tab or newline inside
+#: the scheme, before deciding what to run. A check that matches the literal
+#: text passes a value that executes, which is the wrong way round for a
+#: prohibition.
+SCRIPTING_URLS = [
+    '<p><a href="javascript:alert(1)">x</a></p>',
+    '<p><a href="JavaScript:alert(1)">x</a></p>',
+    '<p><a href="  javascript:alert(1)">x</a></p>',
+    '<p><a href="vbscript:MsgBox 1">x</a></p>',
+    '<img src="javascript:alert(1)" alt="x"/>',
+    '<p><a href="java&#9;script:alert(1)">x</a></p>',
+    '<p><a href="java&#10;script:alert(1)">x</a></p>',
+]
+
+
+@pytest.mark.parametrize("fragment", SCRIPTING_URLS, ids=range(len(SCRIPTING_URLS)))
+def test_a_url_that_is_a_script_is_scripting(make_package, fragment):
+    broken = CLEAN.replace("<ul><li>Risk of electrical shock</li></ul>", fragment)
+    assert "B11" in ids(make_package, broken, name="%s.iirds" % abs(hash(fragment)))
+
+
+@pytest.mark.parametrize("fragment", [
+    '<p><a href="../other.xhtml">x</a></p>',
+    '<p><a href="https://example.com/a">x</a></p>',
+    '<p><a href="mailto:a@example.com">x</a></p>',
+    '<img src="../f.png" alt="x"/>',
+    '<p><a href="#anchor">x</a></p>',
+    #: The scheme is what is prohibited, not the letters. A fragment that
+    #: merely contains the word must not be reported, or the rule fails
+    #: documentation *about* scripting -- which iiRDS is full of.
+    '<p>Do not use javascript: URLs in your content.</p>',
+    '<p><a href="../guide.xhtml#javascript:notes">x</a></p>',
+])
+def test_an_ordinary_url_is_not_scripting(make_package, fragment):
+    fine = CLEAN.replace("<ul><li>Risk of electrical shock</li></ul>", fragment)
+    assert "B11" not in ids(make_package, fine, name="%s.iirds" % abs(hash(fragment)))
+
+
 def test_link_may_only_be_a_stylesheet(make_package):
     """Every other relation "MUST be expressed by means of RDF in iiRDS", so a
     <link rel="next"> is metadata smuggled past the metadata."""

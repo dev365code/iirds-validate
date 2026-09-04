@@ -304,6 +304,62 @@ def b4_no_event_handlers(ctx):
                                     subject=name, detail="<%s>" % _local(element.tag))
 
 
+#: Attributes whose value a consumer resolves as a URL. Deliberately short:
+#: these are the ones that navigate or load in XHTML content, and the point is
+#: the scheme, not an inventory of attributes.
+_URL_ATTRIBUTES = ("href", "src", "action", "formaction", "data", "poster",
+                   "cite", "longdesc")
+
+#: The two schemes that are a script rather than a location. `data:` is
+#: deliberately absent: a data URL is a document, and whether an embedded
+#: document counts as scripting is a question B.5.7 does not answer, so
+#: reporting it would be this project inventing a prohibition.
+_SCRIPT_SCHEMES = ("javascript:", "vbscript:")
+
+
+def _url_scheme_text(value: str) -> str:
+    """The value as the URL parser sees it: ASCII whitespace and C0 controls
+    removed, lowercased.
+
+    HTML's URL parser strips tab, newline and carriage return from anywhere in
+    a URL before resolving it, so `java&#9;script:` is a value that runs. A
+    check on the literal text would pass exactly the values a prohibition
+    exists to catch, which is worse than no check: it reports the careless and
+    clears the deliberate.
+    """
+    return "".join(ch for ch in value if ord(ch) > 0x20).lower()
+
+
+@rule("B11", covers=("b-5-7-scripting#1",), kind="content", prio="MUST NOT",
+      versions=(), variants=(),
+      title="a URL whose scheme is a script is scripting",
+       fix="Replace the URL with a real location, or remove the link. B.5.7 forbids scripting, and a javascript: URL is a script that happens to be written where an address goes — a consumer that blocks scripts is left with a control that looks live and does nothing.")
+def b11_no_scripting_urls(ctx):
+    """B.5.7 by its third route.
+
+    The element list (B2) sees `<script>`; the attribute names (B4) see
+    `onclick`. Neither can see this one, because `<a href>` is as ordinary as
+    markup gets and only the value says what happens. The sentence prohibits
+    scripting, not a spelling of it.
+
+    Scoped to the scheme, so the letters alone are not the test. Technical
+    documentation writes *about* javascript: URLs, and a rule that reported the
+    word would fire on the prose explaining why it is forbidden.
+    """
+    for name, root in _walk(ctx):
+        for element in root.iter():
+            for attribute, value in sorted(element.attrib.items()):
+                if _local(attribute) not in _URL_ATTRIBUTES:
+                    continue
+                text = _url_scheme_text(value)
+                if text.startswith(_SCRIPT_SCHEMES):
+                    yield Violation(
+                        "%s is a script, not a location, and B.5.7 forbids scripting"
+                        % attribute, subject=name,
+                        detail="<%s %s=\"%s\">" % (_local(element.tag), attribute,
+                                                   value[:60]))
+
+
 @rule("B5", covers=("b-5-2-document-metadata#1",), kind="content", prio="MUST", versions=(), variants=(),
       title="link must be used only with rel=\"stylesheet\"",
        fix="Use rel=\"stylesheet\", or delete the element. Other relations describe a document's place among others, and in iiRDS the metadata graph carries that; a consumer reads the graph and never sees this.")

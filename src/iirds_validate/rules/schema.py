@@ -126,9 +126,13 @@ def m2_9(ctx):
 # Package
 # --------------------------------------------------------------------------
 
-@rule("M3", covers=("x6-2-information-units#5",),
+@rule("M3", covers=("x6-2-information-units#5",), diagnosis="cause",
        fix="Provide exactly one iirds:Package instance describing this container. It is the root a consumer starts from, so zero leaves the package unidentified and two leave it ambiguous.")
 def m3_exactly_one_package(ctx):
+    # A cause, both ways it fires. Every rule whose subject is iirds:Package
+    # takes each one in the graph, so a second package draws a finding from all
+    # of them, and no package at all silences the ones that need a subject.
+    # Either way this sentence is the reason for the rest of the report.
     if not ctx.sources:
         return      # S2 says no metadata was usable; "declares no Package" on top is the same absence twice
     # One reading of "the package that represents this container", shared with
@@ -138,6 +142,18 @@ def m3_exactly_one_package(ctx):
     own = container_packages(ctx.graph)
     if not packages:
         yield Violation("metadata declares no iirds:Package for this container")
+    elif not own:
+        # Packages, and not one of them represents this container: every one
+        # names a described package as its parent, which two naming each other
+        # achieve between them. `container_packages` returns the empty answer
+        # rather than falling back precisely so this can be told from "one",
+        # and for a while nothing here asked. A lone package whose named parent
+        # is absent is *not* this case -- it stays the corresponding instance,
+        # wrongly declaring a membership, which is section 6.2's next sentence
+        # and R7's to report.
+        yield Violation("no iirds:Package represents this container; each one "
+                        "declares itself part of another",
+                        detail=", ".join(sorted(ctx.ref(p) for p in packages)[:5]))
     elif len(own) > 1:
         yield Violation("more than one iirds:Package represents this container",
                         detail=", ".join(sorted(ctx.ref(p) for p in own)[:5]))
@@ -321,14 +337,44 @@ def m19_3_identity_domain(ctx):
                             subject=ctx.ref(ident), detail="%d domains" % len(domains))
 
 
+def _not_a_non_empty_string(ctx, subject, value, prop):
+    """The two properties whose sentence says "as a non-empty string".
+
+    Both read the same way and did not: one filtered the empty values out and
+    reported only when nothing survived, so an empty string beside a good one
+    passed; the other reported each empty value, as the sentence says. Neither
+    asked what kind of node it had, and `str(value).strip()` is happy with an
+    IRI -- so was the shape, whose `sh:pattern` matches the IRI's own text,
+    which is why two encodings agreed and both were wrong.
+
+    The ontology settles it rather than a reading: both properties are
+    declared `rdfs:range rdfs:Literal`, and iirds:classificationIdentifier's
+    description asks for "a string conforming to a non-IRI identifier". A
+    blank node is not a string either, and the shape used to grant it an
+    explicit exemption to match the Python.
+
+    The datatype is deliberately not checked. "Non-empty string" separates a
+    value from a pointer; whether that value is xsd:string or xsd:token is a
+    question the sentence does not ask.
+    """
+    if isinstance(value, Literal) and str(value).strip():
+        return
+    kind = ("an empty string" if isinstance(value, Literal)
+            else "a blank node" if not isinstance(value, URIRef) else "an IRI")
+    yield Violation("%s must hold a non-empty string, and this is %s" % (prop, kind),
+                    subject=ctx.ref(subject), detail=ctx.ref(value))
+
+
 @rule("M19.2", covers=("x6-8-1-complex-identity#2",),
        fix="Add iirds:identifier to the Identity, holding the value itself. The domain says what kind of identifier it is; this is the identifier.")
 def m19_2_identity_value(ctx):
     for ident in ctx.instances_of(T.Identity):
-        values = [v for v in ctx.values(ident, T.identifier) if str(v).strip()]
+        values = ctx.values(ident, T.identifier)
         if not values:
             yield Violation("iirds:Identity must carry a non-empty iirds:identifier",
                             subject=ctx.ref(ident))
+        for value in values:
+            yield from _not_a_non_empty_string(ctx, ident, value, "iirds:identifier")
 
 
 @rule("M21.2",
@@ -788,6 +834,41 @@ def _points_at_an_instance_of(ctx, prop, cls, message):
         yield Violation(message, subject=ctx.ref(subject), detail=ctx.ref(value))
 
 
+@rule("R17", kind="schema", prio="MUST",
+      # `iirds:has-identity-type` arrives in 1.1 with the identity-type
+      # system, as M49 records. Written as all five first, and the version
+      # inventory -- repaired one commit earlier so that it looks at rules at
+      # all -- said so on the next rule that reached it.
+      versions=("1.1", "1.2", "1.3"), variants=(),
+      covers=("rdfclasses_core_IdentityDomain#2",),
+      title="an iirds:IdentityDomain must not name more than one identity type",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#a-1-1-class-definitions",
+      fix="Keep one iirds:has-identity-type on the domain and give the other identities a "
+          "domain of their own. A domain is the scheme a number is issued under, and a serial "
+          "number and a product type are two schemes: merged, a reader cannot tell which "
+          "scheme any identifier in it belongs to.")
+def r17_identity_domain_has_one_type(ctx):
+    """Appendix A gives `iirds:has-identity-type` on `iirds:IdentityDomain` as
+    `0..1`, and nothing asked.
+
+    The cost is not only an ambiguous domain. Section 8.3.2 asks four times
+    for a domain of a named identity type whose party is the manufacturer --
+    twice for the Package and twice for the Document, once per kind of
+    identity. A domain declaring both kinds satisfies two of those four with
+    one party, so a package answers the instance question and the product-type
+    question with the same statement and identifies one thing where the
+    standard asks for two. The handover rules cannot see that on their own:
+    each of them is looking for a domain of its own kind, and finds one.
+
+    `0..1`, so a domain naming no type is not this rule's finding. Which
+    domains must name one is section 8.3.2's question, and it asks it only of
+    the domains its own bullets reach.
+    """
+    yield from _at_most_one(ctx, T.IdentityDomain, T.has_identity_type,
+                            "iirds:has-identity-type")
+
+
 @rule("R10", covers=("x6-8-2-content-lifecycle-status#2",), kind="schema", prio="MUST",
       versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),   # as M21.1 and M22.2, its neighbours
       title="iirds:has-content-lifecycle-status-value must point at a status value",
@@ -888,9 +969,8 @@ def m96_2_classification_identifier_count(ctx):
 def m96_3_classification_identifier_non_empty(ctx):
     for classification in ctx.instances_of(T.ExternalClassification):
         for value in ctx.values(classification, T.classificationIdentifier):
-            if not str(value).strip():
-                yield Violation("iirds:classificationIdentifier must be a non-empty string",
-                                subject=ctx.ref(classification))
+            yield from _not_a_non_empty_string(ctx, classification, value,
+                                               "iirds:classificationIdentifier")
 
 
 @rule("M96.4",

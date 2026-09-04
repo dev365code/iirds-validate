@@ -83,3 +83,38 @@ def test_the_json_report_carries_the_same_order_and_says_why(tmp_path):
 
 def test_a_clean_package_is_unaffected(tmp_path):
     assert runner.run(build_package(tmp_path, "ok.iirds"), runner.ALL_KINDS).ok
+
+
+# ---------------------------------------------------------------------------
+# A second package in the metadata is a cause, not one finding among many.
+#
+# Every rule whose subject is `iirds:Package` -- the four §8.3.2 handover
+# rules and M15.9 before them -- takes each `iirds:Package` in the graph.
+# Describe a second one and they all report it, so a container with two
+# packages produces a column of findings about a package the author never
+# meant to submit.
+#
+# That is not a false report: a container may only describe one package, and
+# both ways of getting a second one are already caught -- `is-part-of-package`
+# by R9, anything else by M3. But only R9 said so. M3 sorted in the middle of
+# the noise it was the reason for, which leaves the reader to work out that
+# eight findings are one mistake.
+# ---------------------------------------------------------------------------
+from test_handover_rules_fire import HANDOVER, _package  # noqa: E402
+
+SECOND_PACKAGE = HANDOVER.replace("</rdf:RDF>", """
+  <iirds:Package rdf:about="urn:test:other">
+    <iirds:title>A second package this container has no business describing</iirds:title>
+  </iirds:Package>
+</rdf:RDF>""")
+
+
+def test_a_second_package_is_reported_as_the_cause_of_the_rest(tmp_path):
+    assert "urn:test:other" in SECOND_PACKAGE, "the fixture edit matched nothing"
+    findings = runner.run(_package(tmp_path, "two.iirds", SECOND_PACKAGE),
+                          runner.ALL_KINDS).findings
+
+    followers = [f for f in findings if f.violation.subject == "urn:test:other"]
+    assert followers, "no rule took the second package as its subject"
+    assert findings[0].rule.id == "M3", [f.rule.id for f in findings]
+    assert findings[0].rule.diagnosis == "cause"

@@ -1,10 +1,10 @@
 <div align="center">
-  <img src="docs/assets/door.svg?v=c31c4de1" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
+  <img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/door.svg?v=c31c4de1" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
-[![spec obligations](https://img.shields.io/badge/spec_obligations-77_of_280_covered_·_a_floor-a8721c)](docs/requirements.json)
-[![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](LICENSE)
+[![spec obligations](https://img.shields.io/badge/spec_obligations-77_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
+[![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
 [Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Five doors](#five-doors-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
 
@@ -12,7 +12,7 @@
 
 ## Ten seconds
 
-<img src="docs/assets/tenseconds.svg?v=82f3f8d1" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=82f3f8d1" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
 
 **Three parts, every time: what is wrong → the evidence as read from your file → how to fix it.** A rule without a prescription does not ship.
 
@@ -58,6 +58,33 @@ broken.iirds   iiRDS not declared
 
 Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
 
+**It asks whether the package will work, not only whether it conforms.** Fifteen
+interoperability rules, most with no counterpart in the specification, because a
+conformant package can still be undeliverable:
+
+<details>
+<summary>The fifteen, briefly</summary>
+
+| | |
+|---|---|
+| L1 | a relation points at an IRI the package never describes |
+| L2 | `iirds:source` names a file that was not packed |
+| L3 | a directory node unreachable from any root — invisible in every viewer |
+| L4 | a cycle in the navigation structure |
+| L5 | a proprietary class not linked to any iiRDS class |
+| L6 | a metadata value with no label a consumer could display or match |
+| L7 | an information unit with no title |
+| L8 | references out to vocabularies an offline consumer cannot resolve |
+| L9 | the RDF/XML and JSON-LD metadata describe different graphs |
+| L10 | an abstract iiRDS class used to type an instance directly |
+| L11 | content named `.xhtml` but declared as another media type, so nothing checked it |
+| L12 | two entries differing only in case, so one is lost when the package is unpacked |
+| L13 | a name in the iiRDS namespace that the standard does not define, with the term that was probably meant |
+| L14 | a namespace one character from an iiRDS namespace, so that every name under it resolves to nothing |
+| L15 | a name from a later edition of iiRDS than the package declares, so a consumer reading it as declared has no definition for it |
+
+</details>
+
 ## The local web door
 
 **For people who do not read terminals** — that is literally what the help says:
@@ -90,21 +117,60 @@ flowchart LR
 | `iirds serve` | non-developers | a local drop page, loopback only |
 | `iirds check -f json` | CI and pipelines | machine-readable findings, exit codes |
 | `import iirds` | Python programs | reader + writer as a library |
-| `iirds.pyz` | locked-down machines | one reproducible file, no install — see [docs/offline-install.md](docs/offline-install.md) |
+| `iirds.pyz` | locked-down machines | one reproducible file, no install — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
 
 ## Honest coverage
 
-The 1.3 specification index in this repository counts **280 published obligations** ([docs/requirements.json](docs/requirements.json)); the rules currently cover **77 of them — a floor, not a ceiling** ([docs/rule-coverage.json](docs/rule-coverage.json)), and the number is re-measured on every release.
+> **At a glance** — 207 rules across five editions and three profiles · 149 SHACL shapes
+> carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
+> the single-file `.pyz` · every number in this section is read by a test that fails the
+> build when it goes stale.
+
+```console
+$ iirds rules
+container  19/19    the ZIP and its layout  +3 of its own
+schema     135/135  the metadata graph  +14 of its own
+system     3/3      the run itself  +7 of its own
+content    -        iiRDS XHTML5 (Appendix B)  +11 of its own
+lint       -        will a consumer be able to use it  +15 of its own
+```
+
+157 of 157 catalogued rules, plus 50 of this project's own.
+
+| kind | catalogued | this project |
+|---|---|---|
+| container (C\*) | 19 / 19 | 3 |
+| schema (M\*) | 135 / 135 | 14 |
+| system (S\*) | 3 / 3 | 7 |
+| content (B\*) | — | 11 |
+| interoperability (L\*) | — | 15 |
+
+Coverage of the catalogue is not coverage of the standard. The specification states
+**280 absolute obligations**, counted by
+[`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
+[docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json); the rules currently cover
+**77 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
+re-measured on every release.
 
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
+
+- **Every finding says what to do about it.** All 207 rules carry one imperative
+  sentence naming the change, and a test refuses a rule that does not.
+- **Every rule has been watched fire.** The suite records which rule ids actually
+  produce a finding, and 206 of the 207 have — the remaining one is a `MAY` with
+  nothing to violate.
+- **What is not established.** The 50 rules this project invented have no second
+  implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
+  records where this project reads the specification differently, with reasons.
+
 
 ## Why trust the answer
 
 - **Deterministic** — same file, same verdict, byte for byte.
 - **Offline** — your documents never leave your machine.
 - **Self-tested** — rules are verified against their own mutations before they ship.
-- **A public divergence ledger** — where our reading differs, [it is recorded with reasons](docs/divergences.md).
+- **A public divergence ledger** — where our reading differs, [it is recorded with reasons](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md).
 
 ## Roadmap
 
@@ -135,7 +201,7 @@ timeline
 <details>
 <summary>Apache-2.0 — <b>embed freely; the judgement never has a paid tier</b></summary>
 
-Embed it in commercial products, ship it to customers, run it in closed networks — keep the LICENSE and NOTICE files with it. A validation run makes no network requests and uploads nothing. Stable surfaces: the CLI options documented above and the exit codes; changes there are announced as breaking. A free run and a supported run give the same result on the same file; professional support covers the work around it — update guarantees when the specification changes, backports to a version you have frozen, help with embedding and integration, change-impact notes. Contact: zero8004paz@gmail.com · security reports: [SECURITY.md](SECURITY.md)
+Embed it in commercial products, ship it to customers, run it in closed networks — keep the LICENSE and NOTICE files with it. A validation run makes no network requests and uploads nothing. Stable surfaces: the CLI options documented above and the exit codes; changes there are announced as breaking. A free run and a supported run give the same result on the same file; professional support covers the work around it — update guarantees when the specification changes, backports to a version you have frozen, help with embedding and integration, change-impact notes. Contact: zero8004paz@gmail.com · security reports: [SECURITY.md](https://github.com/dev365code/iirds-validate/blob/main/SECURITY.md)
 
 </details>
 

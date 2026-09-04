@@ -6,6 +6,8 @@
 [![spec obligations](https://img.shields.io/badge/spec_obligations-77_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
 [![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
+&nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
+
 [Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Five doors](#five-doors-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
 
 </div>
@@ -14,34 +16,40 @@
 
 <img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=82f3f8d1" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
 
-**Three parts, every time: what is wrong → the evidence as read from your file → how to fix it.** A rule without a prescription does not ship.
+```console
+$ pip install iirds
+```
+
+**Three parts, every time: what is wrong → the evidence as read from your file → how to fix it.** A rule without a prescription does not ship. The old distribution name `iirds-validate` and the short command `iirdsv` remain as aliases of the same package.
 
 > [!TIP]
 > No install for a first try: `uvx iirds check package.iirds` runs it in a throwaway environment.
 
 <details>
-<summary>The same output as copyable text</summary>
+<summary>A second sample, generated and verified by the test suite</summary>
 
-```text
-$ iirds check broken.iirds
-
-broken.iirds   iiRDS not declared
-  note: no iirds:iiRDSVersion in the package; validated against 1.3.
+```console
+$ iirds manual.iirds
+manual.iirds   iiRDS 1.3
   note: metadata read from META-INF/metadata.rdf
 
-  ERROR C5        mimetype must contain exactly 'application/iirds+zip' with no line ending
-                      mimetype
-                      b'application/zip'
-                    → Make the file contain exactly application/iirds+zip, ASCII, with no
-                    → trailing newline and no byte order mark. Editors add both silently, so
-                    → write it with a tool that does not.
-  ERROR M3        metadata declares no iirds:Package for this container
-                    → Provide exactly one iirds:Package instance describing this container. It
-                    → is the root a consumer starts from, so zero leaves the package
-                    → unidentified and two leave it ambiguous.
+  ERROR M11       Rendition must have exactly one iirds:format
+                      urn:example:manual has-rendition
+                      0 found
+                    → Give the Rendition exactly one iirds:format, holding the media type of the
+                    → file it points at, for example application/xhtml+xml or application/pdf.
+                    → Add one if there is none; remove the extras if there are several.
+  WARN  L1        relation points at an IRI that is never described in this package
+                      urn:example:event/al-204
+                      referenced by Operating manual via relates-to-event
+                    → Either describe the target in this package, or drop the reference. A
+                    → relation pointing at an IRI nothing here mentions gives a consumer a name
+                    → and no way to resolve it.
 
-  FAIL  2 error(s), 0 warning(s), 0 informational
-  164 rules checked, 21 not applicable to this version/variant
+  FAIL  1 error(s), 1 warning(s), 0 informational
+  183 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
+$ echo $?
+1
 ```
 
 </details>
@@ -205,7 +213,7 @@ Embed it in commercial products, ship it to customers, run it in closed networks
 
 </details>
 
-## As a library
+## Reading and writing packages from Python
 
 ```python
 import iirds, iirds_validate
@@ -218,8 +226,32 @@ The reader ships with one dependency and no verdicts; the judge imports the read
 
 ## Stewardship
 
-**The judgement matters more than the name.** `iirds` on PyPI is used descriptively and held in stewardship: should the iiRDS Consortium want it for an official SDK, it will be transferred on request. Until then it does real work rather than squatting.
+The `iirds` name on PyPI belongs to the standard's community more than to any
+one project. **Should the iiRDS Consortium want this name for an official
+SDK, it will be transferred on request** — until then it does real work
+rather than squatting. `iirds-sdk` is an alias of this package and travels
+under the same pledge.
+
+This is an unofficial project, not affiliated with or endorsed by the iiRDS
+Consortium or tekom Deutschland e.V. "iiRDS" is used descriptively, to name
+the standard these functions read and write.
+
+## Licence
+
+Apache-2.0 — see [LICENSE](https://github.com/dev365code/iirds-validate/blob/main/LICENSE).
+
+The bundled iiRDS ontologies are © tekom Deutschland e.V. / iiRDS Consortium
+under **CC BY-ND 4.0** and are redistributed verbatim; the rule catalogue is
+derived from plusmeta's MIT-licensed tool. CC BY-ND is not an OSI-approved
+licence, so this distribution is not wholly open source even though the code is
+— [docs/licensing.md](https://github.com/dev365code/iirds-validate/blob/main/docs/licensing.md) explains what that means for you and
+what would fix it. Provenance in [NOTICE](https://github.com/dev365code/iirds-validate/blob/main/NOTICE) and
+[THIRD_PARTY.md](https://github.com/dev365code/iirds-validate/blob/main/THIRD_PARTY.md).
+
+Not affiliated with, endorsed by, or certified by the iiRDS Consortium, tekom
+Deutschland e.V., plusmeta GmbH or Quanos Solutions GmbH. "iiRDS" is used
+descriptively to name the standard this tool validates against.
 
 ---
 
-<sub>Numbers above are re-measured on every release · findings are judgements about files, never about people · Apache-2.0</sub>
+<sub>Numbers above are re-measured on every release · findings are judgements about files, never about people</sub>

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 from pathlib import Path
 
 import pytest
@@ -90,7 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 95, len(pairs)
+    assert len(pairs) == 100, len(pairs)
     assert len(asserted) == 3, sorted(asserted)
     assert sorted(rid for rid, _ in asserted) == ["R1", "R17", "R2"], sorted(asserted)
 
@@ -98,7 +99,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 78
+    assert len(COVERED) == 80
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 
@@ -287,3 +288,21 @@ def test_the_published_command_reports_both_excuse_lists():
     assert "cannot be decided by anything holding one container" in out, out
     assert "x5-3-nested-iirds-packages#2" not in out, \
         "the excused sentence is still printed as an unmapped gap:\n%s" % out
+
+
+def test_the_front_page_publishes_the_coverage_it_measures():
+    """The README states the coverage figure and nothing read it.
+
+    "Numbers live in tests" is this repository's rule and this number had
+    slipped out from under it: `docs/scope.md` said 78 while the front page
+    said 77, and the front page is the one people quote. Both are the same
+    measurement and neither is typed twice on purpose.
+    """
+    readme = (ROOT / "README.md").read_text("utf-8")
+    stated = re.search(r"\*\*(\d+) of them — a floor, not a ceiling\*\*", readme)
+    assert stated, "README.md no longer states the coverage figure in the expected shape"
+    assert int(stated.group(1)) == len(COVERED), stated.group(0)
+
+    denominator = re.search(r"\*\*(\d+) absolute obligations\*\*", readme)
+    assert denominator, "README.md no longer states the denominator"
+    assert int(denominator.group(1)) == INDEX["reductions"]["distinct"], denominator.group(0)

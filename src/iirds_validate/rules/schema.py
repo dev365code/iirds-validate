@@ -16,7 +16,6 @@ from ..model import (
     DCTERMS,
     ORGANISATION_TYPES,
     PACKAGE_BASE,
-    VCARD,
     VCARD_KINDS,
     Violation,
     is_absolute_iri,
@@ -1012,7 +1011,10 @@ rule("M36", covers=("x6-8-1-complex-identity#3",),
 
 
 @rule("R12", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
-      variants=(), covers=("x6-8-3-parties-and-roles#3",),
+      variants=(), covers=("x6-8-3-parties-and-roles#3",
+                            "x8-3-2-metadata-requirements#9",
+                            "x8-3-2-metadata-requirements#12",
+                            "x8-3-2-metadata-requirements#13"),
       title="iirds:relates-to-vcard must point at a vcard kind",
       spec=CATALOG.get("M23", {}).get("spec"),   # the same sentence M23 counts
       fix="Type the vcard as one of the vCard kinds — vcard:Organization for a firm, "
@@ -1070,7 +1072,7 @@ def r12_party_vcard_is_a_kind(ctx):
                                 "is data about the party, not a link a consumer can follow to "
                                 "a vcard.")
             continue
-        if not _describes_here(ctx, card) and not _is_vocabulary_term(ctx, card):
+        if not _describes_here(ctx, card) and not ctx.names_a_defined_term(card):
             continue          # a pointer at nothing: R4 reports that once, as a cause
         yield Violation("iirds:relates-to-vcard must point to a vcard kind",
                         subject=ctx.ref(party), detail=ctx.ref(card))
@@ -1080,12 +1082,3 @@ def _describes_here(ctx, node) -> bool:
     return (node, None, None) in ctx.graph
 
 
-def _is_vocabulary_term(ctx, node) -> bool:
-    """A name the standard or the vCard vocabulary defines.
-
-    Such a node is not a dangling pointer -- something describes it, just not
-    this package -- so it is the wrong term rather than a missing one, and
-    saying "this package never describes it" would send a reader to add a
-    description of `iirds:Topic`.
-    """
-    return ctx.ontology.is_defined(node) or str(node).startswith(str(VCARD))

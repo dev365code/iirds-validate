@@ -39,6 +39,46 @@ sys.path.insert(0, str(ROOT / "tests"))
 PASSED_FILE = ROOT / ".passed-tests.json"
 
 
+#: The test the COUNTEREXAMPLES table parametrises, and how it names a case.
+#: Both are read from the gate module below rather than typed, except this
+#: one string, which is the function's own name.
+COUNTEREXAMPLE_TEST = ("test_covers_is_earned::"
+                       "test_a_package_that_breaks_the_sentence_is_reported_by_a_rule_claiming_it")
+
+
+def _keys_per_claim(gate):
+    """claim -> the test keys that have to be in the record for it to be held.
+
+    Two buckets and they are checked differently, which is the whole of the
+    repair. A NAMED_CASES claim names one test; a COUNTEREXAMPLES claim is a
+    row of a table one parametrised test walks, so what has to have passed is
+    every one of *its* parameters -- and the record keeps the parametrised
+    ids for exactly this. Counting the second bucket and iterating only the
+    first left three claims, the ones with the most cases behind them, held
+    by nothing that anybody checked.
+    """
+    keys = {}
+    for requirement, where in gate.NAMED_CASES.items():
+        module, _, name = where.rpartition(":")
+        keys[requirement] = {"%s::%s" % (module or "test_covers_is_earned", name)}
+    for requirement, cases in gate.COUNTEREXAMPLES.items():
+        keys[requirement] = {
+            "%s[%s:%s]" % (COUNTEREXAMPLE_TEST, requirement.rpartition("#")[2], kind)
+            for _what, kind in cases}
+    return keys
+
+
+def claims_counted_and_checked():
+    """(what the tool reports as held, what it actually looks at).
+
+    Equal by construction now; a test asserts it, because they were not.
+    """
+    import test_covers_is_earned as gate
+
+    counted = set(gate.NAMED_CASES) | set(gate.COUNTEREXAMPLES)
+    return counted, set(_keys_per_claim(gate))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -52,22 +92,22 @@ def main() -> int:
 
     import test_covers_is_earned as gate
 
+    keys = _keys_per_claim(gate)
     missing = []
-    for requirement, where in sorted(gate.NAMED_CASES.items()):
-        module, _, name = where.rpartition(":")
-        key = "%s::%s" % (module or "test_covers_is_earned", name)
-        if key not in passed:
-            missing.append((requirement, key))
+    for requirement, wanted in sorted(keys.items()):
+        absent = sorted(wanted - passed)
+        if absent:
+            missing.append((requirement, absent[0] if len(absent) == 1
+                            else "%d of its %d cases" % (len(absent), len(wanted))))
 
-    counted = len(gate.NAMED_CASES) + len(gate.COUNTEREXAMPLES)
+    counted = len(keys)
     if missing:
         print("  %d of the %d claims called \"held by a package\" name a test that did "
               "not pass:" % (len(missing), counted))
         for requirement, key in missing:
             print("    %-52s %s" % (requirement, key))
         return 1
-    print("  %d named cases, all of them passed; %d claims held in all"
-          % (len(gate.NAMED_CASES), counted))
+    print("  %d claims held, every case behind each of them passed" % counted)
     return 0
 
 

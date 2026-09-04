@@ -160,6 +160,7 @@ ivs:M15.7c a sh:NodeShape ;
   sh:description "Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#10" ;
   ivm:covers "x8-3-2-metadata-requirements#11" ;
   sh:targetNode ivs:M15.7c ;
   sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {

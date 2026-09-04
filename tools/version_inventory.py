@@ -75,18 +75,49 @@ SOURCES = {
 UNAVAILABLE: tuple = ()
 
 
+def _source_the_rule_reaches(fn, seen=None) -> str:
+    """The rule's own source, plus the module-local helpers it calls.
+
+    One level was not enough and got less adequate as the code improved. Most
+    rules here are three lines calling a builder — that is where the
+    duplication went — so the terms a rule actually looks for live one call
+    away, and reading only `rule.fn` measured the shape of the code instead.
+    Parameterising the section 8.3.2 family took `iirds:Manufacturer` out of
+    M15.7b's inventory and left `iirds:Document`; seventeen rules were hiding
+    a term this way, `iirds:has-identity-type` among them, which is a 1.1 term.
+
+    Module-local and name-mangled on purpose: `_helper` in the rule's own
+    module, not every callable in sight. That is the convention the rule
+    modules already follow, and widening it would pull in rdflib.
+    """
+    seen = set() if seen is None else seen
+    try:
+        source = inspect.getsource(fn)
+    except (OSError, TypeError):
+        return ""
+    module = sys.modules.get(getattr(fn, "__module__", None) or "")
+    if module is None:
+        return source
+    out = [source]
+    for name in dict.fromkeys(re.findall(r"\b(_[A-Za-z_0-9]+)\s*\(", source)):
+        if name in seen:
+            continue
+        seen.add(name)
+        helper = getattr(module, name, None)
+        if callable(helper):
+            out.append(_source_the_rule_reaches(helper, seen))
+    return "\n".join(out)
+
+
 def terms_named_by(rule) -> list:
-    """Every iiRDS IRI a rule mentions.
+    """Every iiRDS IRI a rule mentions, directly or through its helpers.
 
     Read out of the source rather than out of the catalogue's prose, which is
     the same choice made everywhere else here and for the same reason: prose
     and code have disagreed before.
     """
     named = []
-    try:
-        source = inspect.getsource(rule.fn)
-    except (OSError, TypeError):
-        source = ""
+    source = _source_the_rule_reaches(rule.fn)
     for name in dict.fromkeys(re.findall(r"T\.([A-Za-z_0-9]+)", source)):
         value = getattr(T, name, None)
         if value is not None and str(value).startswith(NAMESPACE):

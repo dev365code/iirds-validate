@@ -492,7 +492,7 @@ SPARQL_FORMS = {
     FILTER (?kind IN (%(vcard_kinds)s)) }
   FILTER (isLiteral(?value)
           || EXISTS { ?value ?p2 ?o2 }
-          || ?value IN (%(defined_terms)s)
+          || %(ns_v)s
           || STRSTARTS(STR(?value), "%(vc)s")) }"""]),
 }
 
@@ -551,9 +551,17 @@ SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductTy
 #: satisfy all five queries above, so that one broken pointer does not arrive
 #: five times; this reports that pointer once instead, and the two spellings
 #: of "the package never describes it" are deliberately identical.
+#: The namespace test is `Context.names_a_defined_term`, written here as the
+#: filter it was chosen to be: a name out of a published vocabulary is R12's
+#: business, not this rule's, because something does describe it -- just not
+#: here -- and "describe it in this package" is the wrong thing to tell a
+#: reader who wrote `iirds:Topic`. Python asked the ontology and this asked
+#: nothing, so both rules spoke about every such referent and the gate saw two
+#: encodings agreeing.
 SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   ?party <%(ii)srelates-to-vcard> ?value .
   FILTER (!isLiteral(?value))
+  FILTER (!%(ns_v)s && !STRSTARTS(STR(?value), "%(vc)s"))
   FILTER NOT EXISTS { ?value ?cp ?co } }"""])
 
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,

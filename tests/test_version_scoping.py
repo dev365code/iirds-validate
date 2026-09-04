@@ -151,6 +151,7 @@ def test_no_rule_claims_a_version_whose_vocabulary_it_predates():
     Five rules were in that state, all naming the external classification
     vocabulary that arrives in 1.2 while the catalogue dated them from 1.0.
     """
+    from iirds_validate.model import VERSIONS
     from version_inventory import terms_named_by
 
     inventory = version_terms()
@@ -158,7 +159,11 @@ def test_no_rule_claims_a_version_whose_vocabulary_it_predates():
     problems = []
     for rule in all_rules():
         named = terms_named_by(rule)
-        for version in rule.versions or ():
+        # `or VERSIONS`, not `or ()`. An empty tuple is how the registry spells
+        # "every edition", and reading it as "no edition" left twenty-three
+        # rules unchecked here -- the same defect the tool was repaired for,
+        # still standing in the copy of it that runs in the suite.
+        for version in rule.versions or VERSIONS:
             if version in inventory:
                 absent = [t for t in named if t not in inventory[version]]
                 if absent:
@@ -177,3 +182,38 @@ def test_every_published_edition_has_an_inventory():
     data = json.loads(read_text("version-terms.json"))
     assert data["_unavailable"] == []
     assert set(data["terms"]) == {"1.0", "1.0.1", "1.1", "1.2", "1.3"}
+
+
+def test_the_term_reader_follows_the_helpers_a_rule_calls():
+    """`terms_named_by` read one level: `inspect.getsource(rule.fn)`.
+
+    Nearly every rule here is three lines calling a builder, because the
+    builders are where the duplication went, and each move took the terms out
+    of the checker's sight. Parameterising the section 8.3.2 family shrank
+    M15.7b's inventory from `iirds:Manufacturer` to `iirds:Document`. What is
+    left is a version check that reads the shape of the code rather than what
+    the rule looks for, and gets quieter every time the code improves.
+
+    Proved by moving a term rather than by counting: the same term, in a
+    helper and in a body, has to be seen the same way.
+    """
+    from iirds_validate import terms as T
+    from version_inventory import terms_named_by
+
+    class _Fake:
+        id = "test-only"
+        versions = ("1.3",)
+
+    def _fake_helper():
+        return T.ClassificationDomain
+
+    def body(ctx):
+        return _fake_helper()
+
+    _Fake.fn = staticmethod(body)
+    body.__module__ = __name__
+    globals()["_fake_helper"] = _fake_helper
+    named = terms_named_by(_Fake)
+    assert str(T.ClassificationDomain) in named, (
+        "a term the rule reaches only through a helper is a term the rule "
+        "names: %s" % named)

@@ -1075,6 +1075,30 @@ def test_a_non_empty_string_is_a_literal_in_both_encodings(tmp_path, rule_id, wh
     assert (rule_id in fired) is (what != "a good one"), (rule_id, what, sorted(fired))
 
 
+#: Every referent an `iirds:relates-to-vcard` can have, and which rule owns it.
+#: Read from the test that states the division, so the two files cannot hold
+#: different tables.
+#:
+#: This gate had two hundred cases about vcards and not one of them pointed at
+#: a name from a vocabulary, which is the common way to get this wrong. Both
+#: encodings reported R4 *and* R12 for every such referent, agreed about it,
+#: and the agreement is all a differential gate can see. The cases have to
+#: arrive; nothing about the method produces them.
+from test_party_vcard_kind import REFERENTS as VCARD_REFERENTS  # noqa: E402
+
+
+@pytest.mark.parametrize("what", sorted(VCARD_REFERENTS), ids=sorted(VCARD_REFERENTS))
+def test_one_referent_one_rule_in_both_encodings(tmp_path, what):
+    iri, owner = VCARD_REFERENTS[what]
+    metadata = _meta(
+        '  <iirds:Party rdf:about="urn:test:party">\n'
+        '    <iirds:has-party-role rdf:resource="%sAuthor"/>\n'
+        '    <iirds:relates-to-vcard rdf:resource="%s"/>\n'
+        "  </iirds:Party>\n" % (IIRDS_, iri))
+    fired = assert_parity(tmp_path, "ref_%d.iirds" % abs(hash(what)), metadata)
+    assert sorted(fired & {"R4", "R12"}) == [owner], (what, sorted(fired))
+
+
 def test_packages_that_name_each_other_leave_no_container_in_either_encoding(tmp_path):
     """M3's third limb. Its other two ask for none and for two; this graph has
     two packages and no *container* package, because each names the other as

@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import subprocess
 import sys
@@ -147,8 +148,57 @@ def executable_lines(path: Path):
     return kinds
 
 
+def key_for(where, lines, line, kinds):
+    """What names a decision line in the record.
+
+    Keyed by what the line is and which function it is in, not by its offset.
+    A record keyed on line numbers goes stale the moment anything above it
+    gains a line -- as this one did, pointing at a blank line, a docstring and
+    a `def` -- and a stale record that only its own totals are compared against
+    is a record nobody is reading.
+
+    The ordinal is what makes that a key rather than a label. `function ::
+    statement` alone collapses the four `continue` of one function into one
+    entry, so twenty-six lines of the rule modules shared a name with another
+    and the published count was of distinct sentences rather than of unmeasured
+    decisions -- smallest exactly where a function has several unreached exits,
+    which is where it matters. Counting occurrences within the *same function*
+    keeps the property the text was chosen for: nothing above the function
+    moves it, and nothing in a neighbouring function is counted with it.
+
+    `where` maps line -> enclosing function name, as `enclosing()` builds it.
+    """
+    function = where.get(line, "<module>")
+    text = " ".join(lines[line - 1].split())
+    same = [n for n in sorted(kinds)
+            if where.get(n, "<module>") == function
+            and " ".join(lines[n - 1].split()) == text]
+    if len(same) < 2:
+        return "%s :: %s" % (function, text)
+    return "%s :: %s [%d]" % (function, text, same.index(line) + 1)
+
+
+def _fingerprint():
+    """What the rule modules are, right now, byte for byte."""
+    return {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(RULES.glob("*.py"))}
+
+
 def measure(out_dir: Path, extra_args):
-    """Run the suite under the tracer and return {file: {line: kind}} unreached."""
+    """Run the suite under the tracer and return {file: {line: kind}} unreached.
+
+    The tracer records line *numbers* and the source is read afterwards to say
+    what is on them, so the two have to be the same source. A full run takes
+    the better part of an hour, which is long enough to edit a rule module in,
+    and one such edit shifted everything below it: thirteen `yield Violation`
+    lines were reported as never reached in rules that `tools/rule_coverage.py`
+    had recorded firing in the same run. Two instruments contradicting each
+    other is how it was noticed; nothing in the tool objected.
+
+    So the files are fingerprinted on both sides of the run and a change is a
+    refusal, not a note. A measurement nobody can trust is worse than none,
+    because this one gets written into a baseline and published.
+    """
     plugin_dir = out_dir
     (plugin_dir / "silent_paths_plugin.py").write_text(PLUGIN, "utf-8")
     seen_file = plugin_dir / "seen.json"
@@ -161,7 +211,17 @@ def measure(out_dir: Path, extra_args):
     }
     cmd = [sys.executable, "-m", "pytest", "-q", "-p", "silent_paths_plugin",
            "-p", "no:cacheprovider", *extra_args]
+    before = _fingerprint()
     result = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
+    after = _fingerprint()
+    if before != after:
+        moved = sorted(set(before) ^ set(after)) or sorted(
+            name for name in before if before[name] != after[name])
+        raise SystemExit(
+            "the rule modules changed while the tracer was running (%s), so the "
+            "line numbers it recorded belong to a source that is no longer here. "
+            "Nothing is reported: re-run on a tree that stays still."
+            % ", ".join(moved))
     tail = [line for line in result.stdout.splitlines() if "passed" in line or "failed" in line]
     print("  suite:", tail[-1] if tail else result.stdout.strip().splitlines()[-1:])
     if not seen_file.exists():
@@ -179,13 +239,7 @@ def measure(out_dir: Path, extra_args):
         for line, kind in kinds.items():
             if line in ran:
                 continue
-            # Keyed by what the line is and where, not by its offset. A record
-            # keyed on line numbers goes stale the moment anything above it
-            # gains a line -- as this one did, pointing at a blank line, a
-            # docstring and a `def` -- and a stale record that only its own
-            # totals are compared against is a record nobody is reading.
-            text = " ".join(lines[line - 1].split())
-            missing["%s :: %s" % (where.get(line, "<module>"), text)] = kind
+            missing[key_for(where, lines, line, kinds)] = kind
         if missing:
             unreached[path.name] = missing
     return unreached

@@ -266,3 +266,96 @@ def test_a_dangling_vcard_is_r4s_and_is_reported_outside_the_handover_profile(tm
         build_package(tmp_path, "dangling.iirds", metadata=metadata),
         runner.CONFORMANCE_KINDS).findings}
     assert got == {"R4"}, sorted(got)
+
+
+# ---------------------------------------------------------------------------
+# One referent, one rule -- checked over every referent, not over the two that
+# were thought of.
+#
+# "The referent decides which rule speaks" was stated as a principle and
+# asserted for two shapes: a pointer at nothing is R4's, a literal is R12's.
+# The shape between them was asserted neither way, and it is the common one --
+# a name that exists in a vocabulary and is not a vcard. R12 stood aside for
+# "a pointer at nothing" by asking whether the ontology defines the node; R4
+# did not ask, because `_describes` reads `ctx.graph` and the ontology is not
+# merged into it. So both spoke, four findings for one mistake, and R4's was
+# the advice its own docstring said must never be printed about `iirds:Topic`:
+# describe it in this package.
+#
+# The table is the referents, not the cases anybody happened to write.
+# ---------------------------------------------------------------------------
+
+#: what the reference points at -> the rule that owns it
+REFERENTS = {
+    "an IRI nothing anywhere describes": ("urn:test:nowhere", "R4"),
+    "a class of the standard": (IIRDS + "Topic", "R12"),
+    "a named individual of the standard": (IIRDS + "Manufacturer", "R12"),
+    "the vcard class itself": (VCARD + "Organization", "R12"),
+    "a vcard property": (VCARD + "fn", "R12"),
+    "a vcard class misspelt": (VCARD + "Organisation", "R12"),
+    "a vcard name the vocabulary never had": (VCARD + "Zzz", "R12"),
+}
+
+
+@pytest.mark.parametrize("what", sorted(REFERENTS), ids=sorted(REFERENTS))
+def test_exactly_one_rule_speaks_for_each_referent(tmp_path, what):
+    iri, owner = REFERENTS[what]
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <iirds:Party rdf:about="urn:test:party">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="%s"/>
+  </iirds:Party>
+</rdf:RDF>""" % (IIRDS, iri))
+    assert iri in metadata, "the fixture edit matched nothing"
+    findings = runner.run(build_package(tmp_path, "ref_%d.iirds" % abs(hash(what)),
+                                        metadata=metadata),
+                          runner.ALL_KINDS).findings
+    spoke = sorted({f.rule.id for f in findings} & {"R4", "R12"})
+    assert spoke == [owner], "%s: expected %s alone, got %s" % (what, owner, spoke)
+
+
+@pytest.mark.parametrize("what", sorted(REFERENTS), ids=sorted(REFERENTS))
+def test_the_advice_a_reader_gets_is_about_what_they_did(tmp_path, what):
+    """R4 tells the reader to describe the vcard in this package. That is the
+    remedy for a pointer at nothing and nonsense about `iirds:Topic`, which is
+    a description somebody else already wrote. A reader following it writes a
+    `vcard:Organization` block for a class of the iiRDS vocabulary."""
+    iri, owner = REFERENTS[what]
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <iirds:Party rdf:about="urn:test:party">
+    <iirds:has-party-role rdf:resource="%sAuthor"/>
+    <iirds:relates-to-vcard rdf:resource="%s"/>
+  </iirds:Party>
+</rdf:RDF>""" % (IIRDS, iri))
+    for finding in runner.run(build_package(tmp_path, "adv_%d.iirds" % abs(hash(what)),
+                                            metadata=metadata),
+                              runner.ALL_KINDS).findings:
+        if finding.rule.id not in ("R4", "R12"):
+            continue
+        if owner == "R12":
+            assert "Describe the vcard in this package" not in finding.fix, (
+                "%s: told to describe a name the vocabulary already defines" % what)
+
+
+def test_the_finding_does_not_name_a_profile_the_package_is_not_in(tmp_path):
+    """R4 runs in every profile on purpose -- a pointer at nothing is one
+    anywhere -- and said "iiRDS/H:" in front of every finding, with a remedy
+    ending "which in handover is the reader it is for". An unrestricted 1.3
+    package was told about a profile it had not asked for and does not use,
+    which reads as the validator having lost track of what it was checking.
+
+    The reason the rule exists is still the handover one and is still worth
+    printing; it belongs in the sentence as a reason, not as a label on a
+    package that is not in that profile.
+    """
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (PARTY % "") + "</rdf:RDF>").replace(
+        'rdf:resource="urn:test:card"', 'rdf:resource="urn:test:nowhere"')
+    report = runner.run(build_package(tmp_path, "profile.iirds", metadata=metadata),
+                        runner.CONFORMANCE_KINDS)
+    assert report.variant == "unrestricted", report.variant
+    hits = [f for f in report.findings if f.rule.id == "R4"]
+    assert hits, sorted(f.rule.id for f in report.findings)
+    for finding in hits:
+        assert "iiRDS/H" not in finding.violation.message, finding.violation.message
+        assert not finding.fix.rstrip().endswith(
+            "which in handover is the reader it is for."), finding.fix

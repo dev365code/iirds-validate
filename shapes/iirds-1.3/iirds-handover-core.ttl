@@ -157,6 +157,7 @@ ivs:M15.7a a sh:NodeShape ;
   sh:description "Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements:~:text=The%20following%20metadata%20is%20mandatory%20for%20each%20iirds%3ADocument%3A> ;
   ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-metadata-requirements#7" ;
   ivm:covers "x8-3-2-metadata-requirements#8" ;
   sh:targetClass iirds:Document ;
   sh:property ivs:M15.7a-p1 ;

@@ -118,9 +118,20 @@ PASSED_FILE = Path(__file__).resolve().parents[1] / ".passed-tests.json"
 
 
 def pytest_runtest_logreport(report):
+    """Both spellings of what passed: the bare function and, for a
+    parametrised test, the case.
+
+    Only the bare name was kept, so one passing parameter marked the whole
+    function as passed and a claim held by one row of a table looked held when
+    the other rows had been skipped. The parametrised id is what
+    `tools/held_claims.py` needs to check a table row by row.
+    """
     if report.when == "call" and report.passed:
         path, _, name = report.nodeid.partition("::")
-        PASSED.add("%s::%s" % (Path(path).stem, name.partition("[")[0]))
+        stem = Path(path).stem
+        PASSED.add("%s::%s" % (stem, name.partition("[")[0]))
+        if "[" in name:
+            PASSED.add("%s::%s" % (stem, name))
 
 
 @pytest.fixture(autouse=True, scope="session")

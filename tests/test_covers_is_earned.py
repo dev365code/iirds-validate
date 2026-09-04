@@ -125,6 +125,24 @@ def _handover(kind):
             '  <rdf:Description rdf:about="urn:test:supplier-card">\n'
             '    <rdf:type rdf:resource="http://my.co/ns#Supplier"/>'
         ).replace("</vcard:Organization>", "</rdf:Description>")
+    if kind == "a vocabulary term":
+        # A name out of a published vocabulary: not a vcard, and not a pointer
+        # at nothing either. Neither the five nor R4 speak for it -- R4 must
+        # not, because "this package never describes it" is false about
+        # `iirds:Topic` and its remedy would send the reader to write one.
+        # R12 reports it, which is why R12 claims these sentences beside them.
+        return HANDOVER.replace(
+            '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
+            '<iirds:relates-to-vcard '
+            'rdf:resource="http://iirds.tekom.de/iirds#Topic"/>')
+    if kind == "a literal":
+        # The shape the specification's own Example 63 has, where a JSON-LD
+        # context without "@type":"@id" turns an intended reference into a
+        # string. It points at no vcard at all.
+        return HANDOVER.replace(
+            '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
+            '<iirds:relates-to-vcard>https://suppco.example/about'
+            '</iirds:relates-to-vcard>')
     if kind == "undescribed":
         # The pointer resolves to nothing. The five named-party rules soften
         # here by agreement and R4 owns it -- which is why R4 has to claim
@@ -144,18 +162,30 @@ COUNTEREXAMPLES = {
          "whose vcard is typed vcard:Individual", "individual"),
         ("...whose vcard carries no vcard class at all", "untyped"),
         ("...whose vcard the package never describes", "undescribed"),
+        ("...whose vcard reference names a vocabulary term instead",
+         "a vocabulary term"),
+        ("...whose vcard reference is a literal, so it points at no vcard",
+         "a literal"),
     ],
     "x8-3-2-metadata-requirements#12": [
         ("a product variant's ProductType domain names a manufacturer whose "
          "vcard is typed vcard:Individual", "individual"),
         ("...whose vcard carries no vcard class at all", "untyped"),
         ("...whose vcard the package never describes", "undescribed"),
+        ("...whose vcard reference names a vocabulary term instead",
+         "a vocabulary term"),
+        ("...whose vcard reference is a literal, so it points at no vcard",
+         "a literal"),
     ],
     "x8-3-2-metadata-requirements#13": [
         ("an information object's identity domain names a creator whose vcard "
          "is typed vcard:Individual", "individual"),
         ("...whose vcard carries no vcard class at all", "untyped"),
         ("...whose vcard the package never describes", "undescribed"),
+        ("...whose vcard reference names a vocabulary term instead",
+         "a vocabulary term"),
+        ("...whose vcard reference is a literal, so it points at no vcard",
+         "a literal"),
     ],
 }
 
@@ -515,6 +545,11 @@ NAMED_CASES = {
         "test_identity_domain_cardinality:test_two_identity_types_are_reported",
     # Section 8.3.2's Package list: the six sentences its Document list
     # repeats word for word, and which nothing read until R13 to R16.
+    # The Document half of #1 and #4, held by the same package as they are.
+    "x8-3-2-metadata-requirements#7":
+        "test_package_product_variant:test_a_variant_identity_without_a_domain_is_reported_for_both_classes",
+    "x8-3-2-metadata-requirements#10":
+        "test_package_product_variant:test_a_variant_identity_without_a_domain_is_reported_for_both_classes",
     "x8-3-2-metadata-requirements#1":
         "test_package_product_variant:test_each_package_bullet_is_reported",
     "x8-3-2-metadata-requirements#2":
@@ -629,7 +664,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 78, len(CLAIMED)
+    assert len(CLAIMED) == 80, len(CLAIMED)
     assert len(UNAUDITED) == 39, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -662,10 +697,15 @@ RULE_HEAD = re.compile(r'@rule\(\s*"([^"]+)"')
 REFUSAL = re.compile(r'#\s*not\s+([\w.-]+#\d+)\s*:')
 
 #: Rules the leniency table lists as withdrawn whose sentence went to another
-#: rule rather than becoming a gap. M18's claim on section 6.7.4 is R11's now,
-#: so M18 carries no refusal comment and the table row would otherwise assert
-#: nothing at all.
-WITHDRAWN_ELSEWHERE = {"M18"}
+#: rule rather than becoming a gap: rule -> (the sentence, the rule that has
+#: it now). M18's claim on section 6.7.4 is R11's, so M18 carries no refusal
+#: comment and the table row would otherwise assert nothing at all.
+#:
+#: A set of ids was the first form and it asserted nothing either -- the
+#: grounds were in the comment above it, which is exactly the shape of the row
+#: this exemption was added to repair. Both halves are read by the test at the
+#: foot of this file.
+WITHDRAWN_ELSEWHERE = {"M18": ("x6-7-4-product-variants#1", "R11")}
 
 #: The withdrawals, by name and not by count. Counting was the second version
 #: of this guard and it was bypassable in one move: carry the refusal comment
@@ -722,16 +762,36 @@ def test_a_claim_a_rule_refuses_in_its_own_source_is_not_made_elsewhere():
 #: The two regions whose claim language is legitimate and is read elsewhere:
 #: the leniency table (its `claim` column, by the test above) and the M25
 #: paragraph (by the test below). Cut out, not filtered -- see the docstring.
-LENIENCY_TABLE = re.compile(r"\| rule \| kind of leniency \| claim \|.*?(?=\n\n)", re.S)
+#: Ends at the end of the *table*, meaning the last line that is a table
+#: row. It used to end at the first blank line, which is where the author
+#: stops pressing return rather than where the table stops: a sentence
+#: appended under the last row with no blank line was inside the cut and
+#: therefore unread. Cutting out was the repair for a filtering bug and
+#: brought its own, which is the argument for testing a gate against the
+#: ways round it rather than against one mutation.
+LENIENCY_TABLE = re.compile(r"\| rule \| kind of leniency \| claim \|(?:\n\|[^\n]*)*")
 M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
 
-#: A rule id within 120 characters of a verb that says what it claims, in
+#: A rule id and an obligation id within 200 characters of each other, in
 #: either order, over whitespace-collapsed text.
+#:
+#: The verb is deliberately not part of it any more. It was a list --
+#: withdrew, withdrawn, no longer claims, does not claim -- and a list of
+#: phrasings is a list of the phrasings somebody thought of: "no longer
+#: covers" walked past it, and so did the passive. What makes a sentence a
+#: statement about a claim is not its verb; it is that it names a rule and a
+#: sentence of the standard in one breath, which is what `covers=` says and
+#: what this document undertook to stop saying.
+#:
+#: Ordinary prose here names rules constantly and obligations rarely, and
+#: never both together outside the cut regions -- which is why the pairing,
+#: not the verb, is the signal. `test_the_control_is_caught` holds the other
+#: half: a gate that matched nothing would pass this file too.
 RESTATES_A_CLAIM = re.compile(
-    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b.{0,120}?"
-    r"(?:withdrew|withdrawn|no longer claims|does not claim)"
-    r"|(?:withdrew|withdrawn|no longer claims|does not claim).{0,120}?"
-    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b")
+    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b.{0,200}?"
+    r"\b(?:x\d[\w.-]*|b-\d[\w.-]*|dfn-[\w.-]*|rdfclasses_[\w.]*)#\d+\b"
+    r"|\b(?:x\d[\w.-]*|b-\d[\w.-]*|dfn-[\w.-]*|rdfclasses_[\w.]*)#\d+\b"
+    r".{0,200}?\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b")
 
 LENIENCY_ROW = re.compile(r"^\| ([^|]+?) \| \*\*[^|]+\*\*[^|]*\| (withdrawn|kept|never claimed) \|$",
                           re.M)
@@ -961,3 +1021,149 @@ def test_the_divergence_document_does_not_restate_what_the_code_claims(tmp_path)
     named = [m.group(0).strip() for m in RESTATES_A_CLAIM.finditer(prose)]
     assert named == [], (
         "docs/divergences.md restates a claim's status in prose: %s" % named)
+
+
+def test_the_instrument_checks_every_claim_it_counts():
+    """`tools/held_claims.py` exists because a claim held by a function nobody
+    runs is a claim held by nothing. It counted NAMED_CASES + COUNTEREXAMPLES
+    and iterated NAMED_CASES, so three of the claims it reported as held --
+    section 8.3.2's three named-party sentences, the ones with the most cases
+    behind them -- were never looked at. Marking their one parametrised test
+    `skip` left the tool printing "39 claims held in all" and exiting 0.
+
+    Checked here rather than only in the tool, because the tool runs after the
+    suite and this is a property of the tool.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import held_claims
+
+    counted, checked = held_claims.claims_counted_and_checked()
+    assert counted == checked, (
+        "counted but not checked: %s" % sorted(counted - checked))
+    assert counted == held(), (counted ^ held())
+
+
+# ---------------------------------------------------------------------------
+# Section 8.3.2 states its six product-variant sentences twice, word for word:
+# once for iirds:Package and once for iirds:Document. The rules were
+# parameterised so one builder answers both -- R13 and M15.7a are
+# `_variant_instance_identity` with a different class, R15 and M15.7c are
+# `_variant_product_type_identity` -- and the point of doing that was that the
+# two readings could not drift apart.
+#
+# The readings did not drift. The *claims* did: R13 covers #1 and #2, and
+# M15.7a covers #8 alone, so #7 -- the same sentence as #1, about the other
+# class -- was claimed by nobody while its own rule reported it. Same for #10
+# beside #4.
+#
+# Checked as a symmetry rather than as two more rows, because the asymmetry is
+# what a reader of `covers=` cannot see and what a copy of the table would
+# reproduce.
+# ---------------------------------------------------------------------------
+
+#: Package-half sentence -> the Document-half sentence that repeats it.
+REPEATED_SENTENCES = {
+    "x8-3-2-metadata-requirements#%d" % n: "x8-3-2-metadata-requirements#%d" % (n + 6)
+    for n in range(1, 7)
+}
+
+
+def _sentence(requirement):
+    index = json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))
+    return next(r["sentence"] for r in index["requirements"]
+                if r["id"] == requirement)
+
+
+@pytest.mark.parametrize("package_half", sorted(REPEATED_SENTENCES),
+                         ids=sorted(REPEATED_SENTENCES))
+def test_the_two_halves_of_section_8_3_2_are_claimed_alike(package_half):
+    document_half = REPEATED_SENTENCES[package_half]
+    assert _sentence(package_half) == _sentence(document_half), (
+        "the premise of this test is that the section says it twice; if that "
+        "stops being true, the symmetry below is the wrong check")
+
+    claimed_here = set(CLAIMED.get(package_half, ()))
+    claimed_there = set(CLAIMED.get(document_half, ()))
+    assert bool(claimed_here) == bool(claimed_there), (
+        "%s is claimed by %s and the identical %s by %s"
+        % (package_half, sorted(claimed_here) or "nobody",
+           document_half, sorted(claimed_there) or "nobody"))
+
+
+#: How a statement about a claim's status can be written so the gate above
+#: misses it. Each is a real sentence, placed or worded a way the first
+#: version of the gate let through; the control is the same sentence in
+#: ordinary prose, which it catches.
+#:
+#: The first two hide *inside* the regions the gate cuts out. Cutting out was
+#: the fix for a filtering bug, and it brought its own: a region that ends at
+#: the first blank line ends wherever the author stops pressing return, so a
+#: line appended to the table with no blank line before it is inside the
+#: table as far as the regex is concerned. The third is the verb list, which
+#: is closed and therefore a list of the phrasings somebody thought of.
+GATE_EVASIONS = {
+    "appended to the leniency table with no blank line": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\nM17 no longer claims x6-7-1-component-trees-in-the-package#1."),
+    "another verb for the same statement": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\n\nM17 no longer covers x6-7-1-component-trees-in-the-package#1."),
+    "the statement in the passive": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\n\nThe claim on x6-7-1-component-trees-in-the-package#1 was given up by M17."),
+}
+
+
+def _restates(text):
+    """The gate's own reading, over a text rather than over the file."""
+    for cut in (LENIENCY_TABLE, M25_PARAGRAPH):
+        block = cut.search(text)
+        if block:
+            text = text[:block.start()] + text[block.end():]
+    return [m.group(0).strip() for m in RESTATES_A_CLAIM.finditer(" ".join(text.split()))]
+
+
+def test_the_control_is_caught():
+    """Before asserting that the evasions are caught, that the gate catches
+    anything: the same sentence in plain prose, away from every cut region."""
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    assert _restates(text) == []
+    assert _restates(text + "\n\nM17 no longer claims x6-7-1-component-trees"
+                            "-in-the-package#1.\n") != []
+
+
+@pytest.mark.parametrize("what", sorted(GATE_EVASIONS), ids=sorted(GATE_EVASIONS))
+def test_a_statement_about_a_claim_cannot_hide_from_the_gate(what):
+    anchor, addition = GATE_EVASIONS[what]
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    assert anchor in text, "the fixture edit matched nothing: %s" % what
+    assert _restates(text.replace(anchor, anchor + addition, 1)) != [], what
+
+
+def test_a_withdrawal_that_went_elsewhere_says_where():
+    """`WITHDRAWN_ELSEWHERE` exempts a leniency row from having to carry a
+    refusal comment, on the grounds that the sentence went to another rule
+    rather than becoming a gap. As a bare set of rule ids it asserted nothing:
+    the grounds lived in a comment, and a comment is what the guard beside it
+    exists to stop trusting -- the same shape as the row it was added to fix.
+
+    So it names the sentence and the rule that took it, and both halves are
+    read: the exempted rule must not claim the sentence, and the rule named
+    must. If the sentence is withdrawn from that rule too, this fails and the
+    row goes back to needing a refusal comment.
+    """
+    by_id = {rule.id: rule for rule in all_rules()}
+    assert WITHDRAWN_ELSEWHERE, "an empty exemption is one nobody needs"
+    for rule_id, (requirement, took_it) in sorted(WITHDRAWN_ELSEWHERE.items()):
+        assert rule_id in by_id, rule_id
+        assert took_it in by_id, took_it
+        assert requirement not in (by_id[rule_id].covers or ()), (
+            "%s is exempt because %s claims %s, but %s claims it too"
+            % (rule_id, took_it, requirement, rule_id))
+        assert requirement in (by_id[took_it].covers or ()), (
+            "%s is exempt because %s was said to have taken %s, and %s does "
+            "not claim it -- so the sentence is a gap, not a move"
+            % (rule_id, took_it, requirement, took_it))

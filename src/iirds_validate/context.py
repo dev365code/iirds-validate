@@ -33,10 +33,12 @@ from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_
 from . import ontology as ontology_mod
 from . import terms as T
 from .model import (
+    IIRDS_NAMESPACES,
     LATEST_VERSION,
     METADATA_JSONLD,
     METADATA_RDF,
     PACKAGE_BASE,
+    VCARD,
     VERSIONS,
 )
 from .package import Package
@@ -133,6 +135,31 @@ class Context:
         this, not compare rdf:type values directly: exact typing is how
         section 7 gets forgotten one rule at a time."""
         return bool(set(self.values(node, RDF.type)) & self._class_closure(cls))
+
+    def names_a_defined_term(self, node) -> bool:
+        """Is this a name out of a published vocabulary rather than a thing?
+
+        The question two rules have to answer identically. R12 asks it to
+        decide that a reference is the *wrong* term rather than a missing one;
+        R4 asks it to decide that "this package never describes it" is the
+        wrong sentence, because something does describe it — just not here.
+        They asked different questions from the same graph for a while, and
+        both spoke about every referent in between.
+
+        Both namespaces pass on their prefix, not on a lookup, and that is
+        deliberate twice over. `vcard:Organisation` is nobody's term and
+        `vcard:Zzz` is nobody's term, and both are still an author reaching for
+        a vCard class and missing; so is `iirds:NotAClass`. The remedy that
+        fits all of them is R12's — point at a kind — and never R4's, which is
+        to write a description here.
+
+        A prefix is also the whole of what SHACL can ask. The shapes see the
+        data graph and nothing else, so a rule that consulted the bundled
+        ontology here would be a rule the two encodings could not both hold,
+        and R4 has a shape. Asking the cheaper question in both places is what
+        makes the differential gate able to see this decision at all.
+        """
+        return str(node).startswith(IIRDS_NAMESPACES + (str(VCARD),))
 
     def is_instance_in(self, graph: Graph, node, cls: URIRef) -> bool:
         """`is_instance`, asked of one metadata file instead of the merge.

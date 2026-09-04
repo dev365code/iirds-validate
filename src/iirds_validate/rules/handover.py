@@ -125,8 +125,9 @@ def _needs_named_party(ctx, cls, role, what):
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
           "vcard:organization-name, or drop the iirds:relates-to-vcard. A pointer at "
-          "an IRI nothing here describes leaves the party unidentifiable to a reader "
-          "holding only the package, which in handover is the reader it is for.")
+          "an IRI nothing here describes leaves the party unidentifiable to anyone "
+          "holding only the package — which in iiRDS/H is the reader the profile is "
+          "written for, and is why the five named-party MUSTs are MUSTs there.")
 def r4_party_vcard_is_described(ctx):
     """The cause behind five MUSTs that agree to stay quiet.
 
@@ -158,12 +159,21 @@ def r4_party_vcard_is_described(ctx):
     #
     # Literals are R12's: "points at a vcard this package never describes" is
     # the wrong sentence for a value that is not a pointer at all.
+    # A name a vocabulary defines is R12's, for the same reason a literal is:
+    # this rule's sentence is "never describes it", and something does. R12
+    # stood aside for a pointer at nothing by asking the ontology; nothing here
+    # asked back, and `_describes` cannot answer it -- it reads `ctx.graph`,
+    # which the ontology is not merged into, so `iirds:Topic` and
+    # `vcard:Organization` both looked like pointers at nothing. Both rules
+    # then spoke about one mistake, and this one printed the advice R12's
+    # docstring says must never appear about a class of the standard: describe
+    # it in this package.
     cards = {o for _s, o in ctx.graph.subject_objects(T.relates_to_vcard)
-             if not isinstance(o, Literal)}
+             if not isinstance(o, Literal) and not ctx.names_a_defined_term(o)}
     for card in sorted((c for c in cards if not _describes(ctx, c)), key=ctx.ref):
         users = sorted(ctx.ref(p) for p in ctx.graph.subjects(T.relates_to_vcard, card))
-        yield Violation("iiRDS/H: iirds:relates-to-vcard points at a vcard this package "
-                        "never describes, so no party using it names an organisation",
+        yield Violation("iirds:relates-to-vcard points at a vcard this package never "
+                        "describes, so no party using it names an organisation",
                         subject=ctx.ref(card), detail="referenced by %s" % ", ".join(users))
 
 
@@ -231,11 +241,49 @@ def _identities_of_type(ctx, variant, wanted):
                 yield identity, domain
 
 
-@rule("M15.7a", covers=("x8-3-2-metadata-requirements#8",),
+@rule("M15.7a", covers=("x8-3-2-metadata-requirements#7",
+                        "x8-3-2-metadata-requirements#8",),
        fix="Add iirds:relates-to-product-variant on the Document, relating it to the product variant it documents. In a handover the receiving plant files documents against equipment, and this is the link that makes that possible.")
 def m15_7a_product_variant_instance_identity(ctx):
     """The document has to say which machine, not merely which model."""
     yield from _variant_instance_identity(ctx, T.Document, "iirds:Document")
+
+
+#: Which class this builder is reading, in the words a remedy needs: the noun
+#: for the subject and the rule that answers the party half of the same
+#: bullet. The message was parameterised when these rules were split and one
+#: remedy was not, so R13 -- whose finding is about the Package -- told the
+#: reader about "the product variant this document names" and sent them to
+#: M15.7b, the Document-half rule. It is the only remedy in the registry that
+#: names another rule, and the one it named was the wrong half.
+_HALF = {
+    str(T.Package): ("package", "R14"),
+    str(T.Document): ("document", "M15.7b"),
+}
+
+#: One literal per half, at module level, because that is a form
+#: `tests/test_remediation.py` can read. Building the sentence with `%` put the
+#: only remedy that names another rule beyond the reach of the gate that checks
+#: remedies name terms which exist -- which is the state that gate was written
+#: to refuse, and it refused it.
+VARIANT_IDENTITY_FIX = {
+    "package": "Give the product variant this package names an iirds:has-identity "
+               "whose iirds:IdentityDomain declares an iirds:has-identity-type of "
+               "iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber, "
+               "and relate that domain to an iirds:Party with iirds:has-party-role "
+               "iirds:Manufacturer carrying a vcard that names an organisation -- "
+               "without the party the identity answers this and R14 takes its place. "
+               "The relation from the package is already there; what is missing is "
+               "which machine, as distinct from which model.",
+    "document": "Give the product variant this document names an iirds:has-identity "
+                "whose iirds:IdentityDomain declares an iirds:has-identity-type of "
+                "iirds:ObjectInstanceURI, iirds:ObjectTypeURI or iirds:SerialNumber, "
+                "and relate that domain to an iirds:Party with iirds:has-party-role "
+                "iirds:Manufacturer carrying a vcard that names an organisation -- "
+                "without the party the identity answers this and M15.7b takes its "
+                "place. The relation from the document is already there; what is "
+                "missing is which machine, as distinct from which model.",
+}
 
 
 def _variant_instance_identity(ctx, cls, label):
@@ -246,6 +294,7 @@ def _variant_instance_identity(ctx, cls, label):
     are one check asked twice. Written apart they would drift, which is what
     happened while only one of the two lists had rules at all.
     """
+    noun, sibling = _HALF[str(cls)]
     for doc in ctx.instances_of(cls):
         variants = ctx.values(doc, T.relates_to_product_variant)
         if not variants:
@@ -259,16 +308,7 @@ def _variant_instance_identity(ctx, cls, label):
                             "whose domain has an identity type of ObjectInstanceURI, "
                             "ObjectTypeURI or SerialNumber",
                             subject=ctx.ref(doc),
-                            fix="Give the product variant this document names an "
-                                "iirds:has-identity whose iirds:IdentityDomain declares an "
-                                "iirds:has-identity-type of iirds:ObjectInstanceURI, "
-                                "iirds:ObjectTypeURI or iirds:SerialNumber, and relate that "
-                                "domain to an iirds:Party with iirds:has-party-role "
-                                "iirds:Manufacturer carrying a vcard that names an "
-                                "organisation -- without the party the identity answers this "
-                                "and M15.7b takes its place. The relation from the document is "
-                                "already there; what is missing is which machine, as distinct "
-                                "from which model.")
+                            fix=VARIANT_IDENTITY_FIX[noun])
 
 
 def _documented_variants(ctx, cls=None):
@@ -326,7 +366,8 @@ def _variant_domain_manufacturer(ctx, cls, types, label, which):
                             subject=ctx.ref(doc), detail=ctx.label_of(doc))
 
 
-@rule("M15.7c", covers=("x8-3-2-metadata-requirements#11",),
+@rule("M15.7c", covers=("x8-3-2-metadata-requirements#10",
+                        "x8-3-2-metadata-requirements#11",),
        fix="Relate the ProductVariant to a second iirds:Identity carrying the product type, with its own IdentityDomain. A handover needs both what this machine is and which type it belongs to, because manuals are written per type.")
 def m15_7c_product_type_identity(ctx):
     """The second variant bullet, on the same population as the first: one of

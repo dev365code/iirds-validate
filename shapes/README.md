@@ -188,7 +188,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 198-rule Python
+Every emitted shape is **differentially tested against the 205-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

@@ -40,6 +40,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from rdflib import Graph  # noqa: E402
 
 from iirds_validate import terms as T  # noqa: E402
+from iirds_validate.model import VERSIONS  # noqa: E402
 from iirds_validate.ontology import load  # noqa: E402
 from iirds_validate.registry import all_rules  # noqa: E402
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES  # noqa: E402
@@ -138,7 +139,13 @@ def check() -> int:
     problems = []
     for rule in all_rules():
         named = terms_named_by(rule)
-        for version in rule.versions or ():
+        # `versions=()` means "every edition", which is how the registry reads
+        # it at runtime -- and `or ()` made it mean "no edition" here, so 23
+        # rules were exempt from the one check that asks whether a rule cites
+        # a term its edition predates. Two of them, R3 and R11, were written
+        # with that spelling while their neighbours R10 and R12 spell the same
+        # meaning as five entries and are checked.
+        for version in rule.versions or VERSIONS:
             if version not in inventory:
                 continue
             absent = sorted(t.split("#")[-1].split("/")[-1]

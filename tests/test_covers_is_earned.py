@@ -637,6 +637,12 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
 RULE_HEAD = re.compile(r'@rule\(\s*"([^"]+)"')
 REFUSAL = re.compile(r'#\s*not\s+([\w.-]+#\d+)\s*:')
 
+#: Rules the leniency table lists as withdrawn whose sentence went to another
+#: rule rather than becoming a gap. M18's claim on section 6.7.4 is R11's now,
+#: so M18 carries no refusal comment and the table row would otherwise assert
+#: nothing at all.
+WITHDRAWN_ELSEWHERE = {"M18"}
+
 #: The withdrawals, by name and not by count. Counting was the second version
 #: of this guard and it was bypassable in one move: carry the refusal comment
 #: over to another rule's decorator, restore the claim on its own, and the
@@ -722,7 +728,10 @@ def test_the_leniency_table_says_what_the_rules_do():
     assert len(rows) == 6, [r[0] for r in rows]
     by_id = {rule.id: rule for rule in all_rules()}
     for names, verdict in rows:
-        ids = re.findall(r"\b[CMR]\d+(?:\.\d+[a-z]?)?(?![\w/])", names)
+        # Every prefix this project uses, not the three that happened to be in
+        # the table when it was written: L9 could be added to a `withdrawn`
+        # row and the test would read the row and see no rules in it.
+        ids = re.findall(r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?(?![\w/])", names)
         assert ids, names
         for rule_id in ids:
             assert rule_id in by_id, "%s names %s, which is not a rule" % (names, rule_id)
@@ -732,6 +741,17 @@ def test_the_leniency_table_says_what_the_rules_do():
                 refused = {req for rid, req in refusals() if rid == rule_id}
                 assert not (claimed & refused), \
                     "%s is listed %s and claims %s" % (rule_id, verdict, sorted(claimed & refused))
+                # And a row that says "withdrawn" has to be about something.
+                # A rule whose refusal comment was rewritten has an empty
+                # `refused` set, so the line above stops asserting and the row
+                # goes on saying it with nothing behind it -- which is what
+                # happened to M18 when its sentence moved to R11. "never
+                # claimed" is a different statement: there was no claim to
+                # refuse, so there is no comment to expect.
+                assert verdict != "withdrawn" or refused or rule_id in WITHDRAWN_ELSEWHERE, (
+                    "%s is listed withdrawn and no longer says so in its own source; "
+                    "either restore the comment or record where the sentence went"
+                    % rule_id)
         else:
             # The row's reading is shared; the claim sits on whichever rules
             # have a sentence in the index. M15.8 and M15.9 have none -- their

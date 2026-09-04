@@ -3,31 +3,30 @@
   "branch": 1,
   "finding": 1,
   "other": 0,
-  "silent": 11
+  "silent": 10
  },
  "unreached": {
   "content.py": {
-   "281": "silent",
-   "84": "silent"
+   "_declares_entities :: return False": "silent",
+   "b3_only_listed_elements :: continue": "silent"
   },
   "lint.py": {
-   "108": "silent",
-   "250": "silent",
-   "296": "silent",
-   "598": "silent",
-   "607": "silent",
-   "833": "silent"
+   "_suggest :: return None": "silent",
+   "_undescribed_references :: continue # a term from the standard vocabulary": "silent",
+   "l15_name_from_a_later_edition :: return": "silent",
+   "l5_unmapped_custom_classes :: continue": "silent",
+   "l6_unlabelled_concepts :: continue": "silent"
   },
   "schema.py": {
-   "540": "silent"
+   "m16_3_event_extension_is_a_class :: continue": "silent"
   },
   "schema_tables.py": {
-   "138": "branch",
-   "139": "finding",
-   "142": "silent"
+   "_not_used_directly :: return check": "silent",
+   "check :: for subject in ctx.graph.subjects(RDF.type, cls):": "branch",
+   "check :: yield Violation(\"%s is not intended to be used directly; \"": "finding"
   },
   "system.py": {
-   "155": "silent"
+   "_has_zip64_record :: return False": "silent"
   }
  }
 }

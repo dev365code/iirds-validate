@@ -264,13 +264,17 @@ def _ns_test(var):
 #: `ctx.is_instance` -- a package may declare its own class a subclass of
 #: vcard:Organization and type the card with it (section 7), and both
 #: encodings have to accept that or one of them is wrong. Both spellings are
-#: accepted; see ORGANISATION_TYPES in rules/handover.py for why.
+#: accepted, and the list comes from ORGANISATION_TYPES in model.py rather
+#: than being written out here: the constant moved to model.py so that one
+#: divergence would not be stated twice, and this file went on stating it.
+#: Removing a spelling from the constant moved the Python and only one of the
+#: shapes, which is the drift the move was supposed to prevent.
 _NAMED_VCARD = ("{ ?party <%(ii)srelates-to-vcard> ?card .\n"
                 "      FILTER NOT EXISTS { ?card ?cp ?co } }\n"
                 "    UNION\n"
                 "    { ?party <%(ii)srelates-to-vcard> ?namedcard .\n"
                 "      ?namedcard <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?cardtype .\n"
-                "      FILTER (?cardtype IN (<%(vc)sOrganization>, <%(vc)sorganization>))\n"
+                "      FILTER (?cardtype IN (%(organisation_types)s))\n"
                 "      ?namedcard <%(vc)sorganization-name> ?orgname }")
 
 
@@ -1021,7 +1025,8 @@ def build() -> dict:
                  "party_roles": _term_list(_ONTOLOGY.instances_of(T.PartyRole)),
                  "status_values": _term_list(
                      _ONTOLOGY.instances_of(T.ContentLifeCycleStatusValue)),
-                 "vcard_kinds": _term_list(VCARD_KINDS | ORGANISATION_TYPES)}
+                 "vcard_kinds": _term_list(VCARD_KINDS | ORGANISATION_TYPES),
+                 "organisation_types": _term_list(ORGANISATION_TYPES)}
         lines = ["%s a sh:NodeShape ;" % sid]
         for item in metadata_lines(rule):
             lines.append("  %s ;" % item)

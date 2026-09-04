@@ -228,3 +228,30 @@ def test_a_handover_jsonld_that_carries_less_than_the_rdf_is_reported(make_packa
 
 
 IIRDS_TOPIC = "http://iirds.tekom.de/iirds#Topic"
+
+
+def test_an_iirds_term_anywhere_in_the_json_ld_counts(make_package):
+    """C16.2's threshold is one statement mentioning an iiRDS term "in any
+    position", and the docstring defends that wording at length. Nothing held
+    it: narrowed to the predicate alone, every test still passed.
+
+    A JSON-LD file whose only iiRDS term is a *type* — `{"@type":
+    "iirds:Package"}`, whose predicate is `rdf:type` and whose object is the
+    iiRDS name — is metadata by anyone's reading, and the rule must not report
+    it for want of an iiRDS predicate.
+    """
+    typed_only = json.dumps({"@context": {"iirds": "http://iirds.tekom.de/iirds#"},
+                             "@graph": [{"@id": "urn:test:package", "@type": "iirds:Package"}]})
+    report = runner.check(make_package(metadata=HANDOVER_RDF, jsonld=typed_only))
+    assert "C16.2" not in {f.rule.id for f in errors(report)}, \
+        [f.violation.message for f in report.findings if f.rule.id == "C16.2"]
+
+
+def test_an_unrestricted_package_with_an_empty_json_ld_is_not_this_rules_business(make_package):
+    """Section 6.12's sentence is about iiRDS/H packages. metadata.jsonld is
+    optional everywhere else, so an empty one outside the profile breaches
+    nothing this rule claims -- L9 reports the disagreement with metadata.rdf,
+    under its own sentence. Removing the variant gate broke no test."""
+    report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=EMPTY_JSONLD))
+    assert "C16.2" not in {f.rule.id for f in report.findings}, \
+        sorted({f.rule.id for f in report.findings})

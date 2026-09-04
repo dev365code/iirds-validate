@@ -217,12 +217,22 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
     assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
     rules = len(all_rules())
-    assert "45 of the %d rules" % rules in readme
-    assert str(len(MANIFEST["not_expressible"])) == "45"
-    # The 53-rule remainder is broken out by category, and the five deferred
-    # iiRDS/H MUSTs are named -- a reader under H must know to keep the
-    # Python validator in the loop.
-    assert "57 of the %d" % rules in readme
+    # Derived, both of them. These were literals -- "58 of the 201" while the
+    # four buckets under it summed to 57, because a rule was added, one of the
+    # two got a shape, and the headline was moved by hand in the wrong
+    # direction. A number a reader can add up from the lines below it is a
+    # number a test can add up too.
+    without_a_shape = rules - len(EMITTED_IDS)
+    assert "%d of the %d rules have no shape" % (without_a_shape, rules) in readme
+    assert without_a_shape == sum((MANIFEST["counts"]["version_excluded"],
+                                   MANIFEST["counts"]["deferred_v1.1"],
+                                   MANIFEST["counts"]["not_expressible"],
+                                   MANIFEST["counts"]["noop"])), "the buckets must sum to it"
+    assert "%d of the %d rules" % (len(MANIFEST["not_expressible"]), rules) in readme
+    # Published and pinned by nothing until now: the sentence naming the size
+    # of the validator the shapes are tested against sat at 198 while the
+    # registry grew past 200.
+    assert "the %d-rule Python" % rules in readme
     assert len(MANIFEST["deferred_v1.1"]) == 9
     # The five iiRDS/H MUSTs graduated from the deferred bucket; the gate
     # that once demanded they be named as missing now demands the opposite.

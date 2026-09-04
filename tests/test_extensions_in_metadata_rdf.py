@@ -248,3 +248,34 @@ def test_a_variant_typed_with_a_subclass_declared_only_in_the_json_ld_is_reporte
     everything: the same shape with nothing of it in metadata.rdf."""
     assert "R11" in fired(tmp_path, "subclass_absent.iirds",
                           jsonld_nodes=(TRIM, TRIM_DECL))
+
+
+def test_a_class_the_package_declares_beneath_its_own_is_not_an_iirds_extension(tmp_path):
+    """The subclass loop reports a proprietary class declared beneath an iiRDS
+    one. Both ends matter: `my:Bolt rdfs:subClassOf my:Fastener` is a package
+    describing its own vocabulary to itself, not an extension *of iiRDS*, and
+    reporting it says "a proprietary class of the iiRDS vocabulary is declared
+    outside metadata.rdf" about a relation iiRDS has nothing to do with.
+
+    Without this the guard could be deleted and nothing noticed.
+    """
+    got = fired(tmp_path, "own_hierarchy.iirds", jsonld_nodes=(
+        {"@id": "http://my.co/ns#Bolt", "rdfs:subClassOf": {"@id": "http://my.co/ns#Fastener"}},))
+    assert "R11" not in got, sorted(got)
+
+
+def test_the_finding_names_the_file_the_statement_is_actually_in(tmp_path):
+    """`_only_in` is the difference between "this is somewhere else" and
+    "this is in metadata.jsonld", and the second is what a reader can act on.
+    Returning nothing broke no test, so the detail was carried by nobody."""
+    metadata = MINIMAL_RDF
+    jsonld = json.dumps({"@context": {"iirds": IIRDS, "rdfs": RDFS_},
+                         "@graph": [{"@id": "urn:test:package", "@type": "iirds:Package",
+                                     "iirds:iiRDSVersion": "1.3", "iirds:title": "Test package"},
+                                    {"@id": "urn:test:variant", "@type": "iirds:ProductVariant",
+                                     "rdfs:label": "Rotor"}]})
+    report = runner.run(build_package(tmp_path, "detail.iirds", metadata=metadata, jsonld=jsonld),
+                        runner.ALL_KINDS)
+    hits = [f for f in report.findings if f.rule.id == "R11"]
+    assert hits, sorted({f.rule.id for f in report.findings})
+    assert hits[0].violation.detail == "stated in metadata.jsonld", hits[0].violation.detail

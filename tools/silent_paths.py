@@ -112,6 +112,17 @@ def pytest_unconfigure(config):
 '''
 
 
+def enclosing(tree):
+    """line number -> the function it is in, so a record can name a place
+    rather than an offset."""
+    where = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for line in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                where[line] = node.name
+    return where
+
+
 def executable_lines(path: Path):
     """Line numbers of statements, and what kind each is.
 
@@ -159,9 +170,22 @@ def measure(out_dir: Path, extra_args):
 
     unreached = {}
     for path in sorted(RULES.glob("*.py")):
+        source = path.read_text("utf-8")
         kinds = executable_lines(path)
+        where = enclosing(ast.parse(source))
+        lines = source.splitlines()
         ran = seen.get(str(path.resolve()), set())
-        missing = {line: kind for line, kind in kinds.items() if line not in ran}
+        missing = {}
+        for line, kind in kinds.items():
+            if line in ran:
+                continue
+            # Keyed by what the line is and where, not by its offset. A record
+            # keyed on line numbers goes stale the moment anything above it
+            # gains a line -- as this one did, pointing at a blank line, a
+            # docstring and a `def` -- and a stale record that only its own
+            # totals are compared against is a record nobody is reading.
+            text = " ".join(lines[line - 1].split())
+            missing["%s :: %s" % (where.get(line, "<module>"), text)] = kind
         if missing:
             unreached[path.name] = missing
     return unreached
@@ -193,15 +217,15 @@ def main() -> int:
           "%(silent)d silent, %(finding)d finding, %(branch)d branch, %(other)d other"
           % counts)
     for name in sorted(unreached):
-        rows = [(line, kind) for line, kind in sorted(unreached[name].items())
+        rows = [(key, kind) for key, kind in sorted(unreached[name].items())
                 if kind in ("silent", "finding")]
         if rows:
             print("\n  %s" % name)
-            for line, kind in rows:
-                print("    %-8s %s:%d" % (kind, name, line))
+            for key, kind in rows:
+                print("    %-8s %s" % (kind, key))
 
     record = {"counts": counts,
-              "unreached": {name: {str(k): v for k, v in sorted(missing.items())}
+              "unreached": {name: dict(sorted(missing.items()))
                             for name, missing in sorted(unreached.items())}}
     if args.write_baseline:
         BASELINE.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", "utf-8")
@@ -212,8 +236,15 @@ def main() -> int:
             print("\n  no baseline yet — run --write-baseline")
             return 1
         old = json.loads(BASELINE.read_text("utf-8"))
-        if old["counts"] != counts:
-            print("\n  baseline says %s, the suite says %s" % (old["counts"], counts))
+        was = {(name, key) for name, m in old["unreached"].items() for key in m}
+        now = {(name, key) for name, m in unreached.items() for key in m}
+        if old["counts"] != counts or was != now:
+            for name, key in sorted(now - was):
+                print("\n  newly unreached  %s  %s" % (name, key))
+            for name, key in sorted(was - now):
+                print("\n  now reached      %s  %s" % (name, key))
+            if old["counts"] != counts:
+                print("\n  baseline says %s, the suite says %s" % (old["counts"], counts))
             print("  baseline is stale — rerun --write-baseline")
             return 1
         print("\n  unreached lines unchanged")

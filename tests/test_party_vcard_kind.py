@@ -10,9 +10,14 @@ there; this asks whether what it points at is a vcard kind. Exactly the shape
 R10 was written for one sentence earlier in the same section, which is how it
 was found.
 
-The vCard vocabulary declares `vcard:Kind` with four subclasses and no others:
-Individual, Organization, Group, Location. Those four IRIs are facts, the way
-iiRDS term IRIs are facts, so nothing needs bundling to know them.
+The vCard vocabulary declares `vcard:Kind`, four subclasses of it -- Individual,
+Organization, Group, Location -- and `vcard:VCard`, which it states is the same
+class under its older name (`owl:equivalentClass`, with a comment saying so).
+Those IRIs are facts, the way iiRDS term IRIs are facts, so nothing needs
+bundling to know them. Reading the file for `rdfs:subClassOf` alone found four
+and called them "no others", which put a finding on a conformant card; the
+test at the foot of this file is that correction, and this paragraph used to
+contradict it.
 """
 from __future__ import annotations
 

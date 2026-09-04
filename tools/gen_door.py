@@ -9,7 +9,8 @@ deliberately broken package, colour added; regenerate both on release.
 
     python3 tools/gen_door.py
 """
-import math, pathlib
+import math
+import pathlib
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / "docs" / "assets"
 MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
@@ -75,30 +76,32 @@ banner = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 408" role=
 
 # ── the real verdict, drawn (captured from the released CLI on a broken zip) ─
 L = []
-def ln(y, runs):
+def ln(y, dy, runs):
+    """Append one rendered line at baseline y; return the next baseline."""
     parts = "".join(f'<tspan x="{x}" fill="{c}"{w}>{t}</tspan>'
                     for x, c, t, w in runs)
     L.append(f'<text y="{y}" font-family="{MONO}" font-size="12.5" xml:space="preserve">{parts}</text>')
+    return y + dy
 B = " font-weight=\"700\""
 G, D, E, A_, F, T, N = "#8fd0a8", "#7d8a99", "#e0604d", "#e8c268", "#5cb87f", "#d8dfe5", "#93a1ad"
 y = 40
-ln(y, [(28, G, "$ ", B), (46, T, "pip install iirds", "")]); y += 21
-ln(y, [(28, G, "$ ", B), (46, T, "iirds check broken.iirds", "")]); y += 30
-ln(y, [(28, T, "broken.iirds   ", B), (140, A_, "iiRDS not declared", "")]); y += 20
-ln(y, [(40, N, "note: no iirds:iiRDSVersion in the package; validated against 1.3.", "")]); y += 17
-ln(y, [(40, N, "note: metadata read from META-INF/metadata.rdf", "")]); y += 27
-ln(y, [(40, E, "ERROR ", B), (90, A_, "C5", B), (140, T, "mimetype must contain exactly 'application/iirds+zip' with no line ending", "")]); y += 19
-ln(y, [(168, D, "mimetype", "")]); y += 17
-ln(y, [(168, D, "b'application/zip'", "")]); y += 19
-ln(y, [(154, F, "→ Make the file contain exactly application/iirds+zip, ASCII, with no", "")]); y += 17
-ln(y, [(154, F, "→ trailing newline and no byte order mark. Editors add both silently, so", "")]); y += 17
-ln(y, [(154, F, "→ write it with a tool that does not.", "")]); y += 24
-ln(y, [(40, E, "ERROR ", B), (90, A_, "M3", B), (140, T, "metadata declares no iirds:Package for this container", "")]); y += 19
-ln(y, [(154, F, "→ Provide exactly one iirds:Package instance describing this container. It", "")]); y += 17
-ln(y, [(154, F, "→ is the root a consumer starts from, so zero leaves the package", "")]); y += 17
-ln(y, [(154, F, "→ unidentified and two leave it ambiguous.", "")]); y += 27
-ln(y, [(28, E, "FAIL", B), (90, T, "2 error(s), 0 warning(s), 0 informational", "")]); y += 19
-ln(y, [(28, N, "164 rules checked, 21 not applicable to this version/variant", "")]); y += 14
+y = ln(y, 21, [(28, G, "$ ", B), (46, T, "pip install iirds", "")])
+y = ln(y, 30, [(28, G, "$ ", B), (46, T, "iirds check broken.iirds", "")])
+y = ln(y, 20, [(28, T, "broken.iirds   ", B), (140, A_, "iiRDS not declared", "")])
+y = ln(y, 17, [(40, N, "note: no iirds:iiRDSVersion in the package; validated against 1.3.", "")])
+y = ln(y, 27, [(40, N, "note: metadata read from META-INF/metadata.rdf", "")])
+y = ln(y, 19, [(40, E, "ERROR ", B), (90, A_, "C5", B), (140, T, "mimetype must contain exactly 'application/iirds+zip' with no line ending", "")])
+y = ln(y, 17, [(168, D, "mimetype", "")])
+y = ln(y, 19, [(168, D, "b'application/zip'", "")])
+y = ln(y, 17, [(154, F, "→ Make the file contain exactly application/iirds+zip, ASCII, with no", "")])
+y = ln(y, 17, [(154, F, "→ trailing newline and no byte order mark. Editors add both silently, so", "")])
+y = ln(y, 24, [(154, F, "→ write it with a tool that does not.", "")])
+y = ln(y, 19, [(40, E, "ERROR ", B), (90, A_, "M3", B), (140, T, "metadata declares no iirds:Package for this container", "")])
+y = ln(y, 17, [(154, F, "→ Provide exactly one iirds:Package instance describing this container. It", "")])
+y = ln(y, 17, [(154, F, "→ is the root a consumer starts from, so zero leaves the package", "")])
+y = ln(y, 27, [(154, F, "→ unidentified and two leave it ambiguous.", "")])
+y = ln(y, 19, [(28, E, "FAIL", B), (90, T, "2 error(s), 0 warning(s), 0 informational", "")])
+y = ln(y, 14, [(28, N, "164 rules checked, 21 not applicable to this version/variant", "")])
 TH = y + 18
 shot = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 {TH}" role="img" aria-label="Real output of iirds check on a broken package: two errors, each with evidence and a fix">
 <rect x="1" y="1" width="938" height="{TH-2}" rx="10" fill="#12161a" stroke="#252b30" stroke-width="1.5"/>

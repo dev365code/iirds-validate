@@ -18,6 +18,12 @@ after the run, exactly as `tools/rule_coverage.py` compares what fired.
 
     python tools/held_claims.py --check      # after the suite has run
 
+It also keeps which rules fired while each test ran, because a named case
+stood on a string. A claim could point at a test about something else and
+nothing noticed -- the counterexample table has mechanical evidence, a package
+and a rule that reports it, and the named cases had a name. A named case now
+has to have made one of its claim's rules fire.
+
 The record keeps what the run *collected* as well as what passed, because what
 passed is not enough. A parametrised case list that ran one row and skipped
 twenty-six leaves the function name in the passed set and nothing to say the
@@ -110,7 +116,19 @@ def main() -> int:
     import test_covers_is_earned as gate
 
     keys = keys_per_claim(gate, collected)
+    fired = record.get("fired_by_test", {})
     missing = []
+    for requirement, wanted in sorted(keys.items()):
+        if requirement not in gate.NAMED_CASES:
+            continue        # the counterexample table stands on its own packages
+        claimants = set(gate.CLAIMED.get(requirement, ()))
+        seen = set()
+        for key in wanted:
+            seen.update(fired.get(key.partition("[")[0], ()))
+        if claimants and not (claimants & seen):
+            missing.append((requirement, "its test never made %s fire"
+                            % "/".join(sorted(claimants))))
+
     for requirement, wanted in sorted(keys.items()):
         if not wanted:
             missing.append((requirement, "no case at all"))

@@ -1536,6 +1536,70 @@ def test_two_identity_types_on_one_domain_agree_in_both_encodings(tmp_path):
         assert ("R17" in py) is fires, (types, sorted(py))
 
 
+# ---------------------------------------------------------------------------
+# The two encodings must agree on how many findings there are, not only on
+# which rules fired.
+#
+# This gate compared sets, so a rule reporting one fact in Python and the same
+# fact once per node in SHACL passed it. Four do: a package with four
+# directory nodes gets one "no root node" from the checker and four from the
+# shapes, and a consumer counting errors is told a different number about the
+# same package. The shapes are the encoding somebody else runs, which is the
+# whole reason they exist.
+#
+# The cause is a deliberate choice with an unnoticed consequence. A SPARQL
+# constraint's `?value` becomes the result's `sh:value`, so binding it names
+# the node a finding is about — but a graph-global check has no such node, and
+# binding one anyway multiplies the finding by however many nodes took part.
+# `sh:targetNode` gives `$this` exactly one binding, so a query that names no
+# `?value` reports once, which is what the first of M3's two queries already
+# did.
+# ---------------------------------------------------------------------------
+
+#: One package, several candidates for every graph-global check, so that a
+#: rule reporting per node reports four times and a rule reporting per fact
+#: reports once. Built rather than borrowed: every other case in this file has
+#: one of each thing, which is exactly why the multiplicity was invisible.
+MANY_OF_EACH = _meta("".join(
+    '  <iirds:DirectoryNode rdf:about="urn:test:node%(i)d"/>\n'
+    '  <iirds:Rendition rdf:about="urn:test:rendition%(i)d"/>\n'
+    '  <rdf:Description rdf:about="urn:test:subject%(i)d">'
+    '<iirds:relates-to-product-variant rdf:resource="urn:test:variant%(i)d"/>'
+    '<iirds:relates-to-component rdf:resource="urn:test:component%(i)d"/>'
+    "</rdf:Description>\n"
+    '  <iirds:Package rdf:about="urn:test:package%(i)d">'
+    "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion></iirds:Package>\n"
+    % {"i": i} for i in range(4)))
+
+
+def _counted(metadata, tmp_path, name):
+    """(python counts, shacl counts) per rule id, for one package."""
+    import collections
+
+    data = Graph().parse(data=metadata, format="xml", publicID=PACKAGE_BASE)
+    _ok, results, _ = pyshacl.validate(data, shacl_graph=CORE, advanced=True,
+                                       inference="none")
+    shacl = collections.Counter()
+    for _result, _p, source in results.triples((None, SH.sourceShape, None)):
+        shacl[str(source).rsplit("#", 1)[-1].split("-p")[0]] += 1
+    package = build_package(tmp_path, name, metadata=metadata)
+    python = collections.Counter(
+        f.rule.id for f in runner.run(package, runner.ALL_KINDS).findings)
+    return python, shacl
+
+
+def test_the_two_encodings_report_the_same_number_of_findings(tmp_path):
+    python, shacl = _counted(MANY_OF_EACH, tmp_path, "many.iirds")
+    fired = {rid for rid in shacl if shacl[rid]}
+    assert len(fired) >= 4, ("the fixture stopped provoking the graph-global "
+                             "shapes: %s" % sorted(fired))
+    differ = {rid: (python.get(rid, 0), shacl[rid])
+              for rid in sorted(fired) if python.get(rid, 0) != shacl[rid]}
+    assert differ == {}, (
+        "python and SHACL report different numbers of findings for the same "
+        "package (rule: python, shacl): %s" % differ)
+
+
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():
     never_fired = EMITTED - SH_FIRED_EVER
     assert len(SH_FIRED_EVER) > 50, (

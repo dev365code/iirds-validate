@@ -366,9 +366,16 @@ _INFORMATION_OBJECT_CREATOR = """SELECT DISTINCT $this ?value WHERE {
 
 SPARQL_FORMS = {
     # Where a violating node exists, the query binds it to ?value: a SPARQL
-    # constraint's ?value binding becomes the result's sh:value, so a global
-    # check reports "at this node" instead of "somewhere in the graph". The
-    # first M3 query reports an absence and has no node to name.
+    # constraint's ?value binding becomes the result's sh:value, so a check
+    # reports "at this node" instead of "somewhere in the graph".
+    #
+    # A graph-global check has no such node, and binding one anyway multiplies
+    # one fact by however many nodes took part: four directory nodes drew one
+    # "no root node" from the checker and four from the shapes, and a consumer
+    # counting errors was told a different number about the same package. Four
+    # queries were in that state -- M3, M17, M18, M24.6 -- and they name no
+    # ?value now, which `sh:targetNode` makes report exactly once, as the
+    # first M3 query already did.
     # rdf:type/rdfs:subClassOf*, not bare rdf:type: a package typed only
     # with its own declared subclass of iirds:Package is a Package (section
     # 7). The five named-party MUSTs, M17, M18, M24.6 and M22.2 all got this
@@ -387,27 +394,27 @@ SPARQL_FORMS = {
     FILTER NOT EXISTS { ?q <%(ii)sis-part-of-package> ?x .
                         ?x <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
                         FILTER (!sameTerm(?x, ?q)) } } }""",
-                     """SELECT $this ?value WHERE {
-  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-  FILTER NOT EXISTS { ?value <%(ii)sis-part-of-package> ?x1 .
+                     """SELECT $this WHERE {
+  ?own <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
+  FILTER NOT EXISTS { ?own <%(ii)sis-part-of-package> ?x1 .
                       ?x1 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
-                      FILTER (!sameTerm(?x1, ?value)) }
+                      FILTER (!sameTerm(?x1, ?own)) }
   ?p2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
   FILTER NOT EXISTS { ?p2 <%(ii)sis-part-of-package> ?x2 .
                       ?x2 <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sPackage> .
                       FILTER (!sameTerm(?x2, ?p2)) }
-  FILTER (?value != ?p2) }"""]),
+  FILTER (?own != ?p2) }"""]),
     # rdf:type/rdfs:subClassOf*: the same instance test sh:class performs,
     # so a package-declared subclass of Component satisfies the "declares one
     # of its own" escape in both encodings (section 7 again).
-    "M17": ("fixed", ["""SELECT $this ?value WHERE {
-  ?value <%(ii)srelates-to-component> ?o .
+    "M17": ("fixed", ["""SELECT $this WHERE {
+  ?s <%(ii)srelates-to-component> ?o .
   FILTER NOT EXISTS { ?c <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sComponent> } }"""]),
-    "M18": ("fixed", ["""SELECT $this ?value WHERE {
-  ?value <%(ii)srelates-to-product-variant> ?o .
+    "M18": ("fixed", ["""SELECT $this WHERE {
+  ?s <%(ii)srelates-to-product-variant> ?o .
   FILTER NOT EXISTS { ?v <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sProductVariant> } }"""]),
-    "M24.6": ("fixed", ["""SELECT $this ?value WHERE {
-  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?nt .
+    "M24.6": ("fixed", ["""SELECT $this WHERE {
+  ?n <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?nt .
   FILTER (?nt IN (<%(ii)sDirectoryNode>, <%(ii)snil>))
   FILTER NOT EXISTS { ?root <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?rt .
       FILTER (?rt IN (<%(ii)sDirectoryNode>, <%(ii)snil>))

@@ -120,6 +120,13 @@ PASSED: set = set()
 #: say the other rows were ever there. `tools/held_claims.py` compares the
 #: two.
 COLLECTED: set = set()
+#: test -> the rules that fired while it ran. What a named case actually did,
+#: as against what its name suggests. `COUNTEREXAMPLES` stands on a package and
+#: a rule that reports it; `NAMED_CASES` stood on a string, so a claim could
+#: point at a test about something else entirely and nothing noticed.
+FIRED_BY_TEST: dict = {}
+#: The test running now, as a stack because a fixture may run inside one.
+CURRENT_TEST: list = []
 PASSED_FILE = Path(__file__).resolve().parents[1] / ".passed-tests.json"
 
 
@@ -149,6 +156,16 @@ def pytest_collection_modifyitems(items):
         COLLECTED.add("%s::%s" % (Path(path).stem, name))
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    path, _, name = item.nodeid.partition("::")
+    CURRENT_TEST.append("%s::%s" % (Path(path).stem, name.partition("[")[0]))
+    try:
+        yield
+    finally:
+        CURRENT_TEST.pop()
+
+
 def pytest_runtest_logreport(report):
     """Both spellings of what passed: the bare function and, for a
     parametrised test, the case.
@@ -176,7 +193,10 @@ def _observe_which_rules_fire():
     def wrap(fn):
         def wrapped(*args, **kwargs):
             report = fn(*args, **kwargs)
-            FIRED.update(f.rule.id for f in report.findings)
+            ids = {f.rule.id for f in report.findings}
+            FIRED.update(ids)
+            if CURRENT_TEST:
+                FIRED_BY_TEST.setdefault(CURRENT_TEST[-1], set()).update(ids)
             # A subject that is an rdflib term rather than text renders, and
             # then the report's grouping concatenates it and rdflib warns on
             # stderr that the result "does not look like a valid URI". Every
@@ -204,7 +224,8 @@ def pytest_sessionfinish(session, exitstatus):
     if PASSED:
         PASSED_FILE.write_text(json.dumps(
             {"tree": _tree_fingerprint(), "passed": sorted(PASSED),
-             "collected": sorted(COLLECTED)},
+             "collected": sorted(COLLECTED),
+             "fired_by_test": {k: sorted(v) for k, v in sorted(FIRED_BY_TEST.items())}},
             indent=1) + "\n", "utf-8")
 
 

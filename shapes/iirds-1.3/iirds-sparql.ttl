@@ -64,16 +64,16 @@ ivs:M3 a sh:NodeShape ;
     FILTER NOT EXISTS { ?q <http://iirds.tekom.de/iirds#is-part-of-package> ?x .
                         ?x <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
                         FILTER (!sameTerm(?x, ?q)) } } }""" ] ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
-  FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 .
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  ?own <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
+  FILTER NOT EXISTS { ?own <http://iirds.tekom.de/iirds#is-part-of-package> ?x1 .
                       ?x1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
-                      FILTER (!sameTerm(?x1, ?value)) }
+                      FILTER (!sameTerm(?x1, ?own)) }
   ?p2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
   FILTER NOT EXISTS { ?p2 <http://iirds.tekom.de/iirds#is-part-of-package> ?x2 .
                       ?x2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Package> .
                       FILTER (!sameTerm(?x2, ?p2)) }
-  FILTER (?value != ?p2) }""" ] .
+  FILTER (?own != ?p2) }""" ] .
 
 ivs:M5 a sh:NodeShape ;
   rdfs:label "It is RECOMMENDED to use absolute IRIs in rdf:about." ;
@@ -130,8 +130,8 @@ ivs:M17 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iiRDS%20package%20MUST%20NOT%20use%20an%20external%20product%20ontology%20directly.%20If%20an%20external%20product%20ontology%20is%20available%20and%20used%20in%20the%20iiRDS%20package%2C%20then%20the%20iiRDS%20package%20MUST%20also%20contain%20metadata%20labels%20as%20instances%20of%20iirds%3AComponent.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:M17 ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value <http://iirds.tekom.de/iirds#relates-to-component> ?o .
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  ?s <http://iirds.tekom.de/iirds#relates-to-component> ?o .
   FILTER NOT EXISTS { ?c <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Component> } }""" ] .
 
 ivs:M18 a sh:NodeShape ;
@@ -144,8 +144,8 @@ ivs:M18 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=iiRDS%20provides%20the%20class%20iirds%3AProductVariant%20for%20extending%20the%20iiRDS%20vocabulary%20and%20adding%20proprietary%20product%20variants.%20As%20product%20variants%20are%20a%20proprietary%20iiRDS%20extension%2C%20they%20MUST%20be%20present%20in%20the%20metadata.rdf%20of%20the%20iiRDS%20package.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:M18 ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value <http://iirds.tekom.de/iirds#relates-to-product-variant> ?o .
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  ?s <http://iirds.tekom.de/iirds#relates-to-product-variant> ?o .
   FILTER NOT EXISTS { ?v <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#ProductVariant> } }""" ] .
 
 ivs:M19.4 a sh:NodeShape ;
@@ -193,8 +193,8 @@ ivs:M24.6 a sh:NodeShape ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=6.9.1-,Directory%20Nodes> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:M24.6 ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
-  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?nt .
+  sh:sparql [ sh:select """SELECT $this WHERE {
+  ?n <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?nt .
   FILTER (?nt IN (<http://iirds.tekom.de/iirds#DirectoryNode>, <http://iirds.tekom.de/iirds#nil>))
   FILTER NOT EXISTS { ?root <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?rt .
       FILTER (?rt IN (<http://iirds.tekom.de/iirds#DirectoryNode>, <http://iirds.tekom.de/iirds#nil>))

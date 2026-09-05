@@ -37,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from rdflib import Graph  # noqa: E402
+from rdflib import Graph, URIRef  # noqa: E402
 
 from iirds_validate import terms as T  # noqa: E402
 from iirds_validate.model import VERSIONS  # noqa: E402
@@ -96,6 +96,11 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
     remember.
     """
     seen = set() if seen is None else seen
+    # `inspect.getsource` raises on a partial, and returning "" for it made
+    # both this and `_reads_the_graph` blind -- the rule was then neither
+    # answered nor refused. Guarding the crash without unwrapping turned a
+    # loud failure into a silent pass, which is worse than the crash.
+    fn = getattr(fn, "func", fn)
     try:
         source = inspect.getsource(fn)
     except (OSError, TypeError):
@@ -104,6 +109,20 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
     if module is None:
         return source
     out = [source]
+
+    # `ctx.<method>` too, not only module-level helpers. L1 and L8 name
+    # `iirds:title` through `Context.label_of` and read the whole defined-term
+    # set through it, and this walker resolved callables with
+    # `getattr(module, name)` -- a Context method is on neither the rule's
+    # module nor any module. Both read as naming no term at all, which is a
+    # third kind of silence the classification below had no word for.
+    from iirds_validate.context import Context
+    for name in dict.fromkeys(re.findall(r"\bctx\.([A-Za-z_][A-Za-z_0-9]*)\s*\(", source)):
+        method = getattr(Context, name, None)
+        if callable(method) and name not in seen:
+            seen.add(name)
+            out.append(_source_the_rule_reaches(method, seen))
+
     for name in dict.fromkeys(re.findall(r"\b([A-Za-z_][A-Za-z_0-9]*)\s*\(", source)):
         if name in seen:
             continue
@@ -113,6 +132,54 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
                 helper, "__module__", "").startswith("iirds_validate"):
             out.append(_source_the_rule_reaches(helper, seen))
     return "\n".join(out)
+
+
+#: Rules that read the RDF and name no iiRDS term, with one line of what each
+#: looks at instead. Enumerated so a new one has to be looked at by somebody,
+#: and refused when it names a rule that no longer exists.
+#:
+#: **Which kind** of silence each is, this does not say. Two attempts at that
+#: got it wrong: a table of prose reasons had five of fourteen false, and
+#: deriving it from the source split on how the access is spelled rather than
+#: on what is read -- L13 and L14 both scan the ontology's whole defined-term
+#: set and landed on opposite sides. What the enumeration is for is that
+#: somebody looks; a label this file cannot make true is worse than no label.
+#:
+#: Not filtered by kind. C16.2 is `kind="container"` and reads the graph, and
+#: a filter on schema/lint left it outside the gate entirely.
+NAMES_NO_TERM = {
+    "C16.2": "asks whether any metadata file mentions an iiRDS term at all",
+    "L5": "asks whether a class is in an iiRDS namespace, not which class",
+    "L9": "compares the two metadata files as graphs",
+    "L13": "reads every name the ontology defines, to spot one it does not",
+    "L14": "measures how far a namespace is from an iiRDS one, and reads the "
+           "defined-term set to know it is not one",
+    "L15": "reads the per-edition inventory itself -- it is the rule that "
+           "reports a name the declared edition does not have",
+    "L16": "reads the ontology's own relation/attribute split; eight of the "
+           "forty-six relations are absent from 1.0, which is why this rule "
+           "filters by the declared edition itself",
+    "M5": "walks every iiRDS subject to ask whether rdf:about is absolute",
+    "M30": "asks whether a subject is in an iiRDS namespace, not which term",
+    "R18": "reads the vocabulary classes, from the ontology's own instances",
+}
+
+
+def _reads_the_graph(rule) -> bool:
+    """Does the rule look at the RDF at all? Container and system rules whose
+    subject is ZIP bytes or the run itself are answered truthfully by naming
+    nothing; C16.2 is `kind="container"` and reads the graph, so the question
+    is what the rule touches and not what its id begins with."""
+    source = _source_the_rule_reaches(rule.fn)
+    # `self.` as well as `ctx.`: the reached source now holds the bodies of the
+    # Context methods a rule calls, and inside those the access is spelled
+    # `self.graph`. M5 reads the whole graph through `ctx.iirds_subjects()` and
+    # read as not touching it at all -- and the comment beside its absence
+    # from the list called that a decision, which it was not.
+    return bool(re.search(r"\b(ctx|self)\.(graph|ontology|per_source|instances_of"
+                          r"|values|has|iirds_subjects)\b", source))
+
+
 
 
 def terms_named_by(rule) -> list:
@@ -138,7 +205,66 @@ def terms_named_by(rule) -> list:
     for rule_id, prefix, class_name, _requirement in MUST_HAVE_IRI:
         if rule_id == rule.id:
             named.append(str(NAMESPACES[prefix][class_name]))
-    return named
+
+    # And a rule built by a factory names its terms at the call site, so they
+    # never appear in the function this reads. For the factories here they are
+    # in the function object -- default arguments and closure cells -- so this
+    # is a limit of where the tool looked. Nine rules were passing vacuously
+    # for that reason and the one above: R19 to R23 and R1 and R2 bind their
+    # terms at a call site, and L1, L8 and M2.1 reach theirs through a
+    # `Context` method. "Four" was this comment's first guess, made from the
+    # family being repaired rather than from a measurement.
+    #
+    # Two limits, stated because neither is going to be argued away.
+    # **A term in a module-level table the body indexes is invisible** -- it is
+    # in neither the defaults nor the closure, and this codebase does reach for
+    # that shape. **And binding is not using**: a term bound as an exemption
+    # sentinel, or used only inside a message, is counted as named, so a rule
+    # correct for its edition can be failed over a term it never reads. That
+    # direction is loud -- somebody sees a failing gate and looks -- which is
+    # the trade this whole check exists to make.
+    named.extend(_iirds_terms_bound_into(rule.fn))
+    return list(dict.fromkeys(named))
+
+
+def _iirds_terms_bound_into(fn) -> list:
+    """iiRDS IRIs sitting in a function's defaults or closure, at any depth."""
+    def walk(value, depth=0):
+        if isinstance(value, URIRef):
+            text = str(value)
+            return [text] if text.startswith(NAMESPACE) else []
+        # Sequences, not dicts. Walking dict values was added to close the
+        # "terms live in a table" hole and does not: a table a rule indexes is
+        # a module global, which is in neither the defaults nor the closure.
+        # What it did do is charge a rule that closes over a shared table with
+        # every term in it, including ones its declared edition may lack. It
+        # bought nothing and cost a way to fail a correct rule.
+        if depth < 6 and isinstance(value, (tuple, list, set, frozenset)):
+            return [t for item in value for t in walk(item, depth + 1)]
+        return []
+
+    found = []
+    for value in (getattr(fn, "args", None) or ()):
+        found += walk(value)
+    for value in (getattr(fn, "keywords", None) or {}).values():
+        found += walk(value)
+    # A rule is whatever callable was registered. `functools.partial` and a
+    # callable class instance are both legal and neither has `__defaults__`;
+    # reading it unguarded took the whole check down with an AttributeError,
+    # which is a strange way for a gate to report that it cannot see something.
+    for value in (getattr(fn, "__defaults__", None) or ()):
+        found += walk(value)
+    for value in (getattr(fn, "__kwdefaults__", None) or {}).values():
+        found += walk(value)
+    for cell in (getattr(fn, "__closure__", None) or ()):
+        try:
+            found += walk(cell.cell_contents)
+        except ValueError:                      # an empty cell
+            continue
+    wrapped = getattr(fn, "__wrapped__", None)
+    if wrapped is not None:
+        found += _iirds_terms_bound_into(wrapped)
+    return found
 
 
 def refresh() -> int:
@@ -177,7 +303,7 @@ def check() -> int:
     inventory = {k: set(v) for k, v in
                  json.loads(INVENTORY.read_text("utf-8"))["terms"].items()}
 
-    problems, unanswerable = [], []
+    problems, unanswerable, unclassified = [], [], []
     for rule in all_rules():
         named = terms_named_by(rule)
         # A rule that names nothing passes by naming nothing. For a container
@@ -188,8 +314,10 @@ def check() -> int:
         # relations it watches are absent from 1.0, and this printed a clean
         # line. Reported rather than refused, because refusing wants a reason
         # written per rule and there are sixteen of them.
-        if not named and rule.kind in ("schema", "lint"):
+        if not named and _reads_the_graph(rule):
             unanswerable.append(rule.id)
+            if rule.id not in NAMES_NO_TERM:
+                unclassified.append(rule.id)
         # `versions=()` means "every edition", which is how the registry reads
         # it at runtime -- and `or ()` made it mean "no edition" here, so 23
         # rules were exempt from the one check that asks whether a rule cites
@@ -208,6 +336,20 @@ def check() -> int:
         print("  %-9s claims %-5s where %s did not exist"
               % (rule_id, version, ", ".join(absent[:3])), file=sys.stderr)
 
+    stale = sorted(set(NAMES_NO_TERM) - {rule.id for rule in all_rules()})
+    if stale:
+        print("\nNAMES_NO_TERM names %d rule(s) that no longer exist: %s"
+              % (len(stale), ", ".join(stale)), file=sys.stderr)
+        return 1
+
+    if unclassified:
+        print("\n%d graph rule(s) name no iiRDS term and are not declared in "
+              "NAMES_NO_TERM: %s\n  This check passes a rule that names nothing "
+              "by saying nothing about it. Add a line saying what it looks at "
+              "instead; which kind of silence it is comes from the code."
+              % (len(unclassified), ", ".join(sorted(unclassified))), file=sys.stderr)
+        return 1
+
     if problems:
         print("\n%d rule/version claim(s) name vocabulary that version did not have."
               % len(problems), file=sys.stderr)
@@ -218,7 +360,8 @@ def check() -> int:
     print("no rule claims a version whose vocabulary lacks the terms it names "
           "(checked against %s%s)" % (", ".join(checked), tail))
     if unanswerable:
-        print("  %d graph rule(s) name no term, so this says nothing about them: %s"
+        print("  %d rule(s) read the graph and name no iiRDS term, so this check "
+              "says nothing about them: %s"
               % (len(unanswerable), ", ".join(sorted(unanswerable))))
     return 0
 

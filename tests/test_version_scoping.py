@@ -261,3 +261,177 @@ def test_nothing_reads_an_empty_versions_as_no_edition():
     assert offenders == [], (
         "these read an empty `versions` as no edition rather than as every "
         "edition, which turns a loop into a no-op: %s" % offenders)
+
+
+# ---------------------------------------------------------------------------
+# What the inventory can and cannot see
+#
+# `tools/version_inventory.py` finds a rule's terms by reading its source for
+# `T.<name>`, and passes any rule that names none -- vacuously, with a clean
+# line. That is the truth for a container rule whose subject is ZIP bytes. It
+# is not the truth for a rule that reads the graph, and the difference was
+# invisible until L16 declared all five editions while eight of the relations
+# it watches are absent from 1.0.
+# ---------------------------------------------------------------------------
+
+def test_the_inventory_sees_terms_a_factory_bound_rather_than_a_body_spelled():
+    """A rule built by a factory names its terms at the call site.
+
+    R19 to R23 are one builder called four times, so their `T.` constants are
+    arguments and never appear in the function the inventory reads. The terms
+    are not hidden, though -- they are sitting in the function object, as
+    default arguments and closure cells -- so this is a limit of where the tool
+    looked rather than of what it could know.
+    """
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    from version_inventory import terms_named_by
+
+    by_id = {r.id: r for r in all_rules()}
+    named = terms_named_by(by_id["R19"])
+    assert "http://iirds.tekom.de/iirds#has-document-type" in named, named
+    assert "http://iirds.tekom.de/iirds#is-applicable-for-document-type" in named, named
+    assert "http://iirds.tekom.de/iirds#DocumentType" in named, named
+
+
+def test_the_rules_the_inventory_cannot_answer_for_are_declared():
+    """A rule that reads the graph and names no term is not answered by this
+    check, and it passed with a clean line.
+
+    Enumerated so a new one has to be looked at, and stale entries refused so
+    the list cannot outlive the rules.
+
+    **Which kind** of silence each is, the list does not say, after two goes at
+    it. Written by hand, five of fourteen reasons were false -- M2.1's said its
+    classes come from the generated table, and that table has no
+    `InformationUnit` row. Derived from the source, the split turned on how the
+    access is spelled rather than on what is read: L13 and L14 both scan the
+    ontology's whole defined-term set and landed on opposite sides. A label
+    this project cannot make true is worse than no label.
+    """
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    from version_inventory import NAMES_NO_TERM, _reads_the_graph, terms_named_by
+
+    silent = {r.id for r in all_rules() if _reads_the_graph(r) and not terms_named_by(r)}
+    assert silent == set(NAMES_NO_TERM), sorted(silent ^ set(NAMES_NO_TERM))
+    for rule_id, note in NAMES_NO_TERM.items():
+        assert len(note) > 20, (rule_id, note)
+
+
+def test_a_rule_that_is_not_a_plain_function_does_not_take_the_check_down():
+    """A rule is whatever callable was registered, and `functools.partial` and
+    a callable class instance are both legal.
+
+    Reading `__defaults__` unguarded raised an AttributeError out of the middle
+    of `make versions`. Guarding it without unwrapping was worse: `getsource`
+    raises on a partial too, so the reached source came back empty and the rule
+    read as naming no term *and* as not touching the graph -- neither answered
+    nor refused, silently. The first version of this test asserted the empty
+    list, which pinned the blindness as the expectation.
+    """
+    import functools
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    from version_inventory import _iirds_terms_bound_into, _source_the_rule_reaches
+
+    def inner(ctx, prop):
+        for _subject, _value in ctx.graph.subject_objects(prop):
+            pass
+
+    partial = functools.partial(inner, prop=T.title)
+    assert str(T.title) in _iirds_terms_bound_into(partial)
+    assert "ctx.graph" in _source_the_rule_reaches(partial)
+
+    class Callable:
+        def __call__(self, ctx):
+            return None
+
+    assert _iirds_terms_bound_into(Callable()) == []
+
+
+def test_a_keyword_only_default_is_seen_and_a_shared_table_is_not_charged():
+    """A keyword-only default is how a factory pins one argument, and it
+    returned nothing.
+
+    A dict is deliberately not walked, which is the other half. Walking dict
+    values was added to close the "terms live in a table" hole and does not:
+    a table a rule indexes is a module global, in neither the defaults nor the
+    closure. What it did was charge a rule closing over a shared table with
+    every term in it -- so a rule correct for its edition failed over a term
+    it never reads. The hole it was for stays open and is written down.
+    """
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    from version_inventory import _iirds_terms_bound_into
+
+    def keyword_only(ctx, *, prop=T.title):
+        return prop
+
+    # A mutable default is the shape being reproduced, not a style choice:
+    # the walker's question is what sits in `__defaults__`, and a table is
+    # what a factory would put there.
+    def closes_over_a_table(ctx, table={"a": T.title, "b": T.revision}):  # noqa: B006
+        return table["a"]
+
+    assert str(T.title) in _iirds_terms_bound_into(keyword_only)
+    assert _iirds_terms_bound_into(closes_over_a_table) == []
+
+
+#: What each derived population holds that an older edition's vocabulary does
+#: not. Measured, because the numbers are the reason `NAMES_NO_TERM` records
+#: "not answered here" rather than "nothing to answer".
+OUTRUNS_THE_EDITION = {
+    "relation_properties": {"1.0": 8, "1.0.1": 8, "1.1": 6, "1.2": 3, "1.3": 0},
+    "vocabulary_classes": {"1.0": 4, "1.0.1": 4, "1.1": 2, "1.2": 1, "1.3": 0},
+    # Not attributed to a rule. `classes()` is what `vocabulary_classes` starts
+    # from, and it was pinned here as L13's -- L13 scans `defined_terms()`,
+    # which is 327 terms and 46 missing from 1.0, not 78 and 8. Kept because
+    # the class list moving is worth seeing; named for what it is.
+    "every class the ontology declares": {"1.0": 8, "1.0.1": 8, "1.1": 5,
+                                          "1.2": 2, "1.3": 0},
+}
+
+
+def test_how_far_each_derived_population_outruns_the_older_editions():
+    """Only the newest ontology ships, so a rule that derives its population
+    from it derives the same population whatever a package declares.
+
+    L16 filters by the declared edition -- a name 1.0 does not have is not one
+    of its relations, and L15's sentence is the right one about it. R18 does
+    not, and whether it should is a question per rule rather than a defect
+    established here: R18 asks whether a proprietary extension is described,
+    which is orthogonal to when a term arrived.
+
+    Recomputed from each edition's own published ontology by a reviewer: both
+    populations are strictly monotone across 1.0 to 1.3 with no class or
+    property changing side, so neither rule can reclassify anything on an older
+    edition. That is why this stays a pinned measurement and not a repair.
+
+    Pinned so the question stays visible and so a change in either direction --
+    a rule starting to filter, or the ontology moving -- is a diff somebody
+    reads.
+    """
+    from iirds_validate.ontology import load
+    from iirds_validate.rules.lint import relation_properties
+    from iirds_validate.rules.requirements import vocabulary_classes
+
+    ontology = load()
+    editions = version_terms()
+    populations = {
+        "relation_properties": relation_properties(ontology),
+        "vocabulary_classes": vocabulary_classes(ontology),
+        "every class the ontology declares": ontology.classes(),
+    }
+    for name, population in populations.items():
+        terms = {str(term) for term in population}
+        measured = {v: len(terms - set(editions[v])) for v in editions}
+        assert measured == OUTRUNS_THE_EDITION[name], (name, measured)

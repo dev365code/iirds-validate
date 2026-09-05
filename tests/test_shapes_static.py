@@ -305,19 +305,31 @@ def test_no_shape_table_names_a_rule_twice():
     """
     import ast
 
-    source = (ROOT / "tools" / "emit_shacl.py").read_text("utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Dict):
-            continue
-        names = [t.id for t in node.targets if isinstance(t, ast.Name)]
-        if not names or names[0] not in ("CORE_FORMS", "SPARQL_FORMS", "DEFERRED_V11",
-                                         "NOT_EXPRESSIBLE", "NOOP"):
-            continue
-        keys = [k.value for k in node.value.keys
-                if isinstance(k, ast.Constant) and isinstance(k.value, str)]
-        duplicates = sorted({k for k in keys if keys.count(k) > 1})
-        assert duplicates == [], "%s names these twice: %s" % (names[0], duplicates)
+    # Every tool, not only the emitter: the same thing happened a second time
+    # in `version_inventory.py`, where a rewrite left two `NAMES_NO_TERM`
+    # literals and the later one won in silence.
+    for path in sorted((ROOT / "tools").glob("*.py")):
+        tree = ast.parse(path.read_text("utf-8"))
+        # Top level only. A `global NAME` write inside a function is a
+        # deliberate rebinding and reads as a duplicate to `ast.walk`;
+        # `tools/crossvalidate.py` does exactly that with EMPTY_UPSTREAM.
+        assigned = {}
+        for node in tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if not isinstance(target, ast.Name) or not target.id.isupper():
+                    continue
+                assigned.setdefault(target.id, []).append(node)
+                if isinstance(node.value, ast.Dict):
+                    keys = [k.value for k in node.value.keys
+                            if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+                    twice = sorted({k for k in keys if keys.count(k) > 1})
+                    assert twice == [], "%s: %s names these twice: %s" % (
+                        path.name, target.id, twice)
+        rebound = sorted(name for name, nodes in assigned.items() if len(nodes) > 1)
+        assert rebound == [], "%s assigns these upper-case names twice: %s" % (
+            path.name, rebound)
 
 
 def test_the_emitted_rule_set_is_pinned_by_name():

@@ -45,15 +45,38 @@ def test_notice_scopes_apache_away_from_the_third_party_material():
 
 def test_the_ontologies_are_byte_for_byte_as_published():
     """The whole basis for bundling them is that they are unmodified. If that
-    stops being true, the licence stops permitting redistribution."""
+    stops being true, the licence stops permitting redistribution.
+
+    Both directions, because one of them is the only one that matters here.
+    Walking the manifest and hashing what it names cannot see a file the
+    manifest stopped naming -- and deleting a line is easier than forging a
+    digest. Measured: drop the `iirds-core.rdf` line, add a class to tekom's
+    file, and `--verify` printed four "ok" lines and exited 0 while the forged
+    class was live in `subclasses_of(iirds:InformationUnit)`.
+
+    `tools/vendor_corpus.py::check` had this right for the vendored corpus
+    already; the ontologies got one half of it.
+    """
     sums = (ONTOLOGIES / "sha256sums.txt").read_text("utf-8")
     assert sums.strip(), "no checksums recorded"
+
+    recorded = {}
     for line in sums.splitlines():
         if not line.strip():
             continue
         digest, name = line.split(None, 1)
-        blob = (ONTOLOGIES / "1.3" / name.strip()).read_bytes()
-        assert hashlib.sha256(blob).hexdigest() == digest, name.strip()
+        recorded[name.strip()] = digest
+
+    shipped = {path.name for path in (ONTOLOGIES / "1.3").iterdir()
+               if path.suffix == ".rdf"}
+    assert shipped, "no ontology files at all"
+    assert set(recorded) == shipped, (
+        "the manifest and the directory disagree: unrecorded %s, missing %s"
+        % (sorted(shipped - set(recorded)), sorted(set(recorded) - shipped)))
+
+    for name, digest in sorted(recorded.items()):
+        blob = (ONTOLOGIES / "1.3" / name).read_bytes()
+        assert hashlib.sha256(blob).hexdigest() == digest, name
 
 
 def test_each_ontology_keeps_its_own_copyright_header():

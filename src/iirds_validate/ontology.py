@@ -152,18 +152,34 @@ def _verify() -> int:
     if not resources.exists(ONTOLOGIES, "sha256sums.txt"):
         print("sha256sums.txt missing", file=sys.stderr)
         return 2
-    bad = 0
+    recorded = {}
     for line in resources.read_text(ONTOLOGIES, "sha256sums.txt").splitlines():
-        if not line.strip():
-            continue
-        digest, name = line.split(None, 1)
-        present = resources.exists(ONTOLOGIES, LATEST_VERSION, name.strip())
+        if line.strip():
+            digest, name = line.split(None, 1)
+            recorded[name.strip()] = digest
+
+    # Both directions. Walking the manifest and hashing what it names cannot
+    # see a file the manifest stopped naming, and deleting a line is easier
+    # than forging a digest: with the `iirds-core.rdf` line removed this
+    # printed four "ok" lines and exited 0 while a class added to tekom's file
+    # was live in the class hierarchy.
+    shipped = sorted(n for n in resources.listdir(ONTOLOGIES, LATEST_VERSION)
+                     if n.endswith(".rdf"))
+    unrecorded = [n for n in shipped if n not in recorded]
+    if unrecorded:
+        print("shipped but not in sha256sums.txt: %s" % ", ".join(unrecorded),
+              file=sys.stderr)
+        return 1
+
+    bad = 0
+    for name, digest in sorted(recorded.items()):
+        present = resources.exists(ONTOLOGIES, LATEST_VERSION, name)
         actual = (hashlib.sha256(resources.read_bytes(ONTOLOGIES, LATEST_VERSION,
-                                                      name.strip())).hexdigest()
+                                                      name)).hexdigest()
                   if present else "<missing>")
         status = "ok" if actual == digest else "FAILED"
         bad += status == "FAILED"
-        print(f"{name.strip():24} {status}")
+        print(f"{name:24} {status}")
     if bad:
         print(f"\n{bad} vendored ontology file(s) modified — see data/ontologies/README.md", file=sys.stderr)
     return 1 if bad else 0

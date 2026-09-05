@@ -7,7 +7,7 @@ from the two tools can be compared directly.
 """
 from __future__ import annotations
 
-from rdflib import Literal, URIRef
+from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from .. import terms as T
@@ -760,20 +760,23 @@ def m94_administrative_metadata_relation_not_direct(ctx):
 @rule("M19.4",
        fix="Type the target of iirds:has-identity-domain as iirds:IdentityDomain. Pointing at something else leaves a consumer unable to tell which scheme the identifier is in.")
 def m19_4_identity_domain_is_typed(ctx):
-    # The whole closure, not the package's own half: everything beneath
-    # iirds:IdentityDomain is an identity domain, and this rule asks what a
-    # node *is* rather than demanding something of a population -- the
-    # direction where a wider reading can only make it quieter. Asking for the
-    # parent type verbatim reported a package for doing what section 7
-    # sanctions and L5 recommends.
-    domains = set(ctx.instances_of(T.IdentityDomain))
-    for identity, domain in ctx.graph.subject_objects(T.has_identity_domain):
-        if (domain, None, None) not in ctx.graph:
-            continue          # not described here at all; L1 reports the dangling reference
-        if domain not in domains:
-            yield Violation("the object of iirds:has-identity-domain must be an instance of "
-                            "iirds:IdentityDomain",
-                            subject=ctx.ref(identity), detail=ctx.ref(domain))
+    """The family's helper, not a fourth copy of it.
+
+    This was written by hand and exempted any node the package does not
+    describe, which is the dangling-reference branch -- but a literal carries
+    no triples either, and neither does a term the ontology defines. Both fell
+    through, and both are exactly what the sentence is about: text where a
+    domain belongs, and `iirds:Author` where a domain belongs.
+
+    The gap was invisible from here and visible from outside: a measurement
+    that probed with a literal read this rule as absent and a sixth rule was
+    written beside it, firing on the same triple. The helper's own docstring
+    is where that warning lives.
+    """
+    yield from _points_at_an_instance_of(
+        ctx, T.has_identity_domain, T.IdentityDomain,
+        "the object of iirds:has-identity-domain must be an instance of "
+        "iirds:IdentityDomain")
 
 
 
@@ -828,9 +831,140 @@ def _points_at_an_instance_of(ctx, prop, cls, message):
             continue
         if (not isinstance(value, Literal)
                 and not ctx.ontology.is_defined(value)
-                and (value, None, None) not in ctx.graph):
+                and (value, None, None) not in ctx.graph
+                # An IRI nothing describes is a pointer at nothing and L1's
+                # business -- unless it is in the standard's own namespace,
+                # where nobody mints a name by accident. That is an author
+                # reaching for a term of the standard and missing, which is
+                # what `names_a_defined_term` says and what R12 already reads
+                # it as. The reference corpus's own counterexample for the
+                # document-type sentence is one of these.
+                and not ctx.names_a_defined_term(value)
+                # A blank node with no statements is not L1's business either:
+                # L1 looks at IRIs only, so leaving it there left it reported
+                # by nothing at all.
+                and not isinstance(value, BNode)):
             continue          # undescribed reference: L1's business
         yield Violation(message, subject=ctx.ref(subject), detail=ctx.ref(value))
+
+
+# ---------------------------------------------------------------------------
+# The X half of five sentences that name a class and a property
+#
+# `_points_at_an_instance_of` above says three sentences of chapter 6 have this
+# shape. Measuring it -- one package per relation with the property written as
+# a literal, asking which MUST-level rule goes quiet -- says eight, and these
+# are the five that never got their second rule. One builder rather than five
+# functions, for the reason that helper's own docstring gives: the first two
+# were written separately and had drifted apart on the exemptions by the time
+# the third arrived.
+#
+# None of them claims anything, and each was drafted claiming a sentence.
+# Every one of those claims turned out unearned, for a different reason, and
+# the reasons are worth keeping because each is a way of misreading a sentence
+# that names a class and a property:
+#
+#   x6-5-1#1  says "one or more relations to one of the **standardized**
+#             iirds:DocumentTypes ... Additional proprietary ... MAY be used".
+#             A document related only to a proprietary type breaks it and
+#             neither half reports that -- R19's remedy text used to recommend
+#             it. The standardised clause is a third rule nobody has written.
+#   the two selector rows carry one sentence between them, "A range selector
+#             MUST reference one start and one end selector", stated once per
+#             property. A range with a start and no end breaks the start row
+#             and is reported by M14.2, which claims the end row. Neither
+#             claimant of either id reports it.
+#   x6-8-1#3, x6-8-4#7 are cardinality: "MUST point to exactly one domain by
+#             the property". The class of the domain is the *next* sentence,
+#             which carries no keyword and is not an extracted requirement.
+#             These rules do not count, so they do not answer those sentences;
+#             the rules that count them already claim them.
+#
+# So the rules stand on what they report and the coverage figure does not move.
+# ---------------------------------------------------------------------------
+
+#: rule id -> the properties its body reads, in order. The shape has to target
+#: all of them: a `sh:sparql` constraint runs at the shape's focus nodes, so a
+#: second query under a one-property target is evaluated only where the first
+#: property happens to be present as well -- and across the vendored corpus no
+#: subject carries both of R19's, so the shape examined none of the three
+#: thousand triples its Python examines. Read by the gate that compares them.
+TARGET_RULE_PATHS = {}
+
+
+def _target_rule(rule_id, paths, target, requirements, partner, versions,
+                 path_names, target_name, why):
+    # Not "on an iirds:Document". These rules read the property wherever it
+    # occurs -- `ctx.graph.subject_objects(prop)`, and `sh:targetSubjectsOf` is
+    # class-free the same way -- so a title naming a subject class asserted a
+    # scope the code does not enforce and told a Topic it was a Document. The
+    # ontology's declared domain is not the population either: the second of
+    # R19's two properties has domain `iirds:InformationUnit`.
+    both = " and ".join(path_names)
+    TARGET_RULE_PATHS[rule_id] = tuple(path_names)
+
+    @rule(rule_id, kind="schema", prio="MUST", versions=versions, variants=(),
+          covers=requirements,
+          title="%s must point at an %s" % (both, target_name),
+          spec=CATALOG.get(partner, {}).get("spec"),   # the sentence the partner counts
+          fix="Point %s at an instance of %s or one of its subclasses. %s"
+              % (both, target_name, why))
+    def check(ctx, _paths=paths, _target=target, _names=path_names):
+        for path, name in zip(_paths, _names):
+            yield from _points_at_an_instance_of(
+                ctx, path, _target, "%s must point at an %s" % (name, target_name))
+
+    check.__name__ = "%s_%s_points_at_%s" % (
+        rule_id.lower(), path_names[0].split(":")[-1].replace("-", "_"),
+        target_name.split(":")[-1])
+    check.__doc__ = (
+        "%s counts the property; this asks what it points at.\n\n    %s" % (partner, why))
+    return check
+
+
+r19 = _target_rule(
+    "R19", (T.has_document_type, T.is_applicable_for_document_type),
+    T.DocumentType, (), "M15.1",
+    ("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+    ("iirds:has-document-type", "iirds:is-applicable-for-document-type"),
+    "iirds:DocumentType",
+    "A document type written as text is not one of the standardised types, and a "
+    "consumer routing documents by type -- installation, maintenance, spare parts -- "
+    "cannot route on a string it has no definition for. Until this rule existed, "
+    "naming the type as text passed where leaving it out failed.")
+
+r20 = _target_rule(
+    "R20", (T.has_start_selector,), T.FragmentSelector,
+    (), "M14.1",
+    ("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+    ("iirds:has-start-selector",), "iirds:FragmentSelector",
+    "A range with a start that is not a fragment selector names no position in the "
+    "file, so the range cannot be resolved even though both ends are present.")
+
+r21 = _target_rule(
+    "R21", (T.has_end_selector,), T.FragmentSelector,
+    (), "M14.2",
+    ("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+    ("iirds:has-end-selector",), "iirds:FragmentSelector",
+    "A range with an end that is not a fragment selector names no position in the "
+    "file, so the range cannot be resolved even though both ends are present.")
+
+r23 = _target_rule(
+    "R23", (T.has_classification_domain,), T.ClassificationDomain,
+    # Not `rdfclasses_core_ExternalClassification#1`. That appendix row's
+    # second sentence -- "Each classification MUST be related to the
+    # classification domain within which it is unambiguous" -- is this same
+    # obligation, and both halves would have to claim it. M96.1's title is the
+    # catalogue's wording, which says "An external classification" in prose, so
+    # the name heuristic in `test_requirement_coverage` cannot see the class in
+    # it. Rewriting somebody else's sentence to satisfy a heuristic is what that
+    # gate's own docstring warns against, so the row stays unclaimed and this
+    # says why.
+    (), "M96.1", ("1.2", "1.3"),
+    ("iirds:has-classification-domain",), "iirds:ClassificationDomain",
+    "The domain is what makes the classification unambiguous, which is what the "
+    "appendix asks for in so many words. Pointing at anything else leaves a code "
+    "with no scheme to read it against.")
 
 
 @rule("R17", kind="schema", prio="MUST",

@@ -522,7 +522,6 @@ UNAUDITED = frozenset((
     "x6-3-content-references-of-information-units#4",
     "x6-3-content-references-of-information-units#5",
     "x6-7-3-packages-related-to-component-trees#5",
-    "x6-8-1-complex-identity#3", "x6-8-4-external-classification#7",
     "x6-9-1-directory-nodes#5", "x6-9-2-hierarchical-navigation#1",
     "x6-9-2-hierarchical-navigation#2", "x8-3-1-1-mandatory-content-list#2",
     "x8-3-1-2-nesting-of-packages#2",
@@ -561,6 +560,14 @@ NAMED_CASES = {
         "test_package_product_variant:test_each_package_bullet_is_reported",
     "x8-3-2-metadata-requirements#6":
         "test_package_product_variant:test_the_manufacturer_bullets_are_reported",
+    # Two cardinality sentences -- "MUST point to exactly one domain by the
+    # property" -- held by the package that has two. They were first held by a
+    # package pointing at one domain of the wrong class, which has exactly one
+    # and breaks the *next* sentence rather than this one.
+    "x6-8-1-complex-identity#3":
+        "test_relation_targets:test_two_domains_is_what_breaks_the_cardinality_sentence",
+    "x6-8-4-external-classification#7":
+        "test_relation_targets:test_two_domains_is_what_breaks_the_cardinality_sentence",
     "x6-12-rdf-serialization#3":
         "test_silent_pass:test_a_handover_jsonld_that_carries_no_iirds_metadata_is_reported",
     "x6-8-3-parties-and-roles#3":
@@ -780,7 +787,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
     assert len(CLAIMED) == 131, len(CLAIMED)
-    assert len(UNAUDITED) == 37, len(UNAUDITED)
+    assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
     published = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)

@@ -50,7 +50,7 @@ def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
     assert counts["core_emitted"] == 122
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 28
+    assert counts["sparql_emitted"] == 32
     assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 47
     assert counts["noop"] == 1
@@ -288,7 +288,36 @@ EMITTED_IDS = frozenset((
     "M80", "M81", "M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89",
     "M9", "M90", "M91", "M92", "M93", "M94", "M95", "M96.1", "M96.2",
     "M96.3", "M97.1", "M97.2", "R1", "R10", "R12", "R2", "R4", "R5",
-    "R13", "R14", "R15", "R16", "R17", "R6", "R7", "S4", "S5"))
+    "R13", "R14", "R15", "R16", "R17", "R19", "R20", "R21", "R23",
+    "R6", "R7", "S4", "S5"))
+
+
+def test_no_shape_table_names_a_rule_twice():
+    """A duplicate key in a dict literal is not an error in Python -- the last
+    one wins, silently. `emit_shacl.build()` refuses a rule classified in two
+    *tables*, and nothing looked inside one.
+
+    It happened: M19.4 already had a hand-written query in `SPARQL_FORMS`, a
+    second entry was added below it, and the file emitted the new one with no
+    complaint. The count of edition-specific shapes is what noticed, three
+    steps later. Read from the source rather than from the imported dict,
+    because by then the duplicate is gone.
+    """
+    import ast
+
+    source = (ROOT / "tools" / "emit_shacl.py").read_text("utf-8")
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Dict):
+            continue
+        names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        if not names or names[0] not in ("CORE_FORMS", "SPARQL_FORMS", "DEFERRED_V11",
+                                         "NOT_EXPRESSIBLE", "NOOP"):
+            continue
+        keys = [k.value for k in node.value.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+        duplicates = sorted({k for k in keys if keys.count(k) > 1})
+        assert duplicates == [], "%s names these twice: %s" % (names[0], duplicates)
 
 
 def test_the_emitted_rule_set_is_pinned_by_name():

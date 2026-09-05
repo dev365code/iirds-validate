@@ -320,8 +320,16 @@ def _points_at_an_instance_of(prop, cls, instances):
     triples, so `EXISTS { ?value ?p ?o }` used to drop them silently.
 
     Read as: report unless the data graph types it right, or the ontology does;
-    and among what is left, report a literal, a term the standard defines, or a
-    node this package describes -- an undescribed IRI is L1's business.
+    and among what is left, report a literal, a term the standard defines, a
+    node this package describes, a blank node, or any name in an iiRDS
+    namespace -- an undescribed IRI *elsewhere* is L1's business.
+
+    The last two arrived together with their Python. A blank node with no
+    statements read as undescribed and went to L1, which looks at IRIs only,
+    so it was reported by nothing; and a name in the standard's own namespace
+    that the standard does not define is an author reaching for a term and
+    missing rather than a pointer at nothing, which is what R12 already reads
+    it as and what the reference corpus's own document-type counterexample is.
     """
     return ("""SELECT $this ?value WHERE {
   $this <%(ii)s""" + prop + """> ?value .
@@ -329,7 +337,9 @@ def _points_at_an_instance_of(prop, cls, instances):
   FILTER (?value NOT IN (%(""" + instances + """)s))
   FILTER (isLiteral(?value)
           || ?value IN (%(defined_terms)s)
-          || EXISTS { ?value ?p2 ?o2 }) }""")
+          || EXISTS { ?value ?p2 ?o2 }
+          || isBlank(?value)
+          || %(ns_v)s) }""")
 
 
 def _domain_manufacturer_query(type_list, subject="Document"):
@@ -481,11 +491,6 @@ SPARQL_FORMS = {
     "S5": ("subjects", "iirds:formatRestriction", ["""SELECT $this ?value WHERE {
   $this <%(ii)sformatRestriction> ?value .
   FILTER (!REGEX(STR(?value), "^\\\\\\\\s*(A|H)?\\\\\\\\s*$")) }"""]),
-    "M19.4": ("subjects", "iirds:has-identity-domain", ["""SELECT $this ?value WHERE {
-  $this <%(ii)shas-identity-domain> ?value .
-  FILTER EXISTS { ?value ?p2 ?o2 }
-  FILTER NOT EXISTS {
-    ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sIdentityDomain> } }"""]),
     # Python exempts a role that is (a) an instance of PartyRole under the
     # closure, (b) any term the bundled ontology defines, or (c) undescribed
     # (L1's business). The old namespace-prefix exemption approximated (b)
@@ -494,6 +499,36 @@ SPARQL_FORMS = {
     # list, generated from the same ontology Python reads.
     "M22.2": ("subjects", "iirds:has-party-role",
               [_points_at_an_instance_of("has-party-role", "PartyRole", "party_roles")]),
+    # The five that had only a counting rule. Same builder as M22.2 and R10,
+    # because it is the same sentence shape; R19 takes two queries because
+    # M15.1, the rule that counts for it, accepts either property.
+    # Both properties in the target, not only the first. A `sh:sparql`
+    # constraint runs at the shape's focus nodes, so with one target the second
+    # query was evaluated only on subjects that also carried the first --
+    # and across the vendored corpus no subject carries both, so the shape
+    # examined none of the 3778 `is-applicable-for-document-type` triples that
+    # Python examines. The differential gate could not see it because its table
+    # is keyed by rule and names one property per rule.
+    "R19": ("subjects", "iirds:has-document-type, iirds:is-applicable-for-document-type",
+            [_points_at_an_instance_of("has-document-type", "DocumentType", "document_types"),
+             _points_at_an_instance_of("is-applicable-for-document-type", "DocumentType",
+                                       "document_types")]),
+    # M19.4 became the family's fourth member instead of a fourth copy of it,
+    # so its shape is the family's query rather than the one that used to sit
+    # here, which asked `EXISTS { ?value ?p ?o }` and so let a literal and an
+    # ontology-defined term of the wrong kind past in step with its Python.
+    "M19.4": ("subjects", "iirds:has-identity-domain",
+              [_points_at_an_instance_of("has-identity-domain", "IdentityDomain",
+                                         "identity_domains")]),
+    "R20": ("subjects", "iirds:has-start-selector",
+            [_points_at_an_instance_of("has-start-selector", "FragmentSelector",
+                                       "fragment_selectors")]),
+    "R21": ("subjects", "iirds:has-end-selector",
+            [_points_at_an_instance_of("has-end-selector", "FragmentSelector",
+                                       "fragment_selectors")]),
+    "R23": ("subjects", "iirds:has-classification-domain",
+            [_points_at_an_instance_of("has-classification-domain", "ClassificationDomain",
+                                       "classification_domains")]),
     # M22.2's shape, one property over: the twin sentence in section 6.8.2.
     "R10": ("subjects", "iirds:has-content-lifecycle-status-value",
             [_points_at_an_instance_of("has-content-lifecycle-status-value",
@@ -1101,6 +1136,14 @@ def build() -> dict:
                  "party_roles": _term_list(_ONTOLOGY.instances_of(T.PartyRole)),
                  "status_values": _term_list(
                      _ONTOLOGY.instances_of(T.ContentLifeCycleStatusValue)),
+                 # The other five sentences of the same shape. Same source,
+                 # same reason: a list written here is a copy of the ontology.
+                 "document_types": _term_list(_ONTOLOGY.instances_of(T.DocumentType)),
+                 "fragment_selectors": _term_list(
+                     _ONTOLOGY.instances_of(T.FragmentSelector)),
+                 "identity_domains": _term_list(_ONTOLOGY.instances_of(T.IdentityDomain)),
+                 "classification_domains": _term_list(
+                     _ONTOLOGY.instances_of(T.ClassificationDomain)),
                  "vcard_kinds": _term_list(VCARD_KINDS | ORGANISATION_TYPES),
                  "organisation_types": _term_list(ORGANISATION_TYPES)}
         lines = ["%s a sh:NodeShape ;" % sid]

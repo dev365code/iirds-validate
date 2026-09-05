@@ -403,9 +403,15 @@ def test_the_corpus_figure_the_changelog_publishes():
 #: rather than listed: the release notes and the rule's own docstring name
 #: them, and a rule joining or leaving this set is a change to what L16 is for.
 ALREADY_A_MUST = {
+    "has-classification-domain": "R23",
     "has-content-lifecycle-status-value": "R10",
+    "has-document-type": "R19",
+    "has-end-selector": "R21",
     "has-first-child": "M26",
+    "has-identity-domain": "M19.4",
     "has-party-role": "M22.2",
+    "has-start-selector": "R20",
+    "is-applicable-for-document-type": "R19",
     "relates-to-administrative-metadata": "M94",
     "relates-to-component": "M17",
     "relates-to-product-variant": "M18",
@@ -415,10 +421,15 @@ ALREADY_A_MUST = {
 
 def test_the_relations_a_must_already_covers_are_the_ones_named(tmp_path):
     """"No rule read it" was the first draft's claim and it was false seven
-    times over. For seven of the forty-six the standard states the range
-    obligation in a sentence of its own, a rule implements it as a MUST, and
-    L16 restates it as a warning. That overlap is fine -- what is not fine is
-    a docstring that says the opposite of it.
+    times over, and is now false thirteen times over. For thirteen of the
+    forty-six the standard states the range obligation in a sentence of its
+    own, a rule implements it as a MUST, and L16 restates it as a warning.
+    That overlap is fine -- what is not fine is a docstring that says the
+    opposite of it.
+
+    Six of the thirteen arrived after this list did, when the five rules in
+    `test_relation_targets.py` were written. The list moved because it is
+    measured and not written down, which is the whole reason it is measured.
 
     Measured by running one package per relation rather than by reading the
     rules, because the question is what a package provokes and not what a

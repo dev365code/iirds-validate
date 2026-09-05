@@ -99,7 +99,11 @@ def test_how_far_the_name_heuristic_actually_reaches():
     # reads. That is the gate getting wider rather than the number drifting,
     # so it is moved on purpose and the two ends are named.
     assert {"R1", "R2", "R17"} <= {rid for rid, _ in asserted}, sorted(asserted)
-    assert all(requirement.startswith("rdfclasses_")
+    # `rdfrelations_` joined `rdfclasses_` when M14.1 and M14.2 claimed the
+    # range-selector rows: those name a *property* in the subject column, which
+    # the heuristic reads the same way. Wider on purpose, and named here so the
+    # widening is a diff rather than a prefix quietly added to a pattern.
+    assert all(requirement.startswith(("rdfclasses_", "rdfrelations_"))
                for rid, requirement in asserted
                if rid not in {"R1", "R2", "R17"}), sorted(asserted)
 

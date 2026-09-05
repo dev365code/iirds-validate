@@ -225,9 +225,14 @@ def test_the_term_reader_actually_reads_terms():
 
 def test_how_much_of_each_gate_is_actually_exercised():
     """Two loops that look alike and are not. Remedies name terms constantly,
-    so that gate is dense. Titles mostly do not -- six of the hundred this
-    project wrote itself -- so that one asserts something for eight rules and
-    nothing for the rest, and reads like a gate over all of them.
+    so that gate is dense. Titles mostly do not -- eleven of the hundred-odd
+    this project wrote itself -- so that one asserts something for twelve
+    rules and nothing for the rest, and reads like a gate over all of them.
+
+    It was eight until this family's rules arrived, whose titles name the
+    subject class, the property and the target class apiece. Denser is better here; the
+    number is moved on purpose rather than loosened to a floor, because a
+    floor would not notice the last term-naming title leaving.
 
     Written down rather than left to be discovered, and counted so that a
     reader who removes the last term-naming title finds out here instead of
@@ -237,6 +242,6 @@ def test_how_much_of_each_gate_is_actually_exercised():
     remedied = [r for r in RULES if list(_named_terms(r.fix))]
     terms_in_remedies = sum(len(list(_named_terms(r.fix))) for r in RULES)
 
-    assert len(titled) == 8, sorted(r.id for r in titled)
+    assert len(titled) == 12, sorted(r.id for r in titled)
     assert len(remedied) >= 120, len(remedied)
     assert terms_in_remedies >= 140, terms_in_remedies

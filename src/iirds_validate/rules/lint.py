@@ -953,12 +953,12 @@ def l16_relation_carries_a_literal(ctx):
     rules asking whether it is there are satisfied, and the rules asking about
     its target find a literal and step over it.
 
-    Seven rules already say this about seven of the forty-six -- R12 about
-    `iirds:relates-to-vcard`, M17 about `iirds:relates-to-component`, and M18,
-    M22.2, M26, M94 and R10 about theirs -- each as a MUST, because for those
-    the standard states the range obligation in a sentence of its own. This is
-    the same observation about the other thirty-nine, where it states none, and
-    where until now nothing reported it.
+    Twelve rules already say this about thirteen of the forty-six -- R12 about
+    `iirds:relates-to-vcard`, M17 about `iirds:relates-to-component`, R19 to
+    R23 about six more, and M18, M22.2, M26, M94 and R10 about theirs -- each
+    as a MUST, because for those the standard states the range obligation in a
+    sentence of its own. This is the same observation about the other
+    thirty-three, where it states none.
 
     A lint, and it claims nothing. `rdfs:range` in RDF is an inference and not
     a constraint, and there is no general sentence that a relation's object be

@@ -1337,13 +1337,32 @@ IIRDS_ = "http://iirds.tekom.de/iirds#"
 #: M22.2 and the wrong kind for R10, and a shared table said "wrong" for
 #: both -- caught here, which is the argument for asserting the verdict and
 #: not only the agreement.
+#: rule -> (property, the right referent, a term of the wrong kind, the wrapper
+#: describing the subject). The right referent is `("term", <local name>)` when
+#: the ontology supplies instances of the target class and the package may just
+#: name one, or `("described", <class>)` when it supplies none and the package
+#: has to describe its own -- which is not decoration: for those the builder's
+#: exemption list is empty, so the branch that exempts the ontology's own
+#: instances has nothing to exempt and is reached by no package at all.
 POINTS_AT = {
-    "M22.2": ("iirds:has-party-role", "Author", "Approved",
+    "M22.2": ("iirds:has-party-role", ("term", "Author"), "Approved",
               '<iirds:Party rdf:about="urn:test:subject">%s'
               '<iirds:relates-to-vcard rdf:resource="urn:test:card"/></iirds:Party>'),
-    "R10": ("iirds:has-content-lifecycle-status-value", "Approved", "Manufacturer",
+    "R10": ("iirds:has-content-lifecycle-status-value", ("term", "Approved"), "Manufacturer",
             '<iirds:ContentLifeCycleStatus rdf:about="urn:test:subject">%s'
             "</iirds:ContentLifeCycleStatus>"),
+    "R19": ("iirds:has-document-type", ("term", "OperatingInstructions"), "Approved",
+            '<iirds:Document rdf:about="urn:test:subject">%s</iirds:Document>'),
+    "R20": ("iirds:has-start-selector", ("described", "FragmentSelector"), "Approved",
+            '<iirds:RangeSelector rdf:about="urn:test:subject">%s</iirds:RangeSelector>'),
+    "R21": ("iirds:has-end-selector", ("described", "FragmentSelector"), "Approved",
+            '<iirds:RangeSelector rdf:about="urn:test:subject">%s</iirds:RangeSelector>'),
+    "M19.4": ("iirds:has-identity-domain", ("described", "IdentityDomain"), "Approved",
+              '<iirds:Identity rdf:about="urn:test:subject">%s</iirds:Identity>'),
+    "R23": ("iirds:has-classification-domain", ("described", "ClassificationDomain"),
+            "Approved",
+            '<iirds:ExternalClassification rdf:about="urn:test:subject">%s'
+            "</iirds:ExternalClassification>"),
 }
 
 #: Every branch of the helper, named by which referent reaches it. `fires` is
@@ -1363,9 +1382,17 @@ BRANCHES = [
 def test_both_encodings_agree_on_every_branch_of_points_at_an_instance_of(
         rule_id, what, target, fires, tmp_path):
     prop, right, wrong, wrapper = POINTS_AT[rule_id]
-    iri = {"class": IIRDS_ + "Topic", "wrong": IIRDS_ + wrong,
-           "right": IIRDS_ + right, "dangling": "urn:test:nothing"}[target]
-    metadata = _meta(wrapper % ('<%s rdf:resource="%s"/>' % (prop, iri)))
+    kind, name = right
+    described = ""
+    if target == "right" and kind == "described":
+        # The ontology supplies no instance of this target class, so the only
+        # way to be right is to describe one here.
+        iri = "urn:test:target"
+        described = '<iirds:%s rdf:about="urn:test:target"/>' % name
+    else:
+        iri = {"class": IIRDS_ + "Topic", "wrong": IIRDS_ + wrong,
+               "right": IIRDS_ + name, "dangling": "urn:test:nothing"}[target]
+    metadata = _meta(wrapper % ('<%s rdf:resource="%s"/>' % (prop, iri)) + described)
     py = python_fired(tmp_path, "%s_%d.iirds" % (rule_id, abs(hash(what))), metadata)
     sh = shacl_fired(metadata)
     assert py == sh, "%s %s: SHACL %s vs Python %s" % (
@@ -1402,6 +1429,40 @@ def test_the_points_at_family_is_the_one_this_file_knows_about():
                if form[0] == "subjects"
                and any("FILTER (?value NOT IN (" in q for q in form[2])}
     assert callers == set(POINTS_AT), sorted(callers ^ set(POINTS_AT))
+
+
+def test_the_exemption_list_is_empty_exactly_where_the_ontology_supplies_nothing():
+    """Four of the seven ask about a class the ontology declares and never
+    populates -- a fragment selector, an identity domain, a classification
+    domain are things a package describes, not names the standard hands out.
+
+    The builder still writes the exemption for them, as `NOT IN ()`: legal
+    SPARQL, always true, and a branch no package can reach. Asserted rather
+    than left to be noticed, because the day the standard starts supplying
+    instances of one of these the shape changes under a rule whose tests all
+    still pass, and this says so.
+    """
+    # Read from the emitted file and not from `SPARQL_FORMS`, whose entries are
+    # templates: the list is substituted in at emit time, so the generator's
+    # table says `%(fragment_selectors)s` for a populated class and an empty
+    # one alike. The artefact is what ships and what a stranger runs.
+    text = (SHAPE_DIR / "iirds-sparql.ttl").read_text("utf-8")
+    empty, missing = set(), set()
+    for rule_id in POINTS_AT:
+        head = "ivs:%s a sh:NodeShape" % rule_id
+        start = text.find(head)
+        if start == -1:
+            # A shape that is not in the file is not "a shape whose exemption
+            # list is non-empty", and skipping it made this gate pass with a
+            # third of the shapes it names deleted.
+            missing.add(rule_id)
+            continue
+        end = text.find("a sh:NodeShape", start + len(head))
+        if "NOT IN ())" in text[start:end if end != -1 else len(text)]:
+            empty.add(rule_id)
+    assert missing == set(), "these shapes are not in the file at all: %s" % sorted(missing)
+    described = {rid for rid, spec in POINTS_AT.items() if spec[1][0] == "described"}
+    assert empty == described, sorted(empty ^ described)
 
 
 # ---------------------------------------------------------------------------
@@ -1645,6 +1706,35 @@ def test_l16_counts_triples_and_not_nodes(tmp_path):
     python, shacl = _counted(L16_REPEATED, tmp_path, "l16count.iirds")
     assert python["L16"] == 3, python["L16"]
     assert shacl["L16"] == python["L16"], (python["L16"], shacl["L16"])
+
+
+def test_the_shape_targets_every_property_its_python_reads():
+    """A `sh:sparql` constraint runs at the shape's focus nodes.
+
+    R19 reads two properties and its shape declared one target, so the second
+    query was evaluated only on subjects that also carried the first. Across
+    the vendored corpus no subject carries both, so the shipped shape examined
+    none of the three thousand `iirds:is-applicable-for-document-type` triples
+    its Python examines -- and reverting the repair passed this whole file,
+    because `POINTS_AT` names one property per rule and the comparison is over
+    rule ids.
+
+    Read from the rules' own table of paths against the emitted file, so a
+    property added to a rule and not to its target fails here.
+    """
+    from iirds_validate.rules.schema import TARGET_RULE_PATHS
+
+    text = (SHAPE_DIR / "iirds-sparql.ttl").read_text("utf-8")
+    for rule_id, paths in sorted(TARGET_RULE_PATHS.items()):
+        head = "ivs:%s a sh:NodeShape" % rule_id
+        start = text.find(head)
+        assert start != -1, "%s has no shape in the file" % rule_id
+        end = text.find("a sh:NodeShape", start + len(head))
+        block = text[start:end if end != -1 else len(text)]
+        target = block[block.index("sh:targetSubjectsOf"):]
+        target = target[:target.index(";")]
+        for path in paths:
+            assert path in target, (rule_id, path, target.strip())
 
 
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():

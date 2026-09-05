@@ -14,10 +14,12 @@ rdf:resource="urn:x:party1"/>` points at a party, and
 rules asking whether it is there are satisfied, and the rules asking about its
 target find a literal and step over it.
 
-Seven rules already say this about seven of the forty-six relations — R10,
-R12, M17, M18, M22.2, M26 and M94 — each as a MUST, because for those the
-standard states the range obligation in a sentence of its own. L16 is the same
-observation about the other thirty-nine, where it states none. It is a
+Twelve rules already say this about thirteen of the forty-six relations —
+R10, R12, M17, M18, M22.2, M26, M94 and the five below — each as a MUST,
+because for those the standard states the range obligation in a sentence of its
+own. L16 is the same observation about the other thirty-three, where it states
+none. Seven of the thirteen were seven when L16 was written; the number is
+measured rather than listed, so adding those five moved it by itself. It is a
 warning and claims no obligation: `rdfs:range` in RDF is an inference and not a
 constraint, and the one general-looking range MUST, section 7.3.3's, is about a
 proprietary property complying with the iiRDS property it refines. Coverage is
@@ -58,7 +60,49 @@ that negates something else; `iirds:iirdsRelationConcept` and
 `iirds:relates-to-functional-metadata` were the two it missed. The shapes read
 the corrected set from the rule instead of computing it beside it.
 
-**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+**Four sentences that name a class and a property now have both their rules
+(R19–R21, R23).** A helper in this codebase says the shape out loud: *"MUST
+have an X which is assigned by property P" — the X half. Three sentences of
+chapter 6 have this shape and each needs two rules: one to count the property,
+one to ask what it points at.* Three is what somebody found by reading.
+
+The sharpest is the document type. A `iirds:Document` with no document type
+fails; the same document naming its type as the string "OperatingInstructions"
+**passed**. Writing text was better than leaving it out, which is the opposite
+of what the sentence says. The other three are not verdict flips — a neighbour
+reports those packages for another reason — but the finding a reader saw named
+a sentence they had not broken and offered the repair for it.
+
+**A fifth was drafted and withdrawn: `iirds:has-identity-domain` already had
+its second rule.** M19.4 has been asking what that property points at all
+along. The measurement that found this family probed with a literal, and M19.4
+exempted any node the package does not describe — a literal carries no
+statements, so a rule doing the job read as a rule that was missing, and a
+second one was written beside it that fired on the same triple. What the probe
+found was not a missing rule but two branches M19.4 was letting past: a
+literal, and a term the ontology defines that is not a domain. Those belong to
+M19.4, which now uses the family's shared helper instead of being a fourth
+hand-written copy of it.
+
+**Two exemptions were letting real defects through, in both encodings.** A name
+in the standard's own namespace that the standard does not define — nobody
+mints one by accident — was treated as a pointer at nothing and left to L1.
+The reference corpus's own designated counterexample for the document-type
+sentence points `iirds:has-document-type` at
+`iirds:ThisIsNotAStandardizedDocumentType`, and the rule written to catch a
+document type that is not a standardised one was silent on it. And a blank node
+with no statements went to L1 too, which looks at IRIs only, so it was reported
+by nothing at all.
+
+**Coverage of the standard is 131 of 280, of which 96 are held by a package.**
+Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
+the sentence it seemed to answer, and every one of those claims turned out
+unearned — the reasons are recorded beside the rules, because each is a
+distinct way of misreading a sentence that names a class and a property. What
+did move is the audit: two cardinality sentences, "MUST point to exactly one
+domain by the property", are now held by the package that has two domains.
+They were briefly held by a package pointing at one domain of the wrong class,
+which has exactly one and breaks the sentence after it rather than that one.
 
 ## 0.6.0 — 2026-09-05
 

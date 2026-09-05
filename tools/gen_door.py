@@ -101,7 +101,7 @@ y = ln(y, 17, [(154, F, "→ Make the file contain exactly application/iirds+zip
 y = ln(y, 17, [(154, F, "→ trailing newline and no byte order mark. Editors add both silently, so", "")])
 y = ln(y, 27, [(154, F, "→ write it with a tool that does not.", "")])
 y = ln(y, 19, [(28, E, "FAIL", B), (90, T, "2 error(s), 0 warning(s), 0 informational", "")])
-y = ln(y, 14, [(28, N, "171 rules checked, 24 not applicable to this version/variant", "")])
+y = ln(y, 14, [(28, N, "175 rules checked, 24 not applicable to this version/variant", "")])
 TH = y + 18
 shot = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 {TH}" role="img" aria-label="Real output of iirds check on a broken package: two errors, each with evidence and a fix">
 <rect x="1" y="1" width="938" height="{TH-2}" rx="10" fill="#12161a" stroke="#252b30" stroke-width="1.5"/>

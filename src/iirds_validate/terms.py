@@ -27,6 +27,7 @@ from .model import HOV, IIRDS, IIRDS_NAMESPACES
 InformationUnit = IIRDS["InformationUnit"]
 InformationObject = IIRDS["InformationObject"]
 Document = IIRDS["Document"]
+DocumentType = IIRDS["DocumentType"]
 Topic = IIRDS["Topic"]
 Fragment = IIRDS["Fragment"]
 Package = IIRDS["Package"]

@@ -39,6 +39,23 @@ def prose(path):
     return re.sub(r"```.*?```", "", path.read_text("utf-8"), flags=re.S)
 
 
+#: Every id shape the registry actually uses. `[a-z]?` alone missed `C11.1H`.
+RULE_ID = re.compile(r"\b([CMLBRS]\d+(?:\.\d+[A-Za-z]?)?)(?![\w.-])")
+
+
+def test_the_id_pattern_matches_every_id_there_is():
+    """A pattern that cannot spell an id is a gate that skips it, and it skips
+    in silence: a document naming `C11.1H`, or naming a `C11.1X` that was never
+    a rule, would read as fine either way. Held against the registry rather
+    than against a list, so a new shape of id fails here on the day it is
+    added."""
+    from iirds_validate.registry import all_rules
+
+    unmatched = sorted(rule.id for rule in all_rules()
+                       if not RULE_ID.fullmatch(rule.id))
+    assert unmatched == [], unmatched
+
+
 def test_every_rule_id_named_in_the_documents_exists():
     """A row for a rule that was renamed or retired reads as current."""
     from iirds_validate.registry import all_rules
@@ -47,7 +64,12 @@ def test_every_rule_id_named_in_the_documents_exists():
     # Ids are written in tables and in sentences: C9, M15.7b, L13, B10, R4,
     # S10. Not followed by a hyphen or an underscore, because the reference's
     # fixture names carry the id too -- `M96-1_false.rdf` names no rule.
-    pattern = re.compile(r"\b([CMLBRS]\d+(?:\.\d+[a-z]?)?)(?![\w.-])")
+    #
+    # The suffix may be a capital as well as a lower-case letter: C11.1H is a
+    # real rule and matched nothing here, so a document naming it -- or naming
+    # a `C11.1X` that never existed -- went unread. The test below holds the
+    # pattern against the registry, which is where the shapes of the ids are.
+    pattern = RULE_ID
     unknown = {}
     for path in DOCS:
         for match in set(pattern.findall(prose(path))):

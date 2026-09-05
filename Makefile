@@ -107,6 +107,10 @@ shapes:
 corpus:
 	$(PYTHON) tools/vendor_corpus.py --check
 	$(PYTHON) tools/crossvalidate.py --check
+# A number is not a diagnosis: this says, per rule, why the two tools differ.
+# It ran in CI and not here, which nothing had decided — it reads only files
+# that ship and takes nine seconds.
+	$(PYTHON) tools/explain_silence.py --quiet
 
 tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify

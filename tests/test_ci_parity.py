@@ -155,3 +155,42 @@ def test_no_ci_row_installs_the_library_from_an_index():
     pinned it from an index would put a release ahead of `src/` on the path
     and run the suite against code nobody is looking at."""
     assert not re.search(r'pin:\s*"iirds', WORKFLOW), "a matrix row still installs iirds from an index"
+
+
+#: Tools CI runs that `make check` does not, each with the reason it is not
+#: local. A tool may legitimately be CI-only — it needs the network, or it
+#: belongs to a release — but "nobody noticed" is not a reason, and until this
+#: list existed there was no way to tell the two apart. The parity test above
+#: reads make -> CI; this reads CI -> make, which is the direction a tool goes
+#: missing in.
+CI_ONLY = {
+    "build_zipapp": "release machinery: it builds the single-file .pyz, which "
+                    "the release workflow does and a working tree has no use for",
+    "extract_catalog": "needs the reference tool's repository over the network, "
+                       "and this suite runs offline",
+    "shim_overlap": "asks what an *installed* distribution owns, so it needs a "
+                    "venv with the wheels in it — the release workflow builds "
+                    "them and a working tree does not",
+}
+
+
+def test_every_tool_ci_runs_is_run_locally_or_says_why_not():
+    """`explain_silence.py` was in neither list: CI ran it, `make check` did
+    not, and nothing said whether that was a decision. It takes nine seconds
+    and reads only files that ship, so it is local now — and the two that stay
+    in CI have to say what keeps them there."""
+    import re
+
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text("utf-8")
+    makefile = (ROOT / "Makefile").read_text("utf-8")
+
+    in_ci = set(re.findall(r"tools/([a-z_]+)\.py", ci))
+    in_make = set(re.findall(r"tools/([a-z_]+)\.py", makefile))
+    unexplained = sorted(in_ci - in_make - set(CI_ONLY))
+    assert unexplained == [], (
+        "CI runs these and `make check` does not, with no reason recorded: %s"
+        % unexplained)
+
+    stale = sorted(name for name in CI_ONLY if name in in_make or name not in in_ci)
+    assert stale == [], (
+        "these are listed as CI-only and are not: %s" % stale)

@@ -76,3 +76,29 @@ def test_the_key_does_not_move_when_a_line_is_added_above_it():
 
     assert keys(source) == keys(shifted)
     assert len(set(keys(source))) == 2, "and the two identical returns stay apart"
+
+
+def test_the_baseline_says_which_source_it_describes():
+    """`docs/silent-paths.json` records which decision lines no test reaches,
+    and said nothing about the tree it was measured on.
+
+    The tool refuses a measurement taken while the rule modules changed under
+    it — that repair came from a corrupted record. This is the other half: a
+    baseline written weeks ago describes a source that has moved since, and
+    `--check` compares totals against it as though it did not. The check takes
+    forty minutes, so the mismatch is expensive to find by running it and free
+    to find here.
+
+    The fingerprint is the tool's own, so the two cannot drift apart.
+    """
+    import json
+
+    baseline = json.loads(
+        (ROOT / "docs" / "silent-paths.json").read_text("utf-8"))
+    assert "tree" in baseline, (
+        "the baseline does not say which source it describes — write it again "
+        "with --write-baseline")
+    assert baseline["tree"] == silent_paths.fingerprint(), (
+        "docs/silent-paths.json was measured against different rule modules. "
+        "Its numbers are about a tree that is not this one; re-run "
+        "`python tools/silent_paths.py --write-baseline`.")

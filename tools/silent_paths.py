@@ -178,7 +178,7 @@ def key_for(where, lines, line, kinds):
     return "%s :: %s [%d]" % (function, text, same.index(line) + 1)
 
 
-def _fingerprint():
+def fingerprint():
     """What the rule modules are, right now, byte for byte."""
     return {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(RULES.glob("*.py"))}
@@ -211,9 +211,9 @@ def measure(out_dir: Path, extra_args):
     }
     cmd = [sys.executable, "-m", "pytest", "-q", "-p", "silent_paths_plugin",
            "-p", "no:cacheprovider", *extra_args]
-    before = _fingerprint()
+    before = fingerprint()
     result = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
-    after = _fingerprint()
+    after = fingerprint()
     if before != after:
         moved = sorted(set(before) ^ set(after)) or sorted(
             name for name in before if before[name] != after[name])
@@ -278,7 +278,14 @@ def main() -> int:
             for key, kind in rows:
                 print("    %-8s %s" % (kind, key))
 
-    record = {"counts": counts,
+    # The fingerprint travels with the record. Refusing a source that changes
+    # *during* the run was the first half; this is the other -- a baseline
+    # written weeks ago describes a tree that has moved since, and `--check`
+    # compared totals against it as though it had not. The run costs forty
+    # minutes, so a stale baseline is expensive to find by running and free to
+    # find from the file.
+    record = {"tree": fingerprint(),
+              "counts": counts,
               "unreached": {name: dict(sorted(missing.items()))
                             for name, missing in sorted(unreached.items())}}
     if args.write_baseline:
@@ -290,6 +297,10 @@ def main() -> int:
             print("\n  no baseline yet — run --write-baseline")
             return 1
         old = json.loads(BASELINE.read_text("utf-8"))
+        if old.get("tree") != fingerprint():
+            print("\n  the baseline describes different rule modules — rerun "
+                  "--write-baseline")
+            return 1
         was = {(name, key) for name, m in old["unreached"].items() for key in m}
         now = {(name, key) for name, m in unreached.items() for key in m}
         if old["counts"] != counts or was != now:

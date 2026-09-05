@@ -212,3 +212,48 @@ def test_the_term_reader_follows_the_helpers_a_rule_calls():
     named = set(terms_named_by(by_id["M3"]))
     assert str(T.Package) in named and str(T.is_part_of_package) in named, (
         "a term reached through a public helper: %s" % sorted(named))
+
+
+def test_nothing_reads_an_empty_versions_as_no_edition():
+    """`versions=()` is how the registry spells "every edition", and twenty-five
+    rules use it. Read as `rule.versions or ()` it means the opposite, and a
+    loop over that runs zero times — which is not an error anywhere, just a
+    check that silently stops checking.
+
+    It happened twice: `tools/version_inventory.py` looped that way over
+    twenty-three rules, and after that was repaired the copy of the same loop
+    inside this suite kept doing it. Both were found by accident.
+
+    The spelling `or VERSIONS` is right and `or ()` is the bug, so the bug is
+    what is forbidden. Whether the two spellings of the default should be one
+    is a separate question and an open one; this only stops the readers from
+    disagreeing about what the empty one means.
+    """
+    import ast
+
+    #: Read as code, not as text: this test's own docstring names the spelling
+    #: it forbids, and a grep over lines matched it. `ast` sees expressions.
+    class _Finder(ast.NodeVisitor):
+        def __init__(self, name):
+            self.name, self.found = name, []
+
+        def visit_BoolOp(self, node):
+            if isinstance(node.op, ast.Or) and len(node.values) == 2:
+                left, right = node.values
+                if (isinstance(left, ast.Attribute) and left.attr == "versions"
+                        and isinstance(right, ast.Tuple) and not right.elts):
+                    self.found.append("%s:%d" % (self.name, node.lineno))
+            self.generic_visit(node)
+
+    offenders = []
+    for folder in ("src", "tools", "tests"):
+        for path in sorted((Path(__file__).resolve().parents[1] / folder).rglob("*.py")):
+            finder = _Finder(path.name)
+            try:
+                finder.visit(ast.parse(path.read_text("utf-8")))
+            except SyntaxError:
+                continue
+            offenders.extend(finder.found)
+    assert offenders == [], (
+        "these read an empty `versions` as no edition rather than as every "
+        "edition, which turns a loop into a no-op: %s" % offenders)

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/door.svg?v=c31c4de1" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
+  <img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/door.svg?v=c341d7c2" alt="iirds — validate, lint, pack and serve iiRDS packages: offline, deterministic, every finding tells you how to fix it. AI proposes, rules judge, people decide." width="100%">
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=82f3f8d1" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=756be020" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
 
 ```console
 $ pip install iirds

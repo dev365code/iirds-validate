@@ -112,3 +112,90 @@ if __name__ == "__main__":
         print("README.md front sample regenerated")
     else:
         print(block)
+
+
+def test_the_cache_busters_are_the_files_they_point_at():
+    """The front page loads two SVGs from raw.githubusercontent, each with a
+    `?v=` that exists to defeat the CDN's cache. A cache-buster is a promise
+    that this URL means this file, and it is a number somebody types — so it
+    goes stale silently and the reader keeps seeing the old picture.
+
+    Both were stale when this test was written: the README said `c31c4de1`
+    and `82f3f8d1`, and the files hashed to `c341d7c2` and `9b629295`. The
+    numbers live in a test now, like every other published figure here.
+    """
+    import hashlib
+    import re
+
+    readme = (ROOT / "README.md").read_text("utf-8")
+    stated = dict(re.findall(r"docs/assets/([\w.-]+)\?v=([0-9a-f]{8})", readme))
+    assert stated, "the README no longer loads its assets with a cache-buster"
+    for name, said in sorted(stated.items()):
+        path = ROOT / "docs" / "assets" / name
+        assert path.exists(), "README points at docs/assets/%s, which is not here" % name
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()[:8]
+        assert said == actual, (
+            "docs/assets/%s is %s and the README asks for ?v=%s — regenerate the "
+            "asset or move the number, but they have to be the same file"
+            % (name, actual, said))
+
+
+#: The package `docs/assets/tenseconds.svg` says it is a picture of. Built
+#: here rather than kept in `fixtures/`, because what has to stay true is that
+#: the picture matches a run, and a fixture that drifts from the picture is the
+#: same problem one level down.
+TERMSHOT_PACKAGE = {
+    "mimetype": b"application/zip",
+    "META-INF/metadata.rdf": (
+        '<?xml version="1.0"?><rdf:RDF '
+        'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+        'xmlns:iirds="http://iirds.tekom.de/iirds#">'
+        '<iirds:Topic rdf:about="urn:x:t1">'
+        "<iirds:title>A topic</iirds:title></iirds:Topic></rdf:RDF>"),
+    "content/topic1.xhtml": "<html/>",
+}
+
+
+def test_the_terminal_picture_is_a_run_that_happened(tmp_path):
+    """`docs/assets/tenseconds.svg` is captioned "Real iirds check output" and
+    the front page leads with it. Its tail said "164 rules checked, 21 not
+    applicable" while a run of the package it depicts said 171 and 24, and its
+    two errors were in the other order — M3 sorts first now that it is marked
+    a cause, which a change to the rules did without anybody looking at the
+    picture.
+
+    So the two numbers and the order are read off a real run. The prose in
+    between is the rules' own text and is left alone; what goes stale is what
+    a release moves.
+    """
+    import io
+    import re
+    import zipfile
+
+    from iirds_validate import runner
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as archive:
+        info = zipfile.ZipInfo("mimetype")
+        info.compress_type = zipfile.ZIP_STORED
+        archive.writestr(info, TERMSHOT_PACKAGE["mimetype"])
+        for name, body in TERMSHOT_PACKAGE.items():
+            if name != "mimetype":
+                archive.writestr(name, body)
+    package = tmp_path / "broken.iirds"
+    package.write_bytes(buf.getvalue())
+
+    report = runner.check(package)
+    picture = (ROOT / "docs" / "assets" / "tenseconds.svg").read_text("utf-8")
+
+    stated = re.search(r"(\d+) rules checked, (\d+) not applicable", picture)
+    assert stated, "the picture no longer states how many rules ran"
+    skipped = sum(len(v) for v in report.not_applicable.values())
+    assert (int(stated.group(1)), int(stated.group(2))) == (report.checked, skipped), (
+        "the picture says %s and the run says %s"
+        % (stated.groups(), (report.checked, skipped)))
+
+    shown = re.findall(r">(C\d+|M\d+(?:\.\d+)?)<", picture)
+    reported = [f.rule.id for f in report.findings]
+    assert shown == [r for r in reported if r in shown], (
+        "the picture shows %s and the report reads %s" % (shown, reported))

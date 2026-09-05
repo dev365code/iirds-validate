@@ -4,6 +4,51 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.6.0 — 2026-09-05
+
+Ten new rules, and a coverage figure that means something it did not mean
+before.
+
+**What the checker now reads that it did not.** Section 8.3.2 states six
+product-variant sentences twice, once for `iirds:Package` and once for
+`iirds:Document`; only the Document half had rules, so a handover package
+could omit everything the Package list asks for and pass (R13–R16, one builder
+read twice, so the two halves cannot drift). Section 6.8.2's "an X **which is
+assigned by** P" was checked for the property and not for the type (R10).
+Section 6.8.3's second limb — what a party's `iirds:relates-to-vcard` points
+*at* — was unchecked (R12). Appendix A gives `iirds:IdentityDomain` at most one
+`iirds:has-identity-type`, and a domain declaring two answered two of section
+8.3.2's four questions with one party (R17). Section 7.1 requires a proprietary
+extension used in a package to be *in* metadata.rdf, including when it is in a
+side ontology under META-INF that section 5.1.1 tells consumers to ignore
+(R11, R18). And appendix B forbids scripting in three ways, of which two were
+checked: a URL whose scheme is a script is the third (B11).
+
+**Coverage of the standard is 81 of 280, of which 42 are held by a package.**
+The last release said 25 of 314. Both numbers moved and they moved for
+different reasons: the denominator is the published one now — 280 distinct
+obligations rather than 314 raw statements — and the numerator grew because
+the rules did. The second figure is the one to weigh. A `covers=` claim used to
+be made by reading a sentence and a rule side by side; it is now made by
+building the package that breaks the sentence and watching what happens, and
+`tests/test_covers_is_earned.py` refuses a claim that has neither a
+counterexample nor a place on the unaudited list.
+
+**Two encodings, one answer.** The SHACL shapes and the Python rules are
+compared package by package, and that comparison now includes how many
+findings each reports: four graph-global checks were reporting one fact once
+per participating node in SHACL and once in total in Python, so a consumer
+counting errors was told a different number about the same package.
+
+**Fixed.** A vcard reference that pointed at a name from a vocabulary drew two
+findings from two rules, one of which told the reader to describe
+`iirds:Topic` in their package. A finding from a rule that runs in every
+profile announced itself as `iiRDS/H:`. `iirds:identifier` and
+`iirds:classificationIdentifier` are declared `rdfs:range rdfs:Literal` by the
+ontology and both encodings accepted an IRI in either. Two packages naming
+each other as parent left the container with no corresponding
+`iirds:Package` and nothing said so.
+
 ## 0.5.0 — 2026-09-03
 
 The first release in which the checker and the library ship as one

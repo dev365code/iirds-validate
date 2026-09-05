@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iirds-validate"
-version = "0.5.0"
+version = "0.6.0"
 description = "Compatibility name for the iiRDS checker, which now ships as `iirds`. Installs nothing itself."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -22,7 +22,7 @@ classifiers = [
 # The floor moves with this file's own version (tests/test_shims.py): a shim
 # never resolves to a release older than the one it was published beside, and
 # never stands in the way of a newer one.
-dependencies = ["iirds>=0.5.0"]
+dependencies = ["iirds>=0.6.0"]
 
 [project.urls]
 Homepage = "https://github.com/dev365code/iirds-validate"

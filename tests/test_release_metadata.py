@@ -404,3 +404,89 @@ def test_the_library_changelog_is_frozen_at_its_last_release():
     text = LIBRARY_CHANGELOG.read_text("utf-8")
     assert problems_with(text, "0.3.2") == []
     assert "unreleased" not in text.lower()
+
+
+def test_the_release_notes_publish_the_coverage_that_was_measured():
+    """The coverage figure is stated in three places — `docs/scope.md`, the
+    README's front matter and the current release's notes — and only two were
+    read. So the notes went on saying "81 of 280, of which 42 are held" after
+    the tree had moved to 131 and 94, and the number a reader quotes from a
+    release page would have been the one nobody checked.
+
+    Read here, against the same measurement the other two are read against.
+    """
+    import re
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tests"))
+    from test_covers_is_earned import CLAIMED, held
+
+    notes = (ROOT / "CHANGELOG.md").read_text("utf-8")
+    current = notes.split("## ", 2)[1]
+    stated = re.search(r"Coverage of the standard is (\d+) of (\d+), of which (\d+) "
+                       r"are held by a package", current)
+    assert stated, "the current release's notes no longer state the coverage figure"
+    assert int(stated.group(1)) == len(CLAIMED), stated.group(0)
+    assert int(stated.group(3)) == len(held()), stated.group(0)
+
+    scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
+    assert "Coverage of the standard is %s of %s." % (
+        stated.group(1), stated.group(2)) in scope, (
+        "the notes and docs/scope.md state different coverage")
+
+
+def test_the_release_notes_count_the_rules_the_release_actually_adds():
+    """"Ten new rules since the last release" is a number, and a number in
+    prose goes stale the moment somebody adds an eleventh. It cannot be read
+    off the tree alone — it is a difference between two — so it is read off
+    the previous tag, and skipped where there is no git to ask.
+
+    The coverage figure two lines above it was in exactly this state until it
+    was wrong: stated in three places and read in two.
+    """
+    import re
+    import subprocess
+
+    import pytest
+
+    notes = (ROOT / "CHANGELOG.md").read_text("utf-8")
+    current = notes.split("## ", 2)[1]
+    stated = re.search(r"^(\w+) new rules", current, re.M)
+    if stated is None:
+        pytest.skip("the current notes do not count new rules")
+    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+             "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+             "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
+    said = words.get(stated.group(1).lower())
+    assert said is not None, "not a number this test can read: %r" % stated.group(1)
+
+    previous = re.findall(r"^## (\d+\.\d+\.\d+) — \d", notes, re.M)
+    assert len(previous) >= 2, "there is no previous release to compare against"
+    tag = "v" + previous[1]
+
+    listed = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "--name-only",
+                             "%s:src/iirds_validate/rules" % tag],
+                            capture_output=True, text=True)
+    if listed.returncode != 0:
+        pytest.skip("no git checkout, or %s is not here" % tag)
+
+    def ids(ref, names):
+        found = set()
+        for name in names:
+            if not name.endswith(".py"):
+                continue
+            shown = subprocess.run(
+                ["git", "-C", str(ROOT), "show",
+                 "%s:src/iirds_validate/rules/%s" % (ref, name)],
+                capture_output=True, text=True)
+            found |= set(re.findall(r'@rule\(\s*"([^"]+)"', shown.stdout))
+        return found
+
+    here = sorted((ROOT / "src" / "iirds_validate" / "rules").glob("*.py"))
+    before = ids(tag, listed.stdout.split())
+    now = set()
+    for path in here:
+        now |= set(re.findall(r'@rule\(\s*"([^"]+)"', path.read_text("utf-8")))
+    assert len(now - before) == said, (
+        "the notes say %d new rules and the tree adds %d since %s: %s"
+        % (said, len(now - before), tag, sorted(now - before)))

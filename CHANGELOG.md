@@ -24,11 +24,16 @@ side ontology under META-INF that section 5.1.1 tells consumers to ignore
 (R11, R18). And appendix B forbids scripting in three ways, of which two were
 checked: a URL whose scheme is a script is the third (B11).
 
-**Coverage of the standard is 81 of 280, of which 42 are held by a package.**
-The last release said 25 of 314. Both numbers moved and they moved for
-different reasons: the denominator is the published one now — 280 distinct
-obligations rather than 314 raw statements — and the numerator grew because
-the rules did. The second figure is the one to weigh. A `covers=` claim used to
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+The last release said 25 of 314. Those numbers moved for three reasons and
+they are worth separating. The denominator is the published one now — 280
+distinct obligations rather than 314 raw statements. The numerator grew
+because the rules did. And fifty of it was there all along: appendix A states,
+per class, that instances must have an IRI, and the generated table in
+`src/iirds_validate/rules/schema_tables.py` — written *from that appendix* —
+had never been told which of its rows each rule was answering. Those fifty are
+claimed now, and each one is held by a package that breaks it rather than by a
+name that matches. The second figure is the one to weigh. A `covers=` claim used to
 be made by reading a sentence and a rule side by side; it is now made by
 building the package that breaks the sentence and watching what happens, and
 `tests/test_covers_is_earned.py` refuses a claim that has neither a

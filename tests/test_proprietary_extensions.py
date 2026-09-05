@@ -92,22 +92,6 @@ USES_AN_INSTANCE = ('  <rdf:Description rdf:about="urn:test:doc9">\n'
                     '    <iirds:has-document-type rdf:resource="%sHandbook"/>\n'
                     "  </rdf:Description>\n" % (IIRDS, MY))
 
-USED_NOWHERE = {
-    "a proprietary class": USES_A_CLASS,
-    "a proprietary property": USES_A_PROPERTY,
-}
-
-
-@pytest.mark.parametrize("what", sorted(USED_NOWHERE), ids=sorted(USED_NOWHERE))
-def test_an_extension_described_in_no_file_is_reported(tmp_path, what):
-    """The shape the withdrawal left open. A package can use a name of its own
-    and define it in a side ontology, or not at all, and `iirds check` said
-    nothing about any of the three -- the property one was reported by nothing
-    in any mode, L5 having only the class."""
-    body = USED_NOWHERE[what]
-    assert "R18" in fired(tmp_path, "nowhere_%d.iirds" % abs(hash(what)), rdf_body=body), what
-    assert "R18" in under_check(tmp_path, "chk_%d.iirds" % abs(hash(what)), rdf_body=body), (
-        "%s: conformance must not be silent about it" % what)
 
 
 # --- the same three, described in metadata.jsonld only ---------------------
@@ -179,6 +163,28 @@ NOT_AN_EXTENSION = {
         '  <rdf:Description rdf:about="urn:test:topic1">\n'
         '    <dcterms:title xmlns:dcterms="http://purl.org/dc/terms/">t</dcterms:title>\n'
         "  </rdf:Description>\n",
+    #: Section 7.3 says what a proprietary extension is by how it attaches to
+    #: iiRDS -- a subclass of an iiRDS class, a subproperty of an iiRDS
+    #: property, an instance of an iiRDS class -- and a name that attaches to
+    #: none of them is not one, whatever it looks like. The first version of
+    #: this rule asked instead whether a name was outside the iiRDS and
+    #: well-known namespaces and stood in a vocabulary position, which is a
+    #: proxy for the question and fails in both directions: it reported these
+    #: four, and it reported a proprietary class defined in a side ontology
+    #: while staying silent about a proprietary term defined in the same file.
+    "a W3C vocabulary used as a predicate":
+        '  <rdf:Description rdf:about="urn:test:topic1">\n'
+        '    <prov:wasGeneratedBy xmlns:prov="http://www.w3.org/ns/prov#" '
+        'rdf:resource="urn:test:run"/>\n'
+        "  </rdf:Description>\n",
+    "an XMP property, which every PDF pipeline emits":
+        '  <rdf:Description rdf:about="urn:test:topic1">\n'
+        '    <xmp:CreateDate xmlns:xmp="http://ns.adobe.com/xap/1.0/">'
+        "2026-01-01</xmp:CreateDate>\n  </rdf:Description>\n",
+    "a name of the package's own used as a type and attached to nothing":
+        USES_A_CLASS,
+    "a name of the package's own used as a predicate and attached to nothing":
+        USES_A_PROPERTY,
     #: The reading this rule settled on, kept as a case because it is the one
     #: the first version got wrong. A name referred to in a vocabulary slot and
     #: typed by nobody is a dangling reference: the package never adds the
@@ -227,3 +233,201 @@ def test_the_vocabulary_classes_are_read_from_the_ontology_not_listed():
                  "ClassificationDomain", "ExternalClassification",
                  "ProductVariant", "Component"):
         assert IIRDS + name not in {str(c) for c in vocab}, name
+
+
+# --- the file section 5.1.1 tells consumers to ignore -----------------------
+
+SIDE_ONTOLOGY = (
+    '<?xml version="1.0"?>\n'
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+    '         xmlns:rdfs="%s" xmlns:iirds="%s">\n'
+    '  <rdf:Description rdf:about="%sHandbook">\n'
+    '    <rdf:type rdf:resource="%sDocumentType"/>\n'
+    "  </rdf:Description>\n"
+    '  <rdf:Description rdf:about="%sManual">\n'
+    '    <rdfs:subClassOf rdf:resource="%sDocument"/>\n'
+    "  </rdf:Description>\n"
+    "</rdf:RDF>\n" % (RDFS_, IIRDS, MY, IIRDS, MY, IIRDS))
+
+
+def _with_side_file(path, name, body):
+    import io
+    import zipfile
+
+    buf = io.BytesIO(path.read_bytes())
+    with zipfile.ZipFile(buf, "a") as archive:
+        archive.writestr(name, body)
+    path.write_bytes(buf.getvalue())
+    return path
+
+
+def test_an_extension_ontology_in_meta_inf_is_reported(tmp_path):
+    """The shape that keeps this claim honest, and the one the first version
+    of the rule could not see.
+
+    A package may put its extension ontology in `META-INF/extension.rdf` and
+    point the rest of its metadata at it. Section 5.1.1 says it is RECOMMENDED
+    for consumers to ignore any other file in META-INF, so that ontology
+    reaches nobody: the names resolve to nothing and the classes carry no
+    rules. That is exactly what section 7.1 forbids, and `iirds check` was
+    silent about it -- nothing in this project looks at a META-INF file it did
+    not ask for.
+    """
+    path = _with_side_file(
+        build_package(tmp_path, "side.iirds",
+                      metadata=MINIMAL_RDF.replace("</rdf:RDF>",
+                                                   USES_A_CLASS + "</rdf:RDF>")),
+        "META-INF/extension.rdf", SIDE_ONTOLOGY)
+    got = {f.rule.id for f in runner.check(path).findings}
+    assert "R18" in got, sorted(got)
+
+
+def test_a_meta_inf_file_that_is_not_an_extension_is_not_reported(tmp_path):
+    """The control. A package may carry other things there -- a signature, a
+    manifest, a readme -- and this rule is about extension ontologies, not
+    about tidiness."""
+    for name, body in (("META-INF/signatures.xml", "<signatures/>"),
+                       ("META-INF/notes.txt", "nothing to see"),
+                       #: A directory entry, which a ZIP carries as a name of
+                       #: its own. Reading it as a file asks the container for
+                       #: bytes that are not there; the tracer found the line
+                       #: that skips it had never run.
+                       ("META-INF/sub/", ""),
+                       ("META-INF/other.rdf",
+                        '<?xml version="1.0"?><rdf:RDF '
+                        'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+                        '<rdf:Description rdf:about="urn:x"/></rdf:RDF>')):
+        path = _with_side_file(
+            build_package(tmp_path, "quiet_%d.iirds" % abs(hash(name)),
+                          metadata=MINIMAL_RDF),
+            name, body)
+        got = {f.rule.id for f in runner.check(path).findings}
+        assert "R18" not in got, (name, sorted(got))
+
+
+def test_every_shape_of_the_sentence_is_reported(tmp_path):
+    """The case the coverage claim names: every way a package can breach
+    section 7.1#4, in one place, so that adding a shape means adding it here.
+
+    Four. Section 7.3's three kinds of extension, each attached in
+    metadata.jsonld and not in metadata.rdf; and an extension ontology in a
+    META-INF file, which is the shape that reaches a consumer as nothing at
+    all and which nothing in this project used to look at.
+    """
+    for what, (body, node) in sorted(JSONLD_ONLY.items()):
+        got = fired(tmp_path, "shape_%d.iirds" % abs(hash(what)),
+                    rdf_body=body, jsonld_nodes=(node,))
+        assert "R18" in got, (what, sorted(got))
+
+    path = _with_side_file(
+        build_package(tmp_path, "shape_side.iirds",
+                      metadata=MINIMAL_RDF.replace("</rdf:RDF>",
+                                                   USES_A_CLASS + "</rdf:RDF>")),
+        "META-INF/extension.rdf", SIDE_ONTOLOGY)
+    got = {f.rule.id for f in runner.check(path).findings}
+    assert "R18" in got, sorted(got)
+
+
+#: Ordinary data of an iiRDS class, in metadata.jsonld only. Every one of
+#: these breaches section 5.1.1 and L9 reports it; none of them is a
+#: proprietary extension, and calling one that is the reading the withdrawal
+#: existed to prevent. The first repair of this rule reintroduced it by way of
+#: a subclass closure: `iirds:iirdsDomainEntity` carries instances beneath it,
+#: so reading "the ontology supplies instances of it" transitively put the
+#: root of almost everything in the vocabulary set and made every document one.
+DATA_IN_THE_JSON_LD = {
+    "a document": {"@id": "urn:test:d9", "@type": "iirds:Document",
+                   "iirds:title": "A document"},
+    "a rendition": {"@id": "urn:test:r9", "@type": "iirds:Rendition"},
+    "a topic": {"@id": "urn:test:t9", "@type": "iirds:Topic"},
+    "a party": {"@id": "urn:test:p9", "@type": "iirds:Party"},
+    "an identity": {"@id": "urn:test:i9", "@type": "iirds:Identity"},
+}
+
+
+@pytest.mark.parametrize("what", sorted(DATA_IN_THE_JSON_LD), ids=sorted(DATA_IN_THE_JSON_LD))
+def test_ordinary_data_in_the_json_ld_is_not_a_proprietary_extension(tmp_path, what):
+    got = fired(tmp_path, "data_%d.iirds" % abs(hash(what)),
+                jsonld_nodes=(DATA_IN_THE_JSON_LD[what],))
+    assert "R18" not in got, (what, sorted(got))
+    assert "L9" in got, "the disagreement is still reported, under its own sentence"
+
+
+def test_the_vocabulary_set_is_the_classes_the_standard_supplies_terms_for():
+    """Two conditions, both from the ontology, both load-bearing.
+
+    Directly typed, because reading it through the subclass closure put
+    `iirds:iirdsDomainEntity` in the set and every document with it. And
+    Appendix A's IRI column, because a class whose instances the standard says
+    need not be named cannot be a vocabulary -- a term nobody can refer to is
+    not a term.
+    """
+    from iirds_validate.ontology import load
+    from iirds_validate.rules.requirements import vocabulary_classes
+
+    names = {str(c) for c in vocabulary_classes(load())}
+    for name in ("DocumentType", "PartyRole", "IdentityType", "ClassificationType"):
+        assert IIRDS + name in names, name
+    for name in ("Document", "Topic", "Fragment", "Package", "Rendition", "Party",
+                 "Identity", "ClassificationDomain", "ExternalClassification",
+                 "ProductVariant", "Component", "iirdsDomainEntity",
+                 "AdministrativeMetadata", "InformationUnit",
+                 "PlanningTime", "MaintenanceInterval", "WorkingTime", "DownTime"):
+        assert IIRDS + name not in names, name
+
+
+def test_the_equivalence_the_standard_writes_the_other_way_round_is_read(tmp_path):
+    """Section 7.3.2: "Proprietary iiRDS extensions MAY add proprietary classes
+    as equivalent classes. The property rdfs:subClassOf expresses equivalence
+    of classes." The standard's own Example 43 writes both directions, and a
+    package may write only the one whose subject is the iiRDS class.
+
+    Reading one direction did two wrong things at once: it reported a package
+    that had said, in metadata.rdf, exactly what this rule asks it to say —
+    and it missed the same statement when it was in metadata.jsonld only,
+    which is the breach. Both halves are here, because the fix for the first
+    is what makes the second possible to get wrong silently.
+    """
+    equivalence = ('  <rdf:Description rdf:about="%sComponent">\n'
+                   '    <rdfs:subClassOf rdf:resource="%sProductPart"/>\n'
+                   "  </rdf:Description>\n" % (IIRDS, MY))
+    use = ('  <rdf:Description rdf:about="urn:test:p1">\n'
+           '    <rdf:type rdf:resource="%sProductPart"/>\n  </rdf:Description>\n' % MY)
+
+    assert "R18" not in fired(tmp_path, "equiv_ok.iirds", rdf_body=equivalence + use), \
+        "metadata.rdf says it, in the direction the standard permits"
+
+    got = fired(tmp_path, "equiv_jsonld.iirds", rdf_body=use, jsonld_nodes=(
+        {"@id": IIRDS + "Component", "rdfs:subClassOf": {"@id": MY + "ProductPart"}},))
+    assert "R18" in got, sorted(got)
+
+
+def test_a_term_typed_with_the_packages_own_subclass_is_a_term(tmp_path):
+    """Section 7.3: "Proprietary instances MAY also be instances of a
+    proprietary class." So a document-type term of the package's own, typed
+    with the package's own subclass of `iirds:DocumentType`, is a term — and
+    asking `cls in vocabulary` by set membership missed every one of them.
+    That is the failure `Context.is_instance` names in its own docstring:
+    "exact typing is how section 7 gets forgotten one rule at a time".
+    """
+    declaration = ('  <rdf:Description rdf:about="%sHouseDocType">\n'
+                   '    <rdfs:subClassOf rdf:resource="%sDocumentType"/>\n'
+                   "  </rdf:Description>\n" % (MY, IIRDS))
+    got = fired(tmp_path, "own_subclass.iirds", rdf_body=declaration,
+                jsonld_nodes=({"@id": MY + "Handbook", "@type": MY + "HouseDocType"},))
+    assert "R18" in got, sorted(got)
+
+
+def test_a_product_variant_stays_r11s_and_does_not_become_a_vocabulary_term(tmp_path):
+    """`iirds:ProductMetadata` is the parent of `iirds:ProductVariant` and
+    `iirds:Component`, and it carries instances beneath it. Reading the
+    vocabulary set through the subclass closure therefore pulls both in, and
+    the two rules report one defect again — the thing the split was for.
+
+    Sections 6.7.4 and 6.7.1 are R11's; this rule leaves them alone.
+    """
+    got = fired(tmp_path, "variant_r11.iirds", jsonld_nodes=(
+        {"@id": MY + "Rotor3000", "@type": "iirds:ProductVariant",
+         "rdfs:label": "Rotor 3000"},))
+    assert "R11" in got, sorted(got)
+    assert "R18" not in got, ("one defect, one rule", sorted(got))

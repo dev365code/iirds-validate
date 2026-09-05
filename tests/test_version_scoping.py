@@ -19,6 +19,7 @@ import pytest
 
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
+from iirds_validate import terms as T
 from iirds_validate.registry import all_rules
 from iirds_validate.resources import read_text, version_terms
 
@@ -194,26 +195,20 @@ def test_the_term_reader_follows_the_helpers_a_rule_calls():
     left is a version check that reads the shape of the code rather than what
     the rule looks for, and gets quieter every time the code improves.
 
-    Proved by moving a term rather than by counting: the same term, in a
-    helper and in a body, has to be seen the same way.
+    Both kinds of helper, because the first repair followed only the
+    underscore-prefixed ones -- the rule modules' convention among themselves,
+    and not the whole of what they call. M3 reaches `iirds:Package` and
+    `iirds:is-part-of-package` through `package_nodes` and
+    `container_packages`, which are public, and six rules were hiding a term
+    that way.
     """
-    from iirds_validate import terms as T
     from version_inventory import terms_named_by
 
-    class _Fake:
-        id = "test-only"
-        versions = ("1.3",)
+    by_id = {rule.id: rule for rule in all_rules()}
+    named = set(terms_named_by(by_id["M15.7b"]))
+    assert str(T.Manufacturer) in named, (
+        "a term reached through a private helper: %s" % sorted(named))
 
-    def _fake_helper():
-        return T.ClassificationDomain
-
-    def body(ctx):
-        return _fake_helper()
-
-    _Fake.fn = staticmethod(body)
-    body.__module__ = __name__
-    globals()["_fake_helper"] = _fake_helper
-    named = terms_named_by(_Fake)
-    assert str(T.ClassificationDomain) in named, (
-        "a term the rule reaches only through a helper is a term the rule "
-        "names: %s" % named)
+    named = set(terms_named_by(by_id["M3"]))
+    assert str(T.Package) in named and str(T.is_part_of_package) in named, (
+        "a term reached through a public helper: %s" % sorted(named))

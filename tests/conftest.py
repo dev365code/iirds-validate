@@ -114,7 +114,39 @@ OBSERVED = Path(__file__).resolve().parents[1] / ".rule-coverage.json"
 #: the number exists to rule out. Recorded here and compared by
 #: `tools/held_claims.py`, after the run, the way rule coverage is.
 PASSED: set = set()
+#: Every test the run collected, whatever became of it. What passed is not
+#: enough to say a claim is held: a parametrised case list that ran one row
+#: and skipped twenty-six leaves the function name in PASSED and nothing to
+#: say the other rows were ever there. `tools/held_claims.py` compares the
+#: two.
+COLLECTED: set = set()
 PASSED_FILE = Path(__file__).resolve().parents[1] / ".passed-tests.json"
+
+
+def _tree_fingerprint() -> str:
+    """What the suite was run against.
+
+    `tools/held_claims.py` reads this record after the fact, and nothing said
+    which tree it described. A run that collected nothing leaves the previous
+    record in place -- the writer below only writes when something passed --
+    so deleting a test file and running `make exercised` reported every claim
+    held, on yesterday's evidence.
+    """
+    import hashlib
+
+    digest = hashlib.sha256()
+    root = Path(__file__).resolve().parents[1]
+    for folder in ("src/iirds_validate", "tests"):
+        for path in sorted((root / folder).rglob("*.py")):
+            digest.update(path.name.encode())
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        path, _, name = item.nodeid.partition("::")
+        COLLECTED.add("%s::%s" % (Path(path).stem, name))
 
 
 def pytest_runtest_logreport(report):
@@ -170,7 +202,10 @@ def pytest_sessionfinish(session, exitstatus):
     if FIRED:
         OBSERVED.write_text(json.dumps(sorted(FIRED), indent=1) + "\n", "utf-8")
     if PASSED:
-        PASSED_FILE.write_text(json.dumps(sorted(PASSED), indent=1) + "\n", "utf-8")
+        PASSED_FILE.write_text(json.dumps(
+            {"tree": _tree_fingerprint(), "passed": sorted(PASSED),
+             "collected": sorted(COLLECTED)},
+            indent=1) + "\n", "utf-8")
 
 
 # ---------------------------------------------------------------------------

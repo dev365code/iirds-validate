@@ -216,6 +216,16 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
     assert "| %d shapes: graph-global" % per_file["iirds-sparql.ttl"] in readme
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
     assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
+
+    # The four bucket headings under "What is not here, exactly". The sentence
+    # beside them was read and these were not, so the buckets could say
+    # anything while the total stayed right.
+    for bucket, heading in (("not_expressible", "not expressible"),
+                            ("deferred_v1.1", "deferred"),
+                            ("version_excluded", "out of edition"),
+                            ("noop", "no-op")):
+        assert "- **%d %s**" % (MANIFEST["counts"][bucket], heading) in readme, (
+            bucket, MANIFEST["counts"][bucket])
     rules = len(all_rules())
     # Derived, both of them. These were literals -- "58 of the 201" while the
     # four buckets under it summed to 57, because a rule was added, one of the

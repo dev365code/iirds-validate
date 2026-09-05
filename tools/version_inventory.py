@@ -86,9 +86,14 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
     M15.7b's inventory and left `iirds:Document`; seventeen rules were hiding
     a term this way, `iirds:has-identity-type` among them, which is a 1.1 term.
 
-    Module-local and name-mangled on purpose: `_helper` in the rule's own
-    module, not every callable in sight. That is the convention the rule
-    modules already follow, and widening it would pull in rdflib.
+    Any callable of this package, not only the underscore-prefixed ones. The
+    leading underscore was the convention the rule modules follow among
+    themselves and it is not the whole of what they call: `package_nodes` and
+    `container_packages` are public, six rules reach `iirds:Package` and
+    `iirds:is-part-of-package` only through them, and the check could not see
+    a term moved into either. Membership is decided by `__module__`, which
+    keeps rdflib and the standard library out without a naming rule to
+    remember.
     """
     seen = set() if seen is None else seen
     try:
@@ -99,12 +104,13 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
     if module is None:
         return source
     out = [source]
-    for name in dict.fromkeys(re.findall(r"\b(_[A-Za-z_0-9]+)\s*\(", source)):
+    for name in dict.fromkeys(re.findall(r"\b([A-Za-z_][A-Za-z_0-9]*)\s*\(", source)):
         if name in seen:
             continue
         seen.add(name)
         helper = getattr(module, name, None)
-        if callable(helper):
+        if callable(helper) and getattr(
+                helper, "__module__", "").startswith("iirds_validate"):
             out.append(_source_the_rule_reaches(helper, seen))
     return "\n".join(out)
 

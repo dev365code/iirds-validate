@@ -29,7 +29,12 @@ export IIRDS_REQUIRE_SHACL := 1
 # that index passed the whole suite until the checks it turns on existed.
 export IIRDS_REQUIRE_SPEC_CACHE := 1
 
-.PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean
+.PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean silent-paths
+
+# `exercised` reads records the test run writes, and `check` lists both as
+# prerequisites — which make is free to run in either order, or at once under
+# -j. It did: `make -j check` checked the previous run's records and passed.
+.NOTPARALLEL:
 
 help:
 	@echo "make check   everything CI runs: lint, tests, the equivalence proof"
@@ -69,7 +74,7 @@ generated:
 # Which rules the suite has ever seen produce a finding. A rule that fires
 # nowhere is not known to work -- S8 sat in that state from day one while being
 # exactly backwards. Depends on `test` having run, which writes the record.
-exercised:
+exercised: test
 	$(PYTHON) tools/rule_coverage.py --check
 	$(PYTHON) tools/held_claims.py --check
 

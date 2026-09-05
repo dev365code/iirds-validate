@@ -625,7 +625,7 @@ NAMED_CASES = {
     # both shapes: described only in metadata.jsonld, and described in
     # no file at all.
     "x7-1-iirds-extension-scenarios#4":
-        "test_proprietary_extensions:test_an_extension_described_in_no_file_is_reported",
+        "test_proprietary_extensions:test_every_shape_of_the_sentence_is_reported",
     "x7-1-iirds-extension-scenarios#5":
         "test_the_schema_prohibition_names_the_file_it_found_the_schema_in",
 }
@@ -775,8 +775,22 @@ def test_a_claim_a_rule_refuses_in_its_own_source_is_not_made_elsewhere():
 #: therefore unread. Cutting out was the repair for a filtering bug and
 #: brought its own, which is the argument for testing a gate against the
 #: ways round it rather than against one mutation.
-LENIENCY_TABLE = re.compile(r"\| rule \| kind of leniency \| claim \|(?:\n\|[^\n]*)*")
+#: The two regions this gate cuts out, and each is anchored so that nothing can
+#: be appended *into* it. The table used to end at the last line starting with a
+#: pipe, so a sentence written as `| M17 no longer claims x… |` was inside the
+#: table as far as the regex could tell; it now consumes only lines shaped like
+#: one of its rows. And `search` takes the first match, so a second copy of the
+#: header anywhere earlier in the document moved the cut off the real table —
+#: `_without_the_cut_regions` asserts each region occurs exactly once.
+LENIENCY_TABLE = re.compile(
+    r"\| rule \| kind of leniency \| claim \|\n\|[-| ]+\|"
+    r"(?:\n\| [^|\n]+ \| \*\*[^|\n]+\*\*[^|\n]*\| [^|\n]+ \|)*")
 M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
+
+#: The one region cut whole rather than by shape, so its size is pinned: a
+#: sentence appended inside it would be cut with it and read by nobody, which
+#: is the fifth way found past this gate.
+M25_PARAGRAPH_LENGTH = 503
 
 #: A rule id and an obligation id within 200 characters of each other, in
 #: either order, over whitespace-collapsed text.
@@ -793,14 +807,53 @@ M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
 #: never both together outside the cut regions -- which is why the pairing,
 #: not the verb, is the signal. `test_the_control_is_caught` holds the other
 #: half: a gate that matched nothing would pass this file too.
-RESTATES_A_CLAIM = re.compile(
-    r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b.{0,200}?"
-    r"\b(?:x\d[\w.-]*|b-\d[\w.-]*|dfn-[\w.-]*|rdfclasses_[\w.]*)#\d+\b"
-    r"|\b(?:x\d[\w.-]*|b-\d[\w.-]*|dfn-[\w.-]*|rdfclasses_[\w.]*)#\d+\b"
-    r".{0,200}?\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b")
+#: The obligation ids are not enumerated either, for the reason the verbs were
+#: not: a list of id shapes is a list of the shapes somebody thought of. Four
+#: were written out and sixty-five of the standard's four hundred and thirty-nine
+#: ids matched none of them -- every `rdfobjects_`, `rdfproperties_`,
+#: `rdfrelations_`, appendix `a-` and `iirds-h-` id -- so a sentence naming one
+#: of those walked past. They come from the index the ids come from.
+_OBLIGATION_PREFIXES = sorted(
+    {r["id"].partition("#")[0] for r in
+     json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))["requirements"]},
+    key=len, reverse=True)
+_AN_OBLIGATION = r"(?:%s)#\d+" % "|".join(re.escape(p) for p in _OBLIGATION_PREFIXES)
+
+#: Scoped to a paragraph rather than to a window of characters. Two hundred
+#: was a number, and a number is a distance somebody guessed: the same sentence
+#: written with a clause in the middle walked past it. A paragraph is the unit
+#: the document is written in, and over this document exactly one paragraph
+#: contains both -- which turned out not to be a false positive but a
+#: restatement the window had been missing.
+A_RULE_ID = re.compile(r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?\b")
+AN_OBLIGATION_ID = re.compile(_AN_OBLIGATION)
+PARAGRAPH = re.compile(r"\n\s*\n")
 
 LENIENCY_ROW = re.compile(r"^\| ([^|]+?) \| \*\*[^|]+\*\*[^|]*\| (withdrawn|kept|never claimed) \|$",
                           re.M)
+
+
+def _without_the_cut_regions(text):
+    """The document with the two places claim language is legitimate removed.
+
+    Each has to occur exactly once. `re.search` takes the first match, so a
+    second copy of either header -- a fenced example, a quotation, a line
+    somebody added -- moves the cut off the real region and leaves it read
+    while hiding whatever sits under the copy.
+    """
+    for cut in (LENIENCY_TABLE, M25_PARAGRAPH):
+        found = list(cut.finditer(text))
+        assert len(found) == 1, (
+            "the region this test cuts out occurs %d times, and it has to occur "
+            "once: %s" % (len(found), cut.pattern[:48]))
+        block = found[0]
+        if cut is M25_PARAGRAPH:
+            assert len(" ".join(block.group(0).split())) == M25_PARAGRAPH_LENGTH, (
+                "the paragraph this test cuts out has changed length. It is cut "
+                "whole, so anything appended inside it goes unread — which is a "
+                "way past this gate. Re-read it, and move the pin on purpose.")
+        text = text[:block.start()] + text[block.end():]
+    return text
 
 
 def test_the_leniency_table_says_what_the_rules_do():
@@ -883,6 +936,13 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     said = words.get(stated.group(1).lower())
     assert said == len(demoted), (stated.group(0), demoted)
     assert int(stated.group(2)) == len(CLAIMED), stated.group(0)
+
+    # The same count is stated a second time two lines down, and the two said
+    # eight and nine — a document contradicting itself about the number this
+    # paragraph exists to publish, with nothing reading the second one.
+    again = re.search(r"breaching one of those (\w+) is reported", scope)
+    assert again, "docs/scope.md no longer states how many are demoted, the second time"
+    assert words.get(again.group(1).lower()) == len(demoted), again.group(0)
 
 
 # ---------------------------------------------------------------------------
@@ -1018,13 +1078,7 @@ def test_the_divergence_document_does_not_restate_what_the_code_claims(tmp_path)
     match that came after it.
     """
     text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
-    for cut in (LENIENCY_TABLE, M25_PARAGRAPH):
-        block = cut.search(text)
-        assert block, "the region this test cuts out is no longer there: %s" % cut.pattern[:40]
-        text = text[:block.start()] + text[block.end():]
-    prose = " ".join(text.split())
-
-    named = [m.group(0).strip() for m in RESTATES_A_CLAIM.finditer(prose)]
+    named = _restates(text)
     assert named == [], (
         "docs/divergences.md restates a claim's status in prose: %s" % named)
 
@@ -1108,6 +1162,19 @@ def test_the_two_halves_of_section_8_3_2_are_claimed_alike(package_half):
 #: table as far as the regex is concerned. The third is the verb list, which
 #: is closed and therefore a list of the phrasings somebody thought of.
 GATE_EVASIONS = {
+    "a row appended to the leniency table that is not a row": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\n| M17 no longer claims x6-7-1-component-trees-in-the-package#1. |"),
+    "an obligation id whose prefix the gate was not told about": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\n\nM13.1 no longer claims rdfrelations_core_has-start-selector#1."),
+    "the rule and the obligation more than a window apart": (
+        "| B6 | **a spelling** — the extension is compared case-insensitively, "
+        "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
+        "\n\nM17 " + "padding words " * 20
+        + "x6-7-1-component-trees-in-the-package#1."),
     "appended to the leniency table with no blank line": (
         "| B6 | **a spelling** — the extension is compared case-insensitively, "
         "so `.XHTML` passes where B.3 writes `.xhtml` | kept |",
@@ -1125,11 +1192,9 @@ GATE_EVASIONS = {
 
 def _restates(text):
     """The gate's own reading, over a text rather than over the file."""
-    for cut in (LENIENCY_TABLE, M25_PARAGRAPH):
-        block = cut.search(text)
-        if block:
-            text = text[:block.start()] + text[block.end():]
-    return [m.group(0).strip() for m in RESTATES_A_CLAIM.finditer(" ".join(text.split()))]
+    return [" ".join(para.split())[:90]
+            for para in PARAGRAPH.split(_without_the_cut_regions(text))
+            if A_RULE_ID.search(para) and AN_OBLIGATION_ID.search(para)]
 
 
 def test_the_control_is_caught():
@@ -1173,3 +1238,37 @@ def test_a_withdrawal_that_went_elsewhere_says_where():
             "%s is exempt because %s was said to have taken %s, and %s does "
             "not claim it -- so the sentence is a gap, not a move"
             % (rule_id, took_it, requirement, took_it))
+
+
+def test_a_claim_is_held_by_every_case_of_its_test_not_by_one():
+    """The repair that only reached one of the two buckets.
+
+    `tools/held_claims.py` was taught to check COUNTEREXAMPLES case by case
+    and went on checking NAMED_CASES by function name, which counts a
+    parametrised case list as held when any one row of it passed. Skipping
+    twenty-six of appendix B's twenty-seven cases left the tool printing "42
+    claims held" and exiting 0 with nine sentences standing on nothing.
+
+    Asked of the tool with a record of its own rather than of the live one, so
+    the property is checked and not the state of somebody's last run.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import held_claims
+
+    assert NAMED_CASES, "no named case at all"
+
+    a_name = "test_appendix_b_claims::" \
+             "test_every_way_of_breaking_an_appendix_b_sentence_is_reported"
+    collected = {a_name + "[one]", a_name + "[two]", a_name + "[three]"}
+    keys = held_claims.keys_per_claim(gate=sys.modules[__name__], collected=collected)
+
+    appendix = [wanted for requirement, wanted in keys.items()
+                if any(k.startswith(a_name) for k in wanted)]
+    assert appendix, "the appendix B claims stopped naming that test"
+    for wanted in appendix:
+        assert wanted == collected, (
+            "a claim held by a parametrised test must want every case that "
+            "ran under it: %s" % sorted(wanted))
+
+    for requirement, wanted in keys.items():
+        assert wanted, "%s is held by an empty set of cases" % requirement

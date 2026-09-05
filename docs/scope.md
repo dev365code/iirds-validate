@@ -138,7 +138,7 @@ gone wrong.
    **A claim says a violation is reported. It does not say the package
    fails.** Nine of the 81 are appendix B's rules about iiRDS XHTML5 content,
    and outside profile iiRDS/A the runner demotes content findings to
-   warnings — so a package breaching one of those eight is reported, prints
+   warnings — so a package breaching one of those nine is reported, prints
    `PASS`, and exits 0 unless you pass `-W`. The demotion is deliberate and
    argued under "Content rules" in `docs/divergences.md`. It is repeated here
    because the coverage figure is the sentence a reader is most likely to

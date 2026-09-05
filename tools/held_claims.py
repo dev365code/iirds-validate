@@ -18,12 +18,15 @@ after the run, exactly as `tools/rule_coverage.py` compares what fired.
 
     python tools/held_claims.py --check      # after the suite has run
 
-One thing it does not distinguish: the record drops the parameters, so a
-parametrised case counts as passed when any one of its parameters did. That is
-safe only because `make check` stops on the first failure, and this runs after
-a green suite -- there is no state where some parameters failed and this still
-reports the claim as held. Written down because the guard is the sequencing,
-not the check, and sequencing is easier to change by accident.
+The record keeps what the run *collected* as well as what passed, because what
+passed is not enough. A parametrised case list that ran one row and skipped
+twenty-six leaves the function name in the passed set and nothing to say the
+other rows were ever there: skipping twenty-six of appendix B's twenty-seven
+cases left this printing "42 claims held" and exiting 0 with nine sentences
+standing on nothing. Every row a claim's test collected has to be a row that
+passed. The defence written here before -- that `make check` stops on the
+first failure, so a partly-failing case list cannot reach this -- was true and
+answered the wrong question: a skip is not a failure and stops nothing.
 """
 from __future__ import annotations
 
@@ -46,21 +49,27 @@ COUNTEREXAMPLE_TEST = ("test_covers_is_earned::"
                        "test_a_package_that_breaks_the_sentence_is_reported_by_a_rule_claiming_it")
 
 
-def _keys_per_claim(gate):
+def keys_per_claim(gate, collected):
     """claim -> the test keys that have to be in the record for it to be held.
 
-    Two buckets and they are checked differently, which is the whole of the
-    repair. A NAMED_CASES claim names one test; a COUNTEREXAMPLES claim is a
-    row of a table one parametrised test walks, so what has to have passed is
-    every one of *its* parameters -- and the record keeps the parametrised
-    ids for exactly this. Counting the second bucket and iterating only the
-    first left three claims, the ones with the most cases behind them, held
-    by nothing that anybody checked.
+    Two buckets, and the same demand of both: every case that ran under the
+    name has to have passed. A COUNTEREXAMPLES claim names its rows in the
+    table, so they are derived from it; a NAMED_CASES claim names a function,
+    so its rows come from what the run collected under that name.
+
+    Both were checked by the function name once, which counts a case list as
+    held when one row of it passed. Repairing the first bucket and leaving the
+    second was the same defect a second time, in the tool written to prevent
+    it: thirty-nine of forty-two claims were still checked by name and fifteen
+    of those name a parametrised test.
     """
     keys = {}
     for requirement, where in gate.NAMED_CASES.items():
         module, _, name = where.rpartition(":")
-        keys[requirement] = {"%s::%s" % (module or "test_covers_is_earned", name)}
+        bare = "%s::%s" % (module or "test_covers_is_earned", name)
+        rows = {row for row in collected
+                if row == bare or row.startswith(bare + "[")}
+        keys[requirement] = rows or {bare}
     for requirement, cases in gate.COUNTEREXAMPLES.items():
         keys[requirement] = {
             "%s[%s:%s]" % (COUNTEREXAMPLE_TEST, requirement.rpartition("#")[2], kind)
@@ -76,7 +85,7 @@ def claims_counted_and_checked():
     import test_covers_is_earned as gate
 
     counted = set(gate.NAMED_CASES) | set(gate.COUNTEREXAMPLES)
-    return counted, set(_keys_per_claim(gate))
+    return counted, set(keys_per_claim(gate, collected=()))
 
 
 def main() -> int:
@@ -88,13 +97,24 @@ def main() -> int:
     if not PASSED_FILE.exists():
         print("  no record of what passed — run the suite first")
         return 1
-    passed = set(json.loads(PASSED_FILE.read_text("utf-8")))
+    record = json.loads(PASSED_FILE.read_text("utf-8"))
+    sys.path.insert(0, str(ROOT / "tests"))
+    import conftest
+
+    if record.get("tree") != conftest._tree_fingerprint():
+        print("  the record was written against a different tree — run the suite again")
+        return 1
+    passed = set(record["passed"])
+    collected = set(record["collected"])
 
     import test_covers_is_earned as gate
 
-    keys = _keys_per_claim(gate)
+    keys = keys_per_claim(gate, collected)
     missing = []
     for requirement, wanted in sorted(keys.items()):
+        if not wanted:
+            missing.append((requirement, "no case at all"))
+            continue
         absent = sorted(wanted - passed)
         if absent:
             missing.append((requirement, absent[0] if len(absent) == 1

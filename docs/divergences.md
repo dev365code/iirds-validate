@@ -626,18 +626,16 @@ The population is the graph's own subclass closure, not the ontology's,
 because SHACL's `sh:class` sees only the data graph — the two encodings have
 to be asking about the same nodes.
 
-**What the standard leaves to §6.3.3, R5 now says.** §6.2 forbids only
+**What the standard leaves to §6.3.3, the rules now say.** §6.2 forbids only
 membership in another package, so it does not make a self-loop a violation.
 §6.3.3 does: "the referenced parent iiRDS container MUST NOT have any outgoing
 `iirds:is-part-of-package` relations", and a package naming itself is its own
-referenced parent with an outgoing relation. That sentence
-(`x6-3-3-metadata-of-nested-iirds-packages#4`) had no rule here and none in the
-reference catalogue, so a self-loop was for one release neither exempt from
-anything nor reported by anything. It is reported now, under the id of the
-sentence that says it, and the same rule catches a chain of three and two
-packages each inside the other. It is version-gated to 1.3, because §6.3.3
-exists in the cached 1.3 and not in the cached 1.0, and 1.1 and 1.2 are not on
-hand to check.
+referenced parent with an outgoing relation. That sentence had no rule here and
+none in the reference catalogue, so a self-loop was for one release neither
+exempt from anything nor reported by anything. It is reported now, and so is a
+chain of three, and two packages each inside the other. Which rule carries it,
+and under which id, is in `covers=` — this document says why the sentence is
+read that way and not who claims it.
 
 The corpus carries exactly one such package,
 `tests/corpus/plusmeta/files/metadata_iirds_sample-M5_false.rdf`. Its verdict
@@ -973,19 +971,44 @@ the sentence says nothing section 5.1.1 does not already say about all
 metadata, and the claim on it was withdrawn once for that reason.
 
 What the standard does not spell out, its own vocabulary settles: **a class is
-a vocabulary class when the ontology supplies instances of it.** Twenty
-document types ship with the standard, eight party roles, eight identity
-types, five classification types. No documents ship, and no topics, because
-those are data. A company adding a term of the first kind extends the
-vocabulary; a company adding a document does not. The set is derived from the
-ontology rather than listed, so a class the standard starts supplying terms
-for joins it without anybody remembering to say so.
+a vocabulary class when the ontology types instances of it directly, and
+Appendix A does not say those instances may go unnamed.** Twenty document
+types ship with the standard, eight party roles, eight identity types, five
+classification types. No documents ship, and no topics, because those are
+data. A company adding a term of the first kind extends the vocabulary; a
+company adding a document does not. The set is derived from the ontology
+rather than listed, so a class the standard starts supplying terms for joins
+it without anybody remembering to say so.
 
-One narrowing sits on top of that, and it is the correction of an over-strict
-reading rather than a leniency. A name referred to in a vocabulary slot and
-typed by nobody is a dangling reference, not a misplaced extension: the
-package never adds the extension, so there is nothing of the package's for
-this sentence to place. L1 owns that, and `tests/test_lint.py` pins in its own
+Both conditions are load-bearing and each was added after the other let
+something through. *Directly*, because `instances_of` closes over subclasses
+and reading it that way admitted `iirds:iirdsDomainEntity`, the root of almost
+everything — which made every foreign name typed as anything a vocabulary
+instance, and reported an ordinary document as a proprietary extension. Nine
+of the eleven classes admitted that way say "Not intended to be used directly"
+in their own description. And Appendix A's IRI column, because a class whose
+instances the standard says need not be named cannot be a vocabulary: a term
+nobody can refer to is not a term, and that is what `iirds:PlanningTime` and
+its three siblings are — durations and frequencies.
+
+**What a proprietary extension is comes from section 7.3, not from the shape
+of an IRI.** The first form of this rule asked whether a name was outside the
+iiRDS and well-known namespaces and stood in a vocabulary position. That is a
+proxy for the question and fails both ways: it failed a package for using
+`prov:wasGeneratedBy` and `foaf:homepage` — a W3C Recommendation is not a
+"company-specific and project-specific" extension, and the remedy it printed
+would have had the author invent statements about somebody else's vocabulary —
+and it reported a proprietary class defined in a side ontology while staying
+silent about a proprietary term defined in the same file, because a class has
+a position that identifies it and a term does not. The rule reads section
+7.3's own three attachments now, in both directions, because section 7.3.2
+says equivalence may be written either way and the standard's Example 43
+writes both.
+
+A name attached to iiRDS by nobody is not an extension at all, whatever it
+looks like, so nothing narrows here: a name the package merely refers to is a
+dangling reference, which L1 has its own sentence for, and the package never
+added an extension for this sentence to place. L1 owns that, and `tests/test_lint.py` pins in its own
 words that "a reference to an undescribed IRI breaks no MUST". The first form
 of this rule reversed that decision as a side effect —
 `iirds:relates-to-event` takes an `iirds:Event`, the ontology seeds that class

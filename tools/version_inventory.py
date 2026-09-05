@@ -128,6 +128,21 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
             continue
         seen.add(name)
         helper = getattr(module, name, None)
+        if helper is None:
+            # A helper reached through its module -- `schema._points_at(...)`
+            # rather than an imported name -- is not an attribute of the
+            # caller's module, so `getattr` above finds nothing and the
+            # helper's body, and every term in it, drops out of the reached
+            # source in silence. That is one call style away from blinding this
+            # check, and `schema.py` is about to be split by specification
+            # section. Looked up across the rules package instead of left to a
+            # convention somebody has to remember.
+            for other in list(sys.modules.values()):
+                if getattr(other, "__name__", "").startswith("iirds_validate.rules"):
+                    candidate = getattr(other, name, None)
+                    if candidate is not None:
+                        helper = candidate
+                        break
         if callable(helper) and getattr(
                 helper, "__module__", "").startswith("iirds_validate"):
             out.append(_source_the_rule_reaches(helper, seen))

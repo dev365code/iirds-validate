@@ -270,5 +270,9 @@ def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
 def test_the_not_applicable_rules_are_listed_by_id_in_the_json_report(make_package):
     result = runner.run(make_package(), runner.ALL_KINDS)
     listed = result.as_dict()["notApplicable"]
-    assert set(listed) == {"variant", "version"}
+    # "unpacked" is the third reason and it changes the published JSON: the
+    # six requirements about the ZIP archive itself were being counted among
+    # the rules a directory had checked, and came back clean. A consumer
+    # reading `notApplicable` now sees them.
+    assert set(listed) == {"variant", "version", "unpacked"}
     assert "M15.1" in listed["variant"] or any(i.startswith("M15") for i in listed["variant"])

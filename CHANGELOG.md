@@ -94,6 +94,21 @@ document type that is not a standardised one was silent on it. And a blank node
 with no statements went to L1 too, which looks at IRIs only, so it was reported
 by nothing at all.
 
+**An unpacked container no longer reports six rules it did not run (`notApplicable`
+gains `unpacked`).** `iirds check` on a directory said `PASS, 175 rules checked`,
+and six of those hundred and seventy-five were the requirements about the ZIP
+archive itself — that it is not encrypted, that a large one uses ZIP64, that the
+first entry is an uncompressed `mimetype`. Each returns at its first line when
+there is no archive, and the count was incremented before it ran, so they were
+presented as checked and clean.
+
+The runner said so in a note all along, in prose no test read and no consumer of
+the JSON report could act on. They are out of the checked count now and named
+under a third `notApplicable` reason, `unpacked`; the note is written from the
+same list, so the sentence and the report cannot disagree. On an unpacked
+container the count moves from 175 to 169 and the six appear where a reader and
+a machine both look.
+
 **Coverage of the standard is 131 of 280, of which 96 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out

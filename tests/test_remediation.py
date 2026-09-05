@@ -245,3 +245,36 @@ def test_how_much_of_each_gate_is_actually_exercised():
     assert len(titled) == 12, sorted(r.id for r in titled)
     assert len(remedied) >= 120, len(remedied)
     assert terms_in_remedies >= 140, terms_in_remedies
+
+
+#: Sending the reader to the specification is the one thing a remedy must not
+#: do, and nothing read what a remedy *said*. Measured before this was written:
+#: no rule's fix matches, so the pattern forbids a shape this project has never
+#: shipped rather than describing one it has.
+_SENDS_YOU_TO_THE_SPEC = re.compile(
+    r"\b(consult|refer to|see|read)\s+(the\s+)?(iirds\s+)?(specification|standard|spec)\b",
+    re.I)
+
+
+@pytest.mark.parametrize("rule", RULES, ids=[r.id for r in RULES])
+def test_a_remedy_does_not_send_the_reader_to_the_specification(rule):
+    """This file's own docstring calls that "most of the work and all of the
+    expertise", and nothing checked it.
+
+    Every other assertion here is about the shape of the sentence -- its
+    length, its capital, its full stop, whether it opens lazily. A replacement
+    reading "Consult the iiRDS specification, section 8.3.2, and correct the
+    metadata." is seventy-three characters, capitalised, ends in a period, and
+    passed all of them. For a rule like R4, whose sentence is the only
+    actionable thing said about a handover package whose vcards all point at
+    nothing, that is the difference between a remedy and a shrug.
+
+    Citing a section beside a concrete instruction is fine; the pattern is on
+    the verb, so "Point iirds:relates-to-vcard at ... (section 8.3.2)" passes
+    and "Consult section 8.3.2" does not.
+    """
+    if not rule.fix:
+        return
+    match = _SENDS_YOU_TO_THE_SPEC.search(rule.fix)
+    assert not match, "%s: the remedy tells the reader to go and read the standard: %r" % (
+        rule.id, rule.fix)

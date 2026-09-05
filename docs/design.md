@@ -81,7 +81,7 @@ bound method — rather than the property. rdflib patches some names (`title`) a
 not others, so the breakage is inconsistent. Every term is declared once in
 `terms.py` using bracket syntax.
 
-The prose of a rule is not the name of a property. plusmeta's text for M16 reads
+The prose of a rule is not the name of a property. plusmeta's text for M16.1 reads
 "Instances of the iirds:Event class MUST have property iirds:eventCode"; the
 ontology defines `iirds:has-event-code`. `tests/test_terms.py` asserts every
 term in `terms.py` is really defined in the bundled ontology, which turns a

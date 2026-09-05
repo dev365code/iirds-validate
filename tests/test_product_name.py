@@ -129,12 +129,26 @@ def test_the_front_page_installs_the_one_name():
     assert "## Reading and writing packages from Python" in readme
 
 
-def test_the_sweep_would_notice_one_mention_too_many():
-    """A count that is not held is a list; this holds the holding."""
-    allowed = {"README.md": (1, "one")}
-    assert _offences.__name__ == "_offences"
-    # A file allowed once but mentioning twice, and one not allowed at all.
-    found = {"README.md": 2, "docs/new.md": 1}
-    bad = {p: (c, allowed.get(p, (0, None))[0]) for p, c in found.items()
-           if allowed.get(p, (0, None))[0] is not None and c != allowed.get(p, (0, None))[0]}
-    assert bad == {"README.md": (2, 1), "docs/new.md": (1, 0)}
+def test_the_sweep_would_notice_one_mention_too_many(monkeypatch):
+    """A count that is not held is a list; this holds the holding.
+
+    By calling `_offences`, which is the whole point and is what the first
+    version of this did not do: it asserted `_offences.__name__` and then
+    re-implemented the comparison inline over a hand-written dict. Deleting
+    the branch of the real function that reports a file mentioning the name at
+    all, and planting a document containing it, left every test in this file
+    green -- including this one, which reads as the thing that would have
+    caught it.
+
+    The counts are supplied rather than swept, so this stays a test of the
+    comparison and not a second copy of the file walk.
+    """
+    monkeypatch.setattr(
+        "test_product_name._mentions",
+        lambda needle: {"README.md": 2, "docs/new.md": 1, "docs/gone.md": 0})
+    allowed = {"README.md": (1, "one"), "docs/gone.md": (1, "an allowance that outlived it")}
+    assert _offences("whatever", allowed) == {
+        "README.md": (2, 1),        # allowed once, mentioned twice
+        "docs/new.md": (1, 0),      # not allowed at all
+        "docs/gone.md": (0, 1),     # allowed, and the mention is gone
+    }

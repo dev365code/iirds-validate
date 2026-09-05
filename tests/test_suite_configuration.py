@@ -7,9 +7,14 @@ with it and every test still passes. These check the behaviour the table is
 supposed to produce, not the text of the table.
 """
 
+import subprocess
+import sys
 import warnings
+from pathlib import Path
 
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_a_warning_raised_by_this_packages_code_is_a_failure():
@@ -90,3 +95,51 @@ def test_a_warning_in_a_child_process_of_the_suite_is_a_failure_too():
     theirs = child("import warnings; "
                    "warnings.warn_explicit('x', DeprecationWarning, 'f.py', 1, module='rdflib.term')")
     assert theirs.returncode == 0, theirs.stderr
+
+
+def test_an_empty_parametrize_list_is_a_failure_and_not_a_skip(tmp_path):
+    """A parametrized test whose list comes out empty ran zero cases and
+    reported `1 skipped`, exit 0.
+
+    Most of the parametrized tests here derive their list -- from the registry,
+    from the manifest, from `docs/requirements.json`, from an AST walk over the
+    rules. A change that empties one of those sources does not fail: it removes
+    every case and reports a skip, which is what a deliberately inapplicable
+    test looks like. Twenty-six modules are in that shape.
+
+    Run rather than read. The first version of this asserted the ini value and
+    said in the same breath that `--strict-markers` and `--strict-config` were
+    "asserted here behaviourally rather than by reading the table" -- both
+    halves false: the markers check reads `getoption`, and `--strict-config`
+    was asserted nowhere at all. Reading the table proves the table says what
+    it says.
+    """
+    probe = tmp_path / "test_probe.py"
+    probe.write_text("import pytest\n"
+                     "@pytest.mark.parametrize('x', [])\n"
+                     "def test_nothing(x):\n    assert False\n", "utf-8")
+    # `-c` because pytest takes its rootdir from the arguments: a probe file
+    # outside the tree would be collected under its own rootdir and would not
+    # read this project's table at all, which is the thing being checked.
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-c", str(ROOT / "pyproject.toml"),
+         "-p", "no:cacheprovider", str(probe)],
+        cwd=str(ROOT), capture_output=True, text=True)
+    assert result.returncode != 0, result.stdout
+    assert "Empty parameter set" in result.stdout, result.stdout
+
+
+def test_a_typo_in_this_table_is_an_error(tmp_path):
+    """`--strict-config`, which nothing checked. A misspelled key in
+    `[tool.pytest.ini_options]` is otherwise ignored, so a setting somebody
+    believes is on can be off for a whole release."""
+    config = tmp_path / "pytest.ini"
+    config.write_text("[pytest]\nxfial_strict = true\n", "utf-8")
+    probe = tmp_path / "test_probe.py"
+    probe.write_text("def test_ok():\n    assert True\n", "utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--strict-config",
+         "-c", str(config), "-p", "no:cacheprovider", str(probe)],
+        cwd=str(tmp_path), capture_output=True, text=True)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "xfial_strict" in (result.stdout + result.stderr)

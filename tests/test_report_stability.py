@@ -68,8 +68,26 @@ _SAMPLE_DIR = os.environ.get("IIRDS_SAMPLE_CONTENT", "")
 SAMPLES = (sorted(glob.glob(os.path.join(_SAMPLE_DIR, "*.iirds"))) if _SAMPLE_DIR else [])
 
 
-@pytest.mark.skipif(not SAMPLES, reason="set IIRDS_SAMPLE_CONTENT to the sample packages")
-@pytest.mark.parametrize("package", SAMPLES, ids=[Path(p).stem for p in SAMPLES])
+#: An absent oracle is one case that skips, not zero cases -- and only when
+#: the variable is unset. A variable pointing at the wrong directory, or at
+#: one whose packages moved, produced the same tidy skip and told the
+#: contributor to set a variable they had already set: the exemption
+#: reintroduced the thing it exempts. Set-but-empty is a collection error now,
+#: which is what `tests/test_official_samples.py` already distinguishes.
+#:
+#: With
+#: `empty_parameter_set_mark = "fail_at_collect"` an empty list is a collection
+#: error -- which is what it should be for a list derived from the registry or
+#: the manifest, and what this is not: the samples are licensed material a
+#: contributor may not have. Said in the parameters rather than left to a
+#: `skipif` that is evaluated after collection.
+_NO_SAMPLES = [pytest.param(
+    None, marks=pytest.mark.skip(reason="set IIRDS_SAMPLE_CONTENT to the sample packages"))]
+
+
+@pytest.mark.parametrize("package", SAMPLES or (_NO_SAMPLES if not _SAMPLE_DIR else []),
+                         ids=[Path(p).stem for p in SAMPLES]
+                             or (["no-samples"] if not _SAMPLE_DIR else []))
 def test_every_consortium_package_reports_the_same_thing_every_run(package):
     """The material this project has least excuse to be unstable on."""
     reports = {_report(package) for _ in range(RUNS)}

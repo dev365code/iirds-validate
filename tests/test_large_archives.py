@@ -133,3 +133,65 @@ def test_neither_rule_is_claimed_against_a_directory(tmp_path):
     report = runner.check(unpacked)
     assert _fired(report, "S7") == _fired(report, "S8") == []
     assert report.skipped > 0
+
+
+#: The requirements whose subject is the ZIP archive itself. An unpacked
+#: container cannot answer them, and the runner has always said so in a note.
+ARCHIVE_ONLY = ("C1", "C3", "C6", "S7", "S8", "S10")
+
+
+def _unpacked(tmp_path):
+    root = tmp_path / "unpacked"
+    (root / "META-INF").mkdir(parents=True)
+    (root / "mimetype").write_text("application/iirds+zip", "utf-8")
+    (root / "META-INF" / "metadata.rdf").write_text(
+        '<?xml version="1.0"?><rdf:RDF '
+        'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+        'xmlns:iirds="http://iirds.tekom.de/iirds#">'
+        '<iirds:Package rdf:about="urn:x:p">'
+        "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion></iirds:Package></rdf:RDF>", "utf-8")
+    return root
+
+
+def test_the_archive_rules_are_reported_as_not_assessed_and_not_as_checked(tmp_path):
+    """"Reported as not assessed, never as passed" was a note and nothing else.
+
+    The runner counts a rule as checked before running it, and these six return
+    at their first line when the container is not an archive -- so an unpacked
+    directory came back `PASS, 175 rules checked` with "the archive must not be
+    encrypted" and "large archives must use ZIP64" among the hundred and
+    seventy-five. The only trace was a sentence in `notes`, which no test read
+    the content of and no consumer of the JSON report can act on.
+
+    Now they are where a reader and a machine both look: out of the checked
+    count and named in `not_applicable`, under a reason of their own. The note
+    stays, as prose for the same fact.
+    """
+    report = runner.check(_unpacked(tmp_path))
+    named = set(report.not_applicable.get("unpacked", ()))
+    assert named == set(ARCHIVE_ONLY), sorted(named)
+    for rule_id in ARCHIVE_ONLY:
+        for reason, ids in report.not_applicable.items():
+            if reason != "unpacked":
+                assert rule_id not in ids, (rule_id, reason)
+
+
+def test_the_note_and_the_report_name_the_same_rules(tmp_path):
+    """The sentence was the only representation of this and said "the six
+    requirements ... (C1, C3, C6, S7, S8, S10)" in free text. Changing which
+    ids it named broke nothing. It is written from the list now, so the prose
+    and the machine-readable half cannot disagree."""
+    report = runner.check(_unpacked(tmp_path))
+    note = next(n for n in report.notes if "unpacked container" in n)
+    for rule_id in ARCHIVE_ONLY:
+        assert rule_id in note, (rule_id, note)
+
+
+def test_a_packed_container_still_checks_them(tmp_path):
+    """The control: these rules are not disabled, they are inapplicable to a
+    directory. A real archive answers all six."""
+    package = build_package(tmp_path, "packed.iirds")
+    report = runner.check(package)
+    assert report.not_applicable["unpacked"] == [], report.not_applicable
+    assert all(r not in sum(report.not_applicable.values(), [])
+               for r in ARCHIVE_ONLY), report.not_applicable

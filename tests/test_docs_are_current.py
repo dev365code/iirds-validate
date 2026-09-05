@@ -30,7 +30,33 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCS = [ROOT / "docs" / "divergences.md", ROOT / "docs" / "scope.md", ROOT / "README.md"]
+#: Every document that names a rule id, not the three somebody started with.
+#: `CHANGELOG.md` names fifty-nine and `shapes/README.md` twenty-nine -- and the
+#: second of those is the prose that ships inside the published shapes archive,
+#: so a stranger reads it without this repository beside them. Reading three of
+#: them left `docs/design.md` citing `M16`, which is not a rule and is not a
+#: catalogue id either; the sentence quotes M16.1's text.
+DOCS = [ROOT / "docs" / "divergences.md",
+        ROOT / "docs" / "scope.md",
+        ROOT / "docs" / "design.md",
+        ROOT / "README.md",
+        ROOT / "CHANGELOG.md",
+        ROOT / "SECURITY.md",
+        ROOT / "THIRD_PARTY.md",
+        ROOT / "shapes" / "README.md"]
+
+
+def test_every_document_that_names_a_rule_is_read():
+    """The list above is a list, so it can fall behind the tree. Any markdown
+    that names a rule id has to be in it."""
+    import re as _re
+
+    candidates = sorted(ROOT.glob("*.md")) + sorted((ROOT / "docs").glob("*.md")) \
+        + sorted((ROOT / "shapes").glob("*.md"))
+    for path in candidates:
+        text = _re.sub(r"```.*?```", "", path.read_text("utf-8"), flags=_re.S)
+        if RULE_ID.search(text):
+            assert path in DOCS, "%s names a rule id and nothing reads it" % path.name
 
 
 def prose(path):
@@ -99,8 +125,17 @@ def test_the_agreement_figures_quoted_in_prose_are_the_measured_ones():
         "docs/divergences.md states %d pairs, more than the %d measured"
         % (max(stated), pairs))
 
+    # Every category has to be quoted somewhere, not only checked where it
+    # happens to be quoted. A loop over what a pattern found asserts nothing
+    # when the pattern finds nothing, and this one reads "`agree` 42" -- so
+    # rewriting the sentence as "`agree` accounts for forty-two of them" left
+    # three assertions where there had been three and zero of them running,
+    # with the total above still matching so the emptying did not show.
     for name, number in counts.items():
-        quoted = re.findall(r"`%s` (\d+)" % name, text)
+        quoted = re.findall(r"`%s`[^\n]*?\b(\d+)\b" % name, text)
+        assert quoted, (
+            "docs/divergences.md no longer quotes a number for `%s`; it is one of "
+            "the figures this file exists to hold" % name)
         for value in quoted:
             assert int(value) == number, (name, value, number)
 

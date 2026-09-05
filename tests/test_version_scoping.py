@@ -435,3 +435,43 @@ def test_how_far_each_derived_population_outruns_the_older_editions():
         terms = {str(term) for term in population}
         measured = {v: len(terms - set(editions[v])) for v in editions}
         assert measured == OUTRUNS_THE_EDITION[name], (name, measured)
+
+
+def test_a_helper_called_through_its_module_is_followed_too():
+    """`schema.py` is about to be split by specification section, and the
+    split's call style decides whether this check can still see anything.
+
+    The walker resolves a name with `getattr(rule's own module, name)`. After a
+    split, `from .schema_relations import _points_at_an_instance_of` leaves the
+    name in the module namespace and is followed; `from . import
+    schema_relations` and then `schema_relations._points_at_an_instance_of(...)`
+    is not -- the helper's body drops out of the reached source, the terms it
+    names drop out with it, and the rule reads as naming nothing. The check
+    then says nothing about it and says so with a clean line.
+
+    A structural move must not be able to blind a gate, and the gate must not
+    depend on a convention somebody has to remember. It falls back to the rules
+    package now, so either style is followed.
+    """
+    import sys
+    import types
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+    from version_inventory import _source_the_rule_reaches
+
+    from iirds_validate.rules import schema
+
+    probe = types.ModuleType("probe_module_qualified")
+    sys.modules["probe_module_qualified"] = probe
+    try:
+        def body(ctx):
+            return schema._points_at_an_instance_of(ctx, T.title, T.Document, "x")
+
+        body.__module__ = "probe_module_qualified"
+        reached = _source_the_rule_reaches(body)
+        assert "undescribed reference" in reached, (
+            "the helper's body is not in the reached source; a rule calling it "
+            "this way would read as naming no term")
+    finally:
+        del sys.modules["probe_module_qualified"]

@@ -20,6 +20,12 @@ LINT_KINDS = ("lint", "system")
 ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
+#: The requirements whose subject is the ZIP archive itself. Each returns at
+#: its first line when the container is unpacked, so the runner is what has
+#: to say they were not assessed -- in the report, not only in prose.
+ARCHIVE_ONLY = ("C1", "C3", "C6", "S7", "S8", "S10")
+
+
 def load(path, version: Optional[str] = None) -> Context:
     """Open a container — archive or directory — and parse its metadata."""
     return load_context(open_package(path), version=version)
@@ -174,8 +180,9 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                             "validated against %s instead" % (ctx.declared_version, ctx.version))
     if not package.is_archive:
         report.notes.append(
-            "validated as an unpacked container; the six requirements about the ZIP "
-            "archive itself (C1, C3, C6, S7, S8, S10) cannot be assessed until it is packed")
+            "validated as an unpacked container; the %d requirements about the ZIP "
+            "archive itself (%s) cannot be assessed until it is packed"
+            % (len(ARCHIVE_ONLY), ", ".join(ARCHIVE_ONLY)))
     if ctx.ontology.substituted:
         report.notes.append(
             "no ontology bundled for iiRDS %s; class hierarchy taken from %s, so rules that "
@@ -194,6 +201,15 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             report.skipped += 1
             reason = "version" if rule.versions and ctx.version not in rule.versions else "variant"
             report.not_applicable[reason].append(rule.id)
+            continue
+        # These stand down at their own first line when the container is not an
+        # archive, and the count was incremented before they ran -- so an
+        # unpacked directory reported them among the rules it had checked and
+        # came back clean. "Not assessed" was a sentence in `notes` and nothing
+        # a consumer of the report could read.
+        if rule.id in ARCHIVE_ONLY and not package.is_archive:
+            report.skipped += 1
+            report.not_applicable["unpacked"].append(rule.id)
             continue
         report.checked += 1
         try:

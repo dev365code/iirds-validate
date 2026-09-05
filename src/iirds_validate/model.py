@@ -307,7 +307,11 @@ class Report:
     #: package does not declare the profile the rule is for) or "version". A
     #: count told a reader that twenty-one rules did not run; which ones, and
     #: whether the handover rules were among them, it did not.
-    not_applicable: dict = field(default_factory=lambda: {"variant": [], "version": []})
+    #: Why a rule did not run, by reason. "unpacked" is the third: the six
+    #: requirements about the ZIP archive itself cannot be answered by a
+    #: directory, and were being counted as checked-and-clean.
+    not_applicable: dict = field(
+        default_factory=lambda: {"variant": [], "version": [], "unpacked": []})
     unimplemented: int = 0           # catalogued but not yet implemented here
     notes: list = field(default_factory=list)
     #: rule id -> how many of its findings were counted but not listed.

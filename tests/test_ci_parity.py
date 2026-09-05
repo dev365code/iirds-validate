@@ -15,6 +15,8 @@ understands both files would be a third thing to keep in step.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -35,14 +37,66 @@ def _check_targets():
     return line.group(1).split()
 
 
+def _what_make_would_run():
+    """The commands `make check` runs, from make.
+
+    Read by asking make rather than by matching the Makefile's text. Every
+    way a gate was found to disappear was a place where the two diverge, and
+    none of them touched a recipe: `shapes/` and `tools/` are real
+    directories, so dropping them from `.PHONY` made both targets "up to
+    date" and four gates vanished; a second `check:` line adds a prerequisite
+    the first-match search cannot see; a target defined twice runs its *last*
+    recipe and the search reads the first; a line continuation, an indented
+    comment and a whitespace-only line each truncated a recipe; a command held
+    in a variable was invisible.
+
+    `make -n` executes nothing. It is not a third thing to keep in step with
+    the other two -- it *is* the thing the other two are about.
+    """
+    make = shutil.which("make")
+    assert make, "make is how these gates run; the comparison needs it"
+    printed = subprocess.run([make, "-n", "check"], cwd=str(ROOT), text=True,
+                             capture_output=True, check=True).stdout
+    out = []
+    for line in printed.splitlines():
+        command = line.strip()
+        if not command.startswith(("python", "/")):
+            continue
+        # Drop the interpreter the way `_normalise` drops `$(PYTHON)`: what is
+        # being compared is the gate, not how python is spelled.
+        out.append(_normalise(command.split(None, 1)[1] if " " in command else command))
+    return out
+
+
+#: Recipe prefixes and directives that keep a command running while stopping it
+#: from failing. `@` is cosmetic; these are not, and one of them was introduced
+#: into this file by a repair that stripped all three as one class -- a
+#: `-`-prefixed gate still appears in `make -n` and in the Makefile's text, and
+#: cannot fail.
+_CANNOT_FAIL = (
+    (re.compile(r"^\t\s*[-+@]*-", re.M), "a recipe line prefixed with `-` ignores its exit status"),
+    (re.compile(r"^\.IGNORE:", re.M), ".IGNORE: makes every recipe unable to fail"),
+    (re.compile(r"^MAKEFLAGS\s*[+:]?=.*\B-i\b", re.M), "-i in MAKEFLAGS ignores every error"),
+)
+
+
 def _commands_of(target: str):
-    """The $(PYTHON) recipe lines of one target."""
-    body = re.search(r"^%s:.*?\n((?:\t.*\n|\n)*)" % re.escape(target), MAKEFILE, re.M)
+    """The $(PYTHON) recipe lines of one target, for attribution only.
+
+    What runs comes from `_what_make_would_run`; this says which target each
+    command sits under, which make's own output does not report. The two are
+    compared, so a divergence between them is a failure rather than a silent
+    difference of opinion.
+    """
+    body = re.search(r"^%s:.*?\n((?:\t.*\n|#.*\n|\n)*)" % re.escape(target),
+                     MAKEFILE, re.M)
     if not body:
         return []
     out = []
     for raw in body.group(1).splitlines():
-        stripped = raw.strip()
+        if raw.startswith("#"):
+            continue
+        stripped = raw.strip().lstrip("@").strip()
         if stripped.startswith("$(PYTHON)"):
             out.append(stripped.replace("$(PYTHON)", "").strip())
     return out
@@ -65,8 +119,72 @@ CHECKS = [(target, _normalise(command))
           if "$@" not in command]           # fixture-building recipes, not gates
 
 
-def test_the_check_target_has_recipes_to_compare():
-    assert len(CHECKS) >= 8, CHECKS
+#: What `make check` depends on, by name. A floor of eight against a real
+#: fourteen let six targets be deleted from the dependency list and every test
+#: here still passed -- including `shapes`, `versions`, `requirements` and
+#: `exercised`, which is the generated-file comparison, the edition check, the
+#: obligation index and both claim gates. A count is not a list.
+CHECK_TARGETS = ("lint", "generated", "corpus", "versions", "requirements",
+                 "shapes", "test", "exercised", "tools")
+
+#: And the commands, by name for the same reason. A count of fifteen is
+#: satisfied by fifteen copies of one gate: replacing `ruff check .` with a
+#: second `pytest -q` kept the number and removed the reason this Makefile
+#: has a `lint` target at all.
+CHECK_COMMANDS = (
+    "ruff check .",
+    "tools/propose_class_rules.py --check",
+    "tools/vendor_corpus.py --check",
+    "tools/crossvalidate.py --check",
+    "tools/explain_silence.py --quiet",
+    "tools/version_inventory.py",
+    "tools/extract_requirements.py",
+    "tools/requirement_coverage.py",
+    "tools/emit_shacl.py --check",
+    "pytest -q",
+    "tools/rule_coverage.py --check",
+    "tools/held_claims.py --check",
+    "-m iirds_validate.ontology --verify",
+    "tools/serialisation_equivalence.py fixtures/bad.iirds",
+    "tools/serialisation_equivalence.py fixtures/good.iirds --allow-clean",
+)
+
+
+def test_the_makefile_text_and_make_agree_about_what_check_runs():
+    """The text reader is only for attribution, so it has to match make.
+
+    Every way a gate was found to disappear lived in this gap and none of them
+    touched a recipe line: `.PHONY` losing a name while `shapes/` and `tools/`
+    exist as directories, a second `check:` line, a target defined twice, a
+    line continuation, an indented comment, a command held in a variable.
+    """
+    from_text = sorted(command for _target, command in CHECKS)
+    from_make = sorted(_what_make_would_run())
+    assert from_text == from_make, (
+        "the Makefile reads as %s and make runs %s"
+        % (sorted(set(from_text) - set(from_make)), sorted(set(from_make) - set(from_text))))
+
+
+def test_nothing_in_the_makefile_stops_a_gate_from_failing():
+    """A gate that runs and cannot fail is worse than one that does not run:
+    it reports success. `-` on a recipe line, `.IGNORE:` and `-i` in MAKEFLAGS
+    each do that while leaving the command in `make -n` and in the text, so
+    neither of the other two checks can see it.
+
+    This file introduced the first of the three itself, by stripping `@`, `-`
+    and `+` from a recipe line as though they were one class of cosmetic
+    modifier. Before that strip, the count caught a `-`-prefixed gate; after
+    it, `make shapes` exited 0 with a broken manifest and every test passed.
+    """
+    for pattern, why in _CANNOT_FAIL:
+        assert not pattern.search(MAKEFILE), why
+
+
+def test_the_check_target_runs_every_gate_it_is_supposed_to():
+    """Named rather than counted. Removing a target from `check:` is a change
+    somebody has to make here as well, which is a diff a reviewer reads."""
+    assert tuple(_check_targets()) == CHECK_TARGETS, _check_targets()
+    assert tuple(c for _t, c in CHECKS) == CHECK_COMMANDS, [c for _t, c in CHECKS]
 
 
 @pytest.mark.parametrize("target,command", CHECKS, ids=[c for _t, c in CHECKS])

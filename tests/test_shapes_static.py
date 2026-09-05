@@ -48,7 +48,7 @@ def test_every_rule_is_classified_exactly_once():
 
 def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
-    assert counts["core_emitted"] == 121
+    assert counts["core_emitted"] == 122
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 28
     assert counts["deferred_v1.1"] == 9
@@ -212,8 +212,12 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
         name = entry["file"].rsplit("/", 1)[-1]
         per_file[name] = per_file.get(name, 0) + 1
 
-    assert "| %d shapes: cardinalities" % per_file["iirds-core.ttl"] in readme
-    assert "| %d shapes: graph-global" % per_file["iirds-sparql.ttl"] in readme
+    # "one per rule" is load-bearing, not decoration: the file also holds the
+    # property shapes those node shapes hang off -- eighty-six of them in the
+    # core file, forty-six from L16 alone -- and a reader who counts
+    # `sh:PropertyShape` gets a different number than this row.
+    assert "| %d shapes, one per rule: cardinalities" % per_file["iirds-core.ttl"] in readme
+    assert "| %d shapes, one per rule: graph-global" % per_file["iirds-sparql.ttl"] in readme
     assert "| %d iiRDS/H additions" % per_file["iirds-handover-core.ttl"] in readme
     assert "| %d iiRDS/H additions (SPARQL)" % per_file["iirds-handover-sparql.ttl"] in readme
 
@@ -268,7 +272,7 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
 # ---------------------------------------------------------------------------
 
 EMITTED_IDS = frozenset((
-    "L10", "L7", "M1", "M10", "M11", "M12", "M13.1", "M13.2", "M14.1",
+    "L10", "L16", "L7", "M1", "M10", "M11", "M12", "M13.1", "M13.2", "M14.1",
     "M14.2", "M15.1", "M15.10", "M15.11a", "M15.11b", "M15.11c", "M15.2",
     "M15.3", "M15.4", "M15.5", "M15.6", "M15.7a", "M15.7b", "M15.7c",
     "M15.7d", "M15.8", "M15.9", "M16.3", "M17", "M18",
@@ -328,12 +332,30 @@ def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
                  "iirds-handover-core.ttl", "iirds-handover-sparql.ttl"):
         graph.parse(SHAPE_DIR / name, format="turtle")
 
-    missing = set()
+    # By rule, not by shape: a rule with a spec link puts it on its property
+    # shapes too, so one rule emitting forty-six of them would otherwise
+    # arrive here as forty-six names and pin a list instead of a fact. Read
+    # this way a property shape that lost the link still shows up -- under the
+    # id of the rule that should have carried it.
+    #
+    # The count is pinned beside the set, because reading by rule stops the
+    # gate bounding *how many* shapes lack a link: any number of them could
+    # then be added under one of these six ids and nothing would notice. The
+    # set says which rules, the count says how many shapes, and a change to
+    # either is a diff a reviewer reads.
+    # Read from the file's own @prefix rather than written out here: the
+    # namespace carries the distribution's former name, and the gate in
+    # `test_product_name.py` is right to refuse a source file that spells it.
+    IVM = Namespace(dict(graph.namespaces())["ivm"])
+    missing, shapes_without = set(), 0
     for kind in (SH_NS.NodeShape, SH_NS.PropertyShape):
         for shape in graph.subjects(RDF.type, kind):
             if graph.value(shape, DCT.source) is None:
-                missing.add(str(shape).rsplit("#", 1)[-1])
-    assert missing == {"L7", "L10", "S4", "S5", "M97.1"}, sorted(missing)
+                shapes_without += 1
+                rule_id = graph.value(shape, IVM.ruleId)
+                missing.add(str(rule_id) if rule_id else str(shape).rsplit("#", 1)[-1])
+    assert missing == {"L7", "L10", "L16", "S4", "S5", "M97.1"}, sorted(missing)
+    assert shapes_without == 52, shapes_without
 
 
 def test_the_manifest_version_is_the_package_version():

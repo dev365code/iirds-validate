@@ -47,7 +47,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  184 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
+  185 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```
@@ -66,7 +66,7 @@ $ echo $?
 
 Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
 
-**It asks whether the package will work, not only whether it conforms.** Fifteen
+**It asks whether the package will work, not only whether it conforms.** Sixteen
 interoperability rules, most with no counterpart in the specification, because a
 conformant package can still be undeliverable:
 
@@ -90,6 +90,7 @@ conformant package can still be undeliverable:
 | L13 | a name in the iiRDS namespace that the standard does not define, with the term that was probably meant |
 | L14 | a namespace one character from an iiRDS namespace, so that every name under it resolves to nothing |
 | L15 | a name from a later edition of iiRDS than the package declares, so a consumer reading it as declared has no definition for it |
+| L16 | a relation carrying text where a reference belongs, so the relation exists and its target does not |
 
 </details>
 
@@ -129,7 +130,7 @@ flowchart LR
 
 ## Honest coverage
 
-> **At a glance** — 208 rules across five editions and three profiles · 149 SHACL shapes
+> **At a glance** — 209 rules across five editions and three profiles · 150 SHACL shapes
 > carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
 > the single-file `.pyz` · every number in this section is read by a test that fails the
 > build when it goes stale.
@@ -140,10 +141,10 @@ container  19/19    the ZIP and its layout  +3 of its own
 schema     135/135  the metadata graph  +15 of its own
 system     3/3      the run itself  +7 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +11 of its own
-lint       -        will a consumer be able to use it  +15 of its own
+lint       -        will a consumer be able to use it  +16 of its own
 ```
 
-157 of 157 catalogued rules, plus 51 of this project's own.
+157 of 157 catalogued rules, plus 52 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
@@ -151,7 +152,7 @@ lint       -        will a consumer be able to use it  +15 of its own
 | schema (M\*) | 135 / 135 | 15 |
 | system (S\*) | 3 / 3 | 7 |
 | content (B\*) | — | 11 |
-| interoperability (L\*) | — | 15 |
+| interoperability (L\*) | — | 16 |
 
 Coverage of the catalogue is not coverage of the standard. The specification states
 **280 absolute obligations**, counted by
@@ -163,12 +164,12 @@ re-measured on every release.
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
-- **Every finding says what to do about it.** All 208 rules carry one imperative
+- **Every finding says what to do about it.** All 209 rules carry one imperative
   sentence naming the change, and a test refuses a rule that does not.
 - **Every rule has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 207 of the 208 have — the remaining one is a `MAY` with
+  produce a finding, and 208 of the 209 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 51 rules this project invented have no second
+- **What is not established.** The 52 rules this project invented have no second
   implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
   records where this project reads the specification differently, with reasons.
 

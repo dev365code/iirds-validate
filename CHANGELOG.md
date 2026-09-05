@@ -4,6 +4,62 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.7.0 — unreleased
+
+**A relation carrying text where a reference belongs (L16).** In RDF/XML the
+two forms differ by one attribute: `<iirds:relates-to-party
+rdf:resource="urn:x:party1"/>` points at a party, and
+`<iirds:relates-to-party>party1</iirds:relates-to-party>` puts the string
+"party1" in the graph and points at nothing. The relation is present, so the
+rules asking whether it is there are satisfied, and the rules asking about its
+target find a literal and step over it.
+
+Seven rules already say this about seven of the forty-six relations — R10,
+R12, M17, M18, M22.2, M26 and M94 — each as a MUST, because for those the
+standard states the range obligation in a sentence of its own. L16 is the same
+observation about the other thirty-nine, where it states none. It is a
+warning and claims no obligation: `rdfs:range` in RDF is an inference and not a
+constraint, and the one general-looking range MUST, section 7.3.3's, is about a
+proprietary property complying with the iiRDS property it refines. Coverage is
+unchanged, which is the point of keeping "claimed" and "held" apart.
+
+The rule reads the ontology's own word for what a relation is rather than a
+list or a proxy. Every property the standard declares descends from
+`iirds:iirdsRelationConcept` or from `iirds:iirdsAttribute`; the two sets are
+disjoint and between them they are all of it. `iirds:title` and
+`iirds:revision` are attributes and are left alone.
+
+It reports against the edition the package is read as. Only the newest
+ontology ships, so the forty-six are the same list whatever a package
+declares — but eight of them are absent from iiRDS 1.0 and three from 1.2, and
+a name the declared edition does not have is not one of its relations at all.
+That is L15's sentence, and L15 reports it.
+
+Over the corpus this repository vendors it finds ten, in nine files. Seven of
+the ten are an empty element rather than a misspelt reference, so the rule says
+which of the two a reader is looking at: "carries text where a reference
+belongs" against "is empty, so it points at nothing", with a different repair
+for each. A value with a datatype or a language keeps it in the finding —
+`xsd:anyURI` is the one literal form that does carry a resolvable identifier.
+
+**`iirds:ForeseeableMisuse` is no longer reported as a grouping class (L10).**
+The ontology marks a class that should not be instantiated directly with a
+sentence of its own, and this rule found it by looking for "not int".
+`iirds:ForeseeableMisuse` is concrete, and its description is ordinary prose
+beginning "Use of a product in a manner **not intended** by the producer or
+supplier". The advice was impossible to follow — the class has no subclasses,
+so the finding told the reader to retype the instance and could only offer
+"define a proprietary subclass".
+
+The marker is now the phrase every spelling shares. The ontology writes the
+same sentence four ways — "Not intended", "Not intented", "Not indented" and
+"No intended" — so the old substring read two of the four while matching prose
+that negates something else; `iirds:iirdsRelationConcept` and
+`iirds:relates-to-functional-metadata` were the two it missed. The shapes read
+the corrected set from the rule instead of computing it beside it.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+
 ## 0.6.0 — 2026-09-05
 
 Ten new rules, and a coverage figure that means something it did not mean

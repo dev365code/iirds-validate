@@ -15,7 +15,7 @@ from __future__ import annotations
 import difflib
 import re
 
-from rdflib import BNode, URIRef
+from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
@@ -374,10 +374,26 @@ def l9_serialisations_disagree(ctx):
                     subject="META-INF", detail=" | ".join(detail))
 
 
-#: iiRDS classes the ontology itself marks as groupings. Read out of the
+#: iiRDS terms the ontology itself marks as groupings. Read out of the
 #: bundled ontology rather than listed, so the set stays right as the standard
 #: adds classes.
-_ABSTRACT_MARKER = "not int"
+#:
+#: The phrase and not the word: the ontology writes the same sentence four
+#: ways -- "Not intended to be used directly", "Not intented", "Not indented"
+#: and "No intended" -- so a marker on the negation read two of the four, and
+#: the obvious substring "not int" also matched
+#: `iirds:ForeseeableMisuse`, whose description is prose beginning "Use of a
+#: product in a manner not intended by the producer". That class is concrete
+#: and has no subclasses, so L10 told its author to retype the instance as one
+#: of them.
+_ABSTRACT_MARKER = "to be used directly"
+
+
+def abstract_terms(ontology) -> frozenset:
+    """Terms the ontology's own description marks "not ... to be used directly"."""
+    return frozenset(term for term, description
+                     in ontology.graph.subject_objects(T.IIRDS_DESCRIPTION)
+                     if _ABSTRACT_MARKER in str(description).lower())
 
 
 @_lint("L10", "abstract iiRDS classes should not be used to type an instance directly",
@@ -398,12 +414,7 @@ def l10_abstract_class_used_directly(ctx):
     `iirds:Role` tells a consumer only that some qualification is involved. The
     standard subclasses are what carry meaning.
     """
-    abstract = set()
-    for cls, description in ctx.ontology.graph.subject_objects(T.IIRDS_DESCRIPTION):
-        if _ABSTRACT_MARKER in str(description).lower():
-            abstract.add(cls)
-
-    for cls in sorted(abstract, key=str):
+    for cls in sorted(abstract_terms(ctx.ontology), key=str):
         for subject in ctx.graph.subjects(RDF.type, cls):
             subclasses = sorted(str(s).split("#")[-1]
                                 for s in ctx.ontology.graph.subjects(RDFS.subClassOf, cls))
@@ -861,3 +872,125 @@ def l15_name_from_a_later_edition(ctx):
             continue
         yield Violation("%s is not in iiRDS %s" % (_named(term), edition), subject=str(term),
                         detail="defined from iiRDS %s on; %s" % (arrived, where))
+
+
+def relation_properties(ontology) -> frozenset:
+    """The properties the ontology itself calls relations.
+
+    The standard states the split rather than leaving it to be inferred: every
+    property it declares descends from `iirds:iirdsRelationConcept` ("iiRDS
+    resource's property that references an iiRDS resource") or from
+    `iirds:iirdsAttribute`, the two sets are disjoint, and between them they
+    are all of it. So the population is read from the ontology's own word, the
+    way L10's is.
+
+    The obvious proxy -- a property whose `rdfs:range` is an iiRDS class -- was
+    wrong in two directions at once and looked right because the count was
+    plausible. It dropped `iirds:relates-to-vcard`, whose range is
+    `vcard:Kind`: a class, in somebody else's namespace, so a test for an
+    *iiRDS* range excluded the one relation the specification's own examples
+    get wrong. And it dropped `iirds:has-abstract`, `iirds:has-event-code` and
+    `iirds:has-event-type`, which assert no range of their own and inherit the
+    root's -- a literal on any of the three was reported by nothing in this
+    validator at all.
+
+    The root itself is excluded because the closure includes the term it
+    starts from, and the concept "property that references an iiRDS resource"
+    is not one of them. The three the ontology marks "Not intended to be used
+    directly" -- `has-information-type`, `relates-to-action`,
+    `relates-to-administrative-metadata` -- stay in. That marker says the
+    property is the wrong one to reach for, which is a different observation
+    from this one and belongs to whichever rule makes it; a literal on one of
+    them is still a relation that points at nothing.
+    """
+    root = URIRef(IIRDS_NAMESPACES[0] + "iirdsRelationConcept")
+    return frozenset(ontology.subproperties_of(root) - {root})
+
+
+#: The two namespaces a datatype on an iiRDS value actually comes from. Named
+#: in the short form a reader writes; anything else is shown whole, because a
+#: prefix nobody uses is less informative than the IRI.
+_DATATYPE_PREFIX = {"http://www.w3.org/2001/XMLSchema#": "xsd",
+                    "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf"}
+
+
+def _datatype_name(datatype) -> str:
+    text = str(datatype)
+    for namespace, prefix in _DATATYPE_PREFIX.items():
+        if text.startswith(namespace):
+            return "%s:%s" % (prefix, text[len(namespace):])
+    return text
+
+
+def _how_the_literal_reads(obj) -> str:
+    """What the value is, not only what it says.
+
+    `rdf:datatype="…#anyURI"` is the one literal form that carries a
+    resolvable identifier and `rdf:parseType="Literal"` is markup rather than
+    a name; reported as `the string '…'` both read as somebody having typed a
+    word, which sends the reader to the wrong repair.
+    """
+    text = repr(str(obj)[:60])
+    if obj.datatype is not None:
+        return "the value is %s, typed %s" % (text, _datatype_name(obj.datatype))
+    if obj.language:
+        return "the value is %s, in %s" % (text, obj.language)
+    return "the value is the string %s" % text
+
+
+@_lint("L16", "a relation should not carry a literal where a reference belongs",
+       fix="Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` "
+           "on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value "
+           "is empty there is nothing to convert -- give the relation a target or delete "
+           "the element. Either way the relation exists and its target does not.")
+def l16_relation_carries_a_literal(ctx):
+    """The mistake is one attribute wide.
+
+    `<iirds:relates-to-party rdf:resource="urn:x:party1"/>` points at a party;
+    `<iirds:relates-to-party>party1</iirds:relates-to-party>` puts the string
+    "party1" in the graph and points at nothing. The XML differs by an
+    attribute and the RDF differs completely: the relation is present, so the
+    rules asking whether it is there are satisfied, and the rules asking about
+    its target find a literal and step over it.
+
+    Seven rules already say this about seven of the forty-six -- R12 about
+    `iirds:relates-to-vcard`, M17 about `iirds:relates-to-component`, and M18,
+    M22.2, M26, M94 and R10 about theirs -- each as a MUST, because for those
+    the standard states the range obligation in a sentence of its own. This is
+    the same observation about the other thirty-nine, where it states none, and
+    where until now nothing reported it.
+
+    A lint, and it claims nothing. `rdfs:range` in RDF is an inference and not
+    a constraint, and there is no general sentence that a relation's object be
+    an instance of its range; section 7.3.3's is about a *proprietary* property
+    complying with the iiRDS property it refines, which is a different sentence
+    about different terms. What is true is this family's own: the package is
+    valid and the data is unusable.
+
+    A separate finding, not this rule's, and recorded where such things are
+    recorded: writing `iirds:has-document-type` as text does not merely go
+    unclaimed, it *silences* M15.1, so a package that names its document type
+    as a string passes a check that a package omitting it fails.
+    """
+    # Only the newest ontology ships, so the population is the same forty-six
+    # whatever the package declares. Eight of them are absent from 1.0 and
+    # three from 1.2, and in a package declaring one of those a name the
+    # edition does not have is not a relation of its vocabulary at all --
+    # "this relation points at nothing" is the wrong sentence about it, and
+    # L15's "a name the declared edition does not have yet" is the right one.
+    present = version_terms().get(ctx.version)
+    for predicate in sorted(relation_properties(ctx.ontology), key=str):
+        if present is not None and str(predicate) not in present:
+            continue
+        for subject, obj in sorted(ctx.graph.subject_objects(predicate), key=str):
+            if not isinstance(obj, Literal):
+                continue
+            if str(obj).strip():
+                yield Violation(
+                    "%s carries text where a reference belongs" % _named(predicate),
+                    subject=ctx.ref(subject), detail=_how_the_literal_reads(obj))
+            else:
+                yield Violation(
+                    "%s is empty, so it points at nothing" % _named(predicate),
+                    subject=ctx.ref(subject),
+                    detail="the element is there and carries neither a reference nor a value")

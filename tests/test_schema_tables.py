@@ -143,6 +143,51 @@ def test_using_an_abstract_class_directly_is_lint_not_conformance(make_package):
     assert not [f for f in runner.lint(fixed_pkg).findings if f.rule.id == "L10"]
 
 
+def test_a_class_whose_description_merely_says_not_intended_is_not_abstract(make_package):
+    """`iirds:ForeseeableMisuse` is concrete, and L10 called it a grouping.
+
+    The ontology marks a grouping class with a sentence of its own -- "Not
+    intended to be used directly. Use the subclasses instead." -- and this rule
+    found it by looking for "not int". `iirds:ForeseeableMisuse`'s description
+    is ordinary prose that begins "Use of a product in a manner **not
+    intended** by the producer or supplier", so the substring matched a
+    sentence that says nothing of the kind.
+
+    The advice was impossible to follow: the class has no subclasses, so the
+    finding told the reader to retype the instance and its detail could only
+    offer "define a proprietary subclass".
+
+    The marker is the phrase every real spelling shares. The ontology writes
+    the same sentence four ways -- "Not intended", "Not intented", "Not
+    indented", "No intended" -- so a marker on the negation read two of the
+    four while matching prose that negates something else. "to be used
+    directly" reads all four and reads no prose about intent.
+    """
+    from conftest import MINIMAL_RDF
+    from iirds_validate import runner
+
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (
+        '  <iirds:ForeseeableMisuse rdf:about="urn:test:m1"/>\n</rdf:RDF>'))
+    package = make_package(metadata=metadata)
+    assert not [f for f in runner.lint(package).findings if f.rule.id == "L10"]
+
+
+def test_the_abstract_marker_reads_every_spelling_the_ontology_uses(make_package):
+    """Four spellings, three of them typos, and a substring test that caught
+    two of the four."""
+    from iirds_validate.ontology import load
+    from iirds_validate.rules.lint import abstract_terms
+
+    ontology = load()
+    marked = {str(t).split("#")[-1] for t in abstract_terms(ontology)}
+    for spelling in ("InformationType",                  # "Not intented"
+                     "iirdsDomainEntity",                # "Not intended"
+                     "iirdsRelationConcept",             # "Not indented"
+                     "relates-to-functional-metadata"):  # "No intended"
+        assert spelling in marked, spelling
+    assert "ForeseeableMisuse" not in marked
+
+
 def test_must_have_iri_fires_on_a_blank_node(make_package):
     from conftest import MINIMAL_RDF
     from iirds_validate import runner

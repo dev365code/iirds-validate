@@ -121,6 +121,10 @@ def terms_named_by(rule) -> list:
     Read out of the source rather than out of the catalogue's prose, which is
     the same choice made everywhere else here and for the same reason: prose
     and code have disagreed before.
+
+    The limit of reading it this way: a rule whose population comes from the
+    ontology at run time names no term and so cannot be answered for. `check`
+    counts those out loud rather than letting them pass as clean.
     """
     named = []
     source = _source_the_rule_reaches(rule.fn)
@@ -173,9 +177,19 @@ def check() -> int:
     inventory = {k: set(v) for k, v in
                  json.loads(INVENTORY.read_text("utf-8"))["terms"].items()}
 
-    problems = []
+    problems, unanswerable = [], []
     for rule in all_rules():
         named = terms_named_by(rule)
+        # A rule that names nothing passes by naming nothing. For a container
+        # or system rule that is the truth -- its subject is ZIP bytes or the
+        # run itself. For a rule that reads the graph it means the population
+        # is derived from the ontology at run time, and this check cannot
+        # answer for it: L16 declared all five editions while eight of the
+        # relations it watches are absent from 1.0, and this printed a clean
+        # line. Reported rather than refused, because refusing wants a reason
+        # written per rule and there are sixteen of them.
+        if not named and rule.kind in ("schema", "lint"):
+            unanswerable.append(rule.id)
         # `versions=()` means "every edition", which is how the registry reads
         # it at runtime -- and `or ()` made it mean "no edition" here, so 23
         # rules were exempt from the one check that asks whether a rule cites
@@ -203,6 +217,9 @@ def check() -> int:
     tail = "; %s have no schema source" % ", ".join(UNAVAILABLE) if UNAVAILABLE else ""
     print("no rule claims a version whose vocabulary lacks the terms it names "
           "(checked against %s%s)" % (", ".join(checked), tail))
+    if unanswerable:
+        print("  %d graph rule(s) name no term, so this says nothing about them: %s"
+              % (len(unanswerable), ", ".join(sorted(unanswerable))))
     return 0
 
 

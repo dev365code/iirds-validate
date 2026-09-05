@@ -45,6 +45,7 @@ from iirds_validate.model import IIRDS_NAMESPACES as _IIRDS_NS  # noqa: E402
 from iirds_validate.model import ORGANISATION_TYPES, VCARD_KINDS, Severity  # noqa: E402
 from iirds_validate.ontology import load as load_ontology  # noqa: E402
 from iirds_validate.registry import PROVENANCE, all_rules  # noqa: E402
+from iirds_validate.rules.lint import abstract_terms, relation_properties  # noqa: E402
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
 
 OUT = ROOT / "shapes"
@@ -87,15 +88,31 @@ IU_CLOSURE = tuple(sorted("iirds:" + str(c).split("#")[-1]
 SELECTOR_CLOSURE = tuple(sorted("iirds:" + str(c).split("#")[-1]
                                 for c in _ONTOLOGY.subclasses_of(T.Selector)))
 
+_NS_PREFIX = {"http://iirds.tekom.de/iirds": "iirds",
+              "http://iirds.tekom.de/iirds/domain/handover": "iirdsHov",
+              "http://iirds.tekom.de/iirds/domain/machinery": "mach",
+              "http://iirds.tekom.de/iirds/domain/software": "sw"}
+
+
+def _qname(term) -> str:
+    namespace, local = str(term).rsplit("#", 1)
+    return "%s:%s" % (_NS_PREFIX[namespace], local)
+
+
+#: The properties the ontology gives an iiRDS class as their range, read from
+#: the same helper the rule reads. Shared on purpose: a copy of the range table
+#: would drift from the ontology, and the differential gate is there to compare
+#: what the two encodings *report*, not to re-derive which properties exist.
+RELATION_PROPERTIES = tuple(sorted(_qname(p) for p in relation_properties(_ONTOLOGY)))
+
 _PREFIX_OF = {"IIRDS": "iirds", "MACH": "mach", "SW": "sw", "HOV": "iirdsHov"}
 
-#: Classes the ontology's own descriptions mark "not intended to be used
-#: directly" — the same marker rules/lint.py L10 reads, computed the same way
-#: so the two encodings cannot disagree about what counts as abstract.
-_ABSTRACT_MARKER = "not int"
-ABSTRACT_CLASSES = tuple(sorted(
-    str(cls) for cls, description in _ONTOLOGY.graph.subject_objects(T.IIRDS_DESCRIPTION)
-    if _ABSTRACT_MARKER in str(description).lower()))
+#: Terms the ontology's own descriptions mark "not intended to be used
+#: directly" — read from the helper rules/lint.py L10 reads, not computed the
+#: same way beside it. The comment here used to say "computed the same way so
+#: the two encodings cannot disagree", and a copy of a rule is not the rule:
+#: when the marker was corrected, one of the two would have kept the old set.
+ABSTRACT_CLASSES = tuple(sorted(str(term) for term in abstract_terms(_ONTOLOGY)))
 
 
 #: Catalogue spec links end in a text fragment quoting the sentence they
@@ -224,6 +241,7 @@ CORE_FORMS["M26"] = ("m26_first_child_type", {})
 CORE_FORMS["M27"] = ("m27_first_child_is_head", {})
 CORE_FORMS["M24.5"] = ("m24_5_root_has_type", {})
 CORE_FORMS["L7"] = ("l7_title_with_package_exempt", {})
+CORE_FORMS["L16"] = ("relation_takes_a_reference", {})
 
 #: The SPARQL-expressible ones. Absolute IRIs inline; VALUES is forbidden
 #: inside SHACL-SPARQL constraints (pre-binding restrictions), so membership
@@ -733,6 +751,30 @@ def family_forbidden_property(sid, p):
     pid = sid + "-p"
     return (["sh:targetSubjectsOf %s" % p["path"], "sh:property %s" % pid],
             _prop(pid, p["path"], "sh:maxCount 0"))
+
+
+def family_relation_takes_a_reference(sid, p):
+    """One property shape per relation, and not one `sh:alternativePath` over
+    all of them.
+
+    The short form is tempting: a single property shape whose path is the
+    alternation reaches every value in one constraint. But the values of a path
+    are a *set*, so a subject carrying the same string on two different
+    relations is one value node there and two triples in Python -- the
+    encodings would report the same fact a different number of times, which is
+    the class of divergence the count gate exists to catch. A path per
+    property keeps one result per triple.
+
+    `sh:targetObjectsOf` is wrong for the same reason one step earlier: two
+    subjects carrying the string "party1" are two triples and one literal node.
+    """
+    heads = ["sh:targetSubjectsOf %s" % ", ".join(RELATION_PROPERTIES)]
+    extra = []
+    for index, path in enumerate(RELATION_PROPERTIES):
+        pid = "%s-p%d" % (sid, index)
+        heads.append("sh:property %s" % pid)
+        extra += _prop(pid, path, "sh:nodeKind sh:BlankNodeOrIRI")
+    return (heads, extra)
 
 
 def family_m8_container_package(sid, p):

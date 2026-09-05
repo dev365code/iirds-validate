@@ -30,6 +30,384 @@ ivs:L7 a sh:NodeShape ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:or ( [ sh:class iirds:Package ] [ sh:property [ sh:path iirds:title ; sh:minCount 1 ] ] ) .
 
+ivs:L16 a sh:NodeShape ;
+  rdfs:label "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  ivm:ruleId "L16" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  sh:targetSubjectsOf iirds:has-abstract, iirds:has-classification-domain, iirds:has-classification-type, iirds:has-component, iirds:has-content-lifecycle-status, iirds:has-content-lifecycle-status-value, iirds:has-directory-structure-type, iirds:has-document-type, iirds:has-end-selector, iirds:has-event-code, iirds:has-event-type, iirds:has-external-classification, iirds:has-first-child, iirds:has-identity, iirds:has-identity-domain, iirds:has-identity-type, iirds:has-information-type, iirds:has-next-sibling, iirds:has-party-role, iirds:has-planning-time, iirds:has-rendition, iirds:has-selector, iirds:has-start-selector, iirds:has-subject, iirds:has-topic-type, iirds:is-applicable-for-document-type, iirds:is-based-on, iirds:is-part-of-package, iirds:is-replacement-of, iirds:is-translation-of, iirds:is-version-of, iirds:relates-to-action, iirds:relates-to-administrative-metadata, iirds:relates-to-component, iirds:relates-to-event, iirds:relates-to-functional-metadata, iirds:relates-to-information-unit, iirds:relates-to-party, iirds:relates-to-product-feature, iirds:relates-to-product-lifecycle-phase, iirds:relates-to-product-metadata, iirds:relates-to-product-variant, iirds:relates-to-qualification, iirds:relates-to-supply, iirds:relates-to-vcard, iirdsHov:has-document-category ;
+  sh:property ivs:L16-p0 ;
+  sh:property ivs:L16-p1 ;
+  sh:property ivs:L16-p2 ;
+  sh:property ivs:L16-p3 ;
+  sh:property ivs:L16-p4 ;
+  sh:property ivs:L16-p5 ;
+  sh:property ivs:L16-p6 ;
+  sh:property ivs:L16-p7 ;
+  sh:property ivs:L16-p8 ;
+  sh:property ivs:L16-p9 ;
+  sh:property ivs:L16-p10 ;
+  sh:property ivs:L16-p11 ;
+  sh:property ivs:L16-p12 ;
+  sh:property ivs:L16-p13 ;
+  sh:property ivs:L16-p14 ;
+  sh:property ivs:L16-p15 ;
+  sh:property ivs:L16-p16 ;
+  sh:property ivs:L16-p17 ;
+  sh:property ivs:L16-p18 ;
+  sh:property ivs:L16-p19 ;
+  sh:property ivs:L16-p20 ;
+  sh:property ivs:L16-p21 ;
+  sh:property ivs:L16-p22 ;
+  sh:property ivs:L16-p23 ;
+  sh:property ivs:L16-p24 ;
+  sh:property ivs:L16-p25 ;
+  sh:property ivs:L16-p26 ;
+  sh:property ivs:L16-p27 ;
+  sh:property ivs:L16-p28 ;
+  sh:property ivs:L16-p29 ;
+  sh:property ivs:L16-p30 ;
+  sh:property ivs:L16-p31 ;
+  sh:property ivs:L16-p32 ;
+  sh:property ivs:L16-p33 ;
+  sh:property ivs:L16-p34 ;
+  sh:property ivs:L16-p35 ;
+  sh:property ivs:L16-p36 ;
+  sh:property ivs:L16-p37 ;
+  sh:property ivs:L16-p38 ;
+  sh:property ivs:L16-p39 ;
+  sh:property ivs:L16-p40 ;
+  sh:property ivs:L16-p41 ;
+  sh:property ivs:L16-p42 ;
+  sh:property ivs:L16-p43 ;
+  sh:property ivs:L16-p44 ;
+  sh:property ivs:L16-p45 .
+ivs:L16-p0 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-abstract ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p1 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-classification-domain ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p2 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-classification-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p3 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-component ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p4 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-content-lifecycle-status ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p5 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-content-lifecycle-status-value ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p6 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-directory-structure-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p7 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-document-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p8 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-end-selector ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p9 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-event-code ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p10 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-event-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p11 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-external-classification ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p12 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-first-child ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p13 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-identity ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p14 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-identity-domain ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p15 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-identity-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p16 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-information-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p17 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-next-sibling ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p18 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-party-role ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p19 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-planning-time ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p20 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-rendition ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p21 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-selector ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p22 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-start-selector ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p23 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-subject ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p24 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:has-topic-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p25 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-applicable-for-document-type ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p26 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-based-on ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p27 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-part-of-package ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p28 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-replacement-of ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p29 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-translation-of ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p30 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:is-version-of ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p31 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-action ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p32 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-administrative-metadata ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p33 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-component ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p34 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-event ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p35 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-functional-metadata ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p36 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-information-unit ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p37 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-party ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p38 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-product-feature ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p39 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-product-lifecycle-phase ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p40 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-product-metadata ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p41 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-product-variant ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p42 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-qualification ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p43 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-supply ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p44 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirds:relates-to-vcard ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+ivs:L16-p45 a sh:PropertyShape ;
+  sh:message "a relation should not carry a literal where a reference belongs" ;
+  sh:severity sh:Warning ;
+  ivm:ruleId "L16" ;
+  sh:description "Write the target as a reference rather than as text: `rdf:resource=\"urn:…\"` on the element, or `\"@type\": \"@id\"` in the JSON-LD context. Where the value is empty there is nothing to convert -- give the relation a target or delete the element. Either way the relation exists and its target does not." ;
+  sh:path iirdsHov:has-document-category ;
+  sh:nodeKind sh:BlankNodeOrIRI .
+
 ivs:M2.1 a sh:NodeShape ;
   rdfs:label "An instance of an iirds:InformationUnit subclass MUST have an IRI." ;
   sh:severity sh:Violation ;
@@ -1860,7 +2238,7 @@ ivs:L10 a sh:NodeShape ;
   sh:description "Retype the instance as one of the subclasses. The grouping class says only that something of that family is involved, which leaves a consumer nothing to act on." ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   sh:targetNode ivs:L10 ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a ?t . FILTER (?t IN (<http://iirds.tekom.de/iirds#AdministrativeMetadata>, <http://iirds.tekom.de/iirds#AfterUse>, <http://iirds.tekom.de/iirds#Collection>, <http://iirds.tekom.de/iirds#Conformity>, <http://iirds.tekom.de/iirds#DesignAndRealization>, <http://iirds.tekom.de/iirds#DocumentationMetadata>, <http://iirds.tekom.de/iirds#ForeseeableMisuse>, <http://iirds.tekom.de/iirds#FunctionalMetadata>, <http://iirds.tekom.de/iirds#InformationSubject>, <http://iirds.tekom.de/iirds#InformationType>, <http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#PlanningTime>, <http://iirds.tekom.de/iirds#ProductFeature>, <http://iirds.tekom.de/iirds#ProductLifeCyclePhase>, <http://iirds.tekom.de/iirds#ProductMetadata>, <http://iirds.tekom.de/iirds#PuttingToUse>, <http://iirds.tekom.de/iirds#Qualification>, <http://iirds.tekom.de/iirds#Safety>, <http://iirds.tekom.de/iirds#Supply>, <http://iirds.tekom.de/iirds#TechnicalData>, <http://iirds.tekom.de/iirds#Use>, <http://iirds.tekom.de/iirds#has-information-type>, <http://iirds.tekom.de/iirds#iirdsAttribute>, <http://iirds.tekom.de/iirds#iirdsDomainEntity>, <http://iirds.tekom.de/iirds#relates-to-action>, <http://iirds.tekom.de/iirds#relates-to-administrative-metadata>)) }""" ] .
+  sh:sparql [ sh:select """SELECT $this ?value WHERE { ?value a ?t . FILTER (?t IN (<http://iirds.tekom.de/iirds#AdministrativeMetadata>, <http://iirds.tekom.de/iirds#AfterUse>, <http://iirds.tekom.de/iirds#Collection>, <http://iirds.tekom.de/iirds#Conformity>, <http://iirds.tekom.de/iirds#DesignAndRealization>, <http://iirds.tekom.de/iirds#DocumentationMetadata>, <http://iirds.tekom.de/iirds#FunctionalMetadata>, <http://iirds.tekom.de/iirds#InformationSubject>, <http://iirds.tekom.de/iirds#InformationType>, <http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#PlanningTime>, <http://iirds.tekom.de/iirds#ProductFeature>, <http://iirds.tekom.de/iirds#ProductLifeCyclePhase>, <http://iirds.tekom.de/iirds#ProductMetadata>, <http://iirds.tekom.de/iirds#PuttingToUse>, <http://iirds.tekom.de/iirds#Qualification>, <http://iirds.tekom.de/iirds#Safety>, <http://iirds.tekom.de/iirds#Supply>, <http://iirds.tekom.de/iirds#TechnicalData>, <http://iirds.tekom.de/iirds#Use>, <http://iirds.tekom.de/iirds#has-information-type>, <http://iirds.tekom.de/iirds#iirdsAttribute>, <http://iirds.tekom.de/iirds#iirdsDomainEntity>, <http://iirds.tekom.de/iirds#iirdsRelationConcept>, <http://iirds.tekom.de/iirds#relates-to-action>, <http://iirds.tekom.de/iirds#relates-to-administrative-metadata>, <http://iirds.tekom.de/iirds#relates-to-functional-metadata>)) }""" ] .
 
 ivs:M1 a sh:NodeShape ;
   rdfs:label "iiRDS Generators MUST NOT use the iirds:InformationUnit class directly but MUST use one of the subclasses" ;

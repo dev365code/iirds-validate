@@ -1600,6 +1600,53 @@ def test_the_two_encodings_report_the_same_number_of_findings(tmp_path):
         "package (rule: python, shacl): %s" % differ)
 
 
+#: One subject, one string, two relations -- and a second subject carrying the
+#: same string. Three triples, three findings, and three different answers if
+#: the shape is written the short way.
+L16_REPEATED = MINIMAL_RDF.replace("</rdf:RDF>", (
+    '  <rdf:Description rdf:about="urn:test:topic1">\n'
+    "    <iirds:relates-to-party>party1</iirds:relates-to-party>\n"
+    "    <iirds:is-version-of>party1</iirds:is-version-of>\n"
+    "  </rdf:Description>\n"
+    '  <rdf:Description rdf:about="urn:test:topic2">\n'
+    "    <iirds:relates-to-party>party1</iirds:relates-to-party>\n"
+    "  </rdf:Description>\n</rdf:RDF>"))
+
+
+def test_l16_agrees_about_a_relation_written_as_text(tmp_path):
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (
+        '  <rdf:Description rdf:about="urn:test:topic1">\n'
+        "    <iirds:relates-to-party>party1</iirds:relates-to-party>\n"
+        "  </rdf:Description>\n</rdf:RDF>"))
+    assert_parity(tmp_path, "l16.iirds", metadata)
+
+
+def test_l16_agrees_that_a_reference_is_fine(tmp_path):
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (
+        '  <rdf:Description rdf:about="urn:test:topic1">\n'
+        '    <iirds:relates-to-party rdf:resource="urn:test:party1"/>\n'
+        "  </rdf:Description>\n</rdf:RDF>"))
+    assert_parity(tmp_path, "l16ok.iirds", metadata)
+    assert "L16" not in shacl_fired(metadata)
+
+
+def test_l16_counts_triples_and_not_nodes(tmp_path):
+    """The reason L16's shape is forty-three property shapes and not one
+    alternative path over forty-three properties.
+
+    Both short forms collapse this package. `sh:targetObjectsOf` makes the
+    literal the focus node, and "party1" written three times is one node in
+    RDF, so three mistakes arrive as one result. A single `sh:alternativePath`
+    is better and still wrong: the values of a path are a set, so the two
+    relations on `topic1` carrying the same string are one value node there.
+    Python reports the triple, which is what a reader has to fix -- three
+    attributes in three places.
+    """
+    python, shacl = _counted(L16_REPEATED, tmp_path, "l16count.iirds")
+    assert python["L16"] == 3, python["L16"]
+    assert shacl["L16"] == python["L16"], (python["L16"], shacl["L16"])
+
+
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():
     never_fired = EMITTED - SH_FIRED_EVER
     assert len(SH_FIRED_EVER) > 50, (

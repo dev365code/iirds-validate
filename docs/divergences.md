@@ -47,6 +47,15 @@ findings on tekom's own sample packages that no other tool reports. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
 
+Which classes the ontology says that about is not a list here but a reading of
+its own descriptions, and the sentence is spelled four ways: "Not intended to
+be used directly", "Not intented", "Not indented" and "No intended". A marker
+on the negation read two of the four and also matched
+`iirds:ForeseeableMisuse`, whose description is prose that begins "Use of a
+product in a manner not intended by the producer or supplier" — a concrete
+class with no subclasses, told to become one of them. The marker is the phrase
+the four spellings share.
+
 **M15.10** is not in that table, because the table's middle column is what the
 reference checks and this project cannot read the reference's source — only its
 fixtures, which say the opposite of its catalogue wording. What follows is a

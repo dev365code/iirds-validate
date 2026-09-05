@@ -199,3 +199,22 @@ def test_the_terminal_picture_is_a_run_that_happened(tmp_path):
     reported = [f.rule.id for f in report.findings]
     assert shown == [r for r in reported if r in shown], (
         "the picture shows %s and the report reads %s" % (shown, reported))
+
+    # The third copy, and the one that goes stale unwatched: the `alt` text
+    # states the same run in prose, for a screen reader and for anyone whose
+    # image does not load. It said "ERROR C5 …; ERROR M3 …; FAIL, 164 rules
+    # checked" while the picture beside it had been corrected to M3 first and
+    # 171 — a caption reading "Real output" describing a run that stopped
+    # happening. Two copies were held and the third was not, which is how the
+    # first two came to be wrong in the first place.
+    readme = (ROOT / "README.md").read_text("utf-8")
+    alt = re.search(r'alt="(Real iirds check output[^"]*)"', readme)
+    assert alt, "the README no longer describes the terminal picture"
+    caption = alt.group(1)
+    said = re.search(r"(\d+) rules checked", caption)
+    assert said and int(said.group(1)) == report.checked, (
+        "the alt text says %s rules checked and the run says %d"
+        % (said and said.group(1), report.checked))
+    assert re.findall(r"ERROR (C\d+|M\d+(?:\.\d+)?)", caption) == shown, (
+        "the alt text lists %s and the picture shows %s"
+        % (re.findall(r"ERROR (C\d+|M\d+(?:\.\d+)?)", caption), shown))

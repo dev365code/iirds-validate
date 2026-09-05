@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=756be020" alt="Real iirds check output on a broken package: ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; ERROR M3 metadata declares no iirds:Package; FAIL, 164 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=756be020" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 171 rules checked" width="100%">
 
 ```console
 $ pip install iirds

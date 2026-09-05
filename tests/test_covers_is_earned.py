@@ -505,8 +505,6 @@ def test_the_schema_prohibition_names_the_file_it_found_the_schema_in(tmp_path):
 UNAUDITED = frozenset((
     "dfn-iirds-package#1", "dfn-iirds-zip-archive#2",
     "dfn-iirds-zip-archive#3", "dfn-iirds-zip-archive#4",
-    "rdfclasses_core_ClassificationType#1",
-    "rdfclasses_handover_DocumentCategory#1",
     "x5-1-1-metadata-location-and-rdf-serializations#1",
     "x5-1-1-metadata-location-and-rdf-serializations#4",
     "x5-1-2-content-location#1", "x5-1-2-content-location#2",
@@ -573,6 +571,116 @@ NAMED_CASES = {
         "test_extensions_in_metadata_rdf:test_a_component_only_in_the_json_ld_is_reported",
     # Two sentences of the same shape, held by one parametrised case so the
     # readings cannot drift apart again.
+    # Appendix A's "IRI: REQUIRED" rows. Fifty-two of them, one blank node
+    # each, held by one parametrised case list — the generated table was
+    # written from that appendix and had never been told which of its rows
+    # each rule answers, so the figure said fifty fewer than the tool could
+    # defend. `tools/appendix_a_map.py` proposes the mapping and refuses the
+    # four ways of getting it wrong.
+    "rdfclasses_core_AfterUse#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ClassificationType#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Collection#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Component#3":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Concept#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Conformity#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ContentLifeCycleStatusValue#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_DesignAndRealization#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_DirectoryNodeType#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Document#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_DocumentType#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Event#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Form#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Formality#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Fragment#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Functionality#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_IdentityType#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_InformationSubject#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_InformationType#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Learning#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Package#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Party#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_PartyRole#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Process#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductFeature#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductFunction#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductLifeCyclePhase#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductMetadata#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductProperty#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ProductVariant#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_PuttingToUse#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Qualification#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Reference#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Role#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Safety#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_SkillLevel#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Supply#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Task#3":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_TechnicalData#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_TechnicalOverview#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Topic#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_TopicType#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Troubleshooting#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_Use#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_WarningMessage#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_handover_DocumentCategory#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_ConsumableSupply#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_HardwareTool#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_Lubricant#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_OperatingSupply#3":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_ProtectiveEquipment#3":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_machinery_SparePart#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
     # Appendix B, all nine, held by one case list: every sentence with
     # every shape that breaks it, and a clean control beside them.
     "b-3-conformance-criteria#2":
@@ -671,8 +779,8 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 81, len(CLAIMED)
-    assert len(UNAUDITED) == 39, len(UNAUDITED)
+    assert len(CLAIMED) == 131, len(CLAIMED)
+    assert len(UNAUDITED) == 37, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
     published = re.search(r"\*\*Coverage of the standard is (\d+) of (\d+)\.\*\*", scope)

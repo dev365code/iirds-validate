@@ -76,7 +76,7 @@ def test_a_rule_and_the_requirement_it_claims_are_about_the_same_thing(rule_id):
 
 
 def test_how_far_the_name_heuristic_actually_reaches():
-    """The gate above asserts something for two of eighty claims.
+    """The gate above asserts something for fifty-three of a hundred and fifty-one.
 
     It looked like a gate over all of them: parametrised by rule, iterating
     every claim, green. The `continue` for a requirement whose subject is not
@@ -91,15 +91,23 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 101, len(pairs)
-    assert len(asserted) == 3, sorted(asserted)
-    assert sorted(rid for rid, _ in asserted) == ["R1", "R17", "R2"], sorted(asserted)
+    assert len(pairs) == 151, len(pairs)
+    assert len(asserted) == 53, sorted(asserted)
+
+    # It used to reach three, and reaches most of appendix A now: those rows
+    # name their class in the subject column, which is what the heuristic
+    # reads. That is the gate getting wider rather than the number drifting,
+    # so it is moved on purpose and the two ends are named.
+    assert {"R1", "R2", "R17"} <= {rid for rid, _ in asserted}, sorted(asserted)
+    assert all(requirement.startswith("rdfclasses_")
+               for rid, requirement in asserted
+               if rid not in {"R1", "R2", "R17"}), sorted(asserted)
 
 
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 81
+    assert len(COVERED) == 131
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 

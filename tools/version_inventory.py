@@ -131,7 +131,7 @@ def terms_named_by(rule) -> list:
 
     # The generated rules build their class IRI from a table rather than from
     # a `T.` attribute, so the regex above cannot see it.
-    for rule_id, prefix, class_name in MUST_HAVE_IRI:
+    for rule_id, prefix, class_name, _requirement in MUST_HAVE_IRI:
         if rule_id == rule.id:
             named.append(str(NAMESPACES[prefix][class_name]))
     return named

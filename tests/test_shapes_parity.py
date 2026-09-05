@@ -117,7 +117,7 @@ BLANK = '''  <rdf:Description>
 '''
 NAMED = BLANK.replace("<rdf:Description>", '<rdf:Description rdf:about="urn:test:named">')
 
-NODEKIND_ROWS = ([(rid, str(NAMESPACES[p][c])) for rid, p, c in MUST_HAVE_IRI]
+NODEKIND_ROWS = ([(r[0], str(NAMESPACES[r[1]][r[2]])) for r in MUST_HAVE_IRI]
                  + [("R1", "http://iirds.tekom.de/iirds#ClassificationType"),
                     ("R2", "http://iirds.tekom.de/iirds/domain/handover#DocumentCategory")])
 

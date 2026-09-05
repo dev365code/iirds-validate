@@ -145,7 +145,7 @@ CORE_FORMS = {}
 
 # -- must-have-IRI: the generated table drives this, so the two artefacts
 #    cannot disagree about which class belongs to which rule.
-for _rid, _prefix, _cls in MUST_HAVE_IRI:
+for _rid, _prefix, _cls, _req in MUST_HAVE_IRI:
     CORE_FORMS[_rid] = ("nodekind_iri", {"targets": ("%s:%s" % (_PREFIX_OF[_prefix], _cls),)})
 CORE_FORMS["R1"] = ("nodekind_iri", {"targets": ("iirds:ClassificationType",)})
 CORE_FORMS["R2"] = ("nodekind_iri", {"targets": ("iirdsHov:DocumentCategory",)})

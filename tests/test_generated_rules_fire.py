@@ -19,7 +19,13 @@ import pytest
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 from iirds_validate.registry import all_rules
-from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES
+from iirds_validate.rules.schema_tables import MUST_HAVE_IRI as _TABLE
+from iirds_validate.rules.schema_tables import NAMESPACES
+
+#: The table gained a fourth element — the appendix A row each rule
+#: answers, read by `tests/test_appendix_a_iri_claims.py`. Everything here
+#: asks the same three questions of every row, so it takes the three.
+MUST_HAVE_IRI = [(row[0], row[1], row[2]) for row in _TABLE]
 
 RULES = {r.id: r for r in all_rules()}
 

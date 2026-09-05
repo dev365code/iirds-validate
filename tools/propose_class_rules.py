@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -171,7 +172,7 @@ NARROWED = {
 
 
 def _register() -> None:
-    for rule_id, prefix, class_name in MUST_HAVE_IRI:
+    for rule_id, prefix, class_name, requirement in MUST_HAVE_IRI:
         fn = _must_have_iri(prefix, class_name)
         fn.__name__ = "%s_%s_must_have_iri" % (rule_id.replace(".", "_").lower(), class_name.lower())
         # Always the generated sentence, never the catalogue cell. The cells
@@ -182,6 +183,7 @@ def _register() -> None:
         # every "no ontology content" notice in shapes/. The constraint is
         # identical for every row, so one accurate sentence covers them all.
         rule(rule_id, versions=NARROWED.get(rule_id),
+             covers=(requirement,) if requirement else (),
              title="instances of %s must have an IRI" % class_name,
              fix=NAMED_FIX % {"prefix": PREFIXES[prefix], "cls": class_name})(fn)
 
@@ -233,7 +235,45 @@ def collect(ontology):
 
     for rows in tables.values():
         rows.sort(key=lambda row: sort_key(row[0]))
+    _attach_appendix_rows(tables["MUST_HAVE_IRI"])
     return tables, skipped
+
+
+#: prefix in this table -> the word appendix A's ids use for the same domain.
+DOMAIN = {"IIRDS": "core", "HOV": "handover", "MACH": "machinery", "SW": "software"}
+
+
+def _attach_appendix_rows(rows) -> None:
+    """Give each row the appendix A obligation it answers, where that is one.
+
+    The generated rules were written *from* appendix A and never told which of
+    its rows they were answering, so eighty-four of the two hundred and eighty
+    obligations this project publishes a figure against sat unclaimed while
+    fifty of them were being checked. The id carries the class, so the match is
+    the class — and where two rules check one class it is not a match but a
+    question, left empty here and reported by `tools/appendix_a_map.py`.
+    """
+    import collections
+    import json
+
+    index = json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))
+    reduced = (set(index["reductions"]["keyword_definition"])
+               | set(index["reductions"]["restated_in_the_overview"]))
+    by_class = {}
+    for row in index["requirements"]:
+        if not row.get("absolute") or row["id"] in reduced:
+            continue
+        if " ".join(row["sentence"].split()) != "IRI: REQUIRED":
+            continue
+        match = re.match(r"^rdfclasses_(\w+?)_(\w+)#\d+$", row["id"])
+        if match:
+            by_class[(match.group(1), match.group(2))] = row["id"]
+
+    how_many = collections.Counter(class_name for _id, _p, class_name in rows)
+    for i, (rule_id, prefix, class_name) in enumerate(rows):
+        requirement = by_class.get((DOMAIN[prefix], class_name))
+        rows[i] = (rule_id, prefix, class_name,
+                   requirement if requirement and how_many[class_name] == 1 else None)
 
 
 def render(tables) -> str:
@@ -243,9 +283,12 @@ def render(tables) -> str:
         rows = tables[name]
         out.append("#: %d rules.\n%s = [\n" % (len(rows), name))
         width = max((len(r[0]) for r in rows), default=0) + 3
-        for rule_id, prefix, class_name in rows:
-            out.append('    (%s %-7s %r),\n'
-                       % (('"%s",' % rule_id).ljust(width), '"%s",' % prefix, class_name))
+        for row in rows:
+            rule_id, prefix, class_name = row[0], row[1], row[2]
+            requirement = row[3] if len(row) > 3 else None
+            out.append('    (%s %-7s %-34s %r),\n'
+                       % (('"%s",' % rule_id).ljust(width), '"%s",' % prefix,
+                          "%r," % class_name, requirement))
         out.append("]\n")
     out.append(BODY)
     return "".join(out)

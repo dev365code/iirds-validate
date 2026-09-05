@@ -16,8 +16,13 @@ from iirds_validate.ontology import load
 from iirds_validate.registry import CATALOG, all_rules
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI, NAMESPACES, NOT_USED_DIRECTLY
 
-ALL_ROWS = [("MUST_HAVE_IRI", *row) for row in MUST_HAVE_IRI] + \
-           [("NOT_USED_DIRECTLY", *row) for row in NOT_USED_DIRECTLY]
+#: (table, rule id, prefix, class). MUST_HAVE_IRI rows carry a fourth element
+#: — the appendix A row the rule answers, or None where two rules check the
+#: same class and which one answers it is a question for a person. What is
+#: checked here is the same three things about every row, so the fourth is
+#: dropped; `tests/test_appendix_a_iri_claims.py` is where it is read.
+ALL_ROWS = [("MUST_HAVE_IRI", row[0], row[1], row[2]) for row in MUST_HAVE_IRI] + \
+           [("NOT_USED_DIRECTLY", row[0], row[1], row[2]) for row in NOT_USED_DIRECTLY]
 
 
 def disagreements_with_the_catalogue(rows):

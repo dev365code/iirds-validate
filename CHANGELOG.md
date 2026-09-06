@@ -6,6 +6,40 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A stray `iirds:Package` could decide what profile the container was judged
+as, and the answer depended on how its IRI sorted (S11).** Which edition and
+profile a run applies is read off the package that claims the container. Where
+several claim it the run ranks them — newest edition, then whether a profile is
+named — and that rank asks *whether* a profile is named, not which one. So two
+packages naming different profiles tie, and the tie falls back to the order the
+nodes leave the graph.
+
+Measured: a conformant iiRDS/H container, plus one stray `iirds:Package` whose
+only content is `iirds:formatRestriction A`, is judged iiRDS/A when the stray's
+IRI sorts first and iiRDS/H when it sorts last — 212 rules against 188, with
+four handover findings present in one reading and absent in the other. The
+stray declares no edition, and a package that declares none ranks as the
+newest, deliberately, so nothing passes by saying less. Here saying less won.
+
+**And an interoperability run said nothing at all about it.** M3 reports that
+several packages claim one container, but M3 is a schema rule and a lint run
+asks for lint and system rules only — so `iirds lint` on such a container
+returned `ok=True`, no findings, and no note, having silently picked one of the
+two. `system` is the one kind every run includes, which is why this rule is one.
+
+It reports rather than resolves, because there is nothing to prefer: A and H
+are two values with no order between them, and any rule for picking is a coin
+toss the report would print as a fact. A disagreement about the *edition* alone
+is not reported — the rank takes the newest, so no rule an older declaration
+would have brought is missing.
+
+**The library said its reading was the checker's, and it is not.**
+`iirds.Package.version` takes the first package that declares one; the checker
+takes the ranked winner. On a container whose packages disagree the two answer
+differently, which is the whole subject above. The docstring said "identical to
+the validator's reading" and now says what it actually does, and why a library
+giving the document's first answer is right for a library.
+
 **The upgrade that leaves no working command is now said on the front page
 too.** `pip install -U iirds-validate` from 0.4.2 or earlier ends with every
 command gone -- and `pip list` and `pip check` both call the environment

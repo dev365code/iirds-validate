@@ -324,3 +324,66 @@ def s9_content_budget(ctx):
                     "from this one on were not examined",
                     subject=first,
                     detail="%d bytes decompressed against a budget of %d" % (read_so_far, limit))
+
+
+@rule("S11", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="cause",
+      title="the packages claiming this container must not disagree about what it is",
+      fix="Keep one iirds:Package for the container and give the others iirds:is-part-of-package, "
+          "or delete the leftover. Which edition and profile a run judges against is read off the "
+          "package that claims the container, and where two claim it with different answers the "
+          "run has to choose one: every rule the other answer would have brought is then not "
+          "applied, and nothing else says so.")
+def s11_container_packages_disagree(ctx):
+    """`_detect` elects one package and prints its answers as the container's.
+
+    Where several claim the container the election is decided by
+    `_declared_rank` -- newest edition, then whether a profile is named. Two
+    holes in that, and this reports the shape both come through rather than
+    trying to pick better.
+
+    **A and H have no order between them.** The rank asks whether a profile is
+    named, not which one, so two packages naming different profiles tie and the
+    tie falls back to the order the nodes leave the graph -- the tie-break that
+    docstring says the profile term exists to replace. One stray package naming
+    A beside a conformant iiRDS/H container moves twenty-four rules, in or out
+    depending on how its IRI sorts. No rule can pick correctly here, because
+    there is nothing to prefer: the container was described twice and the two
+    descriptions are different documents' worth of rules.
+
+    **And an edition can be won by saying nothing.** A package with no
+    `iirds:iiRDSVersion` ranks as the newest, deliberately -- nothing should
+    pass by declaring less -- so an empty leftover element outranks a package
+    declaring 1.0 and takes its profile with it.
+
+    M3 reports that several packages claim the container, which is the
+    specification's sentence and this rule claims none of it. What it adds is
+    which of them the run believed, and it is `kind="system"` because that is
+    the only kind every run includes: M3 is a schema rule, and an
+    interoperability run does not ask for those, so `iirds lint` on such a
+    container returned no findings at all.
+    """
+    from ..context import _named_profiles, container_packages, package_nodes
+
+    pool = container_packages(ctx.graph) or package_nodes(ctx.graph)
+    if len(pool) < 2:
+        return
+    named = set()
+    for node in pool:
+        profiles = _named_profiles(ctx.graph, node)
+        if profiles:
+            named.add(profiles[0])
+    # Only a dropped profile is a loss. A disagreement about the edition
+    # cannot be one: the rank takes the newest, so the elected edition is the
+    # highest any of them declared and no rule an older declaration would have
+    # brought is missing. A profile the election did not choose is different --
+    # every rule gated to it stands down, and the report names the winner as
+    # though nobody had said otherwise.
+    dropped = named - {ctx.variant}
+    if not dropped:
+        return
+    yield Violation("a profile this container declares is not the one this run judged it as",
+                    subject="%s %s" % (ctx.version or "no edition", ctx.variant),
+                    detail="also declared: %s; this run judged the container as %s %s"
+                           % (", ".join(sorted(dropped)), ctx.version or "no edition",
+                              ctx.variant))

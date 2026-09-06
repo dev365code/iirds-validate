@@ -314,9 +314,17 @@ class Package:
         subclass of it), stripped; None when no Package declares one. A
         version literal on some other subject is noise, not the
         declaration. Where two Package nodes disagree, the first in graph
-        order wins — arbitrary, identical to the validator's reading, and
-        the validator's M3 finding besides. No judgement about whether
-        the value is a published version — that is validation."""
+        order wins — arbitrary, and the validator's M3 finding besides.
+
+        **Not the validator's reading**, which this once said it was. The
+        checker ranks the candidates (newest edition, then whether a
+        profile is named) and takes both halves off the winner; this takes
+        the first that has one. On a container whose packages disagree the
+        two answer differently, and the checker reports that as S11. What
+        a reader gets here is what the document says first, which is what
+        a library should give; which reading the rules were applied under
+        is the report's to state. No judgement about whether the value is
+        a published version — that is validation."""
         for node in self.instances_of(IIRDS["Package"]):
             for value in self.graph.objects(node, IIRDS["iiRDSVersion"]):
                 return str(value).strip()

@@ -419,6 +419,7 @@ ivs:M2.1 a sh:NodeShape ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   ivm:covers "x6-2-information-units#3" ;
   ivm:covers "x6-2-information-units#4" ;
+  ivm:covers "rdfclasses_core_InformationUnit#1" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -621,6 +622,7 @@ ivs:M7.1 a sh:NodeShape ;
   sh:description "Give the <iirds:InformationObject> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20information%20object%20MUST%20have%20an%20absolute%20IRI%20and%20MAY%20be%20related%20to%20additional%20identifications%20via%20the%20iirds%3Ahas%2Didentity%20property.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationObject#2" ;
   sh:targetClass iirds:InformationObject ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -866,6 +868,7 @@ ivs:M20.1 a sh:NodeShape ;
   sh:description "Give the <iirds:IdentityDomain> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20class%20iirds%3AIdentityDomain%20MUST%20have%20an%20absolute%20IRI%20and%20MAY%20link%20to%20the%20custodian%20of%20the%20domain%20via%20the%20iirds%3Ahas%2Dparty%20property.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_IdentityDomain#1" ;
   sh:targetClass iirds:IdentityDomain ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -1392,6 +1395,7 @@ ivs:M48 a sh:NodeShape ;
   sh:description "Give the <iirds:IdentityDomain> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_IdentityDomain#1" ;
   sh:targetClass iirds:IdentityDomain ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -1419,6 +1423,7 @@ ivs:M50 a sh:NodeShape ;
   sh:description "Give the <iirds:InformationObject> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#about-iirds> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationObject#2" ;
   sh:targetClass iirds:InformationObject ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -2135,6 +2140,7 @@ ivs:M97.1 a sh:NodeShape ;
   ivm:ruleSource "catalogue" ;
   sh:description "Give the <iirds:ClassificationDomain> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ClassificationDomain#1" ;
   sh:targetClass iirds:ClassificationDomain ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .
@@ -2148,6 +2154,7 @@ ivs:M97.2 a sh:NodeShape ;
   sh:description "Give the <iirds:ClassificationDomain> element an rdf:about with an IRI, for example rdf:about=\"urn:uuid:...\" or a URL under a domain you control. Without one the element is anonymous, so no other statement can refer to it and a consumer merging this package with another cannot tell two of them apart." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#external-classification:~:text=Instances%20of%20class%20iirds%3AClassificationDomain%20MUST%20have%20an%20absolute%20IRI> ;
   ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ClassificationDomain#1" ;
   sh:targetClass iirds:ClassificationDomain ;
   sh:nodeKind sh:IRI ;
   sh:not [ sh:in ( <urn:iirds:package:> ) ] .

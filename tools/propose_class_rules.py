@@ -250,10 +250,15 @@ def _attach_appendix_rows(rows) -> None:
     its rows they were answering, so eighty-four of the two hundred and eighty
     obligations this project publishes a figure against sat unclaimed while
     fifty of them were being checked. The id carries the class, so the match is
-    the class — and where two rules check one class it is not a match but a
-    question, left empty here and reported by `tools/appendix_a_map.py`.
+    the class.
+
+    Two rules checking one class was left empty here and reported as a
+    question. The answer is both: M20.1 and M48 have the same title, word for
+    word, and report the same node, so choosing one would say the other does
+    not answer a row it reports. A row may be claimed by several rules — the
+    covering criterion says so in as many words — and `tools/appendix_a_map.py`
+    proposes every rule that reports an unnamed instance of the class.
     """
-    import collections
     import json
 
     index = json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))
@@ -269,11 +274,9 @@ def _attach_appendix_rows(rows) -> None:
         if match:
             by_class[(match.group(1), match.group(2))] = row["id"]
 
-    how_many = collections.Counter(class_name for _id, _p, class_name in rows)
     for i, (rule_id, prefix, class_name) in enumerate(rows):
         requirement = by_class.get((DOMAIN[prefix], class_name))
-        rows[i] = (rule_id, prefix, class_name,
-                   requirement if requirement and how_many[class_name] == 1 else None)
+        rows[i] = (rule_id, prefix, class_name, requirement)
 
 
 def render(tables) -> str:

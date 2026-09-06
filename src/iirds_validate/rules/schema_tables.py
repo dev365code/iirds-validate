@@ -28,8 +28,8 @@ PREFIXES = {"IIRDS": "iirds", "MACH": "iirdsMch", "SW": "iirdsSft", "HOV": "iird
 
 #: 61 rules.
 MUST_HAVE_IRI = [
-    ("M7.1",  "IIRDS", 'InformationObject',               None),
-    ("M20.1", "IIRDS", 'IdentityDomain',                  None),
+    ("M7.1",  "IIRDS", 'InformationObject',               'rdfclasses_core_InformationObject#2'),
+    ("M20.1", "IIRDS", 'IdentityDomain',                  'rdfclasses_core_IdentityDomain#1'),
     ("M37",   "IIRDS", 'Document',                        'rdfclasses_core_Document#1'),
     ("M38",   "IIRDS", 'Component',                       'rdfclasses_core_Component#3'),
     ("M39",   "IIRDS", 'Concept',                         'rdfclasses_core_Concept#1'),
@@ -41,9 +41,9 @@ MUST_HAVE_IRI = [
     ("M45",   "IIRDS", 'Formality',                       'rdfclasses_core_Formality#1'),
     ("M46",   "IIRDS", 'Fragment',                        'rdfclasses_core_Fragment#1'),
     ("M47",   "IIRDS", 'Functionality',                   'rdfclasses_core_Functionality#1'),
-    ("M48",   "IIRDS", 'IdentityDomain',                  None),
+    ("M48",   "IIRDS", 'IdentityDomain',                  'rdfclasses_core_IdentityDomain#1'),
     ("M49",   "IIRDS", 'IdentityType',                    'rdfclasses_core_IdentityType#1'),
-    ("M50",   "IIRDS", 'InformationObject',               None),
+    ("M50",   "IIRDS", 'InformationObject',               'rdfclasses_core_InformationObject#2'),
     ("M51",   "IIRDS", 'Learning',                        'rdfclasses_core_Learning#2'),
     ("M52",   "IIRDS", 'Package',                         'rdfclasses_core_Package#1'),
     ("M53",   "IIRDS", 'Party',                           'rdfclasses_core_Party#2'),
@@ -87,8 +87,8 @@ MUST_HAVE_IRI = [
     ("M91",   "IIRDS", 'ProductMetadata',                 'rdfclasses_core_ProductMetadata#1'),
     ("M92",   "IIRDS", 'PuttingToUse',                    'rdfclasses_core_PuttingToUse#1'),
     ("M93",   "IIRDS", 'Qualification',                   'rdfclasses_core_Qualification#1'),
-    ("M97.1", "IIRDS", 'ClassificationDomain',            None),
-    ("M97.2", "IIRDS", 'ClassificationDomain',            None),
+    ("M97.1", "IIRDS", 'ClassificationDomain',            'rdfclasses_core_ClassificationDomain#1'),
+    ("M97.2", "IIRDS", 'ClassificationDomain',            'rdfclasses_core_ClassificationDomain#1'),
 ]
 #: 0 rules.
 NOT_USED_DIRECTLY = [

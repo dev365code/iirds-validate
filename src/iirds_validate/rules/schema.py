@@ -67,7 +67,12 @@ def m1_no_direct_information_unit(ctx):
                         subject=ctx.ref(subj))
 
 
-@rule("M2.1", covers=("x6-2-information-units#3", "x6-2-information-units#4"),
+@rule("M2.1", covers=("x6-2-information-units#3", "x6-2-information-units#4",
+                     # Appendix A states it a third time, per class. The mapping
+                     # tool refused this row saying no rule checks it: this one
+                     # is written by hand rather than generated, and the tool was
+                     # reading the generated table.
+                     "rdfclasses_core_InformationUnit#1"),
        fix="Give the element an rdf:about with an IRI. Anonymous information units cannot be referenced from a table of contents, from another package, or from a later revision of this one.")
 def m2_1_information_unit_iri(ctx):
     for subj in ctx.information_units():

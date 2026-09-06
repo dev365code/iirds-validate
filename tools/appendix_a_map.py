@@ -11,7 +11,7 @@ fifty-six "IRI: REQUIRED" rows are checked by the generated table in
 appendix and never told which rows it was answering.
 
 Matching them by hand is how a coverage figure stops meaning anything, so this
-proposes the mapping and refuses four ways of getting it wrong:
+proposes the mapping and refuses three ways of getting it wrong:
 
   cardinality      `0..1 <property>` is "at most one" and a rule spelling
                    `_exactly_one` asks for one *and* at least one. A package
@@ -20,10 +20,23 @@ proposes the mapping and refuses four ways of getting it wrong:
                    claim about a different sentence. Refused.
   edition          A row from the 1.3 appendix may not be claimed by a rule
                    that does not apply to 1.3.
-  ambiguity        Two rules that both look right are a question for a person,
-                   not a coin toss. Refused, and printed.
   double claim     A rule already claiming the row, or a row already claimed
                    by another rule, is left alone.
+
+**Which rules answer a row is measured, not looked up.** This read the
+generated table and the rows other rules already claimed, and drew two wrong
+conclusions from that. It refused `rdfclasses_core_InformationUnit#1` saying
+"no rule checks that InformationUnit must be named" — M2.1 does, and has all
+along; it is written by hand rather than generated, so the table the tool read
+did not mention it. And it refused three rows as ambiguous, "two rules could be
+it", where the two are one check under two catalogue ids: M20.1 and M48 have
+the same title, word for word, and report the same node.
+
+So the candidates for a row are the rules that report an instance of the class
+with no IRI and stay quiet on one with an IRI — which is the covering criterion
+itself, applied. Ambiguity is no longer a refusal: several rules may claim one
+id, the criterion says so, and choosing between two identical checks by hand
+was the coin toss the refusal existed to avoid.
 
     python tools/appendix_a_map.py            # what it proposes and refuses
     python tools/appendix_a_map.py --check    # every proposal is already a claim
@@ -44,7 +57,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate.model import VERSIONS  # noqa: E402
 from iirds_validate.registry import all_rules  # noqa: E402
-from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
 
 INDEX = ROOT / "docs" / "requirements.json"
 
@@ -84,42 +96,75 @@ def _claims_already(rule, requirement: str) -> bool:
     return requirement in (rule.covers or ())
 
 
+#: The namespace each `rdfclasses_<domain>_` prefix names.
+NAMESPACE = {
+    "core": "http://iirds.tekom.de/iirds#",
+    "handover": "http://iirds.tekom.de/iirds/domain/handover#",
+    "machinery": "http://iirds.tekom.de/iirds/domain/machinery#",
+    "software": "http://iirds.tekom.de/iirds/domain/software#",
+}
+
+
+def _reported(class_iri: str, named: bool):
+    """Which rules report one instance of the class, with or without an IRI.
+
+    A package rather than a table. The tables say where a rule was written --
+    generated or by hand -- which is not what a claim is about.
+    """
+    import tempfile
+
+    from iirds_validate import runner
+    from make_fixture_package import MINIMAL_RDF, build_package
+
+    subject = ('rdf:about="urn:test:named"' if named else 'rdf:nodeID="anonymous"')
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", (
+        '  <rdf:Description %s>\n    <rdf:type rdf:resource="%s"/>\n'
+        "  </rdf:Description>\n</rdf:RDF>") % (subject, class_iri))
+    package = build_package(tempfile.mkdtemp(), "probe.iirds", metadata=metadata)
+    return {f.rule.id for f in runner.check(package).findings}
+
+
+def _answers_the_row(class_iri: str):
+    """The rules that report an unnamed instance and not a named one.
+
+    The covering criterion, applied: every package breaking "instances of this
+    class MUST have an IRI" is one of these, and a rule firing on the named
+    instance too would be reporting something else.
+    """
+    return _reported(class_iri, named=False) - _reported(class_iri, named=True)
+
+
 def propose():
     """(requirement, rule id) proposals, and (requirement, reason) refusals."""
     by_id = {rule.id: rule for rule in all_rules()}
     claimed = {c: rule.id for rule in all_rules() for c in (rule.covers or ())}
-    checks_iri = {}
-    for row in MUST_HAVE_IRI:
-        checks_iri.setdefault(row[2], []).append(row[0])
-    # R1 and R2 are the two written by hand for the same reason; they already
-    # carry their rows, and are here so an ambiguity with them is seen.
-    for rule in all_rules():
-        for requirement in rule.covers or ():
-            match = ROW.match(requirement)
-            if match and requirement.endswith("#1"):
-                checks_iri.setdefault(match.group(2), []).append(rule.id)
 
     proposals, refusals = [], []
     for row, class_name, _sentence in rows("iri"):
-        candidates = sorted(set(checks_iri.get(class_name, [])))
+        domain = ROW.match(row["id"]).group(1)
+        if domain not in NAMESPACE:
+            refusals.append((row["id"], "%s is not a domain this tool knows" % domain))
+            continue
+        candidates = sorted(_answers_the_row(NAMESPACE[domain] + class_name))
         if not candidates:
-            refusals.append((row["id"], "no rule checks that %s must be named" % class_name))
+            refusals.append((row["id"], "no rule reports an unnamed %s" % class_name))
             continue
         if row["id"] in claimed:
             continue                    # already a claim; nothing to propose
-        if len(candidates) > 1:
-            refusals.append((row["id"], "two rules could be it: %s" % ", ".join(candidates)))
-            continue
-        rule = by_id.get(candidates[0])
-        if rule is None:
-            refusals.append((row["id"], "%s is not a registered rule" % candidates[0]))
-            continue
-        if not _applies_to(rule, EDITION):
-            refusals.append((row["id"], "%s does not apply to %s" % (rule.id, EDITION)))
-            continue
-        if _claims_already(rule, row["id"]):
-            continue
-        proposals.append((row["id"], rule.id))
+        # Several claimants are allowed and sometimes right: M20.1 and M48 are
+        # one check under two catalogue ids, and picking one would say the
+        # other does not answer a row it reports.
+        for candidate in candidates:
+            rule = by_id.get(candidate)
+            if rule is None:
+                refusals.append((row["id"], "%s is not a registered rule" % candidate))
+                continue
+            if not _applies_to(rule, EDITION):
+                refusals.append((row["id"], "%s does not apply to %s" % (rule.id, EDITION)))
+                continue
+            if _claims_already(rule, row["id"]):
+                continue
+            proposals.append((row["id"], rule.id))
 
     for row, class_name, sentence in rows("cardinality"):
         if row["id"] in claimed:

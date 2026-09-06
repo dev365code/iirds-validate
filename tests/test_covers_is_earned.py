@@ -588,6 +588,14 @@ NAMED_CASES = {
         "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
     "rdfclasses_core_ClassificationType#1":
         "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_ClassificationDomain#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_IdentityDomain#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_InformationObject#2":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
+    "rdfclasses_core_InformationUnit#1":
+        "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
     "rdfclasses_core_Collection#1":
         "test_appendix_a_iri_claims:test_an_unnamed_instance_of_the_class_is_reported",
     "rdfclasses_core_Component#3":
@@ -851,7 +859,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 160, len(CLAIMED)
+    assert len(CLAIMED) == 164, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

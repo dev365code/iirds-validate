@@ -235,16 +235,32 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+#: Abbreviations that end in a full stop without ending a sentence. `(e.g.
+#: CSS, graphics, fonts)` is a full stop, a space and a capital -- the split
+#: rule exactly -- and cutting there produced `CSS, graphics, fonts) MUST be
+#: included in the iiRDS/A package.` in the published index. Two rows arrived
+#: that way, and the index is the denominator of the coverage figure and the
+#: text every `covers=` claim is judged against: a claim cannot be weighed
+#: against half a sentence. Kept as a list of the forms this document uses
+#: rather than a general abbreviation detector, which would need a dictionary
+#: and would still be wrong about the next one.
+_ABBREVIATION = re.compile(
+    r"(?:^|[\s(\[])(?:e\.g|i\.e|etc|cf|resp|vs|approx|Fig|No|Nos|ca)\.\s*$")
+
+
 def _sentence_at(text: str, offset: int) -> str:
     """The sentence the keyword falls in.
 
     A block often states several obligations, and a map whose unit is the
     paragraph cannot say which of them a rule covers. Split on terminal
-    punctuation followed by a capital; imperfect on abbreviations, and the
-    whole block is kept alongside so nothing is lost when it misjudges.
+    punctuation followed by a capital, except where the punctuation ends an
+    abbreviation; the whole block is kept alongside either way, which is what
+    let the two bad cuts be found and is what the test for them reads.
     """
     start = 0
     for match in _SENTENCE.finditer(text):
+        if _ABBREVIATION.search(text[start:match.start()]):
+            continue
         if match.start() > offset:
             return text[start:match.start()].strip()
         start = match.end()

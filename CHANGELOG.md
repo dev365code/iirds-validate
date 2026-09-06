@@ -6,6 +6,25 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**Two obligations in the requirement index were half a sentence.** That file is
+the denominator of the coverage figure and the text every `covers=` claim is
+judged against, and the criterion is one question — does every package
+violating this sentence get reported — which has no answer for "CSS, graphics,
+fonts) MUST be included in the iiRDS/A package."
+
+The specification says "All linked resources (e.g. CSS, graphics, fonts) MUST
+be included in the iiRDS/A package." Sentences are split on terminal
+punctuation followed by a capital, which is what a full stop, a space and a `C`
+look like; the half carrying the keyword survived and the half carrying the
+subject was dropped for having none. A second row arrived the same way and left
+no bracket behind to notice: "A cryptographic hash function, e.g. SHA-256, MAY
+be used." became "SHA-256, MAY be used."
+
+Joining the halves adds no obligation and removes none — the half without a
+keyword was never a row — so the denominator is 280 before and after, and a
+test says so, because a change to this file that moves the denominator is not
+this change.
+
 **A stray `iirds:Package` could decide what profile the container was judged
 as, and the answer depended on how its IRI sorted (S11).** Which edition and
 profile a run applies is read off the package that claims the container. Where

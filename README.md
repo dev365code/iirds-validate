@@ -3,7 +3,7 @@
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
-[![spec obligations](https://img.shields.io/badge/spec_obligations-131_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
+[![spec obligations](https://img.shields.io/badge/spec_obligations-160_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
 [![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=3f0aaecb" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 175 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=f9396663" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 185 rules checked" width="100%">
 
 ```console
 $ pip install iirds
@@ -47,7 +47,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  189 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
+  199 rules checked, 24 not applicable to this version/variant (22 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```
@@ -130,7 +130,7 @@ flowchart LR
 
 ## Honest coverage
 
-> **At a glance** — 213 rules across five editions and three profiles · 154 SHACL shapes
+> **At a glance** — 223 rules across five editions and three profiles · 164 SHACL shapes
 > carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
 > the single-file `.pyz` · every number in this section is read by a test that fails the
 > build when it goes stale.
@@ -138,18 +138,18 @@ flowchart LR
 ```console
 $ iirds rules
 container  19/19    the ZIP and its layout  +3 of its own
-schema     135/135  the metadata graph  +19 of its own
+schema     135/135  the metadata graph  +29 of its own
 system     3/3      the run itself  +7 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +11 of its own
 lint       -        will a consumer be able to use it  +16 of its own
 ```
 
-157 of 157 catalogued rules, plus 56 of this project's own.
+157 of 157 catalogued rules, plus 66 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 3 |
-| schema (M\*) | 135 / 135 | 19 |
+| schema (M\*) | 135 / 135 | 29 |
 | system (S\*) | 3 / 3 | 7 |
 | content (B\*) | — | 11 |
 | interoperability (L\*) | — | 16 |
@@ -158,18 +158,18 @@ Coverage of the catalogue is not coverage of the standard. The specification sta
 **280 absolute obligations**, counted by
 [`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
 [docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json); the rules currently cover
-**131 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
+**160 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
 re-measured on every release.
 
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
-- **Every finding says what to do about it.** All 213 rules carry one imperative
+- **Every finding says what to do about it.** All 223 rules carry one imperative
   sentence naming the change, and a test refuses a rule that does not.
 - **Every rule has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 212 of the 213 have — the remaining one is a `MAY` with
+  produce a finding, and 222 of the 223 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 56 rules this project invented have no second
+- **What is not established.** The 66 rules this project invented have no second
   implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
   records where this project reads the specification differently, with reasons.
 

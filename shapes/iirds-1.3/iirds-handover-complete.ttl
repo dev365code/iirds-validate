@@ -432,6 +432,7 @@ ivs:M2.3 a sh:NodeShape ;
   sh:description "Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#2" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.3-p .
 ivs:M2.3-p a sh:PropertyShape ;
@@ -452,6 +453,7 @@ ivs:M2.4 a sh:NodeShape ;
   sh:description "Keep one iirds:dateOfLastModification and remove the rest. Consumers use it to decide whether a redelivery is newer, so an ambiguous value defeats the comparison." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfLastModification%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#3" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.4-p .
 ivs:M2.4-p a sh:PropertyShape ;
@@ -472,6 +474,7 @@ ivs:M2.5 a sh:NodeShape ;
   sh:description "Keep one iirds:revision and remove the rest. It is the identifier a reader quotes when reporting a problem, and two of them make that useless." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Arevision%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#4" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.5-p .
 ivs:M2.5-p a sh:PropertyShape ;
@@ -492,6 +495,7 @@ ivs:M2.6 a sh:NodeShape ;
   sh:description "Keep one iirds:title and remove the rest. Where the same content exists in several languages, the specification models that as one information unit per language, all related to the same iirds:InformationObject (section 6.10.1)." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Atitle%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#5" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.6-p .
 ivs:M2.6-p a sh:PropertyShape ;
@@ -512,6 +516,7 @@ ivs:M2.7 a sh:NodeShape ;
   sh:description "Keep one iirds:has-abstract and remove the rest. An abstract is what a search result shows, and there is room for one." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ahas%2Dabstract%20property> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#6" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.7-p .
 ivs:M2.7-p a sh:PropertyShape ;
@@ -532,6 +537,7 @@ ivs:M2.8 a sh:NodeShape ;
   sh:description "Keep one iirds:is-replacement-of and remove the rest. If this unit genuinely supersedes several, model that on the units it replaces instead." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ais%2Dreplacement%2Dof%20property%20%2D%20iirds%3AInformationUnit> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#7" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.8-p .
 ivs:M2.8-p a sh:PropertyShape ;
@@ -552,6 +558,7 @@ ivs:M2.9 a sh:NodeShape ;
   sh:description "Keep one iirds:is-version-of and remove the rest. A version belongs to exactly one information object; two would make the revision history a graph nobody can walk." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3Ais%2Dversion%2Dof%20property%20%2D%20iirds%3AInformationObject> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_InformationUnit#8" ;
   sh:targetClass iirds:Document, iirds:Fragment, iirds:InformationUnit, iirds:Package, iirds:Topic ;
   sh:property ivs:M2.9-p .
 ivs:M2.9-p a sh:PropertyShape ;
@@ -894,6 +901,7 @@ ivs:M21.2 a sh:NodeShape ;
   sh:description "Keep one iirds:dateOfEffect and remove the rest. It is the date a consumer uses to decide whether this status applies today." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20180418-1.0-release/index.html#:~:text=0..1%C2%A0%20iirds%3AdateOfEffect%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ContentLifeCycleStatus#2" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.2-p .
 ivs:M21.2-p a sh:PropertyShape ;
@@ -914,6 +922,7 @@ ivs:M21.3 a sh:NodeShape ;
   sh:description "Keep one iirds:dateOfExpiry and remove the rest. Two expiry dates give no answer to the only question the property is asked." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3AdateOfExpiry%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ContentLifeCycleStatus#3" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.3-p .
 ivs:M21.3-p a sh:PropertyShape ;
@@ -926,18 +935,19 @@ ivs:M21.3-p a sh:PropertyShape ;
   sh:maxCount 1 .
 
 ivs:M21.4 a sh:NodeShape ;
-  rdfs:label "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
+  rdfs:label "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:dateOfStatus." ;
   sh:severity sh:Violation ;
-  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
+  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:dateOfStatus." ;
   ivm:ruleId "M21.4" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Keep one iirds:dateOfStatus and remove the rest. It records when the status was set, which is what distinguishes a current status from a stale one." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3AdateOfStatus%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ContentLifeCycleStatus#4" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.4-p .
 ivs:M21.4-p a sh:PropertyShape ;
-  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
+  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:dateOfStatus." ;
   sh:severity sh:Violation ;
   ivm:ruleId "M21.4" ;
   sh:description "Keep one iirds:dateOfStatus and remove the rest. It records when the status was set, which is what distinguishes a current status from a stale one." ;
@@ -946,18 +956,19 @@ ivs:M21.4-p a sh:PropertyShape ;
   sh:maxCount 1 .
 
 ivs:M21.5 a sh:NodeShape ;
-  rdfs:label "Properties: 0..1  iirds:purpose property - http://www.w3.org/2000/01/rdf-schema#Literal" ;
+  rdfs:label "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
   sh:severity sh:Violation ;
-  sh:message "Properties: 0..1  iirds:purpose property - http://www.w3.org/2000/01/rdf-schema#Literal" ;
+  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
   ivm:ruleId "M21.5" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Keep one iirds:purpose and remove the rest. It says why the status exists, and a consumer displays it as a single line." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#functional-metadata:~:text=0..1%C2%A0%20iirds%3Apurpose%20property%20%2D%20http%3A//www.w3.org/2000/01/rdf%2Dschema%23Literal> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ContentLifeCycleStatus#5" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.5-p .
 ivs:M21.5-p a sh:PropertyShape ;
-  sh:message "Properties: 0..1  iirds:purpose property - http://www.w3.org/2000/01/rdf-schema#Literal" ;
+  sh:message "iirds:ContentLifeCycleStatus MUST NOT have more than one property iirds:purpose." ;
   sh:severity sh:Violation ;
   ivm:ruleId "M21.5" ;
   sh:description "Keep one iirds:purpose and remove the rest. It says why the status exists, and a consumer displays it as a single line." ;
@@ -974,6 +985,7 @@ ivs:M21.6 a sh:NodeShape ;
   sh:description "Keep one iirds:relates-to-party and remove the rest. It names who set the status; several would leave responsibility unassigned rather than shared." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20190712-1.0.1-release/index.html#rdfproperties_core_iirdsAttribute:~:text=rdf%2Dschema%23Literal-,0..1%C2%A0%20iirds%3Arelates%2Dto%2Dparty%20property%20%2D%20iirds%3AParty,-iirds%3AContentLifeCycleStatusValue> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ContentLifeCycleStatus#6" ;
   sh:targetClass iirds:ContentLifeCycleStatus ;
   sh:property ivs:M21.6-p .
 ivs:M21.6-p a sh:PropertyShape ;
@@ -994,6 +1006,7 @@ ivs:M22.1 a sh:NodeShape ;
   sh:description "Add iirds:has-party-role to the Party, relating it to a PartyRole such as iirds:Author or iirds:Manufacturer. A party with no role tells a consumer that an organisation is involved and not how." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3AParty%20MUST%20have%20a%20related%20iirds%3APartyRole%20that%20is%20assigned%20by%20the%20property%20iirds%3Ahas%2Dparty%2Drole%2C%20such%20as%20author%2C%20supplier%20or%20manufacturer.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Party#3" ;
   ivm:covers "x6-8-3-parties-and-roles#2" ;
   sh:targetClass iirds:Party ;
   sh:property ivs:M22.1-p .
@@ -1016,6 +1029,7 @@ ivs:M23 a sh:NodeShape ;
   sh:description "Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=In%20addition%20to%20the%20role%2C%20an%20iirds%3AParty%20MUST%20also%20have%20an%20associated%20description%20of%20itself%20as%20compliant%20vcard%3Akind%20object%20which%20is%20assigned%20via%20iirds%3Arelates%2Dto%2Dvcard.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Party#4" ;
   ivm:covers "x6-8-3-parties-and-roles#3" ;
   sh:targetClass iirds:Party ;
   sh:property ivs:M23-p .
@@ -1038,6 +1052,7 @@ ivs:M24.1 a sh:NodeShape ;
   sh:description "Keep one iirds:has-next-sibling and remove the rest. A node has one successor in its level; two would make the table of contents a graph rather than a list." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Navigation%20sequences%20and%20hierarchies%20of%20InformationUnits%20MUST%20be%20modeled%20as%20linked%20lists%20of%20instances%20of%20the%20class%20iirds%3ADirectoryNode.%20In%20a%20linked%20list%2C%20an%20iirds%3ADirectoryNode%20references%20the%20following%20node%20by%20the%20property%20iirds%3Ahas%2Dnext%2Dsibling.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_DirectoryNode#4" ;
   sh:targetClass iirds:DirectoryNode ;
   sh:property ivs:M24.1-p .
 ivs:M24.1-p a sh:PropertyShape ;
@@ -1058,6 +1073,7 @@ ivs:M24.2 a sh:NodeShape ;
   sh:description "Keep one iirds:has-directory-structure-type and remove the rest. It says what kind of structure this is, and one node cannot be the root of two kinds at once." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=0..1%C2%A0%20iirds%3Ahas%2Ddirectory%2Dstructure%2Dtype%20property%20%2D%20iirds%3ADirectoryNodeType> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_DirectoryNode#2" ;
   sh:targetClass iirds:DirectoryNode ;
   sh:property ivs:M24.2-p .
 ivs:M24.2-p a sh:PropertyShape ;
@@ -1078,6 +1094,7 @@ ivs:M24.3 a sh:NodeShape ;
   sh:description "Keep one iirds:has-first-child and remove the rest. A level begins at one node, and the rest of it is reached by following siblings from there." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#:~:text=0..1%C2%A0%20iirds%3Ahas%2Dfirst%2Dchild%20property%20%2D%20iirds%3ADirectoryNode> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_DirectoryNode#3" ;
   sh:targetClass iirds:DirectoryNode ;
   sh:property ivs:M24.3-p .
 ivs:M24.3-p a sh:PropertyShape ;
@@ -1098,6 +1115,7 @@ ivs:M24.4 a sh:NodeShape ;
   sh:description "Keep one iirds:relates-to-information-unit and remove the rest. A directory node stands for one entry in the table of contents." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#:~:text=0..1%C2%A0%20iirds%3Arelates%2Dto%2Dinformation%2Dunit%20property%20%2D%20iirds%3AInformationUnit> ;
   ivm:versions "1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_DirectoryNode#5" ;
   sh:targetClass iirds:DirectoryNode ;
   sh:property ivs:M24.4-p .
 ivs:M24.4-p a sh:PropertyShape ;
@@ -2031,6 +2049,7 @@ ivs:M95 a sh:NodeShape ;
   sh:description "Keep one iirds:relates-to-party on the Component and remove the rest. If several organisations are genuinely involved, model each on its own relation type rather than repeating this one." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_ProductMetadata:~:text=identity%20properties%20%2D%20iirds%3AIdentity-,0..1%C2%A0%20iirds%3Arelates%2Dto%2Dparty%20property%20%2D%20iirds%3AParty,-iirds%3AConcept> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Component#4" ;
   sh:targetClass iirds:Component ;
   sh:property ivs:M95-p .
 ivs:M95-p a sh:PropertyShape ;
@@ -2227,6 +2246,216 @@ ivs:R17-p a sh:PropertyShape ;
   sh:description "Keep one iirds:has-identity-type on the domain and give the other identities a domain of their own. A domain is the scheme a number is issued under, and a serial number and a product type are two schemes: merged, a reader cannot tell which scheme any identifier in it belongs to." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
   sh:path iirds:has-identity-type ;
+  sh:maxCount 1 .
+
+ivs:R24 a sh:NodeShape ;
+  rdfs:label "an iirds:ClassificationDomain must not name more than one classification type" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:ClassificationDomain must not name more than one classification type" ;
+  ivm:ruleId "R24" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:has-classification-type on the domain and give the other classifications a domain of their own. The type says what kind of scheme this is; a domain claiming to be two kinds at once tells a consumer nothing about how to read the identifiers issued under it." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ClassificationDomain#2" ;
+  sh:targetClass iirds:ClassificationDomain ;
+  sh:property ivs:R24-p .
+ivs:R24-p a sh:PropertyShape ;
+  sh:message "an iirds:ClassificationDomain must not name more than one classification type" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R24" ;
+  sh:description "Keep one iirds:has-classification-type on the domain and give the other classifications a domain of their own. The type says what kind of scheme this is; a domain claiming to be two kinds at once tells a consumer nothing about how to read the identifiers issued under it." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:has-classification-type ;
+  sh:maxCount 1 .
+
+ivs:R25 a sh:NodeShape ;
+  rdfs:label "an iirds:ClassificationDomain must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:ClassificationDomain must not relate to more than one party" ;
+  ivm:ruleId "R25" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:relates-to-party on the domain. It names who issues the scheme, and two issuers for one scheme is not a scheme a consumer can attribute." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ClassificationDomain#3" ;
+  sh:targetClass iirds:ClassificationDomain ;
+  sh:property ivs:R25-p .
+ivs:R25-p a sh:PropertyShape ;
+  sh:message "an iirds:ClassificationDomain must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R25" ;
+  sh:description "Keep one iirds:relates-to-party on the domain. It names who issues the scheme, and two issuers for one scheme is not a scheme a consumer can attribute." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:relates-to-party ;
+  sh:maxCount 1 .
+
+ivs:R26 a sh:NodeShape ;
+  rdfs:label "an iirds:IdentityDomain must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:IdentityDomain must not relate to more than one party" ;
+  ivm:ruleId "R26" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:relates-to-party on the domain. Section 8.3.2 asks for a domain whose party is the manufacturer, and a domain naming two parties answers that question and its opposite with the same statement." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_IdentityDomain#3" ;
+  sh:targetClass iirds:IdentityDomain ;
+  sh:property ivs:R26-p .
+ivs:R26-p a sh:PropertyShape ;
+  sh:message "an iirds:IdentityDomain must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R26" ;
+  sh:description "Keep one iirds:relates-to-party on the domain. Section 8.3.2 asks for a domain whose party is the manufacturer, and a domain naming two parties answers that question and its opposite with the same statement." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:relates-to-party ;
+  sh:maxCount 1 .
+
+ivs:R27 a sh:NodeShape ;
+  rdfs:label "an iirds:ProductVariant must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:ProductVariant must not relate to more than one party" ;
+  ivm:ruleId "R27" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:relates-to-party on the product variant. It names the organisation the variant belongs to; if several are involved, relate them through the roles that say how rather than through this one property twice." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ProductVariant#2" ;
+  sh:targetClass iirds:ProductVariant ;
+  sh:property ivs:R27-p .
+ivs:R27-p a sh:PropertyShape ;
+  sh:message "an iirds:ProductVariant must not relate to more than one party" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R27" ;
+  sh:description "Keep one iirds:relates-to-party on the product variant. It names the organisation the variant belongs to; if several are involved, relate them through the roles that say how rather than through this one property twice." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:relates-to-party ;
+  sh:maxCount 1 .
+
+ivs:R28 a sh:NodeShape ;
+  rdfs:label "an iirds:ExternalClassification must not carry more than one classification version" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:ExternalClassification must not carry more than one classification version" ;
+  ivm:ruleId "R28" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:classificationVersion. It says which release of eCl@ss or ETIM the identifier was issued under, and two of them leave a consumer unable to resolve the identifier against either." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_ExternalClassification#4" ;
+  sh:targetClass iirds:ExternalClassification ;
+  sh:property ivs:R28-p .
+ivs:R28-p a sh:PropertyShape ;
+  sh:message "an iirds:ExternalClassification must not carry more than one classification version" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R28" ;
+  sh:description "Keep one iirds:classificationVersion. It says which release of eCl@ss or ETIM the identifier was issued under, and two of them leave a consumer unable to resolve the identifier against either." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:classificationVersion ;
+  sh:maxCount 1 .
+
+ivs:R29 a sh:NodeShape ;
+  rdfs:label "an iirds:Package must not declare more than one format restriction" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:Package must not declare more than one format restriction" ;
+  ivm:ruleId "R29" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:formatRestriction on the package. It is what says the package is iiRDS/A or iiRDS/H, and a package declaring two profiles is asking to be validated against two sets of rules that contradict each other." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Package#2" ;
+  sh:targetClass iirds:Package ;
+  sh:property ivs:R29-p .
+ivs:R29-p a sh:PropertyShape ;
+  sh:message "an iirds:Package must not declare more than one format restriction" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R29" ;
+  sh:description "Keep one iirds:formatRestriction on the package. It is what says the package is iiRDS/A or iiRDS/H, and a package declaring two profiles is asking to be validated against two sets of rules that contradict each other." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:formatRestriction ;
+  sh:maxCount 1 .
+
+ivs:R30 a sh:NodeShape ;
+  rdfs:label "an iirds:Rendition must not have more than one selector" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:Rendition must not have more than one selector" ;
+  ivm:ruleId "R30" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:has-selector on the rendition. The selector says which part of the file this rendition is; two of them describe two different parts and give a consumer no way to choose." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Rendition#2" ;
+  sh:targetClass iirds:Rendition ;
+  sh:property ivs:R30-p .
+ivs:R30-p a sh:PropertyShape ;
+  sh:message "an iirds:Rendition must not have more than one selector" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R30" ;
+  sh:description "Keep one iirds:has-selector on the rendition. The selector says which part of the file this rendition is; two of them describe two different parts and give a consumer no way to choose." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:has-selector ;
+  sh:maxCount 1 .
+
+ivs:R31 a sh:NodeShape ;
+  rdfs:label "an iirds:Document must not have more than one iirdsHov:has-document-category" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:Document must not have more than one iirdsHov:has-document-category" ;
+  ivm:ruleId "R31" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirdsHov:has-document-category on the document. The category is what a handover package is sorted by, and a document in two categories appears twice in the content list under headings that contradict each other." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.3" ;
+  ivm:covers "rdfclasses_core_Document#2" ;
+  sh:targetClass iirds:Document ;
+  sh:property ivs:R31-p .
+ivs:R31-p a sh:PropertyShape ;
+  sh:message "an iirds:Document must not have more than one iirdsHov:has-document-category" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R31" ;
+  sh:description "Keep one iirdsHov:has-document-category on the document. The category is what a handover package is sorted by, and a document in two categories appears twice in the content list under headings that contradict each other." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirdsHov:has-document-category ;
+  sh:maxCount 1 .
+
+ivs:R32 a sh:NodeShape ;
+  rdfs:label "an iirds:Event must not have more than one iirds:has-event-code" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:Event must not have more than one iirds:has-event-code" ;
+  ivm:ruleId "R32" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:has-event-code on the event. The code is what a maintenance system matches an event against; two codes on one event match two different faults." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Event#2" ;
+  sh:targetClass iirds:Event ;
+  sh:property ivs:R32-p .
+ivs:R32-p a sh:PropertyShape ;
+  sh:message "an iirds:Event must not have more than one iirds:has-event-code" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R32" ;
+  sh:description "Keep one iirds:has-event-code on the event. The code is what a maintenance system matches an event against; two codes on one event match two different faults." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:has-event-code ;
+  sh:maxCount 1 .
+
+ivs:R33 a sh:NodeShape ;
+  rdfs:label "an iirds:Event must not have more than one iirds:has-event-type" ;
+  sh:severity sh:Violation ;
+  sh:message "an iirds:Event must not have more than one iirds:has-event-type" ;
+  ivm:ruleId "R33" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Keep one iirds:has-event-type on the event. The type says what kind of event this is, and an event that is two kinds at once cannot be filtered by either." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  ivm:versions "1.2,1.3" ;
+  ivm:covers "rdfclasses_core_Event#3" ;
+  sh:targetClass iirds:Event ;
+  sh:property ivs:R33-p .
+ivs:R33-p a sh:PropertyShape ;
+  sh:message "an iirds:Event must not have more than one iirds:has-event-type" ;
+  sh:severity sh:Violation ;
+  ivm:ruleId "R33" ;
+  sh:description "Keep one iirds:has-event-type on the event. The type says what kind of event this is, and an event that is two kinds at once cannot be filtered by either." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-1-class-definitions> ;
+  sh:path iirds:has-event-type ;
   sh:maxCount 1 .
 
 ivs:L10 a sh:NodeShape ;

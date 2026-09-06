@@ -77,45 +77,45 @@ def m2_1_information_unit_iri(ctx):
                             subject=ctx.ref(subj))
 
 
-@rule("M2.3",
+@rule("M2.3", covers=("rdfclasses_core_InformationUnit#2",),
        fix="Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first.")
 def m2_3(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.dateOfCreation, "iirds:dateOfCreation")
 
 
-@rule("M2.4",
+@rule("M2.4", covers=("rdfclasses_core_InformationUnit#3",),
        fix="Keep one iirds:dateOfLastModification and remove the rest. Consumers use it to decide whether a redelivery is newer, so an ambiguous value defeats the comparison.")
 def m2_4(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.dateOfLastModification,
                             "iirds:dateOfLastModification")
 
 
-@rule("M2.5",
+@rule("M2.5", covers=("rdfclasses_core_InformationUnit#4",),
        fix="Keep one iirds:revision and remove the rest. It is the identifier a reader quotes when reporting a problem, and two of them make that useless.")
 def m2_5(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.revision, "iirds:revision")
 
 
-@rule("M2.6",
+@rule("M2.6", covers=("rdfclasses_core_InformationUnit#5",),
        fix="Keep one iirds:title and remove the rest. Where the same content exists in several languages, the specification models that as one information unit per language, all related to the same iirds:InformationObject (section 6.10.1).")
 def m2_6(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.title, "iirds:title")
 
 
-@rule("M2.7",
+@rule("M2.7", covers=("rdfclasses_core_InformationUnit#6",),
        fix="Keep one iirds:has-abstract and remove the rest. An abstract is what a search result shows, and there is room for one.")
 def m2_7(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.has_abstract, "iirds:has-abstract")
 
 
-@rule("M2.8",
+@rule("M2.8", covers=("rdfclasses_core_InformationUnit#7",),
        fix="Keep one iirds:is-replacement-of and remove the rest. If this unit genuinely supersedes several, model that on the units it replaces instead.")
 def m2_8(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.is_replacement_of,
                             "iirds:is-replacement-of")
 
 
-@rule("M2.9",
+@rule("M2.9", covers=("rdfclasses_core_InformationUnit#8",),
        fix="Keep one iirds:is-version-of and remove the rest. A version belongs to exactly one information object; two would make the revision history a graph nobody can walk.")
 def m2_9(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.is_version_of, "iirds:is-version-of")
@@ -376,43 +376,62 @@ def m19_2_identity_value(ctx):
             yield from _not_a_non_empty_string(ctx, ident, value, "iirds:identifier")
 
 
-@rule("M21.2",
+@rule("M21.2", covers=("rdfclasses_core_ContentLifeCycleStatus#2",),
        fix="Keep one iirds:dateOfEffect and remove the rest. It is the date a consumer uses to decide whether this status applies today.")
 def m21_2(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfEffect,
                             "iirds:dateOfEffect")
 
 
-@rule("M21.3",
+@rule("M21.3", covers=("rdfclasses_core_ContentLifeCycleStatus#3",),
        fix="Keep one iirds:dateOfExpiry and remove the rest. Two expiry dates give no answer to the only question the property is asked.")
 def m21_3(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfExpiry,
                             "iirds:dateOfExpiry")
 
 
-@rule("M21.4",
+@rule("M21.4", covers=("rdfclasses_core_ContentLifeCycleStatus#4",),
+       title="iirds:ContentLifeCycleStatus MUST NOT have more than one property "
+             "iirds:dateOfStatus.",
        fix="Keep one iirds:dateOfStatus and remove the rest. It records when the status was set, which is what distinguishes a current status from a stale one.")
 def m21_4(ctx):
     """The wording says iirds:purpose; the reference tool checks dateOfStatus
     here and purpose under M21.5. Following the wording for both would leave
-    dateOfStatus unchecked by anything, which is the worse outcome."""
+    dateOfStatus unchecked by anything, which is the worse outcome.
+
+    The title is this project's, for the same reason. The catalogue's is the
+    crossed one, and a title is not an annotation: it is what `iirds explain`
+    prints, what the emitted shape carries as `sh:name`, and the sentence a
+    reader acts on -- so a package with two `dateOfStatus` was told to remove
+    an `iirds:purpose` it may not have. Written in the family's own wording so
+    that it reads as the sibling of M21.2, M21.3 and M21.6 rather than as an
+    exception.
+    """
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.dateOfStatus, "iirds:dateOfStatus")
 
 
-@rule("M21.5",
+@rule("M21.5", covers=("rdfclasses_core_ContentLifeCycleStatus#5",),
+       title="iirds:ContentLifeCycleStatus MUST NOT have more than one property "
+             "iirds:purpose.",
        fix="Keep one iirds:purpose and remove the rest. It says why the status exists, and a consumer displays it as a single line.")
 def m21_5(ctx):
+    """The other half of the crossing above, and the catalogue's entry for it
+    is not a sentence at all: "Properties: 0..1  iirds:purpose property -
+    http://www.w3.org/2000/01/rdf-schema#Literal", a fragment of the appendix
+    table where the rule's wording should be. This project published it as the
+    rule's title.
+    """
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.purpose, "iirds:purpose")
 
 
-@rule("M21.6",
+@rule("M21.6", covers=("rdfclasses_core_ContentLifeCycleStatus#6",),
        fix="Keep one iirds:relates-to-party and remove the rest. It names who set the status; several would leave responsibility unassigned rather than shared.")
 def m21_6(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.relates_to_party,
                             "iirds:relates-to-party")
 
 
-@rule("M22.1", covers=("x6-8-3-parties-and-roles#2",),
+@rule("M22.1", covers=("rdfclasses_core_Party#3", "x6-8-3-parties-and-roles#2",),
        fix="Add iirds:has-party-role to the Party, relating it to a PartyRole such as iirds:Author or iirds:Manufacturer. A party with no role tells a consumer that an organisation is involved and not how.")
 def m22_1_party_role(ctx):
     yield from _exactly_one(ctx, T.Party, T.has_party_role, "iirds:has-party-role")
@@ -422,28 +441,28 @@ def m22_1_party_role(ctx):
 # Directory structure (table of contents)
 # --------------------------------------------------------------------------
 
-@rule("M24.1",
+@rule("M24.1", covers=("rdfclasses_core_DirectoryNode#4",),
        fix="Keep one iirds:has-next-sibling and remove the rest. A node has one successor in its level; two would make the table of contents a graph rather than a list.")
 def m24_1(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_next_sibling,
                             "iirds:has-next-sibling")
 
 
-@rule("M24.2",
+@rule("M24.2", covers=("rdfclasses_core_DirectoryNode#2",),
        fix="Keep one iirds:has-directory-structure-type and remove the rest. It says what kind of structure this is, and one node cannot be the root of two kinds at once.")
 def m24_2(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_directory_structure_type,
                             "iirds:has-directory-structure-type")
 
 
-@rule("M24.3",
+@rule("M24.3", covers=("rdfclasses_core_DirectoryNode#3",),
        fix="Keep one iirds:has-first-child and remove the rest. A level begins at one node, and the rest of it is reached by following siblings from there.")
 def m24_3(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_first_child,
                             "iirds:has-first-child")
 
 
-@rule("M24.4",
+@rule("M24.4", covers=("rdfclasses_core_DirectoryNode#5",),
        fix="Keep one iirds:relates-to-information-unit and remove the rest. A directory node stands for one entry in the table of contents.")
 def m24_4(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.relates_to_information_unit,
@@ -1049,7 +1068,7 @@ def m22_2_role_is_a_party_role(ctx):
         "iirds:has-party-role must point to an iirds:PartyRole")
 
 
-@rule("M23", covers=("x6-8-3-parties-and-roles#3",),
+@rule("M23", covers=("rdfclasses_core_Party#4", "x6-8-3-parties-and-roles#3",),
        fix="Add iirds:relates-to-vcard on the Party, pointing at a vCard that describes it. The role says what the party does; the vCard says who it is, which is what a reader needs to make contact.")
 def m23_party_has_a_vcard(ctx):
     """A role without a description is not something anyone can act on.
@@ -1069,7 +1088,7 @@ def m23_party_has_a_vcard(ctx):
     yield from _exactly_one(ctx, T.Party, T.relates_to_vcard, "iirds:relates-to-vcard")
 
 
-@rule("M95",
+@rule("M95", covers=("rdfclasses_core_Component#4",),
        fix="Keep one iirds:relates-to-party on the Component and remove the rest. If several organisations are genuinely involved, model each on its own relation type rather than repeating this one.")
 def m95_component_party(ctx):
     yield from _at_most_one(ctx, T.Component, T.relates_to_party, "iirds:relates-to-party")
@@ -1216,3 +1235,202 @@ def _describes_here(ctx, node) -> bool:
     return (node, None, None) in ctx.graph
 
 
+
+
+# --------------------------------------------------------------------------
+# Appendix A's remaining `0..1` rows
+#
+# The appendix gives a cardinality for every property of every class, and
+# thirty of those rows read "0..1 <property> (at most one)". Nineteen were
+# already checked here by rules that had never claimed them. These ten are
+# the rest: the property is in the vocabulary, the row is in the standard,
+# and nothing looked.
+#
+# Written out rather than generated from the row. The rows differ in what
+# breaks when the package repeats the property, and that difference is the
+# remedy -- which is the part of a rule a reader acts on. A generator would
+# have produced ten copies of one sentence telling them to remove a duplicate
+# they can already see.
+# --------------------------------------------------------------------------
+
+#: Where the rows live. The same anchor R17 cites, for the same table.
+APPENDIX_A = ("https://www.iirds.org/fileadmin/iiRDS_specification/"
+              "20251103-1.3-release/index.html#a-1-1-class-definitions")
+
+
+@rule("R24", kind="schema", prio="MUST",
+      versions=("1.2", "1.3"),   # classification domains arrive with 1.2
+      variants=(), covers=("rdfclasses_core_ClassificationDomain#2",),
+      title="an iirds:ClassificationDomain must not name more than one classification type",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:has-classification-type on the domain and give the other "
+          "classifications a domain of their own. The type says what kind of scheme this is; "
+          "a domain claiming to be two kinds at once tells a consumer nothing about how to "
+          "read the identifiers issued under it.")
+def r24_classification_domain_has_one_type(ctx):
+    """The sibling of R17, one class along.
+
+    `iirds:IdentityDomain` and `iirds:ClassificationDomain` are the same shape
+    -- a scheme, and the kind of scheme it is -- and R17 was written for the
+    first because section 8.3.2 asks four questions that turn on it. Nothing
+    asked the second.
+    """
+    yield from _at_most_one(ctx, T.ClassificationDomain, T.has_classification_type,
+                            "iirds:has-classification-type")
+
+
+@rule("R25", kind="schema", prio="MUST",
+      versions=("1.2", "1.3"),   # as R24: the class arrives in 1.2
+      variants=(), covers=("rdfclasses_core_ClassificationDomain#3",),
+      title="an iirds:ClassificationDomain must not relate to more than one party",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:relates-to-party on the domain. It names who issues the scheme, "
+          "and two issuers for one scheme is not a scheme a consumer can attribute.")
+def r25_classification_domain_has_one_party(ctx):
+    """`iirds:relates-to-party` is `0..1` on five classes and was checked on two
+    of them -- M21.6 for the lifecycle status, M95 for the component. The other
+    three are R25, R26 and R27."""
+    yield from _at_most_one(ctx, T.ClassificationDomain, T.relates_to_party,
+                            "iirds:relates-to-party")
+
+
+@rule("R26", kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("rdfclasses_core_IdentityDomain#3",),
+      title="an iirds:IdentityDomain must not relate to more than one party",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:relates-to-party on the domain. Section 8.3.2 asks for a domain "
+          "whose party is the manufacturer, and a domain naming two parties answers that "
+          "question and its opposite with the same statement.")
+def r26_identity_domain_has_one_party(ctx):
+    """The cost here is the same one R17's docstring sets out: section 8.3.2
+    reads a domain's party to decide whether an identity is the manufacturer's,
+    and a domain with two parties satisfies that check while naming somebody
+    else as well."""
+    yield from _at_most_one(ctx, T.IdentityDomain, T.relates_to_party,
+                            "iirds:relates-to-party")
+
+
+@rule("R27", kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("rdfclasses_core_ProductVariant#2",),
+      title="an iirds:ProductVariant must not relate to more than one party",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:relates-to-party on the product variant. It names the organisation "
+          "the variant belongs to; if several are involved, relate them through the roles "
+          "that say how rather than through this one property twice.")
+def r27_product_variant_has_one_party(ctx):
+    yield from _at_most_one(ctx, T.ProductVariant, T.relates_to_party,
+                            "iirds:relates-to-party")
+
+
+@rule("R28", kind="schema", prio="MUST",
+      versions=("1.2", "1.3"),   # external classification arrives in 1.2, as M96.1 and M96.2
+      variants=(), covers=("rdfclasses_core_ExternalClassification#4",),
+      title="an iirds:ExternalClassification must not carry more than one classification version",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:classificationVersion. It says which release of eCl@ss or ETIM the "
+          "identifier was issued under, and two of them leave a consumer unable to resolve the "
+          "identifier against either.")
+def r28_classification_version_count(ctx):
+    """M96.1 and M96.2 already hold this class's other two cardinalities -- the
+    domain and the identifier. The version was the third and was not there."""
+    yield from _at_most_one(ctx, T.ExternalClassification, T.classificationVersion,
+                            "iirds:classificationVersion")
+
+
+@rule("R29", kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("rdfclasses_core_Package#2",),
+      title="an iirds:Package must not declare more than one format restriction",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:formatRestriction on the package. It is what says the package is "
+          "iiRDS/A or iiRDS/H, and a package declaring two profiles is asking to be validated "
+          "against two sets of rules that contradict each other.")
+def r29_package_has_one_format_restriction(ctx):
+    """This one decides which rules run.
+
+    `iirds:formatRestriction` is how a package announces its profile, and the
+    runner reads it to select the variant rules. A package declaring both
+    `iiRDS-A` and `iiRDS-H` gets whichever the reader happens to take first --
+    two validators can disagree about the same container and both be right.
+    """
+    yield from _at_most_one(ctx, T.Package, T.formatRestriction, "iirds:formatRestriction")
+
+
+@rule("R30", kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("rdfclasses_core_Rendition#2",),
+      title="an iirds:Rendition must not have more than one selector",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:has-selector on the rendition. The selector says which part of the "
+          "file this rendition is; two of them describe two different parts and give a "
+          "consumer no way to choose.")
+def r30_rendition_has_one_selector(ctx):
+    """M10 and M11 hold the rendition's source and format. The selector is the
+    third of its `0..1` properties and had no rule."""
+    yield from _at_most_one(ctx, T.Rendition, T.has_selector, "iirds:has-selector")
+
+
+@rule("R31", kind="schema", prio="MUST",
+      versions=("1.3",),   # iirdsHov:has-document-category arrives in 1.3
+      variants=(), covers=("rdfclasses_core_Document#2",),
+      title="an iirds:Document must not have more than one iirdsHov:has-document-category",
+      spec=APPENDIX_A,
+      fix="Keep one iirdsHov:has-document-category on the document. The category is what a "
+          "handover package is sorted by, and a document in two categories appears twice in "
+          "the content list under headings that contradict each other.")
+def r31_document_has_one_category(ctx):
+    """The only row of the thirty whose property is not in the core namespace.
+
+    `iirdsHov:has-document-category` is a handover term, but the row is stated
+    against `iirds:Document`, not against a handover class, so this is not a
+    variant rule: an unrestricted package carrying the property answers to the
+    same sentence.
+
+    Which is exactly the gap. M15.2 asks for one category on every Document
+    and is `variants=("H",)`, so it runs only where the package declares the
+    handover profile. A 1.3 package that is not iiRDS/H, using the handover
+    vocabulary as any published vocabulary may be used, had nothing reading
+    this at all. In an iiRDS/H package both fire, saying different things:
+    M15.2 that the category is required there, this that two is one too many.
+    """
+    yield from _at_most_one(ctx, T.Document, T.hov_has_document_category,
+                            "iirdsHov:has-document-category")
+
+
+@rule("R32", kind="schema", prio="MUST",
+      # 1.2 and 1.3 only: M16.1 already reports a second value in the editions
+      # where the specification states this as "exactly one". See below.
+      versions=("1.2", "1.3"),
+      variants=(), covers=("rdfclasses_core_Event#2",),
+      title="an iirds:Event must not have more than one iirds:has-event-code",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:has-event-code on the event. The code is what a maintenance system "
+          "matches an event against; two codes on one event match two different faults.")
+def r32_event_has_one_code(ctx):
+    """The half of M16.1 that survived the specification relaxing the other half.
+
+    Until 1.1 the standard said an event MUST have exactly one event code, and
+    M16.1 checks that -- which reports a second value as well as a missing one.
+    In 1.2 the sentence became MAY, `docs/divergences.md` records the change,
+    and M16.1's editions stop at 1.1. What did not change is appendix A's
+    `0..1`: two codes are still two codes. So in 1.2 and 1.3 nothing was
+    reading this at all, and the gap is invisible from either end -- M16.1
+    looks like a rule that covers it, and the row looks like a row no rule
+    needs.
+    """
+    yield from _at_most_one(ctx, T.Event, T.has_event_code, "iirds:has-event-code")
+
+
+@rule("R33", kind="schema", prio="MUST",
+      versions=("1.2", "1.3"),   # as R32, and for the same reason
+      variants=(), covers=("rdfclasses_core_Event#3",),
+      title="an iirds:Event must not have more than one iirds:has-event-type",
+      spec=APPENDIX_A,
+      fix="Keep one iirds:has-event-type on the event. The type says what kind of event this "
+          "is, and an event that is two kinds at once cannot be filtered by either.")
+def r33_event_has_one_type(ctx):
+    """R32's twin, for the sentence beside it. M16.2 is to this what M16.1 is
+    to R32, and stops at the same edition."""
+    yield from _at_most_one(ctx, T.Event, T.has_event_type, "iirds:has-event-type")

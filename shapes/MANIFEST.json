@@ -6,7 +6,7 @@
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
  "_note": "Every registered rule appears in exactly one bucket; the emitter refuses to run otherwise. not_expressible reasons are the differential gate's exclusion list — one source, no ad-hoc skips.",
  "counts": {
-  "core_emitted": 122,
+  "core_emitted": 132,
   "version_excluded": 2,
   "sparql_emitted": 32,
   "deferred_v1.1": 9,
@@ -135,7 +135,17 @@
   "R5",
   "R6",
   "R7",
-  "R17"
+  "R17",
+  "R24",
+  "R25",
+  "R26",
+  "R27",
+  "R28",
+  "R29",
+  "R30",
+  "R31",
+  "R32",
+  "R33"
  ],
  "sparql_emitted": [
   "L10",
@@ -733,6 +743,46 @@
   },
   "R17": {
    "iri": "https://w3id.org/iirds-validate/shapes#R17",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R24": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R24",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R25": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R25",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R26": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R26",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R27": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R27",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R28": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R28",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R29": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R29",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R30": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R30",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R31": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R31",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R32": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R32",
+   "file": "iirds-1.3/iirds-core.ttl"
+  },
+  "R33": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R33",
    "file": "iirds-1.3/iirds-core.ttl"
   },
   "L10": {

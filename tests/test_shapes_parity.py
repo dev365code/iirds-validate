@@ -1597,6 +1597,78 @@ def test_two_identity_types_on_one_domain_agree_in_both_encodings(tmp_path):
         assert ("R17" in py) is fires, (types, sorted(py))
 
 
+#: The ten appendix `0..1` rows that had no rule at all. Each is a class, a
+#: property, and the two encodings' answer to none, one and two -- the third
+#: column is what the SHACL side is for: `sh:maxCount 1` and a Python loop
+#: counting values are two readings of one row, and this is where they meet.
+APPENDIX_CARDINALITY = [
+    ("R24", "iirds:ClassificationDomain", "iirds:has-classification-type"),
+    ("R25", "iirds:ClassificationDomain", "iirds:relates-to-party"),
+    ("R26", "iirds:IdentityDomain", "iirds:relates-to-party"),
+    ("R27", "iirds:ProductVariant", "iirds:relates-to-party"),
+    ("R28", "iirds:ExternalClassification", "iirds:classificationVersion"),
+    ("R29", "iirds:Package", "iirds:formatRestriction"),
+    ("R30", "iirds:Rendition", "iirds:has-selector"),
+    ("R31", "iirds:Document", "iirdsHov:has-document-category"),
+    ("R32", "iirds:Event", "iirds:has-event-code"),
+    ("R33", "iirds:Event", "iirds:has-event-type"),
+]
+
+_NS = {"iirds": IIRDS_, "iirdsHov": "http://iirds.tekom.de/iirds/domain/handover#"}
+
+
+def _takes_a_literal(prop_uri):
+    """Asked of the ontology. An IRI where a literal belongs is a graph that is
+    wrong in a different way, and the two encodings would then agree about the
+    wrong thing."""
+    from rdflib import RDFS, URIRef
+
+    from iirds_validate.ontology import load
+
+    return RDFS.Literal in set(load().graph.objects(URIRef(prop_uri), RDFS.range))
+
+
+def _values(prop_qname, count):
+    prefix, _, local = prop_qname.partition(":")
+    namespace = _NS[prefix]
+    literal = _takes_a_literal(namespace + local)
+    out = ""
+    for n in range(count):
+        if literal:
+            out += '    <p:%s xmlns:p="%s">v%d</p:%s>\n' % (local, namespace, n, local)
+        else:
+            out += ('    <p:%s xmlns:p="%s" rdf:resource="urn:test:cv%d"/>\n'
+                    % (local, namespace, n))
+    return out
+
+
+def _cardinality_metadata(cls_qname, prop_qname, count):
+    lines = _values(prop_qname, count)
+    if cls_qname == "iirds:Package":
+        # Not a second package: `iirds:Package` is `1` per container, so a
+        # fresh instance would break M3 as well and the fixture would be
+        # exhibiting two rows at once. The property goes on the one that is
+        # already there.
+        return _meta("").replace("<iirds:title>Test package</iirds:title>",
+                                 "<iirds:title>Test package</iirds:title>\n" + lines)
+    return _meta('  <rdf:Description rdf:about="urn:test:card">\n'
+                 '    <rdf:type rdf:resource="%s%s"/>\n%s  </rdf:Description>\n'
+                 % (IIRDS_, cls_qname.partition(":")[2], lines))
+
+
+@pytest.mark.parametrize("rule_id,cls,prop", APPENDIX_CARDINALITY,
+                         ids=[r[0] for r in APPENDIX_CARDINALITY])
+def test_the_appendix_cardinality_rows_agree_in_both_encodings(rule_id, cls, prop, tmp_path):
+    """Nineteen of appendix A's thirty `0..1` rows already had a rule and a
+    shape; these ten had neither. Three counts apiece, because a shape that
+    fires on one value as well is not `sh:maxCount 1` and a set comparison
+    over a single fixture cannot tell the difference."""
+    for count, fires in ((0, False), (1, False), (2, True)):
+        metadata = _cardinality_metadata(cls, prop, count)
+        py = assert_parity(tmp_path, "%s_%d.iirds" % (rule_id, count), metadata)
+        assert (rule_id in py) is fires, (rule_id, count, sorted(py))
+
+
 # ---------------------------------------------------------------------------
 # The two encodings must agree on how many findings there are, not only on
 # which rules fired.

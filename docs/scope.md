@@ -104,7 +104,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 131 of 280.** 96 of the 131 are held by a
+1. **Coverage of the standard is 160 of 280.** 125 of the 160 are held by a
    package. The second number is the one to weigh, and it is the smaller one
    for a reason worth stating plainly: a `covers=` claim used to be made by
    reading a sentence and a rule side by side and judging them to be about the
@@ -136,7 +136,7 @@ gone wrong.
    is *known* to be, and the ten that were not looked just like them.
 
    **A claim says a violation is reported. It does not say the package
-   fails.** Nine of the 131 are appendix B's rules about iiRDS XHTML5 content,
+   fails.** Nine of the 160 are appendix B's rules about iiRDS XHTML5 content,
    and outside profile iiRDS/A the runner demotes content findings to
    warnings — so a package breaching one of those nine is reported, prints
    `PASS`, and exits 0 unless you pass `-W`. The demotion is deliberate and

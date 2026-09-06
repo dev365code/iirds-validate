@@ -153,7 +153,7 @@ single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-**Coverage of the standard is 131 of 280, of which 96 are held by a package.**
+**Coverage of the standard is 160 of 280, of which 125 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a

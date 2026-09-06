@@ -185,7 +185,18 @@ for _rid, _target, _path in (
         ("M24.3", "iirds:DirectoryNode", "iirds:has-first-child"),
         ("M24.4", "iirds:DirectoryNode", "iirds:relates-to-information-unit"),
         ("M95", "iirds:Component", "iirds:relates-to-party"),
-        ("R17", "iirds:IdentityDomain", "iirds:has-identity-type")):
+        ("R17", "iirds:IdentityDomain", "iirds:has-identity-type"),
+        # Appendix A's remaining `0..1` rows, the ten that had no rule at all.
+        ("R24", "iirds:ClassificationDomain", "iirds:has-classification-type"),
+        ("R25", "iirds:ClassificationDomain", "iirds:relates-to-party"),
+        ("R26", "iirds:IdentityDomain", "iirds:relates-to-party"),
+        ("R27", "iirds:ProductVariant", "iirds:relates-to-party"),
+        ("R28", "iirds:ExternalClassification", "iirds:classificationVersion"),
+        ("R29", "iirds:Package", "iirds:formatRestriction"),
+        ("R30", "iirds:Rendition", "iirds:has-selector"),
+        ("R31", "iirds:Document", "iirdsHov:has-document-category"),
+        ("R32", "iirds:Event", "iirds:has-event-code"),
+        ("R33", "iirds:Event", "iirds:has-event-type")):
     CORE_FORMS[_rid] = ("at_most_one", {"targets": (_target,), "path": _path})
 
 for _rid, _target, _path in (

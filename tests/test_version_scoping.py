@@ -69,6 +69,27 @@ SCOPED = {
     "R17":   (("1.1", "1.2", "1.3"),
               "iirds:has-identity-type arrives in 1.1 with the identity-type system, "
               "which is M49's reason as well"),
+    # Appendix A's `0..1` rows. Six of the ten new rules are scoped, and they
+    # are scoped for two different reasons -- the vocabulary, and a sentence
+    # the specification relaxed.
+    "R24":   (("1.2", "1.3"), "iirds:ClassificationDomain arrives in 1.2, as M97.1's does"),
+    "R25":   (("1.2", "1.3"), "iirds:ClassificationDomain arrives in 1.2, as M97.1's does"),
+    "R28":   (("1.2", "1.3"),
+              "iirds:classificationVersion arrives in 1.2 with the rest of the external "
+              "classification vocabulary, as M96.1's and M96.2's do"),
+    "R31":   (("1.3",),
+              "iirdsHov:has-document-category arrives in 1.3 with the handover vocabulary, "
+              "and this is the reason it is scoped -- not the profile. Appendix A states "
+              "the row against iirds:Document, not against a handover class, so an "
+              "unrestricted 1.3 package using the term answers to it: M15.2 is the "
+              "handover rule for this property and carries variants=(\"H\",), which is "
+              "exactly the case this one does not cover"),
+    "R32":   (("1.2", "1.3"),
+              "not the vocabulary -- iirds:has-event-code is in all five. Until 1.1 the "
+              "specification stated this as \"exactly one\" and M16.1 checks that, which "
+              "reports a second value as well; in 1.2 the sentence became MAY and M16.1's "
+              "editions stop there, leaving appendix A's 0..1 unread from 1.2 on"),
+    "R33":   (("1.2", "1.3"), "R32's reason, for the sentence beside it and M16.2"),
 }
 
 #: iiRDS/H arrived with 1.3, so its rules cannot apply to anything earlier.

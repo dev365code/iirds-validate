@@ -743,6 +743,71 @@ NAMED_CASES = {
         "test_proprietary_extensions:test_every_shape_of_the_sentence_is_reported",
     "x7-1-iirds-extension-scenarios#5":
         "test_the_schema_prohibition_names_the_file_it_found_the_schema_in",
+
+    # Appendix A's thirty `0..1` rows. The module they name derives them from
+    # the obligation index and is parametrized over the derivation, so a row
+    # added upstream arrives as a new case rather than as a pointer somebody
+    # has to remember to write -- and `test_the_claims_this_module_holds_are_
+    # the_rows_it_tests` there asserts that this list and that parametrization
+    # are the same set, in both directions.
+    "rdfclasses_core_ClassificationDomain#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ClassificationDomain#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Component#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ContentLifeCycleStatus#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ContentLifeCycleStatus#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ContentLifeCycleStatus#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ContentLifeCycleStatus#5":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ContentLifeCycleStatus#6":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_DirectoryNode#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_DirectoryNode#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_DirectoryNode#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_DirectoryNode#5":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Document#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Event#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Event#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ExternalClassification#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_IdentityDomain#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#5":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#6":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#7":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_InformationUnit#8":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Package#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Party#3":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Party#4":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_ProductVariant#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+    "rdfclasses_core_Rendition#2":
+        "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
 }
 
 
@@ -786,7 +851,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 131, len(CLAIMED)
+    assert len(CLAIMED) == 160, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

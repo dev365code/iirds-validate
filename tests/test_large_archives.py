@@ -254,13 +254,20 @@ def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
     against says "six of those hundred and seventy-five", and `"seven" in text`
     is satisfied by `seventy-five`. Written without the boundary, this test
     passed on the prose it was written to reject.
+
+    What is checked about the two figures is their *difference*, not their
+    value. `PASS, 175 rules checked` was the measurement the day the note was
+    written, and the first version of this test asserted today's -- so ten
+    unrelated rules arriving made the note wrong about a run that did happen.
+    A release note records what the tool said; the claim it makes here is that
+    seven rules moved out of the count, and that is what survives a rule being
+    added somewhere else.
     """
     import re
     from pathlib import Path
 
     report = runner.check(_unpacked(tmp_path))
     moved = len(report.not_applicable["unpacked"])
-    checked = report.checked
 
     root = Path(runner.__file__).resolve().parents[2]
     sections = (root / "CHANGELOG.md").read_text("utf-8").split("\n## ")
@@ -271,9 +278,12 @@ def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
     assert re.search(r"\b%s\b" % IN_WORDS[moved], entry), (
         "the notes no longer say %r about the %d rules the runner stands down"
         % (IN_WORDS[moved], moved))
-    assert "%d rules checked" % (checked + moved) in entry, (
-        "the notes quote a count an unpacked container does not produce; it is "
-        "%d checked plus %d not assessed" % (checked, moved))
-    assert "from %d to %d" % (checked + moved, checked) in unreleased[0], (
-        "the notes no longer state the move this change makes: %d to %d"
-        % (checked + moved, checked))
+    move = re.search(r"the count moves from (\d+) to (\d+)", unreleased[0])
+    assert move, "the notes no longer state the move this change makes"
+    before, after = (int(n) for n in move.groups())
+    assert before - after == moved, (
+        "the notes say the count moves by %d and the runner stands down %d rules"
+        % (before - after, moved))
+    assert "%d rules checked" % before in entry, (
+        "the notes quote one count in the run and a different one in the move: "
+        "%r against %d" % (entry, before))

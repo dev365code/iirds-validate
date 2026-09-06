@@ -25,6 +25,29 @@ $ pip install iirds
 > [!TIP]
 > No install for a first try: `uvx iirds check package.iirds` runs it in a throwaway environment.
 
+> [!IMPORTANT]
+> **Coming from `iirds-validate` 0.4.2 or earlier: uninstall before you install.**
+> `pip install -U iirds-validate` leaves that environment with no working command
+> — and `pip list` and `pip check` both report it healthy, because nothing is
+> missing as far as pip is concerned. `iirds-validate` 0.5.0 and later carry no
+> files of their own, so pip writes the new package's copy of `iirds_validate/`
+> and then removes the old distribution, which deletes every path the two
+> records share.
+>
+> ```console
+> $ pip uninstall -y iirds-validate     # first
+> $ pip install -U iirds
+> ```
+>
+> If it already happened, this restores it — the files were deleted, not the
+> package record:
+>
+> ```console
+> $ pip install --force-reinstall --no-deps iirds
+> ```
+>
+> Upgrading from 0.5.0 or later is unaffected.
+
 <details>
 <summary>A second sample, generated and verified by the test suite</summary>
 

@@ -73,3 +73,46 @@ def test_the_overlap_check_names_a_shared_file():
 
     assert shim_overlap.shared({"a": {"x/y.py"}, "b": {"x/y.py", "z.py"}}) == {"x/y.py": ["a", "b"]}
     assert shim_overlap.shared({"a": set(), "b": {"z.py"}}) == {}
+
+
+#: The two commands the upgrade advice turns on, and the order it puts them in.
+#: Stated on the compatibility package's PyPI page and on the front page, which
+#: are read by different people at different moments: the page is what a
+#: publisher sees, and the reader who has already run the upgrade is looking at
+#: the repository, because the command that would have told them is the one
+#: that stopped working.
+RECOVERY = "pip install --force-reinstall --no-deps iirds"
+UNINSTALL_FIRST = "pip uninstall -y iirds-validate"
+
+
+def test_both_pages_give_the_same_upgrade_advice():
+    """One hazard, two surfaces, and neither may drift from the other.
+
+    Upgrading in place from 0.4.2 leaves the environment with no working
+    command, and `pip list` and `pip check` both call it healthy -- the files
+    are gone and the records are not, so nothing pip looks at is missing. The
+    advice cannot be a rule; it is prose, on two pages, and this is what keeps
+    the two saying one thing.
+    """
+    surfaces = {
+        "README.md": ROOT / "README.md",
+        "the shim's PyPI page": ROOT / "shims" / "iirds-validate" / "README.md",
+        # A release body is a literal in the workflow rather than anything
+        # derived, so the note reaches a release only by being here. It is the
+        # surface a reader arrives at from a version tag.
+        "the release notes": ROOT / ".github" / "workflows" / "release.yml",
+    }
+    for where, path in surfaces.items():
+        text = " ".join(path.read_text("utf-8").replace("\\`", "`").split())
+        for said in (RECOVERY, UNINSTALL_FIRST):
+            assert said in text, "%s no longer says %r" % (where, said)
+
+
+def test_the_front_page_says_which_versions_are_exposed():
+    """A hazard with no boundary reads as "upgrading is unsafe", which is not
+    true and is the kind of warning a reader learns to skip. The break needs
+    both distributions to own one path, and the compatibility package has
+    owned none since 0.5.0."""
+    front = " ".join((ROOT / "README.md").read_text("utf-8").split())
+    assert "0.4.2 or earlier" in front, "README.md no longer says who is exposed"
+    assert "0.5.0 or later is unaffected" in front, "README.md no longer says who is not"

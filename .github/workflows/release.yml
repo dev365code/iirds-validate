@@ -99,7 +99,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
-            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it."
+            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it. Upgrading an environment that has \`iirds-validate\` 0.4.2 or earlier: \`pip uninstall -y iirds-validate\` first, then \`pip install -U iirds\`. If you already ran \`pip install -U iirds-validate\` and no command runs, \`pip install --force-reinstall --no-deps iirds\` restores it. Installs that began at 0.5.0 or later are unaffected."
 
   # Trusted Publishing (OIDC), one job and one GitHub environment per PyPI
   # project. `iirds` goes first: the other two declare `iirds>=<this version>`

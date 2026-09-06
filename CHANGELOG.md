@@ -6,6 +6,21 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The upgrade that leaves no working command is now said on the front page
+too.** `pip install -U iirds-validate` from 0.4.2 or earlier ends with every
+command gone -- and `pip list` and `pip check` both call the environment
+healthy, because from pip's side nothing is missing: 0.5.0 onwards carries no
+files of its own, so pip writes the new package's `iirds_validate/` and then
+removes the old distribution, deleting every path the two records share. Only
+the files the old record never listed survive.
+
+The warning and the one-line repair were already on the compatibility
+package's PyPI page, which is the wrong place for half the readers. Somebody
+who has already run the upgrade cannot ask the tool anything -- that is the
+failure -- so they arrive at the repository, and the repository said nothing.
+Both pages carry it now, and a test reads the two against each other, because
+one hazard written twice is two things that can drift.
+
 **Three MUSTs about absolute IRIs that a recommendation was standing in for
 (R34, R35, R36).** Section 6.2.1 says it is RECOMMENDED to use absolute IRIs in
 `rdf:about`, and M5 reports that as a warning. Three sentences elsewhere in

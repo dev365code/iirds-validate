@@ -25,13 +25,16 @@ OLD_SINGLE_FILE = OLD_DISTRIBUTION + ".pyz"
 #: path -> (mentions allowed, why); None = history, uncounted.
 OLD_DISTRIBUTION_ALLOWED = {
     ".github/workflows/ci.yml": (4, "the alias console script and the compatibility package"),
-    ".github/workflows/release.yml": (9, "the compatibility package and the alias console script"),
+    ".github/workflows/release.yml": (12, "the compatibility package, the alias console script, "
+                                          "and the upgrade note, which has to name the distribution "
+                                          "a reader is upgrading *from*"),
     "CHANGELOG.md": (None, "history"),
     "NOTICE": (1, "the name earlier releases were published under"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),
-    "README.md": (18, "the badge and workflow addresses, the alias sentence, and the absolute "
+    "README.md": (22, "the badge and workflow addresses, the alias sentence, the absolute "
                        "links into the repository's tree, under the repository's address until "
-                       "it is renamed, so that PyPI can follow them"),
+                       "it is renamed, so that PyPI can follow them, and the upgrade warning, "
+                       "which has to name the distribution a reader is upgrading *from*"),
     "docs/divergences.md": (2, "an issue's address"),
     "docs/library-changelog.md": (None, "history"),
     "pyproject.toml": (5, "the alias console script, and the repository's address"),
@@ -45,7 +48,7 @@ OLD_DISTRIBUTION_ALLOWED = {
     "src/iirds_validate/rules/system.py": (1, "the issue tracker's address, in a remedy"),
     "tests/test_distribution.py": (2, "the alias console script"),
     "tests/test_registry.py": (1, "pins the `source` token"),
-    "tests/test_shims.py": (5, "the compatibility name"),
+    "tests/test_shims.py": (7, "the compatibility name, and the upgrade advice both pages give"),
     "tools/emit_shacl.py": (4, "the published shape namespace, `ruleSource`, and the artefact header"),
     "tools/shim_overlap.py": (2, "the compatibility name, asked of the installed metadata"),
 }

@@ -20,6 +20,28 @@ def test_every_property_exists_in_the_ontology(name, iri):
     assert load().is_defined(iri), "%s (%s) is not defined in the bundled ontology" % (name, iri)
 
 
+def test_no_property_is_exempted_from_that_check_for_a_reason_that_has_expired():
+    """An exemption outliving its reason is a hole nobody decided to make.
+
+    `NOT_IN_ONTOLOGY` skips the guard above, and a skip is not a pass: the
+    three names in it -- `iiRDSVersion`, `is_part_of_package`,
+    `formatRestriction` -- were undeclared when the list was written and are
+    declared now. Nothing said so, because what the list produces when it is
+    wrong is silence, which is what it produces when it is right.
+
+    `iirds:formatRestriction` is the one that matters: it is what a package
+    declares its profile with, and the rule added for appendix A's `0..1` row
+    on it was written against a term the suite was not checking existed.
+
+    The list stays -- an edition that drops a term needs somewhere to say so
+    -- and an entry in it now has to still be true.
+    """
+    stale = sorted(name for name in T.NOT_IN_ONTOLOGY if load().is_defined(T.TERMS[name]))
+    assert stale == [], (
+        "the ontology declares these; they are exempted from a check they pass: %s"
+        % stale)
+
+
 def test_namespace_attribute_access_is_a_trap():
     """Why terms.py exists at all.
 

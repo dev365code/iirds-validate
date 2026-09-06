@@ -103,9 +103,13 @@ _TERM = re.compile(r"\b(iirds|iirdsHov|iirdsMch|iirdsSft):([A-Za-z][A-Za-z0-9._-
 
 #: Terms the specification uses that the ontology files never declare. Taken
 #: from the same list test_terms.py exempts, rather than a second one that
-#: could drift away from it -- and held as full IRIs, because all three live
-#: in the core namespace and a local name alone exempts `iirdsMch:iiRDSVersion`,
-#: which names nothing at all.
+#: could drift away from it -- and held as full IRIs, because a local name
+#: alone would exempt `iirdsMch:iiRDSVersion`, which names nothing at all.
+#:
+#: Empty now. It held three names the ontology had begun to declare, and two
+#: rules' titles were skipped here on the strength of that -- S4's and S5's,
+#: which name `iirds:iiRDSVersion` and `iirds:formatRestriction`. Drawing from
+#: one list rather than two is what makes emptying that one empty this one.
 UNDECLARED = {T.TERMS[name] for name in T.NOT_IN_ONTOLOGY}
 
 
@@ -236,13 +240,20 @@ def test_how_much_of_each_gate_is_actually_exercised():
 
     Written down rather than left to be discovered, and counted so that a
     reader who removes the last term-naming title finds out here instead of
-    keeping a gate that can no longer fail."""
+    keeping a gate that can no longer fail.
+
+    Twelve of the last move are appendix A's `0..1` rules, whose titles name
+    the class and the property. The other two are S4 and S5, which have named
+    `iirds:iiRDSVersion` and `iirds:formatRestriction` in their titles all
+    along: `UNDECLARED` was skipping both, because the exemption list it reads
+    still called those terms undeclared after the ontology began declaring
+    them. The gate did not widen there -- it stopped being narrowed."""
     ours = [r for r in RULES if r.title != CATALOG.get(r.id, {}).get("en")]
     titled = [r for r in ours if list(_named_terms(r.title))]
     remedied = [r for r in RULES if list(_named_terms(r.fix))]
     terms_in_remedies = sum(len(list(_named_terms(r.fix))) for r in RULES)
 
-    assert len(titled) == 24, sorted(r.id for r in titled)
+    assert len(titled) == 26, sorted(r.id for r in titled)
     assert len(remedied) >= 120, len(remedied)
     assert terms_in_remedies >= 140, terms_in_remedies
 

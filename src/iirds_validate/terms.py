@@ -150,8 +150,11 @@ IIRDS_DESCRIPTION = IIRDS["description"]
 
 #: Terms the ontology files do not declare even though the specification uses
 #: them. Tracked explicitly so the guard test stays meaningful.
-NOT_IN_ONTOLOGY = {
-    "iiRDSVersion",
-    "is_part_of_package",
-    "formatRestriction",
-}
+#:
+#: Empty, and kept rather than deleted: an edition that drops a term needs
+#: somewhere to say so. It held `iiRDSVersion`, `is_part_of_package` and
+#: `formatRestriction`, all three of which the bundled ontology declares --
+#: the exemption outlived its reason and went on skipping a check the terms
+#: pass, which looks exactly like the check passing. `tests/test_terms.py`
+#: refuses an entry that is declared, so the next one cannot do that.
+NOT_IN_ONTOLOGY = set()

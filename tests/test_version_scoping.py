@@ -458,9 +458,8 @@ def test_a_helper_called_through_its_module_is_followed_too():
     from pathlib import Path as _Path
 
     sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
-    from version_inventory import _source_the_rule_reaches
-
     from iirds_validate.rules import schema
+    from version_inventory import _source_the_rule_reaches
 
     probe = types.ModuleType("probe_module_qualified")
     sys.modules["probe_module_qualified"] = probe

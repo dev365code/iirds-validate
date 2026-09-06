@@ -183,8 +183,28 @@ gone wrong.
    child breaching that sentence or a parent describing its child; the
    metadata does not distinguish them. Other sentences weigh without settling
    it — §6.3 says the enclosing package is the subject of no rendition, which
-   is the rule M8 — and so does the archive. Both lists are in the source and
-   both are gated; "hard to check" is on neither of them.
+   is the rule M8 — and so does the archive.
+
+   Twenty-six more are the word inside a vocabulary table. Appendix A describes
+   each term in a "Definition:" and a "Description:" cell, and the
+   specification's own markup calls a word inside twenty-nine of those an RFC
+   2119 keyword: "Physical items **REQUIRED** for the running of a
+   manufacturing production", "period of time **REQUIRED** for a specific
+   task", "documentation that the supplier **SHALL** provide to the purchaser
+   according to the purchase order". Twenty-six describe a thing in the world
+   or bind somebody in it, and no container can satisfy or breach one. They
+   stay in the denominator — the specification marks them, and dropping them
+   would be this project deciding the standard is wrong about its own markup —
+   but the report names them rather than leaving them in the remainder.
+
+   The other three of the twenty-nine say something about the metadata and stay
+   where the work is: the range-selector sentence, stated once per property,
+   and §6.8.4's classification-domain sentence restated in the appendix. Both
+   sides are listed by name, because the first attempt drew the line at the
+   cell's label and split one term's two adjacent rows.
+
+   All three lists are in the source and all three are gated; "hard to check"
+   is on none of them.
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Two Appendix B rules rest on readings the specification does not

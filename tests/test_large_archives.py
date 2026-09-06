@@ -137,7 +137,7 @@ def test_neither_rule_is_claimed_against_a_directory(tmp_path):
 
 #: The requirements whose subject is the ZIP archive itself. An unpacked
 #: container cannot answer them, and the runner has always said so in a note.
-ARCHIVE_ONLY = ("C1", "C3", "C6", "S7", "S8", "S10")
+ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10")
 
 
 def _unpacked(tmp_path):
@@ -156,7 +156,7 @@ def _unpacked(tmp_path):
 def test_the_archive_rules_are_reported_as_not_assessed_and_not_as_checked(tmp_path):
     """"Reported as not assessed, never as passed" was a note and nothing else.
 
-    The runner counts a rule as checked before running it, and these six return
+    The runner counts a rule as checked before running it, and these seven return
     at their first line when the container is not an archive -- so an unpacked
     directory came back `PASS, 175 rules checked` with "the archive must not be
     encrypted" and "large archives must use ZIP64" among the hundred and
@@ -189,9 +189,91 @@ def test_the_note_and_the_report_name_the_same_rules(tmp_path):
 
 def test_a_packed_container_still_checks_them(tmp_path):
     """The control: these rules are not disabled, they are inapplicable to a
-    directory. A real archive answers all six."""
+    directory. A real archive answers all seven."""
     package = build_package(tmp_path, "packed.iirds")
     report = runner.check(package)
     assert report.not_applicable["unpacked"] == [], report.not_applicable
     assert all(r not in sum(report.not_applicable.values(), [])
                for r in ARCHIVE_ONLY), report.not_applicable
+
+
+def test_no_rule_keeps_its_own_archive_guard():
+    """One list, not a list and seven guards saying the same thing.
+
+    Each of these rules opened with `if not ctx.package.is_archive: return`,
+    and the runner counted them as checked before running them -- which is the
+    defect above. With the runner deciding, the guards became seven lines no
+    package can reach, and the unreached-line baseline said so: eleven to
+    seventeen in one measurement.
+
+    R3 is why this is a gate and not a deletion. It carries the same guard, is
+    about the archive's own layout -- "the container must be at the root of the
+    archive, not inside a folder" -- and was not in the list, so an unpacked
+    container still reported it among the rules it had checked. Six were
+    repaired and the seventh was found by counting dead lines. A guard added
+    instead of a list entry would put the next one back.
+
+    The first pattern here read `\\w+\\.package\\.is_archive`, and S10 -- one of
+    the seven -- spells it `package.is_archive`, off a local bound a line
+    earlier. Planting that rule's own guard back left this test green. A gate
+    written against seven examples has to match all seven of them.
+    """
+    import re
+    from pathlib import Path
+
+    from iirds_validate.runner import ARCHIVE_ONLY as declared
+
+    assert set(declared) == set(ARCHIVE_ONLY), sorted(set(declared) ^ set(ARCHIVE_ONLY))
+    rules_dir = Path(runner.__file__).resolve().parent / "rules"
+    guarded = sorted(path.name for path in rules_dir.glob("*.py")
+                     if re.search(r"if not \w+(\.package)?\.is_archive",
+                                  path.read_text("utf-8")))
+    assert guarded == [], (
+        "these modules still guard on is_archive; the runner decides now: %s" % guarded)
+
+
+#: The English for a count, up to the largest this list could plausibly reach.
+#: The release notes say "seven rules"; the number they say it about is
+#: `len(ARCHIVE_ONLY)`, and one of the two is prose.
+IN_WORDS = {6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+
+
+def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
+    """The release notes for this change said "six", and there are seven.
+
+    They were right when written. R3 joined the list afterwards, and nothing
+    would have said so -- which is the shape of the defect that put the front
+    page on `77 of 280` for two releases: a figure in published prose with no
+    gate behind it, agreeing with nothing because nothing read it.
+
+    Only the unreleased section. Once a version ships its notes are a record of
+    what the tool said at the time, and a gate that keeps rewriting them to
+    today's measurement destroys the record it is meant to protect.
+
+    The count is matched on a word boundary because the paragraph it is checked
+    against says "six of those hundred and seventy-five", and `"seven" in text`
+    is satisfied by `seventy-five`. Written without the boundary, this test
+    passed on the prose it was written to reject.
+    """
+    import re
+    from pathlib import Path
+
+    report = runner.check(_unpacked(tmp_path))
+    moved = len(report.not_applicable["unpacked"])
+    checked = report.checked
+
+    root = Path(runner.__file__).resolve().parents[2]
+    sections = (root / "CHANGELOG.md").read_text("utf-8").split("\n## ")
+    unreleased = [s for s in sections if s.splitlines()[0].endswith("unreleased")]
+    assert len(unreleased) == 1, [s.splitlines()[0] for s in sections[1:]]
+    entry = next(p for p in unreleased[0].split("\n\n") if "`notApplicable`" in p)
+
+    assert re.search(r"\b%s\b" % IN_WORDS[moved], entry), (
+        "the notes no longer say %r about the %d rules the runner stands down"
+        % (IN_WORDS[moved], moved))
+    assert "%d rules checked" % (checked + moved) in entry, (
+        "the notes quote a count an unpacked container does not produce; it is "
+        "%d checked plus %d not assessed" % (checked, moved))
+    assert "from %d to %d" % (checked + moved, checked) in unreleased[0], (
+        "the notes no longer state the move this change makes: %d to %d"
+        % (checked + moved, checked))

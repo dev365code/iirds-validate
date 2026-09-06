@@ -50,6 +50,123 @@ NOT_ABOUT_THE_PACKAGE = {
         "about tools rather than about containers.",
 }
 
+#: Appendix A's vocabulary tables describe each term in a "Definition:" and a
+#: "Description:" cell, and the specification's own markup wraps an RFC 2119
+#: word inside twenty-nine of those cells --
+#: `<em title="REQUIRED in RFC 2119 context" class="rfc2119">` around
+#: "REQUIRED" in "Physical items REQUIRED for the running of a manufacturing
+#: production". Twenty-six of the twenty-nine describe a thing in the world or
+#: bind somebody in it; a container can neither satisfy nor breach one.
+#:
+#: **The criterion is the sentence's subject, and it cannot be read off the
+#: markup.** The first draft of this table used the cell's label -- "Definition:"
+#: in, "Description:" out -- which put `OperatingSupply`'s "Physical items
+#: REQUIRED for the running of a manufacturing production" on one side and
+#: `GenericOperatingSupply`'s verbatim restatement of it on the other, and split
+#: `GenericWorkingTime`'s two adjacent rows in the same table. A category drawn
+#: by a `<strong>` tag is not a category. So this is a list of readings, and the
+#: three rows that stay out are named beside it rather than left to a pattern.
+#:
+#: They stay in the denominator. Counting them is faithful to the source, and
+#: dropping them would be this project deciding the standard is wrong about its
+#: own markup. A third table rather than a wider second one, so that "the word
+#: means something else here" cannot hide inside "addressed to reading
+#: applications".
+DEFINES_A_CONCEPT = {
+    # Time and capability: the word describes the thing, not the metadata.
+    "rdfclasses_core_PlanningTime#1":
+        "\"period of time REQUIRED for or resulting from a specific task\" -- the "
+        "word describes the time, not something a package must do.",
+    "rdfclasses_core_WorkingTime#1":
+        "\"period of time that is REQUIRED for conducting a specific task\" -- the same.",
+    "rdfobjects_core_GenericWorkingTime#1":
+        "The instance's definition, word for word the WorkingTime class's above.",
+    "rdfobjects_core_GenericWorkingTime#2":
+        "\"a parent class for periods of time REQUIRED for a specific working task\" "
+        "-- the description cell of the row above, saying the same thing.",
+    "rdfobjects_core_GenericPlanningTime#1":
+        "\"period of time that is REQUIRED for conducting a specific task\" -- not "
+        "the PlanningTime class's own wording, which reads \"for or resulting from\": "
+        "the specification repeats WorkingTime's sentence in this cell.",
+    "rdfobjects_core_GenericPlanningTime#3":
+        "\"time REQUIRED for or resulting from specific working tasks\" -- the "
+        "description cell of the same row.",
+    "rdfclasses_machinery_SetupTime#1":
+        "\"Period of time REQUIRED to prepare a technical system\" -- the same.",
+    "rdfobjects_machinery_GenericSetupTime#1":
+        "\"time periods REQUIRED to prepare a technical system\" -- the description "
+        "cell of the row above.",
+    "rdfclasses_core_ProductFunction#1":
+        "\"capability ... which is specific or REQUIRED for the intended product "
+        "task\" -- a property of the capability, not of the metadata.",
+    "rdfobjects_core_GenericProductFunction#1":
+        "The instance's definition, word for word the class's above.",
+    "rdfclasses_core_SkillLevel#1":
+        "\"the levels of ability REQUIRED to carry out a specific task\" -- about "
+        "the technician's ability.",
+
+    # Physical things a factory needs.
+    "rdfclasses_machinery_OperatingSupply#1":
+        "\"Physical items REQUIRED for the running of a manufacturing production\" "
+        "-- about the items in the factory, not about the container describing them.",
+    "rdfobjects_machinery_GenericOperatingSupply#1":
+        "\"physical items REQUIRED for the running of a manufacturing production\" "
+        "-- the same clause again, in the description cell.",
+    "rdfclasses_machinery_ProtectiveEquipment#1":
+        "\"Physical items REQUIRED for protection of a manufacturing product or "
+        "personnel\" -- the same.",
+    "rdfobjects_core_GenericSupply#1":
+        "\"a parent class for supplies that are REQUIRED for working tasks\" -- "
+        "what the supplies are for.",
+
+    # Collections: what the list is of, not a demand on the package.
+    "rdfobjects_machinery_ListOfLubricants#1":
+        "\"Collection of lubricants REQUIRED for working tasks\" -- what the list is "
+        "of, not a demand on the package that carries it.",
+    "rdfobjects_machinery_ListOfProtectiveEquipment#1":
+        "\"Collection of protective equipment REQUIRED for working tasks\" -- the same.",
+    "rdfobjects_machinery_ListOfSpareParts#1":
+        "\"Collection of spare parts REQUIRED for working tasks\" -- the same.",
+    "rdfobjects_machinery_ListOfTools#1":
+        "\"Collection of tools REQUIRED for working tasks\" -- the same.",
+    "rdfobjects_machinery_LubricationPlan#1":
+        "\"shows the lubrication points ... and the REQUIRED lubricants\" -- which "
+        "lubricants the machine needs, a fact about the machine.",
+    "rdfobjects_machinery_MaintenancePlan#1":
+        "\"Collection of information REQUIRED for scheduled maintenance\" -- the same.",
+
+    # Obligations on somebody in the world.
+    "rdfobjects_core_RestrictionOnUse#1":
+        "\"under which conditions or in which manner the product SHALL NOT be used\" "
+        "-- an obligation on whoever uses the product. A package describes it.",
+    "rdfobjects_core_ScopeOfDelivery#1":
+        "\"documentation that the supplier SHALL provide to the purchaser according "
+        "to the purchase order\" -- an obligation on a supplier under a contract.",
+    "rdfclasses_core_Task#2":
+        "\"MAY contain information on other aspects, such as requirements that MUST "
+        "be fulfilled\" -- requirements the technician must meet, described by the task.",
+    "rdfobjects_core_GenericTask#2":
+        "The instance's description, word for word the Task class's above.",
+    "rdfclasses_core_InformationObject#1":
+        "\"Only used if a version/language-independent equivalent ... is REQUIRED\" "
+        "-- when an author needs the class, not a demand on a package that uses it.",
+}
+
+#: The rows of those same tables that *are* obligations about the metadata, and
+#: so stay in the gaps. Named rather than left to fall out of a pattern: this is
+#: the boundary the table above draws, and both sides of it have to be read.
+VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS = {
+    "rdfrelations_core_has-start-selector#1":
+        "\"A range selector MUST reference one start and one end selector.\" About "
+        "the graph. M14.1 counts the property; R20 asks what it points at.",
+    "rdfrelations_core_has-end-selector#1":
+        "The same sentence, stated once per property. M14.2 and R21.",
+    "rdfclasses_core_ExternalClassification#1":
+        "\"Each classification MUST be related to the classification domain within "
+        "which it is unambiguous.\" About the graph, and section 6.8.4 states it "
+        "again; M96.1 checks the cardinality half.",
+}
+
 #: Obligations that are squarely about the package and that a validator holding
 #: one container cannot decide, because deciding them means knowing something
 #: the container does not carry. Kept apart from NOT_ABOUT_THE_PACKAGE, which
@@ -131,8 +248,6 @@ def r3_container_is_at_the_archive_root(ctx):
     already have, one level down. Nothing says what happened. Nothing is wrong
     with the package at all except where it sits.
     """
-    if not ctx.package.is_archive:
-        return
 
     names = [n for n in ctx.package.names if n.strip("/")]
     if any("/" not in n.strip("/") for n in names):

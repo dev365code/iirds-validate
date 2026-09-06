@@ -94,11 +94,44 @@ document type that is not a standardised one was silent on it. And a blank node
 with no statements went to L1 too, which looks at IRIs only, so it was reported
 by nothing at all.
 
-**An unpacked container no longer reports six rules it did not run (`notApplicable`
-gains `unpacked`).** `iirds check` on a directory said `PASS, 175 rules checked`,
-and six of those hundred and seventy-five were the requirements about the ZIP
+**Twenty-six appendix rows no validator can reach are named as such.**
+Appendix A describes each term in a "Definition:" and a "Description:" cell,
+and the specification's own markup calls a word inside twenty-nine of those an
+RFC 2119 keyword — `<em title="REQUIRED in RFC 2119 context" class="rfc2119">`
+around "REQUIRED" in "Physical items REQUIRED for the running of a
+manufacturing production". Twenty-six of the twenty-nine describe a thing in
+the world or bind somebody in it: `RestrictionOnUse` is about how a product may
+be used, `ScopeOfDelivery` about what a supplier must deliver "according to the
+purchase order". A container can neither satisfy nor breach one. (Twenty-six
+markers over fewer sentences — the specification repeats several of these
+verbatim between a class and its instance, and each occurrence is counted the
+way every other keyword here is.)
+
+They stay in the denominator. Counting them is faithful to the source, and
+dropping them would be this project deciding the standard is wrong about its
+own markup. What changes is that the coverage report names them instead of
+leaving them in the unmapped remainder, where they had been sitting silently.
+
+**The criterion is the sentence's subject, and it is a list rather than a
+pattern.** The first draft used the cell's label — "Definition:" in,
+"Description:" out — which put `OperatingSupply`'s "Physical items REQUIRED for
+the running of a manufacturing production" on one side and
+`GenericOperatingSupply`'s verbatim restatement of it on the other, and split
+`GenericWorkingTime`'s two adjacent rows in the same table. A category drawn by
+a `<strong>` tag is not a category. So both sides are listed by name: the three
+rows that stay in the gaps are the range-selector sentence, stated once per
+property, and §6.8.4's classification-domain sentence restated in the appendix.
+
+A third list rather than a wider second one, because merging them would let
+"the word means something else here" hide inside "addressed to reading
+applications", and "hard to check" belongs in none of them.
+
+**An unpacked container no longer reports seven rules it did not run
+(`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
+175 rules checked`, and seven of those were the requirements about the ZIP
 archive itself — that it is not encrypted, that a large one uses ZIP64, that the
-first entry is an uncompressed `mimetype`. Each returns at its first line when
+first entry is an uncompressed `mimetype`, that the container sits at the root
+of the archive rather than inside a folder. Each returns at its first line when
 there is no archive, and the count was incremented before it ran, so they were
 presented as checked and clean.
 
@@ -106,8 +139,19 @@ The runner said so in a note all along, in prose no test read and no consumer of
 the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
-container the count moves from 175 to 169 and the six appear where a reader and
-a machine both look.
+container the count moves from 175 to 168 and the seven appear where a reader
+and a machine both look.
+
+**Six of the seven were repaired first, and the seventh was found by counting
+lines no package can reach.** Moving the decision into the runner left each of
+those rules opening on a guard nothing could satisfy, and the record of
+unreached decision lines went from eleven to seventeen in one measurement. Six
+of the new six were the dead guards. The seventh was R3, which carries the same
+guard, is about the archive's own layout, and had not been moved — so an
+unpacked container went on counting it among the rules it had checked. It is a
+single list now rather than a list and seven guards saying the same thing, and
+a rule that reintroduces its own guard is refused, because a guard added
+instead of a list entry is how the seventh came to exist.
 
 **Coverage of the standard is 131 of 280, of which 96 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming

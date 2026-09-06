@@ -3,7 +3,7 @@
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
-[![spec obligations](https://img.shields.io/badge/spec_obligations-77_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
+[![spec obligations](https://img.shields.io/badge/spec_obligations-131_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
 [![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**

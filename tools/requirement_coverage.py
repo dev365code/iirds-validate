@@ -15,6 +15,7 @@ work list rather than a percentage.
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import sys
 from collections import defaultdict
@@ -25,6 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from iirds_validate.registry import all_rules  # noqa: E402
 from iirds_validate.rules.requirements import (  # noqa: E402
+    DEFINES_A_CONCEPT,
     NOT_ABOUT_THE_PACKAGE,
     NOT_DECIDABLE_ALONE,
 )
@@ -67,20 +69,33 @@ def main() -> int:
     done = sum(b[0] for b in by_section.values())
     elsewhere = sum(1 for r in requirements if r["id"] in NOT_ABOUT_THE_PACKAGE)
     undecidable = sum(1 for r in requirements if r["id"] in NOT_DECIDABLE_ALONE)
+    definitional = sum(1 for r in requirements if r["id"] in DEFINES_A_CONCEPT)
 
     if args.gaps or args.section:
         for requirement in requirements:
             if (requirement["id"] in covered
                     or requirement["id"] in NOT_ABOUT_THE_PACKAGE
-                    or requirement["id"] in NOT_DECIDABLE_ALONE):
+                    or requirement["id"] in NOT_DECIDABLE_ALONE
+                    or requirement["id"] in DEFINES_A_CONCEPT):
                 continue
             if args.section and requirement["section"] != args.section:
                 continue
             print("  %-46s %s" % (requirement["id"][:44], requirement["sentence"][:78]))
         print()
 
+    # A section with nothing left to do prints nothing under `--gaps`, and
+    # "nothing left" includes rows that are excused rather than covered.
+    # Appendix A.1.4 read `0/9` with no lines beneath it -- nine object
+    # definitions, all of them the word inside a vocabulary cell.
+    excused_in = collections.Counter()
+    for requirement in requirements:
+        if (requirement["id"] in NOT_ABOUT_THE_PACKAGE
+                or requirement["id"] in NOT_DECIDABLE_ALONE
+                or requirement["id"] in DEFINES_A_CONCEPT):
+            excused_in[(requirement["section"], requirement["section_title"])] += 1
+
     for (anchor, title), (n, of) in sorted(by_section.items(), key=lambda kv: -kv[1][1]):
-        if args.gaps and n == of:
+        if args.gaps and n + excused_in[(anchor, title)] == of:
             continue
         print("  %3d/%-4d %-34s %s" % (n, of, anchor[:32], title[:40]))
 
@@ -98,6 +113,11 @@ def main() -> int:
         print("  %d more %s about the package and cannot be decided by anything "
               "holding one container."
               % (undecidable, "is" if undecidable == 1 else "are"))
+    if definitional:
+        print("  %d more %s the word inside a vocabulary definition -- the specification's "
+              "own markup calls it a keyword, and a container can neither satisfy nor "
+              "breach \"a period of time REQUIRED for a task\"."
+              % (definitional, "is" if definitional == 1 else "are"))
     print("  The rest are not known to be uncovered -- they are known not to be mapped.")
     return 0
 

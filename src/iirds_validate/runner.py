@@ -20,10 +20,17 @@ LINT_KINDS = ("lint", "system")
 ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
-#: The requirements whose subject is the ZIP archive itself. Each returns at
-#: its first line when the container is unpacked, so the runner is what has
-#: to say they were not assessed -- in the report, not only in prose.
-ARCHIVE_ONLY = ("C1", "C3", "C6", "S7", "S8", "S10")
+#: The requirements whose subject is the ZIP archive itself. None can be
+#: answered by a directory, so the runner is what says they were not assessed
+#: -- in the report, not only in prose.
+#:
+#: Each of them used to open with `if not ctx.package.is_archive: return`, and
+#: was counted as checked before it ran. R3 is the one that shows why this has
+#: to be a list rather than a guard per rule: it carries the same guard, is
+#: about the archive's own layout, and was left out when the other six moved
+#: here -- so an unpacked container went on reporting it among the rules it had
+#: checked. The unreached-line count is what found it.
+ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10")
 
 
 def load(path, version: Optional[str] = None) -> Context:

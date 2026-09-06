@@ -175,3 +175,31 @@ def test_the_readme_lists_every_interoperability_rule_in_its_table():
     words = {12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen", 16: "Sixteen"}
     assert "%s\ninterop" % words[len(lint_ids)] in readme or "%s interop" % words[len(lint_ids)] in readme, \
         "README.md does not say '%s interoperability rules'" % words[len(lint_ids)]
+
+
+def test_the_front_page_badge_states_the_coverage_that_was_measured():
+    """The badge is the first figure anyone sees, and nothing read it.
+
+    It said "77 of 280" while every other published statement of the same
+    number said 131 — stale by fifty-four, through two releases. The three
+    figures that *are* gated (`docs/scope.md`, the README's own front matter,
+    the current release's notes) agreed with each other the whole time, which
+    is how it stayed hidden: a fourth copy nobody compared.
+
+    Read from the same measurement the other three are read against.
+    """
+    import json
+    import pathlib
+    import re
+    import sys
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "tests"))
+    from test_covers_is_earned import CLAIMED
+
+    readme = (root / "README.md").read_text("utf-8")
+    badge = re.search(r"spec_obligations-(\d+)_of_(\d+)_covered", readme)
+    assert badge, "the coverage badge is gone from README.md"
+    index = json.loads((root / "docs" / "requirements.json").read_text("utf-8"))
+    assert (int(badge.group(1)), int(badge.group(2))) == (
+        len(CLAIMED), index["reductions"]["distinct"]), badge.group(0)

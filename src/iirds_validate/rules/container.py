@@ -62,8 +62,6 @@ def _root_content_files(package, exempt=()):
        covers=("dfn-iirds-package#1",),
        fix="Rebuild the archive. A ZIP whose central directory is damaged cannot be read reliably by anything, so no other check here has run against it.")
 def c1_readable(ctx):
-    if not ctx.package.is_archive:
-        return
     broken = ctx.package.testzip()
     if broken:
         yield Violation("ZIP archive is corrupt", subject=broken)
@@ -80,8 +78,6 @@ def c2_not_empty(ctx):
        covers=("dfn-iirds-zip-archive#2",),
        fix="Rename the file to end in .iirds. Consumers and file managers pick the handler by extension, and a .zip will be opened as a plain archive.")
 def c3_extension(ctx):
-    if not ctx.package.is_archive:
-        return
     if ctx.package.path.suffix.lower() != ".iirds":
         yield Violation("container file name must end in .iirds",
                         subject=ctx.package.path.name,
@@ -113,8 +109,6 @@ def c5_mimetype_content(ctx):
        covers=("dfn-iirds-zip-archive#5", "dfn-iirds-zip-archive#6"),
        fix="Store the mimetype entry uncompressed. Most tools cannot express this: with the zip command it takes two passes, `zip -X0 out.iirds mimetype` then `zip -Xr out.iirds .` for the rest. `iirds pack` does it correctly.")
 def c6_mimetype_stored_first(ctx):
-    if not ctx.package.is_archive:
-        return
     info = ctx.package.info(MIMETYPE_FILE)
     if info is None:
         return

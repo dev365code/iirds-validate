@@ -270,9 +270,21 @@ def test_the_scope_document_counts_the_excused_obligations_correctly():
     import pathlib
     import re
 
-    from iirds_validate.rules.requirements import NOT_ABOUT_THE_PACKAGE, NOT_DECIDABLE_ALONE
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        NOT_ABOUT_THE_PACKAGE,
+        NOT_DECIDABLE_ALONE,
+    )
 
-    words = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six"}
+    # Every list, not the two that existed when this was written. A third
+    # arrived and this gate went on adding up two of them, so the document said
+    # "Three obligations" while the tool printed three lists and twenty-nine --
+    # which is the disagreement-in-public this test exists to prevent.
+    # Each list's own count, read from the list. The first repair here bolted a
+    # literal "Twenty-six" onto a total that still added up two of three, which
+    # is the same shape as the defect: a number typed where one is derived.
+    words = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+             26: "Twenty-six"}
     total = len(NOT_ABOUT_THE_PACKAGE) + len(NOT_DECIDABLE_ALONE)
     scope = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "scope.md").read_text("utf-8")
 
@@ -281,6 +293,10 @@ def test_the_scope_document_counts_the_excused_obligations_correctly():
     assert m.group(1) == words[total], \
         "docs/scope.md says %s and the two lists hold %d" % (m.group(1), total)
     assert words[len(NOT_ABOUT_THE_PACKAGE)] + " are addressed to reading" in scope
+    assert words[len(DEFINES_A_CONCEPT)] + " more are the word inside a vocabulary "\
+        "table" in scope, (
+            "docs/scope.md does not state the third list's size: %d"
+            % len(DEFINES_A_CONCEPT))
 
 
 def test_the_published_command_reports_both_excuse_lists():
@@ -318,3 +334,149 @@ def test_the_front_page_publishes_the_coverage_it_measures():
     denominator = re.search(r"\*\*(\d+) absolute obligations\*\*", readme)
     assert denominator, "README.md no longer states the denominator"
     assert int(denominator.group(1)) == INDEX["reductions"]["distinct"], denominator.group(0)
+
+
+def _reduced():
+    """The ids the parse counted twice: the keyword-defining sentence, and the
+    appendix overview's restatements."""
+    return (set(INDEX["reductions"]["keyword_definition"])
+            | set(INDEX["reductions"]["restated_in_the_overview"]))
+
+
+def test_every_appendix_vocabulary_row_is_on_one_side_or_the_other():
+    """Appendix A describes each term in a "Definition:" and a "Description:"
+    cell, and the specification's markup wraps an RFC 2119 word inside
+    twenty-nine of them. Each is either a sentence about a thing in the world,
+    which no container can breach, or a sentence about the metadata, which is
+    work.
+
+    Both sides are named. The first draft split them by the cell's label --
+    "Definition:" in, "Description:" out -- and that put `OperatingSupply`'s
+    "Physical items REQUIRED for the running of a manufacturing production" on
+    one side and `GenericOperatingSupply`'s verbatim restatement on the other,
+    and split `GenericWorkingTime`'s two adjacent rows in one table. A category
+    drawn by a `<strong>` tag is not a category, and a pattern that draws it
+    cannot be argued with; a list can.
+    """
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS,
+    )
+
+    rows = {r["id"] for r in INDEX["requirements"]
+            if r["absolute"] and r["id"] not in _reduced()
+            and " ".join(r["sentence"].split()).startswith(("Definition:", "Description:"))}
+    assert len(rows) == 29, sorted(rows)
+    assert set(DEFINES_A_CONCEPT) | set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS) == rows, (
+        sorted(rows ^ (set(DEFINES_A_CONCEPT) | set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS))))
+    assert set(DEFINES_A_CONCEPT) & set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS) == set()
+
+    # Every entry needs a reason, which is this file's governing rule and was
+    # enforced on three tables and not on the largest. All twenty-six could be
+    # emptied and the suite stayed green.
+    for rid, why in DEFINES_A_CONCEPT.items():
+        assert len(why) > 40, rid
+
+    # And which rows are on which side, not only that the union is the whole.
+    # A union test cannot see a *move*: taking the classification sentence --
+    # the row this change singles out as work -- across to the excused side and
+    # bumping the pinned count is a green diff otherwise.
+    assert set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS) == {
+        "rdfrelations_core_has-start-selector#1",
+        "rdfrelations_core_has-end-selector#1",
+        "rdfclasses_core_ExternalClassification#1",
+    }, sorted(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS)
+
+
+def test_the_vocabulary_rows_that_are_obligations_stay_in_the_work():
+    """A table that excuses a category is a table somebody will widen. These
+    three say something about the graph -- two are the range-selector sentence
+    stated once per property, one is section 6.8.4 restated -- so they stay
+    where the work is and none of them may be excused."""
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        NOT_ABOUT_THE_PACKAGE,
+        NOT_DECIDABLE_ALONE,
+        VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS,
+    )
+
+    excused = set(DEFINES_A_CONCEPT) | set(NOT_ABOUT_THE_PACKAGE) | set(NOT_DECIDABLE_ALONE)
+    for rid, why in VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS.items():
+        assert rid not in excused, rid
+        assert rid in BY_ID and rid in ABSOLUTE, rid
+        assert len(why) > 40, rid
+
+
+def test_the_three_excuse_lists_do_not_overlap_and_each_entry_is_real():
+    """Three lists now, and the reason for keeping them apart is the reason
+    there were two: merging lets a weaker excuse hide inside a stronger one.
+
+    `NOT_ABOUT_THE_PACKAGE` holds obligations addressed to reading
+    applications. `NOT_DECIDABLE_ALONE` holds one that is about the package and
+    that a single container cannot settle. `DEFINES_A_CONCEPT` holds the word
+    inside a vocabulary definition -- the specification's markup calls it a
+    keyword and the sentence describes a thing in the world. "Hard to check"
+    belongs in none of them and stays in the gaps.
+    """
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        NOT_ABOUT_THE_PACKAGE,
+        NOT_DECIDABLE_ALONE,
+    )
+
+    lists = {"not about the package": set(NOT_ABOUT_THE_PACKAGE),
+             "not decidable alone": set(NOT_DECIDABLE_ALONE),
+             "defines a concept": set(DEFINES_A_CONCEPT)}
+    names = sorted(lists)
+    for i, first in enumerate(names):
+        for second in names[i + 1:]:
+            assert lists[first] & lists[second] == set(), (first, second)
+    for name, ids in lists.items():
+        assert ids, name
+        for rid in ids:
+            assert rid in BY_ID, (name, rid)
+            assert rid in ABSOLUTE, (name, rid)
+            assert rid not in COVERED, (name, rid)
+
+
+def test_the_excused_total_is_what_the_report_prints():
+    """The coverage report names each list's size in its own sentence, and a
+    figure printed by a tool and pinned nowhere is a figure that drifts."""
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        NOT_ABOUT_THE_PACKAGE,
+        NOT_DECIDABLE_ALONE,
+    )
+
+    assert (len(NOT_ABOUT_THE_PACKAGE), len(NOT_DECIDABLE_ALONE),
+            len(DEFINES_A_CONCEPT)) == (2, 1, 26)
+
+
+def test_the_report_prints_what_the_tables_hold():
+    """The sentence the tool prints was gated by nothing.
+
+    A reviewer rewrote it to "177 more have been reviewed by tekom and
+    confirmed unreachable; coverage is therefore effectively complete" and the
+    whole suite passed: a claim about a standards body, and a number in no
+    table, would have shipped. The counts are pinned in the tables and the
+    prose is pinned nowhere, so this runs the tool and reads what it says.
+    """
+    import subprocess
+    import sys
+
+    from iirds_validate.rules.requirements import (
+        DEFINES_A_CONCEPT,
+        NOT_ABOUT_THE_PACKAGE,
+        NOT_DECIDABLE_ALONE,
+    )
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    printed = subprocess.run(
+        [sys.executable, str(root / "tools" / "requirement_coverage.py")],
+        cwd=str(root), capture_output=True, text=True, check=True).stdout
+
+    assert "%d more are addressed to consumers" % len(NOT_ABOUT_THE_PACKAGE) in printed
+    assert "%d more is about the package" % len(NOT_DECIDABLE_ALONE) in printed
+    assert "%d more are the word inside a vocabulary" % len(DEFINES_A_CONCEPT) in printed
+    for forbidden in ("tekom", "effectively complete", "confirmed unreachable"):
+        assert forbidden not in printed, forbidden

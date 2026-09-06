@@ -48,11 +48,11 @@ def test_every_rule_is_classified_exactly_once():
 
 def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
-    assert counts["core_emitted"] == 132
+    assert counts["core_emitted"] == 133
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 35
+    assert counts["sparql_emitted"] == 36
     assert counts["deferred_v1.1"] == 9
-    assert counts["not_expressible"] == 47
+    assert counts["not_expressible"] == 48
     assert counts["noop"] == 1
 
 
@@ -277,6 +277,10 @@ EMITTED_IDS = frozenset((
 
     # The three chapter 6 sentences that say MUST about an absolute IRI.
     "R34", "R35", "R36",
+
+    # Section 8.3.2.1: a rendition no document owns, and one that selects
+    # part of a file. R37 joins the graph against the archive and has none.
+    "R38", "R39",
 
     "L10", "L16", "L7", "M1", "M10", "M11", "M12", "M13.1", "M13.2", "M14.1",
     "M14.2", "M15.1", "M15.10", "M15.11a", "M15.11b", "M15.11c", "M15.2",

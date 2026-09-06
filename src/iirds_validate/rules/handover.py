@@ -17,7 +17,9 @@ from rdflib import Literal
 
 from .. import terms as T
 from ..model import ORGANISATION_TYPES, VCARD, Violation
+from ..package import entry_named
 from ..registry import CATALOG, rule
+from .container import CONTENT_LIST
 
 ORGANISATION_NAME = VCARD["organization-name"]
 
@@ -572,3 +574,106 @@ def r15_package_variant_product_type(ctx):
 def r16_package_product_type_manufacturer(ctx):
     yield from _variant_domain_manufacturer(
         ctx, T.Package, (T.ProductType,), _PKG, "ProductType identity")
+
+
+# --------------------------------------------------------------------------
+# Section 8.3.2.1 — what the renditions of a handover package may point at
+# --------------------------------------------------------------------------
+
+#: Section 8.3.2.1's anchor. Three of its six sentences are these rules; the
+#: other three are M15.11a, M15.11b and M15.11c.
+_RESTRICTIONS = ("https://www.iirds.org/fileadmin/iiRDS_specification/"
+                 "20251103-1.3-release/index.html"
+                 "#x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances")
+
+
+def _rendered_files(ctx):
+    """Every container entry an `iirds:source` resolves to."""
+    out = set()
+    for rendition in ctx.instances_of(T.Rendition):
+        for value in ctx.values(rendition, T.source):
+            entry = entry_named(str(value))
+            if entry:
+                out.add(entry)
+    return out
+
+
+@rule("R37", kind="container", prio="MUST", versions=("1.3",), variants=("H",),
+      title="every content file in an iiRDS/H package must be referenced by a rendition",
+      spec=_RESTRICTIONS,
+      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#2",),
+      fix="Give the file an iirds:Rendition on the iirds:Document it belongs to, with "
+          "iirds:source naming its path, or take it out of the package. A handover archive "
+          "is read through its metadata, and a file no rendition names is one the receiving "
+          "plant has no way to open from the document it belongs to.")
+def r37_unreferenced_content_file(ctx):
+    """L2 asks whether every source resolves to a packed file. This is the
+    other direction, and nothing asked it.
+
+    `index.html` is excluded, and not as a convenience: section 8.3.1.1 says
+    the content list is not an information unit and MUST NOT be referenced in
+    the metadata file. Every conformant handover package therefore contains
+    exactly one file that no rendition may name, and a rule reading "every
+    entry is referenced" would report all of them -- demanding the thing the
+    section one level up forbids.
+
+    The container's own furniture is not content either: `mimetype` says what
+    the archive is, and `META-INF` holds the metadata doing the referencing.
+    """
+    rendered = _rendered_files(ctx)
+    for name in sorted(ctx.package.files):
+        if name == CONTENT_LIST or name == "mimetype" or name.startswith("META-INF/"):
+            continue
+        if name not in rendered:
+            yield Violation("no iirds:Rendition references this content file",
+                            subject=name)
+
+
+@rule("R38", kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+      title="every rendition in an iiRDS/H package must belong to a document",
+      spec=_RESTRICTIONS,
+      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3",),
+      fix="Relate the rendition to its iirds:Document with iirds:has-rendition, or remove "
+          "it. A rendition is how a document names one of its files; one that belongs to no "
+          "document names a file on behalf of nobody.")
+def r38_rendition_without_a_document(ctx):
+    """The sentence's first clause. Its second -- "and therefore MUST use the
+    mandatory relation iirds:has-document-type" -- is M15.1, which asks every
+    document for a type and has since before this rule existed. Both claim the
+    id: a package breaking the sentence breaks one clause or the other, and
+    neither rule reports the packages that break only the other one.
+
+    In iiRDS/H the owner can only be a document -- M15.11a allows no other
+    information unit -- so this asks for `iirds:has-rendition` from anywhere
+    rather than from a document specifically. A rendition owned by something
+    the profile forbids is M15.11a's finding, and saying it twice in two
+    vocabularies helps nobody.
+    """
+    owned = {rendition for _s, _p, rendition in ctx.graph.triples((None, T.has_rendition, None))}
+    for rendition in ctx.instances_of(T.Rendition):
+        if rendition not in owned:
+            yield Violation("no iirds:Document references this rendition",
+                            subject=ctx.ref(rendition))
+
+
+@rule("R39", kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+      title="a rendition in an iiRDS/H package must reference a whole file",
+      spec=_RESTRICTIONS,
+      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#5",),
+      fix="Remove iirds:has-selector from the rendition. A selector is how a rendition "
+          "addresses part of a file, and a handover package references whole files: the "
+          "receiving plant archives the document, not a passage inside it.")
+def r39_rendition_selects_part_of_a_file(ctx):
+    """M15.11c forbids an `iirds:Selector` instance in a handover package, so
+    the common shape of this was already reported -- by a rule about the class.
+    A rendition whose `iirds:has-selector` points at a selector the package does
+    not describe carries no such instance, breaks this sentence, and was
+    reported by nothing.
+
+    So the property is what this reads, not the class. What it points at is
+    M12's question and L1's; that it points at all is this one's.
+    """
+    for rendition in ctx.instances_of(T.Rendition):
+        if ctx.values(rendition, T.has_selector):
+            yield Violation("this rendition references part of a file, not a whole one",
+                            subject=ctx.ref(rendition))

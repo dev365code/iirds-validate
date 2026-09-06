@@ -184,6 +184,32 @@ def test_the_conformant_handover_package_is_silent_in_both_encodings(tmp_path):
     assert _h_parity(tmp_path, "clean.iirds", HANDOVER) == set()
 
 
+#: Section 8.3.2.1, the two of its three that have a shape. R37 has none -- it
+#: asks which container entries no source names, and a shapes file holds no
+#: entry list -- so only these two are provoked here.
+_LOOSE_RENDITION = """  <iirds:Rendition rdf:about="urn:test:loose">
+    <iirds:format>application/pdf</iirds:format>
+    <iirds:source>content/doc1.pdf</iirds:source>
+  </iirds:Rendition>
+"""
+_SELECTED = """        <iirds:has-selector rdf:resource="urn:test:sel1"/>
+"""
+
+
+def test_a_rendition_no_document_owns_agrees_in_both_encodings(tmp_path):
+    metadata = HANDOVER.replace("</rdf:RDF>", _LOOSE_RENDITION + "</rdf:RDF>")
+    assert "R38" in _h_parity(tmp_path, "loose.iirds", metadata)
+
+
+def test_a_rendition_that_selects_part_of_a_file_agrees_in_both_encodings(tmp_path):
+    """The selector is named and not described here, which is the shape
+    M15.11c cannot see: no `iirds:Selector` instance exists to forbid."""
+    metadata = HANDOVER.replace(
+        "        <iirds:source>content/doc1.pdf</iirds:source>\n",
+        "        <iirds:source>content/doc1.pdf</iirds:source>\n" + _SELECTED, 1)
+    assert "R39" in _h_parity(tmp_path, "selected.iirds", metadata)
+
+
 #: (rule, what to match, what to put back) -- the third element is what
 #: distinguishes a removal from its anchor, since section 8.3.2 asks for the
 #: same line on the Package and on the Document and the fixture carries both.

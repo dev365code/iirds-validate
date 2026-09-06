@@ -540,6 +540,14 @@ UNAUDITED = frozenset((
 NAMED_CASES = {
     "rdfclasses_core_IdentityDomain#2":
         "test_identity_domain_cardinality:test_two_identity_types_are_reported",
+    # Section 8.3.2.1: L2 asked whether a source resolves, and nobody asked
+    # the converse; M15.11c reported a selector only where it is described.
+    "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#2":
+        "test_handover_content_references:test_a_content_file_no_rendition_points_at_is_reported",
+    "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3":
+        "test_handover_content_references:test_a_rendition_no_document_points_at_is_reported",
+    "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#5":
+        "test_handover_content_references:test_a_rendition_that_selects_part_of_a_file_is_reported",
     # The three sentences that say MUST about absoluteness, which the "must
     # have an IRI" family was narrowed away from and nothing picked up.
     "x6-2-2-information-objects#3":
@@ -867,7 +875,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 167, len(CLAIMED)
+    assert len(CLAIMED) == 170, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

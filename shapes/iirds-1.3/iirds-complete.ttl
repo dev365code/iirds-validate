@@ -782,6 +782,7 @@ ivs:M15.1 a sh:NodeShape ;
   sh:description "Relate the Document to one of the standardised iiRDS document types. It is what a consumer uses to route a document — installation, maintenance, spare parts — before anyone opens it." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=Instances%20of%20the%20iirds%3ADocument%20class%20MUST%20have%20one%20or%20more%20relations%20to%20one%20of%20the%20standardized%20iirds%3ADocumentTypes%20defined%20in%20iirds%3AInformationType%20%3E%20iirds%3ADocumentType.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3" ;
   sh:targetClass iirds:Document ;
   sh:property ivs:M15.1-p .
 ivs:M15.1-p a sh:PropertyShape ;

@@ -245,6 +245,12 @@ CORE_FORMS["M15.11b"] = ("class_forbidden", {"targets": ("iirds:DirectoryNode", 
 CORE_FORMS["M15.11c"] = ("class_forbidden", {"targets": SELECTOR_CLOSURE})
 
 CORE_FORMS["M94"] = ("forbidden_property", {"path": "iirds:relates-to-administrative-metadata"})
+#: Section 8.3.2.1: a handover rendition references a whole file, and a
+#: selector is how one references part of it. The property is the question,
+#: not the class M15.11c forbids -- a selector described outside the package
+#: leaves no instance here and still makes the reference partial.
+CORE_FORMS["R39"] = ("forbidden_property", {"targets": ("iirds:Rendition",),
+                                            "path": "iirds:has-selector"})
 CORE_FORMS["M13.1"] = ("selector_value", {"path": "rdf:value"})
 CORE_FORMS["M13.2"] = ("selector_value", {"path": "<http://purl.org/dc/terms/conformsTo>"})
 CORE_FORMS["M25"] = ("m25_closed_list", {})
@@ -629,6 +635,14 @@ SPARQL_FORMS["M15.7d"] = ("fixed", [_domain_manufacturer_query("<%(ii)sProductTy
 #: reader who wrote `iirds:Topic`. Python asked the ontology and this asked
 #: nothing, so both rules spoke about every such referent and the gate saw two
 #: encodings agreeing.
+#: Section 8.3.2.1: a rendition no document names. Core has no "is the object
+#: of some triple" constraint -- `sh:targetClass` selects the renditions and
+#: nothing in Core asks what points *at* the focus node -- so this is the
+#: inverse-path question written as SPARQL.
+SPARQL_FORMS["R38"] = ("fixed", ["""SELECT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sRendition> .
+  FILTER NOT EXISTS { ?owner <%(ii)shas-rendition> ?value } }"""])
+
 SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   ?party <%(ii)srelates-to-vcard> ?value .
   FILTER (!isLiteral(?value))
@@ -688,6 +702,8 @@ for _rid in ("S1", "S2", "S3", "S9"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
 for _rid in ("S6", "S7", "S8", "S10"):
     NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records, local headers"
+NOT_EXPRESSIBLE["R37"] = ("graph\u00d7ZIP join: asks which container entries no iirds:source "
+                          "names, and a shapes file has no entry list")
 for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"

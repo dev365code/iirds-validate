@@ -319,3 +319,18 @@ ivs:R16 a sh:NodeShape ;
       FILTER (?cardtype IN (<http://www.w3.org/2006/vcard/ns#Organization>, <http://www.w3.org/2006/vcard/ns#organization>))
       ?namedcard <http://www.w3.org/2006/vcard/ns#organization-name> ?orgname }
   } }""" ] .
+
+ivs:R38 a sh:NodeShape ;
+  rdfs:label "every rendition in an iiRDS/H package must belong to a document" ;
+  sh:severity sh:Violation ;
+  sh:message "every rendition in an iiRDS/H package must belong to a document" ;
+  ivm:ruleId "R38" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Relate the rendition to its iirds:Document with iirds:has-rendition, or remove it. A rendition is how a document names one of its files; one that belongs to no document names a file on behalf of nobody." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3" ;
+  sh:targetNode ivs:R38 ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Rendition> .
+  FILTER NOT EXISTS { ?owner <http://iirds.tekom.de/iirds#has-rendition> ?value } }""" ] .

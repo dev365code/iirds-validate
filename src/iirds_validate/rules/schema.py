@@ -294,6 +294,13 @@ def m14_2_range_end(ctx):
 # --------------------------------------------------------------------------
 
 @rule("M15.1",
+      # The second clause of section 8.3.2.1's third sentence -- "and therefore
+      # MUST use the mandatory relation iirds:has-document-type". R38 is the
+      # first clause, and neither reports the packages that break only the
+      # other, so the id carries both claimants. This rule is not gated to the
+      # handover profile and does not need to be: reporting a document with no
+      # type outside iiRDS/H is section 6.5.1, which it was written for.
+      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3",),
        fix="Relate the Document to one of the standardised iiRDS document types. It is what a consumer uses to route a document — installation, maintenance, spare parts — before anyone opens it.")
 def m15_1_document_type(ctx):
     for doc in ctx.instances_of(T.Document):

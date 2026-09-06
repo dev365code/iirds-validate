@@ -44,7 +44,7 @@ something else.** The check was narrowed and the sentence it prints was not, so
 each of the sixty-one told a reader that absoluteness had been tested. A user
 acts on the finding, not on the divergence table.
 
-Coverage of the standard is 167 of 280, held by a package for 132 of them.
+Coverage of the standard is 170 of 280, held by a package for 135 of them.
 
 **A relation carrying text where a reference belongs (L16).** In RDF/XML the
 two forms differ by one attribute: `<iirds:relates-to-party
@@ -193,7 +193,7 @@ single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-**Coverage of the standard is 167 of 280, of which 132 are held by a package.**
+**Coverage of the standard is 170 of 280, of which 135 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a

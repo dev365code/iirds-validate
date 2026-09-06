@@ -402,8 +402,13 @@ VERSION_GATED_EXTRAS = {
     "M96-2_false.rdf": ["M96.2"],
     "M96-3_false.rdf": ["M96.3"],
     "M96-4_false.rdf": ["M96.3"],
-    "M97-1_false.rdf": ["M96.3", "M97.1", "M97.2"],
-    "M97-2_false.rdf": ["M96.3"],
+    # Both declare 1.1, and `iirds:ClassificationDomain` is declared in the
+    # 1.2 and 1.3 ontologies and in none earlier -- so R36 stands down while
+    # its shape, which carries no version, does not. Their names say M97, and
+    # M97.1/M97.2 are the same class's "must have an IRI" rules: the corpus
+    # writes a counterexample for a class the edition it declares has not got.
+    "M97-1_false.rdf": ["M96.3", "M97.1", "M97.2", "R36"],
+    "M97-2_false.rdf": ["M96.3", "R36"],
     "metadata_iirds_sample-M9_false.rdf": ["M8"],
     # The corpus's one self-looping package. Section 6.3.3 is 1.3-only in
     # the cached specification and this file declares 1.0, so the rule

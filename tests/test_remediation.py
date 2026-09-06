@@ -253,7 +253,7 @@ def test_how_much_of_each_gate_is_actually_exercised():
     remedied = [r for r in RULES if list(_named_terms(r.fix))]
     terms_in_remedies = sum(len(list(_named_terms(r.fix))) for r in RULES)
 
-    assert len(titled) == 26, sorted(r.id for r in titled)
+    assert len(titled) == 29, sorted(r.id for r in titled)
     assert len(remedied) >= 120, len(remedied)
     assert terms_in_remedies >= 140, terms_in_remedies
 

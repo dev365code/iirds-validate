@@ -6,6 +6,31 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**Three MUSTs about absolute IRIs that a recommendation was standing in for
+(R34, R35, R36).** Section 6.2.1 says it is RECOMMENDED to use absolute IRIs in
+`rdf:about`, and M5 reports that as a warning. Three sentences elsewhere in
+chapter 6 say MUST, about a named class: an information object (§6.2.2), an
+`iirds:IdentityDomain` (§6.8.1) and an `iirds:ClassificationDomain` (§6.8.4).
+A package giving one of those a relative IRI breached a MUST, and `iirds check`
+answered with a warning whose remedy ended "RECOMMENDED, not required" — and
+exited 0.
+
+The sixty-one generated "must have an IRI" rules were right to stop asking for
+absoluteness; `docs/divergences.md` records why, and appendix A's `IRI:
+REQUIRED` is about having an identifier rather than about its form. What that
+entry gave as its reason — "absoluteness is M5's question, and M5 is
+RECOMMENDED" — was true of the sixty classes it was measured against and not of
+these three. The narrowing stays. The three sentences it was not measured
+against are rules now, and the remedy on M5 no longer tells a reader the
+standard does not require what it requires.
+
+**And those rules were printing "must have an absolute IRI" while testing
+something else.** The check was narrowed and the sentence it prints was not, so
+each of the sixty-one told a reader that absoluteness had been tested. A user
+acts on the finding, not on the divergence table.
+
+Coverage of the standard is 167 of 280, held by a package for 132 of them.
+
 **A relation carrying text where a reference belongs (L16).** In RDF/XML the
 two forms differ by one attribute: `<iirds:relates-to-party
 rdf:resource="urn:x:party1"/>` points at a party, and
@@ -153,7 +178,7 @@ single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-**Coverage of the standard is 164 of 280, of which 129 are held by a package.**
+**Coverage of the standard is 167 of 280, of which 132 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a

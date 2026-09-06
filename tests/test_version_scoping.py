@@ -90,6 +90,8 @@ SCOPED = {
               "reports a second value as well; in 1.2 the sentence became MAY and M16.1's "
               "editions stop there, leaving appendix A's 0..1 unread from 1.2 on"),
     "R33":   (("1.2", "1.3"), "R32's reason, for the sentence beside it and M16.2"),
+    "R36":   (("1.2", "1.3"),
+              "the vocabulary: iirds:ClassificationDomain is declared in the 1.2 and 1.3 ontologies and in none earlier, and section 6.8.4 arrives with it. R34 and R35 say the same thing about classes the 1.0 text already had, so they carry no version gate"),
 }
 
 #: iiRDS/H arrived with 1.3, so its rules cannot apply to anything earlier.

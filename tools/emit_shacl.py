@@ -635,6 +635,23 @@ SPARQL_FORMS["R4"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   FILTER (!%(ns_v)s && !STRSTARTS(STR(?value), "%(vc)s"))
   FILTER NOT EXISTS { ?value ?cp ?co } }"""])
 
+#: The three classes chapter 6 asks for an absolute IRI, one shape each.
+#:
+#: M5's query, narrowed from "every node in an iiRDS namespace" to one class
+#: and its subclasses -- which is `ctx.typed_as`, the reach the Python takes
+#: because the ontology requires an IRI of all three. SPARQL rather than Core
+#: for the same reason M5 is: the predicate is a regex over the node's own
+#: string plus an exception for the document base, and `sh:pattern` on a focus
+#: node cannot carry the exception.
+for _rid, _cls in (("R34", "InformationObject"),
+                   ("R35", "IdentityDomain"),
+                   ("R36", "ClassificationDomain")):
+    SPARQL_FORMS[_rid] = ("fixed", ["""SELECT $this ?value WHERE {
+  ?value <%%(rdf)stype>/<%%(rdfs)ssubClassOf>* <%%(ii)s%s> .
+  FILTER (!isIRI(?value)
+          || !REGEX(STR(?value), "^[A-Za-z][A-Za-z0-9+.-]*:")
+          || STR(?value) = "urn:iirds:package:") }""" % _cls])
+
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.

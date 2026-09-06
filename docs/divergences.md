@@ -226,7 +226,7 @@ or, for C9, until the grammar the obligation cites was read.
 | M13.1, M13.2 | every Selector needed `rdf:value` and `dcterms:conformsTo` | RangeSelector exempt | a range is addressed by its start and end selectors, which M14.1 and M14.2 check |
 | M19.4 | the identity domain had to be typed here | undescribed domains left to L1 | a reference out of the package is not a typing error |
 | M15.7b/d, M15.8/9/10 | required the class `vcard:Organization` | accepts `vcard:Organization` **or** `vcard:organization` — the vcard *property* IRI used where the class belongs — and still requires a stated `vcard:organization-name` | every handover fixture the reference ships writes the lower-case spelling; both say "organisation" and one is a misspelling of the other |
-| "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | absoluteness is M5's question, and M5 is RECOMMENDED. Conflating them turned one recommendation into sixty MUSTs |
+| "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI. Conflating that with absoluteness turned a recommendation into sixty MUSTs. **The reason first given here was "absoluteness is M5's question, and M5 is RECOMMENDED", and that is only true of section 6.2.1.** Sections 6.2.2, 6.8.1 and 6.8.4 each say MUST about absoluteness for one named class; R34, R35 and R36 are those three sentences, and the family's message no longer says "absolute" |
 | C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
 
 **What a row here does to a coverage claim.** "More lenient" covers three
@@ -241,7 +241,7 @@ the code it describes.
 | M15.7b, M15.7d, M15.8, M15.9, M15.10, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all | kept |
 | M13.1, M13.2 | **not a leniency** — Example 13 shows a `RangeSelector` carrying neither property and its two fragment selectors carrying both, which these rules check | kept |
 | M19.4 | **narrows the sentence** | never claimed |
-| M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced M5's RECOMMENDED absoluteness on top | kept |
+| M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced absoluteness on top of that. What the narrowing dropped for three classes is now R34 to R36, so nothing the standard requires is left to a recommendation | kept |
 | C9 | **not a leniency** — the earlier rule enforced the shape most files have rather than the grammar the obligation cites | kept |
 | B6 | **a spelling** — the extension is compared case-insensitively, so `.XHTML` passes where B.3 writes `.xhtml` | kept |
 

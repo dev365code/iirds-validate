@@ -28,8 +28,15 @@ def ids(report):
 
 def test_a_relative_iri_is_a_recommendation_not_an_error(make_package):
     """"Must have an IRI" and "should be absolute" are different rules, and
-    only the second is RECOMMENDED. Conflating them made sixty MUST rules fire
-    on packages the reference tool accepts."""
+    conflating them made sixty MUST rules fire on packages the reference tool
+    accepts.
+
+    "Should be absolute" is section 6.2.1's RECOMMENDED for a `iirds:Component`
+    like this one. It is a MUST for three classes named in chapter 6, which is
+    R34 to R36 and `tests/test_absolute_iri_rules.py` -- so the fixture here has
+    to stay a class that is none of them, or it stops testing the recommendation
+    and starts testing the requirement.
+    """
     report = runner.check(pkg(make_package, """
   <iirds:Component rdf:about="component/spindle">
     <rdfs:label xml:lang="en">Spindle</rdfs:label>

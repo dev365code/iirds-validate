@@ -170,7 +170,7 @@ def m4_package_version(ctx):
 
 
 @rule("M5",
-       fix="Use an absolute IRI in rdf:about, such as a urn:uuid: or a URL under a domain you control. Relative IRIs resolve against a base that changes when the package is merged into a larger set, so identifiers silently collide. RECOMMENDED, not required.")
+       fix="Use an absolute IRI in rdf:about, such as a urn:uuid: or a URL under a domain you control. Relative IRIs resolve against a base that changes when the package is merged into a larger set, so identifiers silently collide. Section 6.2.1 recommends this; sections 6.2.2, 6.8.1 and 6.8.4 require it of information objects, identity domains and classification domains, which R34 to R36 report separately.")
 def m5_absolute_iris(ctx):
     for subj in ctx.iirds_subjects():
         if isinstance(subj, URIRef) and not is_absolute_iri(subj) or str(subj) == PACKAGE_BASE:
@@ -1439,3 +1439,78 @@ def r33_event_has_one_type(ctx):
     """R32's twin, for the sentence beside it. M16.2 is to this what M16.1 is
     to R32, and stops at the same edition."""
     yield from _at_most_one(ctx, T.Event, T.has_event_type, "iirds:has-event-type")
+
+
+# --------------------------------------------------------------------------
+# Three classes the standard asks for an absolute IRI
+# --------------------------------------------------------------------------
+
+#: The class, the sentence, and the editions that state it.
+#:
+#: Section 6.2.1 says "It is RECOMMENDED to use absolute IRIs in rdf:about",
+#: and that recommendation is M5. These three say MUST, about a named class,
+#: somewhere else in the same chapter. `docs/divergences.md` records the day
+#: the "must have an IRI" family stopped demanding absoluteness -- appendix A
+#: says `IRI: REQUIRED` and a relative IRI is an IRI -- and gives as its reason
+#: that "absoluteness is M5's question, and M5 is RECOMMENDED". True of the
+#: sixty classes it was measured against. Not true of these three, and a
+#: package breaching one of them came back with a warning whose remedy said
+#: the standard only recommended it.
+MUST_BE_ABSOLUTE = (
+    ("R34", T.InformationObject, "iirds:InformationObject",
+     # Both sentences are in the 1.0 text as well as the 1.3 text, and the
+     # class is declared in all five ontologies. `()` is every edition.
+     "x6-2-2-information-objects#3", (),
+     "#x6-2-2-information-objects",
+     "Give the information object an absolute IRI, such as a urn:uuid: or a URL under a "
+     "domain you control. An information object is the identity a versioned unit is a "
+     "version *of*, so a relative one resolves against whichever document is being read "
+     "and two revisions stop being revisions of the same thing."),
+    ("R35", T.IdentityDomain, "iirds:IdentityDomain",
+     "x6-8-1-complex-identity#4", (),
+     "#x6-8-1-complex-identity",
+     "Give the identity domain an absolute IRI, such as a urn:uuid: or a URL under a "
+     "domain you control. The domain is what makes a serial number unambiguous; one named "
+     "relatively is unambiguous only inside the file it was read from."),
+    ("R36", T.ClassificationDomain, "iirds:ClassificationDomain",
+     "x6-8-4-external-classification#8", ("1.2", "1.3"),
+     "#x6-8-4-external-classification",
+     "Give the classification domain an absolute IRI, such as the URL of the classification "
+     "system it names. A classification is only resolvable against the domain it belongs to, "
+     "and a relative domain names nothing outside this package."),
+)
+
+
+def _must_be_absolute(cls, class_name):
+    """Instances of one class, tested for an absolute IRI rather than for one.
+
+    The population is the sibling rule's, not a wider one: the "must have an
+    IRI" rule for this class decides how far to reach from what the ontology
+    says about it, and two rules asking about the same nodes should be asking
+    about the same nodes. Where they came apart, one of them would be the
+    reading and the other the accident.
+
+    Blank nodes are reported here as well, though the sibling already reports
+    them. A blank node has no IRI, so it has none that is absolute, and the
+    sentence is breached by it: leaving it out would mean a package violating
+    this obligation that no rule claiming this obligation reports. The reader
+    gets two findings with two remedies, both true.
+    """
+    def check(ctx):
+        reach = ctx.typed_as if ctx.ontology.requires_an_iri(cls) else ctx.typed_exactly
+        for subject in reach(cls):
+            # `rdf:about=""` resolves to the base and comes back looking like a
+            # perfectly good absolute IRI. It names the document.
+            if not is_absolute_iri(subject) or str(subject) == PACKAGE_BASE:
+                yield Violation("instances of %s must have an absolute IRI" % class_name,
+                                subject=ctx.ref(subject))
+    return check
+
+
+for _id, _cls, _name, _covers, _versions, _anchor, _fix in MUST_BE_ABSOLUTE:
+    rule(_id, kind="schema", prio="MUST", versions=_versions, variants=(),
+         covers=(_covers,),
+         title="instances of %s must have an absolute IRI" % _name,
+         spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+              "20251103-1.3-release/index.html" + _anchor,
+         fix=_fix)(_must_be_absolute(_cls, _name))

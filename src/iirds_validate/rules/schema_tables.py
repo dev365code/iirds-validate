@@ -96,7 +96,13 @@ NOT_USED_DIRECTLY = [
 
 
 def _must_have_iri(prefix: str, class_name: str):
-    """Instances of this class must be named by an absolute IRI."""
+    """Instances of this class must carry an identifier of their own.
+
+    Not an absolute one. `docs/divergences.md` records why the family stopped
+    asking for that -- appendix A says `IRI: REQUIRED`, and a relative IRI is
+    an IRI -- and absoluteness is M5's recommendation, or, for the three
+    classes chapter 6 states it about, R34 to R36.
+    """
     cls = NAMESPACES[prefix][class_name]
 
     def check(ctx):
@@ -125,7 +131,7 @@ def _must_have_iri(prefix: str, class_name: str):
         reach = ctx.typed_as if ctx.ontology.requires_an_iri(cls) else ctx.typed_exactly
         for subject in reach(cls):
             if not is_named(subject):
-                yield Violation("instances of %s must have an absolute IRI" % class_name,
+                yield Violation("instances of %s must have an IRI" % class_name,
                                 subject=ctx.ref(subject))
     return check
 

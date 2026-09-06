@@ -8,7 +8,7 @@
  "counts": {
   "core_emitted": 132,
   "version_excluded": 2,
-  "sparql_emitted": 32,
+  "sparql_emitted": 35,
   "deferred_v1.1": 9,
   "not_expressible": 47,
   "noop": 1
@@ -178,6 +178,9 @@
   "R20",
   "R21",
   "R23",
+  "R34",
+  "R35",
+  "R36",
   "S4",
   "S5"
  ],
@@ -903,6 +906,18 @@
   },
   "R23": {
    "iri": "https://w3id.org/iirds-validate/shapes#R23",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "R34": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R34",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "R35": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R35",
+   "file": "iirds-1.3/iirds-sparql.ttl"
+  },
+  "R36": {
+   "iri": "https://w3id.org/iirds-validate/shapes#R36",
    "file": "iirds-1.3/iirds-sparql.ttl"
   },
   "S4": {

@@ -540,6 +540,14 @@ UNAUDITED = frozenset((
 NAMED_CASES = {
     "rdfclasses_core_IdentityDomain#2":
         "test_identity_domain_cardinality:test_two_identity_types_are_reported",
+    # The three sentences that say MUST about absoluteness, which the "must
+    # have an IRI" family was narrowed away from and nothing picked up.
+    "x6-2-2-information-objects#3":
+        "test_absolute_iri_rules:test_a_relative_iri_on_one_of_these_classes_is_an_error",
+    "x6-8-1-complex-identity#4":
+        "test_absolute_iri_rules:test_a_relative_iri_on_one_of_these_classes_is_an_error",
+    "x6-8-4-external-classification#8":
+        "test_absolute_iri_rules:test_a_relative_iri_on_one_of_these_classes_is_an_error",
     # Section 8.3.2's Package list: the six sentences its Document list
     # repeats word for word, and which nothing read until R13 to R16.
     # The Document half of #1 and #4, held by the same package as they are.
@@ -859,7 +867,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 164, len(CLAIMED)
+    assert len(CLAIMED) == 167, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -871,6 +879,31 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     assert evidenced, "docs/scope.md no longer states how many claims are evidenced"
     assert (int(evidenced.group(1)), int(evidenced.group(2))) == (len(held()), len(CLAIMED)), \
         evidenced.group(0)
+
+
+def test_the_same_share_stated_a_second_time_is_read_a_second_time():
+    """The document says it twice, twenty-five lines apart, and one was read.
+
+    The unread copy sat in the paragraph that names this very file, and it
+    carried a count from an earlier measurement while the gate above went on
+    passing -- the statements a test reads agree with each other, and agreeing
+    with each other is not the same as being right. That is the shape the
+    front-page badge arrived in.
+
+    So how many times the document states it is asserted as well. A third
+    statement is caught when it is written rather than inherited by whoever
+    reads it next.
+    """
+    flat = " ".join((ROOT / "docs" / "scope.md").read_text("utf-8").split())
+    again = re.search(r"names the (\d+) claims a package stands behind, "
+                      r"and names the other (\d+) in a list called UNAUDITED", flat)
+    assert again, "docs/scope.md no longer names the two groups in the expected shape"
+    assert (int(again.group(1)), int(again.group(2))) == (len(held()), len(UNAUDITED)), \
+        again.group(0)
+
+    everywhere = re.findall(r"(\d+) claims", flat)
+    assert everywhere == [again.group(1)], \
+        "docs/scope.md states a claim count somewhere nothing reads: %s" % everywhere
 
 
 # ---------------------------------------------------------------------------

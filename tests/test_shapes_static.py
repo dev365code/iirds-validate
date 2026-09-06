@@ -50,7 +50,7 @@ def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
     assert counts["core_emitted"] == 132
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 32
+    assert counts["sparql_emitted"] == 35
     assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 47
     assert counts["noop"] == 1
@@ -274,6 +274,9 @@ def test_the_shapes_readme_numbers_are_the_manifest_numbers():
 EMITTED_IDS = frozenset((
     # Appendix A's `0..1` rows: the ten with no rule until now.
     "R24", "R25", "R26", "R27", "R28", "R29", "R30", "R31", "R32", "R33",
+
+    # The three chapter 6 sentences that say MUST about an absolute IRI.
+    "R34", "R35", "R36",
 
     "L10", "L16", "L7", "M1", "M10", "M11", "M12", "M13.1", "M13.2", "M14.1",
     "M14.2", "M15.1", "M15.10", "M15.11a", "M15.11b", "M15.11c", "M15.2",

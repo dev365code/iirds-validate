@@ -165,3 +165,43 @@ def test_not_a_zip(tmp_path):
     report = runner.check(path)
     assert "C1" in ids(report)
     assert not report.ok
+
+
+def test_the_corrupt_entry_is_named(tmp_path):
+    """C1 puts what `testzip` returns into `subject`, and `subject` is where a
+    reader looks for the name of the file to go and fix.
+
+    `zipfile.testzip` returns that name for the corruption it was written to
+    find, a CRC that does not match, and raises for the one a flipped byte
+    usually makes -- a deflate stream that will not decode. The wrapper caught
+    the raise and returned `str(exc)`, so the finding read
+
+        ZIP archive is corrupt: Error -3 while decompressing data
+
+    with no entry named anywhere in it, on a package holding a hundred files.
+    The branch carried `pragma: no cover - defensive`; it is the ordinary case.
+    """
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as archive:
+        info = zipfile.ZipInfo(MIMETYPE_NAME)
+        info.compress_type = zipfile.ZIP_STORED
+        archive.writestr(info, MIMETYPE)
+        archive.writestr(METADATA_RDF, MINIMAL_RDF)
+        archive.writestr("content/topic1.xhtml", "<html/>" + "padding " * 200)
+    raw = bytearray(buf.getvalue())
+    path = tmp_path / "flipped.iirds"
+    path.write_bytes(bytes(raw))
+    with zipfile.ZipFile(path) as archive:
+        offset = archive.getinfo("content/topic1.xhtml").header_offset
+    name_len = int.from_bytes(raw[offset + 26:offset + 28], "little")
+    extra_len = int.from_bytes(raw[offset + 28:offset + 30], "little")
+    raw[offset + 30 + name_len + extra_len] ^= 0xFF
+    path.write_bytes(bytes(raw))
+
+    report = runner.check(path)
+    hits = [f for f in report.findings if f.rule.id == "C1"]
+    assert hits, sorted(ids(report))
+    assert hits[0].violation.subject == "content/topic1.xhtml", hits[0].violation.subject

@@ -22,6 +22,11 @@ package and nothing said so.
 """
 from __future__ import annotations
 
+import zipfile
+import zlib
+
+import pytest
+
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 from iirds_validate.package import MAX_SIDE_BYTES
@@ -110,3 +115,72 @@ def test_the_rule_is_a_system_rule():
     assert rule.kind == "system"
     assert rule.versions == () and rule.variants == ()
 
+
+#: An extension that attaches, so R18 reports the file by name. Used as the
+#: witness that the scan went on past a neighbour it could not read.
+ATTACHING = ('<?xml version="1.0"?><rdf:RDF '
+             'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+             'xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">'
+             '<rdfs:Class rdf:about="urn:mine:Late">'
+             '<rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>'
+             '</rdfs:Class></rdf:RDF>')
+
+
+def corrupt_entry(path, name):
+    """Break one entry's stream so that reading it raises.
+
+    A flipped byte inside the deflate stream, located through the local
+    header rather than by searching for the payload, because a compressed
+    payload is not in the file to be searched for. What comes out is a zlib
+    error or a CRC mismatch depending on where the flip lands; the rule may
+    not care which, so neither does this.
+    """
+    with zipfile.ZipFile(path) as zf:
+        offset = zf.getinfo(name).header_offset
+    raw = bytearray(path.read_bytes())
+    name_len = int.from_bytes(raw[offset + 26:offset + 28], "little")
+    extra_len = int.from_bytes(raw[offset + 28:offset + 30], "little")
+    raw[offset + 30 + name_len + extra_len] ^= 0xFF
+    path.write_bytes(bytes(raw))
+    return path
+
+
+def test_the_fixture_is_actually_unreadable(tmp_path):
+    """Stated first, because the two tests below pass without it whether or
+    not the entry is broken, and a fixture that quietly repaired itself would
+    make them say nothing."""
+    package = build_package(tmp_path, "corrupt.iirds", metadata=MINIMAL_RDF,
+                            content=("content/topic1.xhtml",),
+                            extra=(("META-INF/broken.rdf", FILLER),))
+    corrupt_entry(package, "META-INF/broken.rdf")
+    with zipfile.ZipFile(package) as zf, pytest.raises((zipfile.BadZipFile, zlib.error)):
+        zf.read("META-INF/broken.rdf")
+
+
+def test_an_unreadable_side_file_does_not_end_the_run(tmp_path):
+    package = build_package(tmp_path, "survives.iirds", metadata=MINIMAL_RDF,
+                            content=("content/topic1.xhtml",),
+                            extra=(("META-INF/broken.rdf", FILLER),))
+    corrupt_entry(package, "META-INF/broken.rdf")
+    report = runner.check(package)          # must not raise
+    named_as_an_extension = {f.violation.subject for f in report.findings
+                             if f.rule.id == "R18"}
+    assert "META-INF/broken.rdf" not in named_as_an_extension, sorted(named_as_an_extension)
+    # C1 does name it, and that is where a reader is told: the entry is
+    # damaged, not a proprietary extension that section 5.1.1 talks about.
+    assert "META-INF/broken.rdf" in {f.violation.subject for f in report.findings
+                                     if f.rule.id == "C1"}
+
+
+def test_an_unreadable_side_file_does_not_end_the_scan(tmp_path):
+    """`continue`, not `return`. The entry that cannot be read is one entry's
+    worth of ignorance; a version that gave up on the rest would look the same
+    on a package holding nothing else, and stop finding extensions on the
+    packages this rule exists for."""
+    package = build_package(tmp_path, "after.iirds", metadata=MINIMAL_RDF,
+                            content=("content/topic1.xhtml",),
+                            extra=(("META-INF/broken.rdf", FILLER),
+                                   ("META-INF/zz-late.rdf", ATTACHING)))
+    corrupt_entry(package, "META-INF/broken.rdf")
+    subjects = {f.violation.subject for f in runner.check(package).findings}
+    assert "META-INF/zz-late.rdf" in subjects, sorted(subjects)

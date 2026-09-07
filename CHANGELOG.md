@@ -6,6 +6,18 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A corrupt archive said which error, not which file (C1).** The finding read
+`ZIP archive is corrupt: Error -3 while decompressing data` and named no entry,
+on an archive of any size. `Package.testzip` is documented as returning the
+name of the first corrupt entry, and it did for one kind of damage: a CRC that
+does not match. For the other — a deflate stream that will not decode, which is
+what a flipped byte usually makes — the reader raises, and that was caught and
+returned in the name's place.
+
+Both kinds of damage are one fact about one file, and the caller asked for a
+file. The wrapper now reads the entries itself and returns the name of the
+first that will not come back out, whichever way it refuses.
+
 **A package could make a run read `META-INF` until it gave up, and giving up
 looked exactly like finding nothing (S12).** Section 7 lets a package carry its
 own ontology beside the metadata, and R18 finds it: every entry under

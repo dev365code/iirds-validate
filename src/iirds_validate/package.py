@@ -55,6 +55,11 @@ MAX_CONTENT_TOTAL_BYTES = int(os.environ.get("IIRDS_CONTENT_BUDGET") or 512 * 10
 #: ontology, it is something else in the same directory.
 MAX_SIDE_BYTES = 8 * 1024 * 1024
 
+#: Read size while checking that every entry decompresses. The check reads the
+#: whole archive by construction -- that is what it is -- so the only thing to
+#: choose is whether an entry arrives in memory whole. It does not.
+_INTEGRITY_CHUNK = 1 << 16
+
 
 class ContentBudgetExceeded(Exception):
     """A run asked to decompress more than MAX_CONTENT_TOTAL_BYTES."""
@@ -304,11 +309,29 @@ class Package:
         return [i.filename for i in self.infos if not i.is_dir()]
 
     def testzip(self) -> Optional[str]:
-        """Name of the first corrupt entry, or None."""
-        try:
-            return self._zip.testzip()
-        except Exception as exc:                       # pragma: no cover - defensive
-            return str(exc)
+        """Name of the first entry that will not come back out, or None.
+
+        Not `ZipFile.testzip`, which returns that name for one kind of damage
+        and raises for the other: a CRC that does not match is returned, a
+        deflate stream that will not decode is raised, and the two are the
+        same fact about the same file. The raise used to be caught here and
+        returned in the name's place, so C1 reported
+
+            ZIP archive is corrupt: Error -3 while decompressing data
+
+        naming no file, on an archive of any size. A flipped byte inside
+        compressed data is the ordinary way an archive is damaged, so that
+        was the ordinary reading -- the branch that produced it was marked
+        as defensive.
+        """
+        for info in self._zip.infolist():
+            try:
+                with self._zip.open(info) as handle:
+                    while handle.read(_INTEGRITY_CHUNK):
+                        pass
+            except Exception:
+                return info.filename
+        return None
 
 
 class _FileInfo:

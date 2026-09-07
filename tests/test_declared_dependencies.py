@@ -53,7 +53,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SEARCHED = ("tests", "tools")
-STDLIB = os.path.realpath(sysconfig.get_paths()["stdlib"])
+STDLIB = os.path.normcase(os.path.realpath(sysconfig.get_paths()["stdlib"]))
 #: Where the interpreter itself lives. The standard library is not one
 #: directory: on Windows `unicodedata` is an extension module in the `DLLs`
 #: directory, beside `Lib` rather than under it, and asking only about `stdlib` put it
@@ -61,14 +61,41 @@ STDLIB = os.path.realpath(sysconfig.get_paths()["stdlib"])
 #: interpreter ships sits under this, `DLLs`, `lib-dynload` and `Lib` alike --
 #: and so does `site-packages`, which is why the install directories are
 #: asked about first.
-BASE_PREFIX = os.path.realpath(sys.base_prefix)
-INSIDE = os.path.realpath(ROOT)
+BASE_PREFIX = os.path.normcase(os.path.realpath(sys.base_prefix))
+INSIDE = os.path.normcase(os.path.realpath(ROOT))
 
 #: A path component that means "something was installed here". Belt to the
 #: braces below: a layout neither `sysconfig` nor `site` reports still says
 #: so in the path, and `dist-packages` is what Debian and its children call
 #: the same thing.
 INSTALL_MARKERS = ("site-packages", "dist-packages")
+
+
+def _norm(path):
+    """One spelling of a path, so two of them can be compared.
+
+    `normcase` is nothing on POSIX and is the difference between a comparison
+    that works and one that quietly fails on Windows, where the same directory
+    arrives from `sysconfig` and from `importlib` in different case and with
+    different separators.
+    """
+    return os.path.normcase(os.path.realpath(path))
+
+
+def _discriminating(candidates, stdlib):
+    """The candidates that can tell an installed package from a shipped one.
+
+    On Windows `site.getsitepackages()` includes `sys.prefix` itself, and the
+    standard library lives under it. Taken at face value that set answers
+    "installed" for `json`, for `difflib`, for `__future__` -- for everything
+    the interpreter ships -- and a check that asks the install directories
+    first then reports the whole standard library as undeclared dependencies.
+    A directory that contains the standard library cannot tell the two apart,
+    so it is not one of these.
+    """
+    stdlib = _norm(stdlib)
+    return {d for d in candidates
+            if d != stdlib and not stdlib.startswith(d + os.sep)}
 
 
 def _install_directories():
@@ -83,21 +110,22 @@ def _install_directories():
     paths = sysconfig.get_paths()
     for key in ("purelib", "platlib"):
         if paths.get(key):
-            out.add(os.path.realpath(paths[key]))
+            out.add(_norm(paths[key]))
     for getter in ("getsitepackages", "getusersitepackages"):
         try:
             got = getattr(site, getter)()
         except Exception:                      # not every environment has these
             continue
         for one in ([got] if isinstance(got, str) else got or ()):
-            out.add(os.path.realpath(one))
-    return out
+            out.add(_norm(one))
+    return _discriminating(out, STDLIB)
 
 
 INSTALLED = _install_directories()
 
 
 def _is_installed(path):
+    path = _norm(path)
     if any(path.startswith(directory + os.sep) for directory in INSTALLED):
         return True
     return any(marker in path.split(os.sep) for marker in INSTALL_MARKERS)
@@ -108,6 +136,7 @@ def _is_standard_library(path):
         return True
     if _is_installed(path):
         return False
+    path = _norm(path)
     return (path.startswith(BASE_PREFIX + os.sep)
             or path.startswith(STDLIB + os.sep))
 
@@ -215,16 +244,16 @@ def _where_it_loads_from(name):
         #: A namespace package has no origin and a search path instead. If any
         #: of it is inside this repository the module is this repository's.
         for location in spec.submodule_search_locations or ():
-            if os.path.realpath(str(location)).startswith(INSIDE + os.sep):
-                return os.path.realpath(str(location))
+            if _norm(str(location)).startswith(INSIDE + os.sep):
+                return _norm(str(location))
         return "built-in"
-    real = os.path.realpath(origin)
+    real = _norm(origin)
     if not real.startswith(INSIDE + os.sep):
         #: A package whose module file is elsewhere but whose contents are
         #: here -- what an editable install looks like from the outside.
         for location in spec.submodule_search_locations or ():
-            if os.path.realpath(str(location)).startswith(INSIDE + os.sep):
-                return os.path.realpath(str(location))
+            if _norm(str(location)).startswith(INSIDE + os.sep):
+                return _norm(str(location))
     return real
 
 
@@ -236,7 +265,7 @@ def _owning_distribution(path, declared):
             continue
         for owned in distribution.files or ():
             try:
-                if os.path.realpath(str(distribution.locate_file(owned))) == path:
+                if _norm(str(distribution.locate_file(owned))) == _norm(path):
                     return name
             except Exception:              # a path a distribution cannot locate
                 continue
@@ -351,3 +380,30 @@ def test_a_fallback_import_inside_the_handler_is_not_counted():
     source = ("try:\n    import nowhere\n"
               "except ValueError:\n    import elsewhere\n")
     assert not _optional_imports(ast.parse(source))
+
+
+def test_an_install_directory_that_swallows_the_standard_library_is_dropped():
+    """The Windows shape, put here so it is asked on every machine.
+
+    `site.getsitepackages()` on Windows includes `sys.prefix` itself, and the
+    standard library is `<prefix>/Lib`. A set of install directories that
+    keeps the prefix answers "installed" for every module the interpreter
+    ships, and the check above -- which asks the install directories first --
+    then reports the whole standard library as undeclared. It did: `json`,
+    `difflib` and `__future__` were all named in one run.
+
+    The real directories are not used here. This is the set arriving with the
+    shape that breaks it, and the one thing being asked is whether the
+    ancestor comes out and the descendant stays.
+    """
+    prefix = os.path.join(os.sep + "somewhere", "python")
+    stdlib = os.path.join(prefix, "Lib")
+    kept = _discriminating({_norm(prefix), _norm(os.path.join(stdlib, "site-packages"))}, stdlib)
+    assert kept == {_norm(os.path.join(stdlib, "site-packages"))}, kept
+
+
+def test_the_directory_holding_the_standard_library_is_not_one_of_them():
+    """The same question of this interpreter, which is the machine the report
+    is about. Cheap, and it is what actually failed on Windows."""
+    assert STDLIB not in INSTALLED
+    assert not any(STDLIB.startswith(d + os.sep) for d in INSTALLED)

@@ -6,6 +6,20 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**Appendix B's rules had never looked at the content list, and the reason was
+another rule.** Their population is the files the metadata declares as XHTML
+renditions. Section 8.3.1.1 says the content list MUST NOT be referenced in the
+metadata file — so it is never declared, so it was never read. Measured: an
+iiRDS/H package whose `index.html` carries a `<script>`, a `<form>` and an
+`<iframe>` — three things appendix B says MUST NOT be used — drew eight
+findings, none of them from a content rule.
+
+That file is the one a person opens in a browser, and section 8.3.1.1 also says
+it MUST be based on iiRDS XHTML 5. The population now includes it under the
+handover profile. No new claim is made: the claims appendix B already carried
+now reach the file they were always about. For the period before this, they did
+not, and that is what this entry is for.
+
 **The one file in a handover package that nothing may point at, and nothing
 said so (R40).** Section 8.3.1.1 requires an iiRDS/H package to carry a content
 list as `index.html` in the root, and says of it: "It is not an information

@@ -144,6 +144,14 @@ gone wrong.
    because the coverage figure is the sentence a reader is most likely to
    quote out of this page, and "checked" and "enforced" are not the same word.
 
+   Those nine read the files the metadata declares as XHTML renditions, and —
+   in an iiRDS/H package — the content list. The second half of that sentence
+   is new. Section 8.3.1.1 forbids referencing the content list in the
+   metadata, so it is never a declared rendition, so for as long as the
+   population was "what the metadata declares" these rules had never looked at
+   it: a content list built from scripts, forms and iframes drew no content
+   finding at all. The prohibition made the blind spot.
+
    Some detail on the denominator. It is derived in
    `docs/requirements.json`; the parse finds 314 absolute obligations and the
    same file names why 34 of those are one obligation counted twice — four

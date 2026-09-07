@@ -25,6 +25,7 @@ from .. import terms as T
 from ..model import Violation
 from ..package import ContentBudgetExceeded, entry_named
 from ..registry import rule
+from .container import CONTENT_LIST
 
 XHTML_FORMAT = "application/xhtml+xml"
 
@@ -200,8 +201,34 @@ def _refusal(ctx, name):
     return None
 
 
+def _iirds_xhtml_files(ctx):
+    """The files appendix B is about: what the metadata declares, and the
+    content list.
+
+    The second half is not a declaration and cannot be one. Section 8.3.1.1
+    requires an iiRDS/H package to carry `index.html` in the root, says it
+    MUST be based on iiRDS XHTML 5, and says it MUST NOT be referenced in the
+    metadata file -- so it is never a declared rendition, and for as long as
+    this population was "what the metadata declares" no rule here had ever
+    read it. Measured: a content list carrying a script, a form and an iframe
+    -- three things appendix B says MUST NOT be used -- drew eight findings
+    and not one from a content rule.
+
+    The prohibition made the blind spot, which is worth stating plainly: the
+    sentence that keeps a package conformant was the reason the checker
+    stopped looking at part of it.
+
+    Only under the handover profile. Elsewhere `index.html` is an ordinary
+    file with an ordinary name, and an ordinary file is content when the
+    metadata says so -- which is the rule that was already here.
+    """
+    yield from _xhtml_renditions(ctx)
+    if ctx.variant == "H" and ctx.package.has(CONTENT_LIST):
+        yield CONTENT_LIST
+
+
 def _walk(ctx):
-    """Every declared XHTML file, parsed — once per run, not once per rule.
+    """Every iiRDS XHTML file, parsed — once per run, not once per rule.
 
     Eight B rules each iterated the same files, so every content document was
     read and parsed eight times; on large packages that was a third of the
@@ -212,7 +239,7 @@ def _walk(ctx):
     cache = ctx.__dict__.get("_content_trees")
     if cache is None:
         cache = ctx.__dict__["_content_trees"] = {}
-        for name in sorted(_xhtml_renditions(ctx)):
+        for name in sorted(set(_iirds_xhtml_files(ctx))):
             if _refusal(ctx, name):
                 continue
             try:

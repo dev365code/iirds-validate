@@ -30,7 +30,7 @@ from rdflib.namespace import OWL, RDFS
 from .. import terms as T
 from ..context import container_packages, package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, PACKAGE_BASE, Violation, is_named
-from ..package import nested_containers
+from ..package import MAX_SIDE_BYTES, nested_containers
 from ..registry import rule
 
 #: Obligations the standard states that no validator can check on a package,
@@ -774,12 +774,30 @@ def _side_ontologies(ctx):
             continue
         if name.endswith("/"):
             continue
+        # The decision that a file is not this rule's business is taken after
+        # it has been read and handed to the RDF parser, so what a sender pays
+        # for is the deciding, not the keeping. Without a ceiling the deciding
+        # is whatever the archive's entry count says: an archive of a tenth of
+        # a megabyte, holding small files that attach nothing, kept a run busy
+        # far longer than any package in the corpus and finished with an empty
+        # report. Read past the ceiling and the scan stops; S12 says it did,
+        # because a scan that gave up and a scan that finished and found
+        # nothing produce the same silence.
+        if ctx.__dict__.get("side_bytes_read", 0) > MAX_SIDE_BYTES:
+            ctx.__dict__.setdefault(
+                "side_scan_cut",
+                (ctx.__dict__["side_bytes_read"], MAX_SIDE_BYTES, name))
+            return
         try:
             data = ctx.package.read(name)
+        except Exception:
+            continue        # unreadable: not a statement about iiRDS
+        ctx.__dict__["side_bytes_read"] = ctx.__dict__.get("side_bytes_read", 0) + len(data)
+        try:
             graph = Graph()
             graph.parse(data=data, format="xml", publicID=PACKAGE_BASE)
         except Exception:
-            continue        # not RDF, or unreadable: not a statement about iiRDS
+            continue        # not RDF: not a statement about iiRDS
         if _attaches_to_iirds(graph, ctx.ontology):
             yield name
 

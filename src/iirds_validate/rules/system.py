@@ -387,3 +387,43 @@ def s11_container_packages_disagree(ctx):
                     detail="also declared: %s; this run judged the container as %s %s"
                            % (", ".join(sorted(dropped)), ctx.version or "no edition",
                               ctx.variant))
+
+
+@rule("S12", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="cause",
+      title="the run stopped looking for the package's own ontology at its ceiling",
+      fix="Keep the package's own ontology under META-INF to the files that are one, and "
+          "put signatures, manifests and anything else a consumer does not read as RDF "
+          "somewhere else. Section 7 extensions are found by reading every file there and "
+          "asking whether it attaches to iiRDS, so what is in that directory decides how "
+          "much a run must read before it can say it looked.")
+def s12_side_scan_stopped(ctx):
+    """A scan that gave up and a scan that finished are the same silence.
+
+    R18 finds a package's own ontology by reading every entry under META-INF
+    that the standard does not name, parsing it as RDF, and keeping it only if
+    it attaches something to iiRDS -- so the decision that a file is not its
+    business is taken after the file has been read and parsed. Without a
+    ceiling that is unbounded work bought with an archive's entry count, and
+    the report it produces is empty, which is what a reader takes to mean the
+    package was examined.
+
+    Reported rather than raised, and `kind="system"` for the same reason S9 is:
+    the subject is the run rather than the package, and every kind of run can
+    be cut short this way.
+    """
+    cut = ctx.__dict__.get("side_scan_cut")
+    if not cut:
+        return
+    _at_the_cut, limit, stopped_at = cut
+    # The live total rather than the figure recorded when the ceiling was
+    # passed. They are the same number when the scan stops there, and that is
+    # the point: a version that recorded the overrun and went on reading
+    # reports a larger one, and the test that reads this finding is what says
+    # the ceiling stops the loop rather than annotating it. Written the other
+    # way first, and a mutation that kept reading passed every test here.
+    read = ctx.__dict__.get("side_bytes_read", _at_the_cut)
+    yield Violation("the search for the package's own ontology stopped at its ceiling, "
+                    "so the rest of META-INF was not examined",
+                    subject=stopped_at,
+                    detail="%d bytes read of a %d byte ceiling" % (read, limit))

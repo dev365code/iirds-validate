@@ -6,6 +6,28 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A package could make a run read `META-INF` until it gave up, and giving up
+looked exactly like finding nothing (S12).** Section 7 lets a package carry its
+own ontology beside the metadata, and R18 finds it: every entry under
+`META-INF/` that the standard does not name is read, parsed as RDF, and kept
+only if it attaches something to iiRDS. A signature, a manifest, a readme is
+none of that rule's business — which is decided after the file has been read
+and parsed, so what a sender pays for is the deciding, not the keeping.
+
+That had no ceiling. Each entry is read to the per-entry limit and the entry
+count is whatever the archive says: measured, an archive of a tenth of a
+megabyte, holding small files that attach nothing, kept a run busy far longer
+than any package in the vendored corpus and finished with an empty report. The
+empty report is the part that matters — the run had stopped being an
+examination of the package and nothing said so.
+
+Those reads are now counted against a ceiling of eight mebibytes, fifty times
+the ontology the standard itself publishes, and past it the scan stops. S12
+says that it stopped, and states how much it read, which is its own account of
+the work it did: a version that recorded the overrun and went on reading
+satisfies a test that only looks for the finding, and leaves the cost exactly
+where it was.
+
 **Two obligations in the requirement index were half a sentence.** That file is
 the denominator of the coverage figure and the text every `covers=` claim is
 judged against, and the criterion is one question — does every package

@@ -42,6 +42,19 @@ MAX_CONTENT_TOTAL_BYTES = int(os.environ.get("IIRDS_CONTENT_BUDGET") or 512 * 10
 #: default is not wrong, it is large, and the person checking it decides
 #: what their machine can hold rather than this module deciding for them.
 
+#: The ceiling on what a run reads from META-INF looking for a package's own
+#: ontology. A second budget, deliberately: `charge` below is the ceiling on
+#: *content* and only content pays into it, because a first version counted
+#: metadata too and a run died reading metadata.rdf with the death surfacing
+#: as a parse error rather than as the budget it was. A reader asking what a
+#: run will read in total needs both numbers, which is why each says so.
+#:
+#: Eight mebibytes is fifty times `iirds-core.rdf`, the ontology the standard
+#: itself publishes, and twenty-five times the whole bundled set. A package's
+#: own extension is smaller than the standard's; past this it is not an
+#: ontology, it is something else in the same directory.
+MAX_SIDE_BYTES = 8 * 1024 * 1024
+
 
 class ContentBudgetExceeded(Exception):
     """A run asked to decompress more than MAX_CONTENT_TOTAL_BYTES."""
@@ -266,6 +279,10 @@ class Package:
         the death surfaced as a parse error on the metadata rather than as
         the budget it was. Metadata and mimetype have their own gates; the
         ceiling is on content, and only content pays into it.
+
+        The search for a package's own ontology under META-INF has its own,
+        `MAX_SIDE_BYTES`, for that reason and not by oversight. Two ceilings,
+        and what a run will read in total is their sum.
         """
         self.content_read = getattr(self, "content_read", 0) + count
         if self.content_read > MAX_CONTENT_TOTAL_BYTES:

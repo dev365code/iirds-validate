@@ -3,7 +3,7 @@
   "branch": 1,
   "finding": 1,
   "other": 0,
-  "silent": 11
+  "silent": 12
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
@@ -11,10 +11,10 @@
   "content.py": "7775d9365b1f8a0afa691c69b99b37a5f5d581474bab88ec4a324fc014b645e7",
   "handover.py": "9d64210f803472e30b9f838fdef150d9d1f8db2fb2ab38b9a08a148f8fbbdcd9",
   "lint.py": "0dbe29fea7522e2957156b32f4013eb62f280f28b55bccf9ba4b1d92f9e5d216",
-  "requirements.py": "336050ac2e67b31581460757f6ad63b8dc605b43404d865ade691a1702a4a8e8",
+  "requirements.py": "4bcf2f43f91675eef1c28327e333b90780dfa08713d089f9ce02d4075d983684",
   "schema.py": "50086c6e749309405ad3006b7633e91cae465940429ec588c20042730f1a6ffe",
   "schema_tables.py": "8a13d6e9362f3f7f4d85bc60a2f5dd42076b0fb8a2d7179c58ff1f951b301cb4",
-  "system.py": "323dbe0a379604f46da8c9afe5a30fe1c7a0e74e53da2e68424330214adc3b0e"
+  "system.py": "e77e3d0e7873ce83efdce69d088705edb61fde063c7dc2000a22ce4e0ffe7147"
  },
  "unreached": {
   "content.py": {
@@ -28,6 +28,9 @@
    "l15_name_from_a_later_edition :: return": "silent",
    "l5_unmapped_custom_classes :: continue [1]": "silent",
    "l6_unlabelled_concepts :: continue [2]": "silent"
+  },
+  "requirements.py": {
+   "_side_ontologies :: continue # unreadable: not a statement about iiRDS": "silent"
   },
   "schema.py": {
    "m16_3_event_extension_is_a_class :: continue": "silent"

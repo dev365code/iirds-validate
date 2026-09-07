@@ -677,3 +677,49 @@ def r39_rendition_selects_part_of_a_file(ctx):
         if ctx.values(rendition, T.has_selector):
             yield Violation("this rendition references part of a file, not a whole one",
                             subject=ctx.ref(rendition))
+
+
+_CONTENT_LIST_SECTION = ("https://www.iirds.org/fileadmin/iiRDS_specification/"
+                         "20251103-1.3-release/index.html"
+                         "#x8-3-1-1-mandatory-content-list")
+
+
+@rule("R40", kind="schema", prio="MUST", versions=("1.3",), variants=("H",),
+      title="the content list must not be referenced in the metadata",
+      spec=_CONTENT_LIST_SECTION,
+      covers=("x8-3-1-1-mandatory-content-list#3",),
+      fix="Remove the iirds:source that names index.html, and the rendition holding it if "
+          "that is all it held. The content list is the package's own front page for a "
+          "person with a browser; a consumer that finds it referenced takes it for one of "
+          "the documents the package delivers.")
+def r40_content_list_is_referenced(ctx):
+    """Section 8.3.1.1, of the content list: "It is not an information unit and
+    MUST NOT be referenced in the metadata file."
+
+    The other half of a sentence this suite already leans on. R37 reports a
+    content file no rendition names and excludes `index.html` from that
+    population, and the exclusion is not a convenience -- it is this sentence.
+    Written without it, R37 would report every conformant handover package,
+    because each contains exactly one file that nothing may point at. So the
+    pair is: nobody has to name it, and nobody may. Only the first half was
+    checked.
+
+    "Referenced" is read as "named by an `iirds:source`", and the narrowing is
+    a decision rather than an oversight. That property is how metadata refers
+    to a file at all -- section 6.3 gives it no rival -- and reading it wider,
+    as any value anywhere that spells the path, makes a conformant package
+    fail for an `iirds:title` that happens to say `index.html`. A value that is
+    not a reference is not made one by looking like a path. The seam is here
+    rather than in the rule's title, because a claim narrowed without saying so
+    is a promise quietly made smaller.
+
+    The predicate is read directly instead of through `iirds:Rendition`, so a
+    source hung on anything at all is still a source: the population is every
+    statement that names a file, not every statement on a class this rule
+    happened to think of.
+    """
+    for subject, value in ctx.graph.subject_objects(T.source):
+        if entry_named(str(value)) == CONTENT_LIST:
+            yield Violation("the content list is referenced in the metadata",
+                            subject=ctx.ref(subject),
+                            detail="iirds:source %r" % str(value))

@@ -706,6 +706,10 @@ NOT_EXPRESSIBLE["R37"] = ("graph\u00d7ZIP join: asks which container entries no 
                           "names, and a shapes file has no entry list")
 for _rid in ("L2", "L11", "L12", "R8", "R9"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
+NOT_EXPRESSIBLE["R40"] = ("path resolution: whether a source names the content list is decided "
+                          "the way the reader decides it -- percent-decoding, a leading or "
+                          "dotted segment, a backslash -- and a shape matching the literal "
+                          "spelling would pass three of the four ways to write it")
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
 NOT_EXPRESSIBLE["R11"] = ("asks which metadata file a statement is in; a shapes file validates "
                           "one graph and the file it came from is not in it")

@@ -6,6 +6,24 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The one file in a handover package that nothing may point at, and nothing
+said so (R40).** Section 8.3.1.1 requires an iiRDS/H package to carry a content
+list as `index.html` in the root, and says of it: "It is not an information
+unit and MUST NOT be referenced in the metadata file." The first half was
+checked; the second was the reason another rule already had an exception. R37
+reports a content file no rendition names and excludes `index.html` from that
+population — not as a convenience, but because every conformant handover
+package contains exactly one file nothing may name. So the pair is: nobody has
+to name it, and nobody may. Only one of the two was enforced.
+
+Whether a source names the content list is decided the way the reader decides
+it, so `/index.html`, `./index.html` and `inde%78.html` are the same reference
+as `index.html`, and `INDEX.HTML` is not. "Referenced" is read as "named by an
+`iirds:source`" — the property section 6.3 gives no rival — rather than as any
+value anywhere that spells the path, which would fail a conformant package for
+a title. The narrowing is stated in the rule rather than left to be discovered.
+Coverage of the standard is 172 of 280, of which 137 are held by a package.
+
 **An obligation this tool enforces was published as one it does not (B8).**
 Appendix B.6 says of the safety alert symbol: "The img element MUST be a child
 of the signal word panel. Only one safety alert symbol MUST be included." Two
@@ -308,7 +326,7 @@ single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-**Coverage of the standard is 171 of 280, of which 136 are held by a package.**
+****
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a

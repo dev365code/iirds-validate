@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 36,
   "deferred_v1.1": 9,
-  "not_expressible": 50,
+  "not_expressible": 51,
   "noop": 1
  },
  "core_emitted": [
@@ -257,6 +257,7 @@
   "L12": "graph×ZIP join: the verdict depends on which files the archive carries",
   "R8": "graph×ZIP join: the verdict depends on which files the archive carries",
   "R9": "graph×ZIP join: the verdict depends on which files the archive carries",
+  "R40": "path resolution: whether a source names the content list is decided the way the reader decides it -- percent-decoding, a leading or dotted segment, a backslash -- and a shape matching the literal spelling would pass three of the four ways to write it",
   "L9": "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate",
   "R11": "asks which metadata file a statement is in; a shapes file validates one graph and the file it came from is not in it",
   "R18": "asks which metadata file a statement is in; a shapes file validates one graph and the file it came from is not in it"

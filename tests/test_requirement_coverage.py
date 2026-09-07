@@ -91,7 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 195, len(pairs)
+    assert len(pairs) == 196, len(pairs)
     assert len(asserted) == 89, sorted(asserted)
 
     # It used to reach three, and reaches most of appendix A now: those rows
@@ -111,7 +111,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 171
+    assert len(COVERED) == 172
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 

@@ -68,6 +68,11 @@ fix:
 # within an hour of the Makefile being written.
 generated:
 	$(PYTHON) tools/propose_class_rules.py --check
+# The front page's two pictures. Held to a real run by tests/test_readme_front.py
+# and held to nothing at all here until this line: every figure that moved was
+# edited into the picture to satisfy that test, and the generator fell fifteen
+# rules behind while the picture stayed true.
+	$(PYTHON) tools/gen_door.py --check
 
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.

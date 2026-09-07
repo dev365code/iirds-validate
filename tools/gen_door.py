@@ -11,6 +11,7 @@ deliberately broken package, colour added; regenerate both on release.
 """
 import math
 import pathlib
+import re
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / "docs" / "assets"
 MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
@@ -72,9 +73,75 @@ banner = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 408" role=
 <text x="470" y="345" font-family="{MONO}" font-size="15" font-weight="700" fill="#e8edf2" text-anchor="middle">AI proposes. <tspan fill="#8fb8dd">Rules judge.</tspan> People decide.</text>
 <text x="470" y="376" text-anchor="middle" font-family="{SANS}" font-size="12" fill="#93a1ad"><tspan font-family="{MONO}" font-size="10.5" font-weight="700" fill="#7da7cf">DE&#160;&#160;</tspan>Prüft iiRDS-Pakete offline<tspan font-family="{MONO}" font-size="10.5" font-weight="700" fill="#ddab74">&#160;&#160;&#160;&#160;&#160;KO&#160;&#160;</tspan>iiRDS 패키지 오프라인 검증</text>
 </svg>'''
-(OUT / "door.svg").write_text(banner, encoding="utf-8")
 
-# ── the real verdict, drawn (captured from the released CLI on a broken zip) ─
+# ── the real verdict, drawn ──────────────────────────────────────────────────
+#
+# The text is the checker's own, captured from `report.render_text` on the
+# package below. It used to be transcribed by hand into a table of coloured
+# runs, and it drifted: the transcript said "175 rules checked, 24 not
+# applicable" for five releases while the committed picture said what a run
+# said, because two tests hold the picture to a real run and nothing at all
+# held this file. The gate and the rule that a generated file has one author
+# were pulling in opposite directions, and the gate won every time -- by
+# putting the edit in the output.
+#
+# So the only sentences written here are the two commands, which are the
+# invocation rather than the output. Everything below them is read.
+
+#: The package the picture is of. It lives here because the picture is of it;
+#: `tests/test_readme_front.py` imports it rather than keeping a second copy.
+TERMSHOT_PACKAGE = {
+    "mimetype": b"application/zip",
+    "META-INF/metadata.rdf": (
+        '<?xml version="1.0"?><rdf:RDF '
+        'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+        'xmlns:iirds="http://iirds.tekom.de/iirds#">'
+        '<iirds:Topic rdf:about="urn:x:t1">'
+        "<iirds:title>A topic</iirds:title></iirds:Topic></rdf:RDF>"),
+    "content/topic1.xhtml": "<html/>",
+}
+
+#: Characters that fit across the picture at this font size. A run of the
+#: checker prints two lines longer than this; they are cut at a word and
+#: marked, and the caption says so, because a picture that quietly shortens
+#: what it calls real output is telling a small lie about the tool.
+COLUMNS = 118
+
+
+def _verdict_lines():
+    """What `iirds check` prints for TERMSHOT_PACKAGE, as plain text."""
+    import io
+    import sys
+    import tempfile
+    import zipfile
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
+    from iirds_validate import report as report_module
+    from iirds_validate import runner
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as archive:
+        info = zipfile.ZipInfo("mimetype")
+        info.compress_type = zipfile.ZIP_STORED
+        archive.writestr(info, TERMSHOT_PACKAGE["mimetype"])
+        for name, body in TERMSHOT_PACKAGE.items():
+            if name != "mimetype":
+                archive.writestr(name, body)
+    directory = pathlib.Path(tempfile.mkdtemp())
+    package = directory / "broken.iirds"
+    package.write_bytes(buf.getvalue())
+
+    printed = io.StringIO()          # not a tty, so the renderer paints nothing
+    report_module.render_text(runner.check(package), printed)
+    out = []
+    for line in printed.getvalue().splitlines():
+        if len(line) > COLUMNS:
+            cut = line.rfind(" ", 0, COLUMNS - 2)
+            line = line[:cut] + " \u2026"
+        out.append(line)
+    return out
+
+
 L = []
 def ln(y, dy, runs):
     """Append one rendered line at baseline y; return the next baseline."""
@@ -84,30 +151,111 @@ def ln(y, dy, runs):
     return y + dy
 B = " font-weight=\"700\""
 G, D, E, A_, F, T, N = "#8fd0a8", "#7d8a99", "#e0604d", "#e8c268", "#5cb87f", "#d8dfe5", "#93a1ad"
-y = 40
-y = ln(y, 21, [(28, G, "$ ", B), (46, T, "pip install iirds", "")])
-y = ln(y, 30, [(28, G, "$ ", B), (46, T, "iirds check broken.iirds", "")])
-y = ln(y, 20, [(28, T, "broken.iirds   ", B), (140, A_, "iiRDS not declared", "")])
-y = ln(y, 17, [(40, N, "note: no iirds:iiRDSVersion in the package; validated against 1.3.", "")])
-y = ln(y, 27, [(40, N, "note: metadata read from META-INF/metadata.rdf", "")])
-y = ln(y, 19, [(40, E, "ERROR ", B), (90, A_, "M3", B), (140, T, "metadata declares no iirds:Package for this container", "")])
-y = ln(y, 17, [(154, F, "→ Provide exactly one iirds:Package instance describing this container. It", "")])
-y = ln(y, 17, [(154, F, "→ is the root a consumer starts from, so zero leaves the package", "")])
-y = ln(y, 24, [(154, F, "→ unidentified and two leave it ambiguous.", "")])
-y = ln(y, 19, [(40, E, "ERROR ", B), (90, A_, "C5", B), (140, T, "mimetype must contain exactly 'application/iirds+zip' with no line ending", "")])
-y = ln(y, 17, [(168, D, "mimetype", "")])
-y = ln(y, 19, [(168, D, "b'application/zip'", "")])
-y = ln(y, 17, [(154, F, "→ Make the file contain exactly application/iirds+zip, ASCII, with no", "")])
-y = ln(y, 17, [(154, F, "→ trailing newline and no byte order mark. Editors add both silently, so", "")])
-y = ln(y, 27, [(154, F, "→ write it with a tool that does not.", "")])
-y = ln(y, 19, [(28, E, "FAIL", B), (90, T, "2 error(s), 0 warning(s), 0 informational", "")])
-y = ln(y, 14, [(28, N, "190 rules checked, 28 not applicable to this version/variant", "")])
-TH = y + 18
-shot = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 {TH}" role="img" aria-label="Real output of iirds check on a broken package: two errors, each with evidence and a fix">
-<rect x="1" y="1" width="938" height="{TH-2}" rx="10" fill="#12161a" stroke="#252b30" stroke-width="1.5"/>
+ADVANCE = 7.0            # one monospace column at 12.5px, measured on the shipped picture
+LEFT = 28
+
+
+def _escape(text):
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _runs(line):
+    """One printed line as coloured runs, painted by the shape the renderer
+    gives it rather than by a table kept in step with it."""
+    indent = len(line) - len(line.lstrip())
+    x = LEFT + indent * ADVANCE
+    body = line.strip()
+    if not body:
+        return []
+    if body.startswith("\u2192 "):
+        return [(x, F, _escape(body), "")]
+    if body.startswith("note:"):
+        return [(x, N, _escape(body), "")]
+    error = re.match(r"^(ERROR|WARN|INFO)\s+(\S+)\s+(.*)$", body)
+    if error:
+        level, rule_id, message = error.groups()
+        pad = len(error.group(0)) - len(level) - len(rule_id) - len(message)
+        return [(x, E, level, B),
+                (x + (len(level) + 1) * ADVANCE, A_, rule_id, B),
+                (x + (len(level) + len(rule_id) + pad) * ADVANCE, T, _escape(message), "")]
+    if body.startswith("FAIL") or body.startswith("PASS"):
+        verdict, _, rest = body.partition(" ")
+        return [(x, E if verdict == "FAIL" else F, verdict, B),
+                (x + 8 * ADVANCE, T, _escape(rest.strip()), "")]
+    if re.match(r"^\d+ rules checked", body):
+        return [(x, N, _escape(body), "")]
+    if indent >= 20:
+        return [(x, D, _escape(body), "")]
+    name, _, state = body.partition("   ")
+    if state.strip():
+        return [(x, T, _escape(name) + "   ", B),
+                (x + (len(name) + 3) * ADVANCE, A_, _escape(state.strip()), "")]
+    return [(x, T, _escape(body), "")]
+
+
+def _draw():
+    global L
+    L = []
+    y = 40
+    # The two commands are the invocation, not the output: they are typed.
+    y = ln(y, 21, [(LEFT, G, "$ ", B), (LEFT + 18, T, "pip install iirds", "")])
+    y = ln(y, 30, [(LEFT, G, "$ ", B), (LEFT + 18, T, "iirds check broken.iirds", "")])
+    for line in _verdict_lines():
+        runs = _runs(line)
+        if not runs:
+            y += 10
+            continue
+        y = ln(y, 19, runs)
+    height = y + 18
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 {height}" role="img" aria-label="Real output of iirds check on a broken package: two errors, each with evidence and a fix">
+<rect x="1" y="1" width="938" height="{height-2}" rx="10" fill="#12161a" stroke="#252b30" stroke-width="1.5"/>
 <circle cx="24" cy="19" r="5" fill="#e0604d"/><circle cx="42" cy="19" r="5" fill="#e8c268"/><circle cx="60" cy="19" r="5" fill="#5cb87f"/>
-<text x="80" y="23" font-family="{MONO}" font-size="11" fill="#7d8a99">iirds check — real output, colour added</text>
+<text x="80" y="23" font-family="{MONO}" font-size="11" fill="#7d8a99">iirds check — the checker\u2019s own output, coloured; two long lines cut at a word</text>
 {"".join(L)}
 </svg>'''
-(OUT / "tenseconds.svg").write_text(shot, encoding="utf-8")
-print("door.svg", len(banner)//1024, "KB · tenseconds.svg", len(shot)//1024, "KB")
+
+
+shot = _draw()
+
+#: What this file is the author of. `--check` regenerates into memory and
+#: compares, which is the gate the front page's two pictures did not have: the
+#: tests hold the *picture* to a real run, and holding the picture is what put
+#: every edit into the output and left the generator behind. Byte-compared,
+#: like every other generated artefact here.
+WRITES = {"door.svg": banner, "tenseconds.svg": shot}
+
+
+def main() -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--check", action="store_true",
+                    help="regenerate into memory and compare, writing nothing")
+    args = ap.parse_args()
+
+    if args.check:
+        stale = []
+        for name, body in sorted(WRITES.items()):
+            path = OUT / name
+            if not path.exists():
+                stale.append("%s is missing" % name)
+            elif path.read_text(encoding="utf-8") != body:
+                stale.append("%s is not what this generator writes" % name)
+        if stale:
+            import sys
+            for line in stale:
+                print("  " + line, file=sys.stderr)
+            print("\nrun: python3 tools/gen_door.py", file=sys.stderr)
+            return 1
+        print("docs/assets: %d picture(s) match their generator" % len(WRITES))
+        return 0
+
+    for name, body in sorted(WRITES.items()):
+        (OUT / name).write_text(body, encoding="utf-8")
+    print("door.svg %d KB · tenseconds.svg %d KB" % (len(banner) // 1024, len(shot) // 1024))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

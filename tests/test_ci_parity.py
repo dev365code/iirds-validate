@@ -154,6 +154,7 @@ CHECK_TARGETS = ("lint", "generated", "corpus", "versions", "requirements",
 CHECK_COMMANDS = (
     "ruff check .",
     "tools/propose_class_rules.py --check",
+    "tools/gen_door.py --check",
     "tools/vendor_corpus.py --check",
     "tools/crossvalidate.py --check",
     "tools/explain_silence.py --quiet",

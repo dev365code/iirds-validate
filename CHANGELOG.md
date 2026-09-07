@@ -6,6 +6,22 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The front page's picture is now drawn from the checker's own output, and the
+generator that draws it is checked.** The caption said "real output"; the file
+that produced it held a hand-written transcript, and the transcript had said
+"175 rules checked, 24 not applicable" for five releases while the committed
+picture said what a run said. Two tests hold the picture to a real run and
+nothing held the generator, so every figure that moved was edited into the
+picture to satisfy those tests — the gate and the rule that a generated file
+has one author were pulling in opposite directions, and the gate won each time.
+
+The text now comes from `report.render_text`, so the picture cannot say
+something the tool does not. Two lines of that output are longer than the
+picture is wide; they are cut at a word, marked, and the caption says so,
+because a picture that quietly shortens what it calls real output is telling a
+small lie about the tool. `tools/gen_door.py --check` regenerates into memory
+and byte-compares, and `make check` runs it.
+
 **Rows the requirement index could not tell apart, and the two facts that tell
 them apart.** Nine sets of obligations were identical in every field the index
 recorded — same sentence, same section, same context — and they are not the

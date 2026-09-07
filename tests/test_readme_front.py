@@ -144,16 +144,9 @@ def test_the_cache_busters_are_the_files_they_point_at():
 #: here rather than kept in `fixtures/`, because what has to stay true is that
 #: the picture matches a run, and a fixture that drifts from the picture is the
 #: same problem one level down.
-TERMSHOT_PACKAGE = {
-    "mimetype": b"application/zip",
-    "META-INF/metadata.rdf": (
-        '<?xml version="1.0"?><rdf:RDF '
-        'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
-        'xmlns:iirds="http://iirds.tekom.de/iirds#">'
-        '<iirds:Topic rdf:about="urn:x:t1">'
-        "<iirds:title>A topic</iirds:title></iirds:Topic></rdf:RDF>"),
-    "content/topic1.xhtml": "<html/>",
-}
+#: The package the picture is of, imported from the file that draws it. Kept
+#: here as a second copy once, which is one more copy than a fixture may have.
+from gen_door import TERMSHOT_PACKAGE  # noqa: E402
 
 
 def test_the_terminal_picture_is_a_run_that_happened(tmp_path):

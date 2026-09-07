@@ -15,13 +15,22 @@ names.
 
 `sys.stdlib_module_names` would answer the first part in one line and is
 3.10; on 3.9, which this project supports and CI runs, it does not exist and
-the check would filter nothing while appearing to work. The standard
-library's own directory, from `sysconfig`, answers the same question
-everywhere.
+the check would filter nothing while appearing to work.
 
-An import inside `try:` with an `except ImportError` is not in scope: that
-import has already said what happens when it is absent, which is the thing
-this test exists to require.
+Neither does "is it under the standard library's directory", which is what
+this asked first and is not the same question. `site-packages` can sit
+*inside* that directory -- it does on the interpreter this was written on,
+and on most distribution-packaged Pythons -- so `pip`, `setuptools` and
+`pkg_resources` all answered "standard library" and walked through the gate
+built to catch exactly them. The install directories are asked for by name,
+from `sysconfig` and from `site`, and they are asked first.
+
+An import inside `try:` with a handler that catches its absence is not in
+scope, and neither is one inside that handler: both have already said what
+happens when the module is missing, which is the thing this test exists to
+require. `tools/build_zipapp.py` falls back from `packaging` to pip's
+vendored copy that way, and demanding that `pip` be declared would put a
+dependency in `pyproject.toml` that this project does not have.
 """
 from __future__ import annotations
 
@@ -30,6 +39,7 @@ import importlib.metadata
 import importlib.util
 import os
 import re
+import site
 import sysconfig
 from pathlib import Path
 
@@ -37,6 +47,49 @@ ROOT = Path(__file__).resolve().parents[1]
 SEARCHED = ("tests", "tools")
 STDLIB = os.path.realpath(sysconfig.get_paths()["stdlib"])
 INSIDE = os.path.realpath(ROOT)
+
+#: A path component that means "something was installed here". Belt to the
+#: braces below: a layout neither `sysconfig` nor `site` reports still says
+#: so in the path, and `dist-packages` is what Debian and its children call
+#: the same thing.
+INSTALL_MARKERS = ("site-packages", "dist-packages")
+
+
+def _install_directories():
+    """Where distributions land on this interpreter.
+
+    `purelib` and `platlib` are two of them and on some interpreters they are
+    two names for one directory that holds almost nothing: the interpreter's
+    own `site-packages`, and the user's, are elsewhere. `site` lists both,
+    and is guarded because a virtualenv may not carry `getsitepackages`.
+    """
+    out = set()
+    paths = sysconfig.get_paths()
+    for key in ("purelib", "platlib"):
+        if paths.get(key):
+            out.add(os.path.realpath(paths[key]))
+    for getter in ("getsitepackages", "getusersitepackages"):
+        try:
+            got = getattr(site, getter)()
+        except Exception:                      # not every environment has these
+            continue
+        for one in ([got] if isinstance(got, str) else got or ()):
+            out.add(os.path.realpath(one))
+    return out
+
+
+INSTALLED = _install_directories()
+
+
+def _is_installed(path):
+    if any(path.startswith(directory + os.sep) for directory in INSTALLED):
+        return True
+    return any(marker in path.split(os.sep) for marker in INSTALL_MARKERS)
+
+
+def _is_standard_library(path):
+    return path == "built-in" or (not _is_installed(path)
+                                  and path.startswith(STDLIB + os.sep))
 
 
 def _declared():
@@ -61,18 +114,47 @@ def _declared():
     return names
 
 
+#: Exception names whose handler catches a module that is not there.
+#: `ModuleNotFoundError` is the 3.6 subclass of `ImportError` and a handler
+#: naming only it still catches the absence; `Exception` and `BaseException`
+#: catch it as well. A list of names rather than a subclass test because
+#: this reads source, and the source has not been imported.
+CATCHES_ABSENCE = ("ImportError", "ModuleNotFoundError", "Exception", "BaseException")
+
+
+def _handler_catches_absence(handler):
+    if handler.type is None:                   # a bare `except:`
+        return True
+    named = [handler.type]
+    if isinstance(handler.type, ast.Tuple):
+        named = list(handler.type.elts)
+    for node in named:
+        name = getattr(node, "id", None) or getattr(node, "attr", None)
+        if name in CATCHES_ABSENCE:
+            return True
+    return False
+
+
 def _optional_imports(tree):
-    """Import nodes under a `try:` that catches their absence."""
+    """Import nodes inside a `try:` that catches their absence, and inside
+    that handler.
+
+    The handler counts because the fallback lives there. An import that runs
+    only when another one failed is reached only on the machines where the
+    first is missing, and requiring it to be declared would write down a
+    dependency the project does not have.
+    """
     spared = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Try):
             continue
-        catches = any(handler.type is None
-                      or "ImportError" in ast.dump(handler.type)
-                      for handler in node.handlers)
-        if not catches:
+        handlers = [h for h in node.handlers if _handler_catches_absence(h)]
+        if not handlers:
             continue
-        for statement in node.body:
+        bodies = list(node.body)
+        for handler in handlers:
+            bodies.extend(handler.body)
+        for statement in bodies:
             for inner in ast.walk(statement):
                 if isinstance(inner, (ast.Import, ast.ImportFrom)):
                     spared.add(id(inner))
@@ -152,7 +234,7 @@ def test_every_third_party_import_is_declared():
         loaded = _where_it_loads_from(name)
         if loaded is None:
             continue          # not importable here: a different question
-        if loaded == "built-in" or loaded.startswith(STDLIB + os.sep):
+        if _is_standard_library(loaded):
             continue
         if loaded.startswith(INSIDE + os.sep):
             continue
@@ -183,5 +265,51 @@ def test_the_standard_library_is_actually_being_recognised():
     no, as third-party, and then failing; or, with the test written the other
     way round, by classifying everything as fine. Named here so the mistake
     cannot be silent."""
-    assert _where_it_loads_from("json").startswith(STDLIB + os.sep)
-    assert _where_it_loads_from("sys") == "built-in"
+    assert _is_standard_library(_where_it_loads_from("json"))
+    assert _is_standard_library(_where_it_loads_from("sys"))
+
+
+def test_a_package_installed_inside_the_standard_library_is_not_the_standard_library():
+    """The control the first version did not have, and the reason it passed
+    while filtering nothing.
+
+    It asked only whether a standard-library module is recognised as one, and
+    `json` is, wherever `site-packages` happens to sit. Here it sits inside
+    the standard library's own directory, so every distribution installed
+    there was recognised as standard library too -- `pip`, `setuptools` and
+    `pkg_resources` among them, which is the shape this gate exists for.
+
+    Written the first time with `pytest` as its witness, which is installed
+    and is not the standard library, and which passed on the unrepaired code:
+    `pytest` lives in the *user's* site directory, and that is not under the
+    standard library, so the case was wrong on a different axis than the one
+    under test. The path here is built rather than looked up, so the axis is
+    the only thing it is wrong on, and so the case does not depend on where
+    this interpreter happens to keep things. `dist-packages` is the same
+    layout under the name Debian and its children give it, and it is pinned
+    here rather than left to whichever machine happens to run this.
+    """
+    for inside in (os.path.join(STDLIB, "site-packages", "somepkg", "__init__.py"),
+                   os.path.join(STDLIB, "dist-packages", "somepkg", "__init__.py")):
+        assert _is_installed(inside), inside
+        assert not _is_standard_library(inside), inside
+    assert _is_standard_library(os.path.join(STDLIB, "json", "__init__.py"))
+    assert _is_standard_library("built-in")
+
+
+def test_the_search_finds_more_than_one_place_to_install_into():
+    """A `site` that answers with nothing would put every installed package
+    back under the standard library by the same route as before."""
+    assert INSTALLED, "no install directory found; the classification is one-sided"
+
+
+def test_a_fallback_import_inside_the_handler_is_not_counted():
+    source = ("try:\n    import nowhere\n"
+              "except ImportError:\n    import elsewhere\n")
+    assert len(_optional_imports(ast.parse(source))) == 2
+    source = ("try:\n    import nowhere\n"
+              "except (ValueError, ModuleNotFoundError):\n    import elsewhere\n")
+    assert len(_optional_imports(ast.parse(source))) == 2
+    source = ("try:\n    import nowhere\n"
+              "except ValueError:\n    import elsewhere\n")
+    assert not _optional_imports(ast.parse(source))

@@ -37,7 +37,26 @@ def _check_targets():
     return line.group(1).split()
 
 
-def _what_make_would_run():
+def _prerequisite_builds():
+    """Commands that build a prerequisite file rather than check anything.
+
+    `CHECKS` drops them by the `$@` in their recipe; make's output has that
+    already expanded, so the same recipe is unrecognisable on the other side
+    of the comparison -- and invisible as well, in any tree where the file
+    it builds exists. Expanding `$@` here is what makes the two sides say the
+    same thing about the same recipe in either tree.
+    """
+    built = set()
+    for target, body in re.findall(r"^([^\s:#][^:=\n]*):[^=\n]*\n((?:\t.*\n|#.*\n|\n)*)",
+                                   MAKEFILE, re.M):
+        for raw in body.splitlines():
+            stripped = raw.strip().lstrip("@").strip()
+            if stripped.startswith("$(PYTHON)") and "$@" in stripped:
+                built.add(_normalise(stripped.replace("$(PYTHON)", "").replace("$@", target)))
+    return built
+
+
+def _what_make_would_run(where=ROOT):
     """The commands `make check` runs, from make.
 
     Read by asking make rather than by matching the Makefile's text. Every
@@ -55,7 +74,7 @@ def _what_make_would_run():
     """
     make = shutil.which("make")
     assert make, "make is how these gates run; the comparison needs it"
-    printed = subprocess.run([make, "-n", "check"], cwd=str(ROOT), text=True,
+    printed = subprocess.run([make, "-n", "check"], cwd=str(where), text=True,
                              capture_output=True, check=True).stdout
     out = []
     for line in printed.splitlines():
@@ -65,7 +84,8 @@ def _what_make_would_run():
         # Drop the interpreter the way `_normalise` drops `$(PYTHON)`: what is
         # being compared is the gate, not how python is spelled.
         out.append(_normalise(command.split(None, 1)[1] if " " in command else command))
-    return out
+    built = _prerequisite_builds()
+    return [command for command in out if command not in built]
 
 
 #: Recipe prefixes and directives that keep a command running while stopping it
@@ -312,3 +332,22 @@ def test_every_tool_ci_runs_is_run_locally_or_says_why_not():
     stale = sorted(name for name in CI_ONLY if name in in_make or name not in in_ci)
     assert stale == [], (
         "these are listed as CI-only and are not: %s" % stale)
+
+
+def test_what_make_runs_does_not_depend_on_what_has_already_been_built(tmp_path):
+    """Asked in a tree where nothing has been built yet, and in this one.
+
+    `make -n` reports the recipes make would run, and make skips a recipe
+    whose target file is already there. Two of them build fixtures, so a
+    working tree that has run `make tools` once gets a shorter answer than a
+    fresh checkout of the same commit -- which is what CI is. The comparison
+    above went green here and red there for ten pushes on that difference
+    alone, and nothing in the suite could see it, because every check ran in
+    the tree that had the files.
+
+    A Makefile on its own in an empty directory is the fresh checkout. Nothing
+    is executed, so nothing else has to be there.
+    """
+    (tmp_path / "Makefile").write_text(MAKEFILE, "utf-8")
+    assert sorted(_what_make_would_run(tmp_path)) == sorted(_what_make_would_run()), \
+        "make -n answers differently in a tree where nothing has been built"

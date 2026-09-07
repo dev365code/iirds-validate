@@ -152,7 +152,7 @@ CHECK_TARGETS = ("lint", "generated", "corpus", "versions", "requirements",
 #: second `pytest -q` kept the number and removed the reason this Makefile
 #: has a `lint` target at all.
 CHECK_COMMANDS = (
-    "ruff check .",
+    "ruff check --no-cache .",
     "tools/propose_class_rules.py --check",
     "tools/gen_door.py --check",
     "tools/vendor_corpus.py --check",
@@ -352,3 +352,22 @@ def test_what_make_runs_does_not_depend_on_what_has_already_been_built(tmp_path)
     (tmp_path / "Makefile").write_text(MAKEFILE, "utf-8")
     assert sorted(_what_make_would_run(tmp_path)) == sorted(_what_make_would_run()), \
         "make -n answers differently in a tree where nothing has been built"
+
+
+def test_the_lint_gate_does_not_answer_from_a_cache():
+    """`ruff` keeps a verdict per file and gives it back rather than looking
+    again. In a sibling project a move of nineteen files left it answering
+    about the tree that used to be there -- the local gate green, and CI,
+    which starts with no cache, reporting eighty-four. What a tool said and
+    what it checked are two different things, and only one of them is a gate.
+
+    Both sides are asserted, because the comparison above holds them to each
+    other and passes when both are wrong together; and the fix target too,
+    since a repair applied from a cached reading edits files nobody looked at.
+    """
+    assert "ruff check --no-cache ." in _normalise(MAKEFILE), \
+        "make lint reads ruff's cache"
+    assert "ruff check --no-cache ." in _normalise(WORKFLOW), \
+        "the CI lint row reads ruff's cache"
+    assert "ruff check --no-cache --fix ." in _normalise(MAKEFILE), \
+        "make fix repairs from a cached reading"

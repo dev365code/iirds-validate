@@ -38,6 +38,14 @@ happens when the module is missing, which is the thing this test exists to
 require. `tools/build_zipapp.py` falls back from `packaging` to pip's
 vendored copy that way, and demanding that `pip` be declared would put a
 dependency in `pyproject.toml` that this project does not have.
+
+Three axes are pinned below and the list is not known to be complete. Each
+was found by a machine that is not this one: `site-packages` inside the
+standard library by the interpreter here, the extension modules outside it
+and the prefix listed as an install directory by a Windows row in CI. A case
+built rather than looked up defends the axis it names, on every machine, and
+says nothing about the axis nobody has met yet -- which is what the rows this
+project cannot run are for.
 """
 from __future__ import annotations
 
@@ -131,14 +139,29 @@ def _is_installed(path):
     return any(marker in path.split(os.sep) for marker in INSTALL_MARKERS)
 
 
-def _is_standard_library(path):
-    if path == "built-in":
-        return True
+def kind_of(origin):
+    """Where a module loads from: "installed", "stdlib" or "repository".
+
+    One function, one path in, one word out, and the order of the questions
+    visible in one place -- which matters here more than usual, because the
+    order *is* the answer. Ask the standard library first and every installed
+    distribution under its directory becomes standard library; ask the install
+    directories first and, where one of them is the interpreter's own prefix,
+    the whole standard library becomes installed. Both of those happened.
+
+    A case for this needs a path and nothing else, so it can be written for a
+    machine that is not this one.
+    """
+    if origin in (None, "built-in", "frozen"):
+        return "stdlib"
+    path = _norm(origin)
     if _is_installed(path):
-        return False
-    path = _norm(path)
-    return (path.startswith(BASE_PREFIX + os.sep)
-            or path.startswith(STDLIB + os.sep))
+        return "installed"
+    if path.startswith(INSIDE + os.sep):
+        return "repository"
+    if path.startswith(BASE_PREFIX + os.sep) or path.startswith(STDLIB + os.sep):
+        return "stdlib"
+    return "installed"          # somewhere else entirely: not shipped, not ours
 
 
 def _declared():
@@ -211,7 +234,13 @@ def _optional_imports(tree):
 
 
 def _imported_names():
-    """Every module name imported by the suite and the tools, with a witness."""
+    """Every module name imported by the suite and the tools, with every file
+    that imports it.
+
+    Every file, not the first one found: a name reported with one witness
+    reads as one place to fix, and the person fixing it finds two more after
+    the first. What is wrong is each import, so each is named.
+    """
     found = {}
     for where in SEARCHED:
         for path in sorted((ROOT / where).rglob("*.py")):
@@ -228,8 +257,8 @@ def _imported_names():
                     continue
                 for name in names:
                     if name:
-                        found.setdefault(name, str(path.relative_to(ROOT)))
-    return found
+                        found.setdefault(name, []).append(str(path.relative_to(ROOT)))
+    return {name: sorted(set(where)) for name, where in found.items()}
 
 
 def _where_it_loads_from(name):
@@ -279,16 +308,15 @@ def test_every_third_party_import_is_declared():
     declared = _declared()
     assert declared, "pyproject.toml declares nothing; the comparison has no right-hand side"
     undeclared = []
-    for name, witness in sorted(_imported_names().items()):
+    for name, sites in sorted(_imported_names().items()):
         loaded = _where_it_loads_from(name)
         if loaded is None:
             continue          # not importable here: a different question
-        if _is_standard_library(loaded):
-            continue
-        if loaded.startswith(INSIDE + os.sep):
+        if kind_of(loaded) in ("stdlib", "repository"):
             continue
         if _owning_distribution(loaded, declared) is None:
-            undeclared.append("%s (imported by %s, loaded from %s)" % (name, witness, loaded))
+            for site in sites:
+                undeclared.append("%s in %s (loaded from %s)" % (name, site, loaded))
     assert not undeclared, (
         "imported and installed here, declared nowhere:\n  " + "\n  ".join(undeclared))
 
@@ -298,6 +326,10 @@ def test_the_search_is_looking_at_the_files_it_says_it_is():
     found = _imported_names()
     assert len(found) > 30, sorted(found)
     assert "rdflib" in found and "pytest" in found, sorted(found)
+    #: And every name carries at least one place, because a name with none
+    #: would be dropped from the report without being decided about.
+    assert all(found[name] for name in found), sorted(found)
+    assert len(found["pytest"]) > 1, found["pytest"]
 
 
 def test_an_optional_import_is_not_counted():
@@ -314,8 +346,8 @@ def test_the_standard_library_is_actually_being_recognised():
     no, as third-party, and then failing; or, with the test written the other
     way round, by classifying everything as fine. Named here so the mistake
     cannot be silent."""
-    assert _is_standard_library(_where_it_loads_from("json"))
-    assert _is_standard_library(_where_it_loads_from("sys"))
+    assert kind_of(_where_it_loads_from("json")) == "stdlib"
+    assert kind_of(_where_it_loads_from("sys")) == "stdlib"
 
 
 def test_a_package_installed_inside_the_standard_library_is_not_the_standard_library():
@@ -340,10 +372,9 @@ def test_a_package_installed_inside_the_standard_library_is_not_the_standard_lib
     """
     for inside in (os.path.join(STDLIB, "site-packages", "somepkg", "__init__.py"),
                    os.path.join(STDLIB, "dist-packages", "somepkg", "__init__.py")):
-        assert _is_installed(inside), inside
-        assert not _is_standard_library(inside), inside
-    assert _is_standard_library(os.path.join(STDLIB, "json", "__init__.py"))
-    assert _is_standard_library("built-in")
+        assert kind_of(inside) == "installed", inside
+    assert kind_of(os.path.join(STDLIB, "json", "__init__.py")) == "stdlib"
+    assert kind_of("built-in") == "stdlib"
 
 
 def test_the_standard_library_reaches_outside_its_own_directory():
@@ -360,8 +391,7 @@ def test_the_standard_library_reaches_outside_its_own_directory():
     with no `DLLs` directory the case still asks the question it is here for.
     """
     shipped = os.path.join(BASE_PREFIX, "DLLs", "unicodedata.pyd")
-    assert not _is_installed(shipped), shipped
-    assert _is_standard_library(shipped), shipped
+    assert kind_of(shipped) == "stdlib", shipped
 
 
 def test_the_search_finds_more_than_one_place_to_install_into():

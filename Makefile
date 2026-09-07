@@ -56,11 +56,15 @@ check: lint generated corpus versions requirements shapes test exercised tools
 test:
 	$(PYTHON) -m pytest -q
 
+# --no-cache because ruff answers from a cache keyed on the files it saw last.
+# In a sibling project a move of nineteen files left it reporting the tree that
+# used to be there: the local gate was green and CI, which starts with no cache,
+# found eighty-four. What a tool said and what it checked are two things.
 lint:
-	$(PYTHON) -m ruff check .
+	$(PYTHON) -m ruff check --no-cache .
 
 fix:
-	$(PYTHON) -m ruff check --fix .
+	$(PYTHON) -m ruff check --no-cache --fix .
 
 # src/iirds_validate/rules/schema_tables.py is written by this script from the
 # bundled ontologies, and editing it by hand is how it silently stops matching

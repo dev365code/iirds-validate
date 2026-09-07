@@ -6,6 +6,22 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The lint gate could answer from a cache, and the import gate now reports
+every place rather than the first.** `ruff` keeps a verdict per file and gives
+it back rather than looking again; after a move of nineteen files in a sibling
+project it answered about the tree that used to be there, green locally and
+eighty-four findings in CI, which starts with no cache. Both `make lint` and
+the CI row pass `--no-cache` now, and a test asserts it on both sides — the
+comparison between them passes when they are wrong together.
+
+The check that every third-party import is a declared one is one function of
+one path now, so the order of its questions is in one place, which is where
+its two mistakes were. It names every file that imports an undeclared module
+rather than the first one found. Three axes are pinned by cases built rather
+than looked up, and the file says the list is not known to be complete: two of
+the three were found by a Windows row that this project's own machine cannot
+run.
+
 **The front page's picture is now drawn from the checker's own output, and the
 generator that draws it is checked.** The caption said "real output"; the file
 that produced it held a hand-written transcript, and the transcript had said

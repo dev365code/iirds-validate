@@ -3,12 +3,12 @@
   "branch": 1,
   "finding": 1,
   "other": 0,
-  "silent": 12
+  "silent": 11
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
   "container.py": "e853f395a12807d057d2ff01d40a4a64d05a457bc3c176973ef5177c80ba4992",
-  "content.py": "7775d9365b1f8a0afa691c69b99b37a5f5d581474bab88ec4a324fc014b645e7",
+  "content.py": "626b522f9b901bc832437c87f911b68aa338e46c4c50a44fedf6b29206ca68a5",
   "handover.py": "9d64210f803472e30b9f838fdef150d9d1f8db2fb2ab38b9a08a148f8fbbdcd9",
   "lint.py": "0dbe29fea7522e2957156b32f4013eb62f280f28b55bccf9ba4b1d92f9e5d216",
   "requirements.py": "4bcf2f43f91675eef1c28327e333b90780dfa08713d089f9ce02d4075d983684",
@@ -28,9 +28,6 @@
    "l15_name_from_a_later_edition :: return": "silent",
    "l5_unmapped_custom_classes :: continue [1]": "silent",
    "l6_unlabelled_concepts :: continue [2]": "silent"
-  },
-  "requirements.py": {
-   "_side_ontologies :: continue # unreadable: not a statement about iiRDS": "silent"
   },
   "schema.py": {
    "m16_3_event_extension_is_a_class :: continue": "silent"

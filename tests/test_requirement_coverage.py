@@ -91,7 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 194, len(pairs)
+    assert len(pairs) == 195, len(pairs)
     assert len(asserted) == 89, sorted(asserted)
 
     # It used to reach three, and reaches most of appendix A now: those rows
@@ -111,7 +111,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 170
+    assert len(COVERED) == 171
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 
@@ -480,3 +480,60 @@ def test_the_report_prints_what_the_tables_hold():
     assert "%d more are the word inside a vocabulary" % len(DEFINES_A_CONCEPT) in printed
     for forbidden in ("tekom", "effectively complete", "confirmed unreachable"):
         assert forbidden not in printed, forbidden
+
+
+def _rows_the_index_cannot_tell_apart():
+    """Groups of absolute obligations identical in every field but the id.
+
+    Not duplicates, which is what they were taken for first. Section 8.3.2
+    states the same sentence once for the package's product variant and once
+    for the document's, and again inside each of two identity branches; and a
+    sentence carrying two keywords becomes two rows with the whole sentence
+    written into both. Different obligations, recorded identically -- the
+    document distinguishes them and the index does not.
+    """
+    groups = {}
+    for row in INDEX["requirements"]:
+        if not row["absolute"]:
+            continue
+        key = tuple(sorted((field, json.dumps(value, sort_keys=True))
+                           for field, value in row.items() if field != "id"))
+        groups.setdefault(key, []).append(row["id"])
+    return [ids for ids in groups.values() if len(ids) > 1]
+
+
+def test_rows_the_index_cannot_tell_apart_are_claimed_alike():
+    """Either both are covered or neither is, because nothing recorded here
+    can justify treating them differently.
+
+    This does not decide which answer is right, and it is not a claim that
+    the rows mean the same thing -- they usually do not. It forbids the one
+    state the index cannot account for: a rule claims one row and the row
+    beside it, indistinguishable in every field, is counted as uncovered.
+    B8 was in that state, checking both clauses of its sentence and claiming
+    one of them, so an obligation this project enforces was published as one
+    it does not.
+
+    What this cannot see, stated here so the gate is not read as more than it
+    is: whether a claim on one of two identical rows is *earned*. The
+    criterion judges a claim against the obligation's sentence, and these
+    rows share a sentence, so it returns the same answer for both. Deciding
+    that needs the index to record what the document distinguishes -- the
+    clause a keyword sits in, and the list a repeated block belongs to --
+    which is its own piece of work and not this one.
+    """
+    uneven = []
+    for ids in _rows_the_index_cannot_tell_apart():
+        claimed = sorted(rid for rid in ids if rid in COVERED)
+        if claimed and len(claimed) != len(ids):
+            uneven.append({"claimed": claimed,
+                           "identical but not claimed": sorted(set(ids) - set(claimed))})
+    assert not uneven, uneven
+
+
+def test_the_index_still_holds_rows_it_cannot_tell_apart():
+    """The gate above passes if the grouping finds nothing, and the grouping
+    is over a file this project generates. Nine groups today; if that becomes
+    zero it is because the index learned to tell them apart, and this test
+    should be read again rather than deleted."""
+    assert len(_rows_the_index_cannot_tell_apart()) == 9

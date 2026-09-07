@@ -6,6 +6,22 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**An obligation this tool enforces was published as one it does not (B8).**
+Appendix B.6 says of the safety alert symbol: "The img element MUST be a child
+of the signal word panel. Only one safety alert symbol MUST be included." Two
+obligations in one sentence, and the requirement index makes a row of each with
+the whole sentence written into both — so the two rows are identical in every
+field it records. B8 enforces both, with a case for each, and claimed one of
+them.
+
+Beside it, a gate for the state that made this invisible: rows the index
+cannot tell apart must be claimed alike. It does not decide which answer is
+right, and it does not say the rows mean the same thing — they usually do not,
+and §8.3.2 states one sentence for the package's product variant and again for
+the document's. It forbids the one arrangement nothing recorded can account
+for, which is a rule claiming one row while the row beside it, identical in
+every field, is counted as uncovered.
+
 **An import that worked because the machine happened to have the package.**
 A test imported pyparsing to name its version in a skip message. Nothing here
 depends on pyparsing; rdflib does, and it was present because rdflib had
@@ -292,7 +308,7 @@ single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-**Coverage of the standard is 170 of 280, of which 135 are held by a package.**
+**Coverage of the standard is 171 of 280, of which 136 are held by a package.**
 Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a

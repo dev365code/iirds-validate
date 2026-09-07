@@ -408,7 +408,9 @@ def b7_data_role_values(ctx):
                                 % (value, expected, _local(element.tag)), subject=name)
 
 
-@rule("B8", covers=("b-6-additional-semantic-tagging-of-content#6",), kind="content", prio="MUST", versions=(), variants=(),
+@rule("B8", covers=("b-6-additional-semantic-tagging-of-content#6",
+                    "b-6-additional-semantic-tagging-of-content#7"),
+      kind="content", prio="MUST", versions=(), variants=(),
       title="a safety alert symbol must sit in the signal word panel, and only one",
        fix="Move the img so it is a direct child of the signal word panel, and leave one per hazard statement. A symbol outside the panel renders as a picture with no warning attached to it.")
 def b8_safety_alert_symbol(ctx):
@@ -417,6 +419,14 @@ def b8_safety_alert_symbol(ctx):
 
     A hazard statement whose symbol has drifted out of its panel renders as a
     picture with no warning attached to it.
+
+    Two obligations in one sentence, and the index makes a row of each with
+    the whole sentence written into both, so the two rows are identical.
+    This rule enforces both -- a symbol outside the panel and a second symbol
+    inside one are separate findings, and there is a case for each -- and it
+    claimed one of them, so an obligation the tool does enforce was published
+    as one it does not. C6 covers the same shape one section over and claims
+    both halves.
     """
     for name, root in _walk(ctx):
         parents = {child: parent for parent in root.iter() for child in parent}

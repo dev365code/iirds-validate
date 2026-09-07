@@ -732,6 +732,12 @@ NAMED_CASES = {
         "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
     "b-6-additional-semantic-tagging-of-content#6":
         "test_appendix_b_claims:test_every_way_of_breaking_an_appendix_b_sentence_is_reported",
+    # The sentence's second obligation, and the second row the index makes of
+    # it. The named test breaches each limb on its own -- a symbol outside the
+    # panel, and two inside one panel -- so the claim on the "only one" half
+    # stands on a case of its own rather than on the other half's.
+    "b-6-additional-semantic-tagging-of-content#7":
+        "test_content_hostile:test_hazard_symbols_are_counted_per_statement_not_per_file",
     "x6-8-1-complex-identity#2": "test_remaining_rules_fire:test_the_non_empty_string_sentence_is_covered_in_every_limb",
     "x6-8-4-external-classification#4": "test_remaining_rules_fire:test_the_non_empty_string_sentence_is_covered_in_every_limb",
     "x6-2-information-units#5":
@@ -875,7 +881,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 170, len(CLAIMED)
+    assert len(CLAIMED) == 171, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

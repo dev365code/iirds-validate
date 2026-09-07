@@ -10,6 +10,7 @@ nothing, the broken fixture reports M11.
 """
 from __future__ import annotations
 
+import importlib.metadata
 import json
 from pathlib import Path
 
@@ -183,17 +184,31 @@ def _sparql_parser_works() -> bool:
     return True
 
 
+def _pyparsing_version() -> str:
+    """Which pyparsing, for the message that says the parser is the problem.
+
+    Asked of the installed distribution rather than by importing it. This
+    project depends on rdflib; pyparsing is what rdflib's SPARQL parser is
+    built on, and importing it here would be a third-party dependency no file
+    in this repository declares -- working on every machine that happens to
+    have it and on no other.
+    """
+    try:
+        return importlib.metadata.version("pyparsing")
+    except Exception:
+        return "unknown"
+
+
 def test_every_sparql_select_is_valid_sparql():
     """Syntax-checked with rdflib alone, so the guard runs on every CI row,
     pyshacl present or not."""
-    import pyparsing
     import rdflib
     from rdflib.plugins.sparql import prepareQuery
 
     if not _sparql_parser_works():
         pytest.skip("rdflib %s cannot parse a trivial SELECT with pyparsing %s; the "
                     "shapes are syntax-checked where the parser works"
-                    % (rdflib.__version__, pyparsing.__version__))
+                    % (rdflib.__version__, _pyparsing_version()))
 
     selects = list(SHAPES.objects(None, SH.select))
     assert len(selects) >= 14        # 13 rules; M3 carries two constraints

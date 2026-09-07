@@ -6,6 +6,18 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**An import that worked because the machine happened to have the package.**
+A test imported pyparsing to name its version in a skip message. Nothing here
+depends on pyparsing; rdflib does, and it was present because rdflib had
+brought it — so the test worked on every machine that happened to have it and
+would fail, with an ImportError in a file about SHACL shapes, on one that did
+not. The version now comes from the installed distribution's metadata.
+
+Every import in `tests/` and `tools/` is now held to the same question: does
+this name load from the standard library, from this repository, or from a
+distribution `pyproject.toml` names? Asked of the interpreter, because a list
+of names is a second place to forget.
+
 **A corrupt archive said which error, not which file (C1).** The finding read
 `ZIP archive is corrupt: Error -3 while decompressing data` and named no entry,
 on an archive of any size. `Package.testzip` is documented as returning the

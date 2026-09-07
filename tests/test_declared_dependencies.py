@@ -17,13 +17,20 @@ names.
 3.10; on 3.9, which this project supports and CI runs, it does not exist and
 the check would filter nothing while appearing to work.
 
-Neither does "is it under the standard library's directory", which is what
-this asked first and is not the same question. `site-packages` can sit
-*inside* that directory -- it does on the interpreter this was written on,
-and on most distribution-packaged Pythons -- so `pip`, `setuptools` and
-`pkg_resources` all answered "standard library" and walked through the gate
-built to catch exactly them. The install directories are asked for by name,
-from `sysconfig` and from `site`, and they are asked first.
+Neither does "is it under the standard library's directory", and that was
+wrong here twice, in both directions. `site-packages` can sit *inside* that
+directory -- it does on the interpreter this was written on, and on most
+distribution-packaged Pythons -- so `pip`, `setuptools` and `pkg_resources`
+all answered "standard library" and walked through the gate built to catch
+exactly them. And the standard library reaches outside it: on Windows
+`unicodedata` is an extension module in the `DLLs` directory, beside
+`Lib` rather than under it, and the repair for the first mistake reported
+it as an undeclared
+dependency of this project.
+
+So the install directories are asked for by name, from `sysconfig` and from
+`site`, and asked first; and what is left is the standard library if it comes
+from anywhere under the interpreter itself.
 
 An import inside `try:` with a handler that catches its absence is not in
 scope, and neither is one inside that handler: both have already said what
@@ -40,12 +47,21 @@ import importlib.util
 import os
 import re
 import site
+import sys
 import sysconfig
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SEARCHED = ("tests", "tools")
 STDLIB = os.path.realpath(sysconfig.get_paths()["stdlib"])
+#: Where the interpreter itself lives. The standard library is not one
+#: directory: on Windows `unicodedata` is an extension module in the `DLLs`
+#: directory, beside `Lib` rather than under it, and asking only about `stdlib` put it
+#: outside the standard library and into the report. Everything the
+#: interpreter ships sits under this, `DLLs`, `lib-dynload` and `Lib` alike --
+#: and so does `site-packages`, which is why the install directories are
+#: asked about first.
+BASE_PREFIX = os.path.realpath(sys.base_prefix)
 INSIDE = os.path.realpath(ROOT)
 
 #: A path component that means "something was installed here". Belt to the
@@ -88,8 +104,12 @@ def _is_installed(path):
 
 
 def _is_standard_library(path):
-    return path == "built-in" or (not _is_installed(path)
-                                  and path.startswith(STDLIB + os.sep))
+    if path == "built-in":
+        return True
+    if _is_installed(path):
+        return False
+    return (path.startswith(BASE_PREFIX + os.sep)
+            or path.startswith(STDLIB + os.sep))
 
 
 def _declared():
@@ -295,6 +315,24 @@ def test_a_package_installed_inside_the_standard_library_is_not_the_standard_lib
         assert not _is_standard_library(inside), inside
     assert _is_standard_library(os.path.join(STDLIB, "json", "__init__.py"))
     assert _is_standard_library("built-in")
+
+
+def test_the_standard_library_reaches_outside_its_own_directory():
+    """The other direction, and the one the repair above introduced.
+
+    `sysconfig` names one directory and the standard library occupies more
+    than one: on Windows the extension modules are in the `DLLs` directory, a
+    sibling of `Lib`, so `unicodedata` -- imported by a test here --
+    loaded from outside everything this knew about and was reported as a
+    dependency nobody had declared. Every machine running this suite on
+    Windows said so; none of the others could.
+
+    Built rather than looked up, for the same reason as above: on a machine
+    with no `DLLs` directory the case still asks the question it is here for.
+    """
+    shipped = os.path.join(BASE_PREFIX, "DLLs", "unicodedata.pyd")
+    assert not _is_installed(shipped), shipped
+    assert _is_standard_library(shipped), shipped
 
 
 def test_the_search_finds_more_than_one_place_to_install_into():

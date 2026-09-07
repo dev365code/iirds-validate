@@ -90,6 +90,7 @@ class Requirements(HTMLParser):
         self._block = None
         self._block_text = []
         self._block_hits = []
+        self._blocks_seen = 0
         self._rfc_depth = 0
         self._pending = None
         self._row = []
@@ -161,6 +162,15 @@ class Requirements(HTMLParser):
     def _flush(self):
         text = _clean("".join(self._block_text))
         cell = self._block in ("td", "th")
+        #: Which block of the document this is. Section 8.3.2 states one
+        #: sentence for the package's product variant and states it again for
+        #: the document's, and again inside each of two identity branches, so
+        #: four rows carried the same sentence, the same section and the same
+        #: context and nothing recorded could tell them apart -- although four
+        #: different rules check the four positions. The document distinguishes
+        #: them by where they are, so that is what is written down. A count of
+        #: blocks, not a reading of them.
+        self._blocks_seen += 1
 
         # A cardinality table states its requirement across a row: the label is
         # in one cell and the obligation in the next, so a cell on its own reads
@@ -192,6 +202,11 @@ class Requirements(HTMLParser):
                 subject = self.subject[1] or row_subject
                 self.hits.append({
                     "keyword": "0..1",
+                    #: A cardinality is the cell, not a word inside a sentence,
+                    #: so there is no keyword to place; the block still says
+                    #: which row of which table this is.
+                    "keyword_at": match.start(),
+                    "block_at": self._blocks_seen,
                     "absolute": True,
                     "stated_as": "cardinality",
                     "section": self.section[0],
@@ -210,6 +225,14 @@ class Requirements(HTMLParser):
         for offset, keyword in self._block_hits:
             self.hits.append({
                 "keyword": keyword,
+                #: Where in the block this keyword sits. A sentence carrying
+                #: two of them -- "MUST be the first entry ... and MUST be
+                #: stored uncompressed" -- becomes two rows, and both rows
+                #: record the whole sentence, so this is what says which of
+                #: the two obligations each row is. A position, not a parse of
+                #: the clause: the sentence is kept whole beside it.
+                "keyword_at": offset,
+                "block_at": self._blocks_seen,
                 "absolute": keyword in ABSOLUTE,
                 "stated_as": "rfc2119",
                 "section": self.section[0],

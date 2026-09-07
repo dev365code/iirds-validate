@@ -73,6 +73,8 @@
  "requirements": [
   {
    "keyword": "MAY",
+   "keyword_at": 13,
+   "block_at": 134,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -89,6 +91,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 18,
+   "block_at": 134,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -105,6 +109,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 24,
+   "block_at": 134,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -121,6 +127,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 34,
+   "block_at": 134,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -137,6 +145,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 50,
+   "block_at": 134,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -153,6 +163,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 63,
+   "block_at": 134,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -169,6 +181,8 @@
   },
   {
    "keyword": "SHALL",
+   "keyword_at": 77,
+   "block_at": 134,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x1-conformance",
@@ -185,6 +199,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 157,
+   "block_at": 190,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-iirds-package-and-container",
@@ -201,6 +217,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 196,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-iirds-container",
@@ -217,6 +235,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 197,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-1-metadata-location-and-rdf-serializations",
@@ -233,6 +253,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 23,
+   "block_at": 198,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-1-metadata-location-and-rdf-serializations",
@@ -249,6 +271,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 74,
+   "block_at": 199,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-1-metadata-location-and-rdf-serializations",
@@ -265,6 +289,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 95,
+   "block_at": 200,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-1-metadata-location-and-rdf-serializations",
@@ -281,6 +307,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 6,
+   "block_at": 201,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x5-1-1-metadata-location-and-rdf-serializations",
@@ -297,6 +325,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 89,
+   "block_at": 202,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-2-content-location",
@@ -313,6 +343,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 172,
+   "block_at": 202,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-2-content-location",
@@ -329,6 +361,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 30,
+   "block_at": 203,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x5-1-2-content-location",
@@ -345,6 +379,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 157,
+   "block_at": 203,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-2-content-location",
@@ -361,6 +397,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 63,
+   "block_at": 205,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x5-1-3-names-of-files-and-directories",
@@ -377,6 +415,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 34,
+   "block_at": 210,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-3-names-of-files-and-directories",
@@ -393,6 +433,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 214,
+   "block_at": 210,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-1-3-names-of-files-and-directories",
@@ -409,6 +451,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 239,
+   "block_at": 212,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -425,6 +469,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 313,
+   "block_at": 212,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -441,6 +487,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 86,
+   "block_at": 215,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -457,6 +505,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 125,
+   "block_at": 215,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -473,6 +523,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 9,
+   "block_at": 216,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -489,6 +541,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 56,
+   "block_at": 216,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-iirds-zip-archive",
@@ -505,6 +559,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 129,
+   "block_at": 219,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-2-content-encoding",
@@ -521,6 +577,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 22,
+   "block_at": 220,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-2-2-content-encoding",
@@ -537,6 +595,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 15,
+   "block_at": 221,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x5-3-nested-iirds-packages",
@@ -553,6 +613,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 23,
+   "block_at": 222,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-3-nested-iirds-packages",
@@ -569,6 +631,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 134,
+   "block_at": 222,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x5-3-nested-iirds-packages",
@@ -585,6 +649,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 238,
+   "block_at": 231,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -601,6 +667,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 296,
+   "block_at": 231,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -617,6 +685,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 377,
+   "block_at": 231,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -633,6 +703,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 398,
+   "block_at": 231,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -649,6 +721,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 140,
+   "block_at": 236,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -665,6 +739,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 234,
+   "block_at": 236,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -681,6 +757,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 384,
+   "block_at": 236,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -697,6 +775,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 224,
+   "block_at": 237,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -713,6 +793,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 48,
+   "block_at": 241,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -729,6 +811,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 171,
+   "block_at": 241,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-information-units",
@@ -745,6 +829,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 6,
+   "block_at": 245,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-1-informationunit-identifier",
@@ -761,6 +847,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 73,
+   "block_at": 245,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-1-informationunit-identifier",
@@ -777,6 +865,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 18,
+   "block_at": 250,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-2-information-objects",
@@ -793,6 +883,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 112,
+   "block_at": 250,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-2-information-objects",
@@ -809,6 +901,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 22,
+   "block_at": 251,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-2-2-information-objects",
@@ -825,6 +919,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 52,
+   "block_at": 251,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-2-2-information-objects",
@@ -841,6 +937,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 165,
+   "block_at": 254,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -857,6 +955,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 314,
+   "block_at": 254,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -873,6 +973,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 117,
+   "block_at": 255,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -889,6 +991,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 184,
+   "block_at": 255,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -905,6 +1009,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 261,
+   "block_at": 255,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -921,6 +1027,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 20,
+   "block_at": 256,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -937,6 +1045,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 221,
+   "block_at": 256,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-content-references-of-information-units",
@@ -953,6 +1063,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 146,
+   "block_at": 258,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-reference-part-of-file-by-selector",
@@ -969,6 +1081,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 187,
+   "block_at": 258,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-reference-part-of-file-by-selector",
@@ -985,6 +1099,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 45,
+   "block_at": 261,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-reference-part-of-file-by-selector",
@@ -1001,6 +1117,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 102,
+   "block_at": 261,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-reference-part-of-file-by-selector",
@@ -1017,6 +1135,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 239,
+   "block_at": 261,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-reference-part-of-file-by-selector",
@@ -1033,6 +1153,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 104,
+   "block_at": 265,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-1-1-reference-part-with-single-identifier",
@@ -1049,6 +1171,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 104,
+   "block_at": 267,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-1-2-reference-part-with-start-and-end-identifier",
@@ -1065,6 +1189,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 47,
+   "block_at": 271,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-2-media-files",
@@ -1081,6 +1207,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 56,
+   "block_at": 272,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1097,6 +1225,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 148,
+   "block_at": 272,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1113,6 +1243,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 110,
+   "block_at": 275,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1129,6 +1261,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 274,
+   "block_at": 275,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1145,6 +1279,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 29,
+   "block_at": 276,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1161,6 +1297,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 108,
+   "block_at": 276,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-3-3-metadata-of-nested-iirds-packages",
@@ -1177,6 +1315,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 148,
+   "block_at": 277,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-4-relations-of-informationunits",
@@ -1193,6 +1333,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 38,
+   "block_at": 285,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1209,6 +1351,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 224,
+   "block_at": 285,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1225,6 +1369,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 6,
+   "block_at": 286,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1241,6 +1387,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 54,
+   "block_at": 289,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1257,6 +1405,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 192,
+   "block_at": 289,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1273,6 +1423,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 56,
+   "block_at": 292,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-1-types-of-documents-and-topics",
@@ -1289,6 +1441,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 116,
+   "block_at": 295,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-5-2-information-subjects",
@@ -1305,6 +1459,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 116,
+   "block_at": 311,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-6-1-functional-metadata",
@@ -1321,6 +1477,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 96,
+   "block_at": 313,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-6-1-functional-metadata",
@@ -1337,6 +1495,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 131,
+   "block_at": 322,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-products-and-components-in-iirds",
@@ -1353,6 +1513,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 179,
+   "block_at": 323,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-products-and-components-in-iirds",
@@ -1369,6 +1531,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 17,
+   "block_at": 324,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-1-component-trees-in-the-package",
@@ -1385,6 +1549,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 195,
+   "block_at": 324,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-1-component-trees-in-the-package",
@@ -1401,6 +1567,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 63,
+   "block_at": 327,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1417,6 +1585,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 144,
+   "block_at": 327,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1433,6 +1603,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 242,
+   "block_at": 327,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1449,6 +1621,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 288,
+   "block_at": 327,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1465,6 +1639,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 17,
+   "block_at": 329,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1481,6 +1657,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 168,
+   "block_at": 329,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1497,6 +1675,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 38,
+   "block_at": 330,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1513,6 +1693,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 100,
+   "block_at": 332,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1529,6 +1711,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 26,
+   "block_at": 333,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1545,6 +1729,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 149,
+   "block_at": 333,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-2-external-product-ontology",
@@ -1561,6 +1747,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 28,
+   "block_at": 337,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-3-packages-related-to-component-trees",
@@ -1577,6 +1765,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 176,
+   "block_at": 337,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-3-packages-related-to-component-trees",
@@ -1593,6 +1783,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 234,
+   "block_at": 337,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-3-packages-related-to-component-trees",
@@ -1609,6 +1801,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 17,
+   "block_at": 339,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-3-packages-related-to-component-trees",
@@ -1625,6 +1819,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 66,
+   "block_at": 339,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-3-packages-related-to-component-trees",
@@ -1641,6 +1837,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 182,
+   "block_at": 341,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1657,6 +1855,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 97,
+   "block_at": 342,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1673,6 +1873,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 26,
+   "block_at": 343,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1689,6 +1891,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 155,
+   "block_at": 343,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1705,6 +1909,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 273,
+   "block_at": 343,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1721,6 +1927,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 393,
+   "block_at": 343,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-7-4-product-variants",
@@ -1737,6 +1945,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 168,
+   "block_at": 346,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-administrative-metadata",
@@ -1753,6 +1963,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 33,
+   "block_at": 347,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-administrative-metadata",
@@ -1769,6 +1981,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 229,
+   "block_at": 349,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1785,6 +1999,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 86,
+   "block_at": 351,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1801,6 +2017,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 171,
+   "block_at": 351,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1817,6 +2035,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 40,
+   "block_at": 352,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1833,6 +2053,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 70,
+   "block_at": 352,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1849,6 +2071,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 248,
+   "block_at": 352,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-1-complex-identity",
@@ -1865,6 +2089,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 25,
+   "block_at": 354,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-2-content-lifecycle-status",
@@ -1881,6 +2107,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 31,
+   "block_at": 355,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-2-content-lifecycle-status",
@@ -1897,6 +2125,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 156,
+   "block_at": 355,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-2-content-lifecycle-status",
@@ -1913,6 +2143,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 31,
+   "block_at": 356,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-2-content-lifecycle-status",
@@ -1929,6 +2161,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 15,
+   "block_at": 357,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-3-parties-and-roles",
@@ -1945,6 +2179,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 15,
+   "block_at": 358,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-3-parties-and-roles",
@@ -1961,6 +2197,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 40,
+   "block_at": 359,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-3-parties-and-roles",
@@ -1977,6 +2215,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 254,
+   "block_at": 361,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -1993,6 +2233,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 379,
+   "block_at": 361,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2009,6 +2251,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 510,
+   "block_at": 361,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2025,6 +2269,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 250,
+   "block_at": 363,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2041,6 +2287,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 367,
+   "block_at": 363,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2057,6 +2305,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 490,
+   "block_at": 363,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2073,6 +2323,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 27,
+   "block_at": 364,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2089,6 +2341,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 46,
+   "block_at": 365,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2105,6 +2359,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 76,
+   "block_at": 365,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2121,6 +2377,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 46,
+   "block_at": 366,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-8-4-external-classification",
@@ -2137,6 +2395,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 57,
+   "block_at": 370,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-1-directory-nodes",
@@ -2153,6 +2413,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 281,
+   "block_at": 370,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-9-1-directory-nodes",
@@ -2169,6 +2431,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 53,
+   "block_at": 371,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-1-directory-nodes",
@@ -2185,6 +2449,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 135,
+   "block_at": 373,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-1-directory-nodes",
@@ -2201,6 +2467,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 235,
+   "block_at": 373,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-1-directory-nodes",
@@ -2217,6 +2485,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 87,
+   "block_at": 376,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-2-hierarchical-navigation",
@@ -2233,6 +2503,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 240,
+   "block_at": 376,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-9-2-hierarchical-navigation",
@@ -2249,6 +2521,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 31,
+   "block_at": 389,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-10-1-multilingual-content",
@@ -2265,6 +2539,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 109,
+   "block_at": 389,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-10-1-multilingual-content",
@@ -2281,6 +2557,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 37,
+   "block_at": 391,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-10-2-translation",
@@ -2297,6 +2575,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 207,
+   "block_at": 391,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-10-2-translation",
@@ -2313,6 +2593,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 329,
+   "block_at": 393,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-11-1-disjointness",
@@ -2329,6 +2611,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 192,
+   "block_at": 396,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-11-2-property-cardinalities",
@@ -2345,6 +2629,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 399,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-12-rdf-serialization",
@@ -2361,6 +2647,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 149,
+   "block_at": 399,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x6-12-rdf-serialization",
@@ -2377,6 +2665,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 223,
+   "block_at": 399,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x6-12-rdf-serialization",
@@ -2393,6 +2683,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 33,
+   "block_at": 400,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-1-iirds-extension-scenarios",
@@ -2409,6 +2701,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 169,
+   "block_at": 402,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-1-iirds-extension-scenarios",
@@ -2425,6 +2719,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 53,
+   "block_at": 405,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-1-iirds-extension-scenarios",
@@ -2441,6 +2737,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 54,
+   "block_at": 406,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-1-iirds-extension-scenarios",
@@ -2457,6 +2755,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 141,
+   "block_at": 406,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-1-iirds-extension-scenarios",
@@ -2473,6 +2773,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 56,
+   "block_at": 413,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-proprietary-iirds-extensions",
@@ -2489,6 +2791,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 30,
+   "block_at": 414,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-3-proprietary-iirds-extensions",
@@ -2505,6 +2809,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 99,
+   "block_at": 418,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-proprietary-iirds-extensions",
@@ -2521,6 +2827,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 29,
+   "block_at": 420,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-3-proprietary-iirds-extensions",
@@ -2537,6 +2845,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 186,
+   "block_at": 420,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-proprietary-iirds-extensions",
@@ -2553,6 +2863,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 29,
+   "block_at": 422,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-1-adding-a-proprietary-instance",
@@ -2569,6 +2881,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 29,
+   "block_at": 423,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-2-adding-a-proprietary-class",
@@ -2585,6 +2899,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 29,
+   "block_at": 424,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-2-adding-a-proprietary-class",
@@ -2601,6 +2917,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 29,
+   "block_at": 425,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x7-3-3-adding-a-proprietary-property",
@@ -2617,6 +2935,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 122,
+   "block_at": 425,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x7-3-3-adding-a-proprietary-property",
@@ -2633,6 +2953,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 30,
+   "block_at": 426,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
@@ -2649,6 +2971,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 92,
+   "block_at": 430,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
@@ -2665,6 +2989,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 144,
+   "block_at": 430,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
@@ -2681,6 +3007,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 205,
+   "block_at": 430,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
@@ -2697,6 +3025,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 16,
+   "block_at": 438,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-1-2-self-contained-iirds-packages",
@@ -2713,6 +3043,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 102,
+   "block_at": 438,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-1-2-self-contained-iirds-packages",
@@ -2729,6 +3061,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 439,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-iirds-a",
@@ -2745,6 +3079,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 443,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-content-formats",
@@ -2761,6 +3097,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 27,
+   "block_at": 445,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-1-text-formats",
@@ -2777,6 +3115,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 79,
+   "block_at": 445,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-1-text-formats",
@@ -2793,6 +3133,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 27,
+   "block_at": 447,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-2-1-1-text-formats",
@@ -2809,6 +3151,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 104,
+   "block_at": 447,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-1-text-formats",
@@ -2825,6 +3169,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 149,
+   "block_at": 447,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-1-text-formats",
@@ -2841,6 +3187,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 16,
+   "block_at": 449,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2857,6 +3205,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 16,
+   "block_at": 454,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2873,6 +3223,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 137,
+   "block_at": 454,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2889,6 +3241,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 121,
+   "block_at": 456,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2905,6 +3259,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 49,
+   "block_at": 457,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2921,6 +3277,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 52,
+   "block_at": 458,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2937,6 +3295,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 39,
+   "block_at": 459,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-2-graphics-formats",
@@ -2953,6 +3313,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 14,
+   "block_at": 461,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-3-video-formats",
@@ -2969,6 +3331,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 160,
+   "block_at": 461,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-3-video-formats",
@@ -2985,6 +3349,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 14,
+   "block_at": 463,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-4-audio-formats",
@@ -3001,6 +3367,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 92,
+   "block_at": 463,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-2-1-4-audio-formats",
@@ -3017,6 +3385,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 464,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-iirds-h",
@@ -3033,6 +3403,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 470,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3049,6 +3421,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 136,
+   "block_at": 470,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3065,6 +3439,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 231,
+   "block_at": 470,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3081,6 +3457,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 17,
+   "block_at": 471,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3097,6 +3475,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 17,
+   "block_at": 477,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3113,6 +3493,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 115,
+   "block_at": 477,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-1-mandatory-content-list",
@@ -3129,6 +3511,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 34,
+   "block_at": 483,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-3-1-2-nesting-of-packages",
@@ -3145,6 +3529,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 138,
+   "block_at": 483,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-2-nesting-of-packages",
@@ -3161,6 +3547,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 26,
+   "block_at": 484,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-2-nesting-of-packages",
@@ -3177,6 +3565,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 53,
+   "block_at": 485,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-3-1-3-optional-checksums-for-packages",
@@ -3193,6 +3583,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 117,
+   "block_at": 485,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-3-1-3-optional-checksums-for-packages",
@@ -3209,6 +3601,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 143,
+   "block_at": 485,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-3-optional-checksums-for-packages",
@@ -3225,6 +3619,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 186,
+   "block_at": 485,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-1-3-optional-checksums-for-packages",
@@ -3241,6 +3637,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 110,
+   "block_at": 488,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3257,6 +3655,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 198,
+   "block_at": 488,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3273,6 +3673,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 25,
+   "block_at": 489,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3289,6 +3691,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 26,
+   "block_at": 490,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3305,6 +3709,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 114,
+   "block_at": 490,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3321,6 +3727,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 25,
+   "block_at": 491,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3337,6 +3745,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 110,
+   "block_at": 497,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3353,6 +3763,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 198,
+   "block_at": 497,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3369,6 +3781,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 25,
+   "block_at": 498,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3385,6 +3799,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 26,
+   "block_at": 499,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3401,6 +3817,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 114,
+   "block_at": 499,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3417,6 +3835,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 25,
+   "block_at": 500,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3433,6 +3853,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 117,
+   "block_at": 505,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-metadata-requirements",
@@ -3449,6 +3871,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 506,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3465,6 +3889,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 125,
+   "block_at": 506,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3481,6 +3907,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 261,
+   "block_at": 506,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3497,6 +3925,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 19,
+   "block_at": 507,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3513,6 +3943,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 80,
+   "block_at": 507,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3529,6 +3961,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 19,
+   "block_at": 508,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances",
@@ -3545,6 +3979,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 21,
+   "block_at": 509,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-2-multilingual-content",
@@ -3561,6 +3997,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 101,
+   "block_at": 509,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "x8-3-2-2-multilingual-content",
@@ -3577,6 +4015,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 512,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "iirds-h-content-formats",
@@ -3593,6 +4033,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 119,
+   "block_at": 512,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "iirds-h-content-formats",
@@ -3609,6 +4051,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 19,
+   "block_at": 516,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "x8-3-3-2-other-file-formats",
@@ -3625,6 +4069,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 563,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3641,6 +4087,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 580,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3657,6 +4105,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 582,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3673,6 +4123,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 584,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3689,6 +4141,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 601,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3705,6 +4159,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 618,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3721,6 +4177,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 11,
+   "block_at": 633,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3737,6 +4195,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 160,
+   "block_at": 633,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3753,6 +4213,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 635,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3769,6 +4231,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 643,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3785,6 +4249,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 660,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3801,6 +4267,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 677,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3817,6 +4285,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 694,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3833,6 +4303,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 696,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3849,6 +4321,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 698,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3865,6 +4339,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 700,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3881,6 +4357,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 706,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3897,6 +4375,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 708,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3913,6 +4393,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 725,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3929,6 +4411,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 742,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3945,6 +4429,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 759,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -3961,6 +4447,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 761,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3977,6 +4465,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 763,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -3993,6 +4483,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 765,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4009,6 +4501,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 767,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4025,6 +4519,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 784,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4041,6 +4537,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 801,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4057,6 +4555,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 805,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4073,6 +4573,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 837,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4089,6 +4591,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 852,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4105,6 +4609,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 869,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4121,6 +4627,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 871,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4137,6 +4645,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 873,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4153,6 +4663,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 71,
+   "block_at": 886,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4169,6 +4681,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 25,
+   "block_at": 888,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4185,6 +4699,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 890,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4201,6 +4717,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 894,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4217,6 +4735,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 913,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4233,6 +4753,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 930,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4249,6 +4771,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 947,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4265,6 +4789,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 962,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4281,6 +4807,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 977,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4297,6 +4825,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 20,
+   "block_at": 1007,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4313,6 +4843,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1009,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4329,6 +4861,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1030,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4345,6 +4879,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1032,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4361,6 +4897,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1034,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4377,6 +4915,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1051,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4393,6 +4933,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 81,
+   "block_at": 1087,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4409,6 +4951,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1089,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4425,6 +4969,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1108,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4441,6 +4987,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1125,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4457,6 +5005,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1142,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4473,6 +5023,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1144,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4489,6 +5041,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1146,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4505,6 +5059,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1150,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4521,6 +5077,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1154,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4537,6 +5095,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1158,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4553,6 +5113,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1180,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4569,6 +5131,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1184,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4585,6 +5149,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 17,
+   "block_at": 1221,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4601,6 +5167,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1223,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4617,6 +5185,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 46,
+   "block_at": 1238,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4633,6 +5203,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1240,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4649,6 +5221,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1272,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4665,6 +5239,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1274,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4681,6 +5257,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 35,
+   "block_at": 1291,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4697,6 +5275,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1293,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4713,6 +5293,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1295,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4729,6 +5311,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1297,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4745,6 +5329,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1314,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4761,6 +5347,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 15,
+   "block_at": 1327,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4777,6 +5365,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1331,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4793,6 +5383,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1348,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4809,6 +5401,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1365,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4825,6 +5419,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 60,
+   "block_at": 1380,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4841,6 +5437,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1384,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4857,6 +5455,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1401,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4873,6 +5473,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1418,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4889,6 +5491,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1435,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4905,6 +5509,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1452,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4921,6 +5527,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1458,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -4937,6 +5545,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1475,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4953,6 +5563,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1492,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4969,6 +5581,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1507,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -4985,6 +5599,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1524,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5001,6 +5617,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1539,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5017,6 +5635,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 1547,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-1-1-class-definitions",
@@ -5033,6 +5653,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1564,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5049,6 +5671,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1581,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5065,6 +5689,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1596,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5081,6 +5707,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 31,
+   "block_at": 1611,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5097,6 +5725,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1613,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5113,6 +5743,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1630,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5129,6 +5761,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 31,
+   "block_at": 1645,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5145,6 +5779,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 99,
+   "block_at": 1645,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5161,6 +5797,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1647,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5177,6 +5815,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1664,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5193,6 +5833,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1681,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5209,6 +5851,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1698,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5225,6 +5869,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 92,
+   "block_at": 1713,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5241,6 +5887,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1715,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5257,6 +5905,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1732,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5273,6 +5923,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1749,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5289,6 +5941,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 1766,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5305,6 +5959,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 23,
+   "block_at": 1779,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5321,6 +5977,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 1781,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-1-class-definitions",
@@ -5337,6 +5995,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 0,
+   "block_at": 1800,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-2-property-definitions",
@@ -5353,6 +6013,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 0,
+   "block_at": 1819,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-2-property-definitions",
@@ -5369,6 +6031,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 0,
+   "block_at": 2012,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-2-property-definitions",
@@ -5385,6 +6049,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 17,
+   "block_at": 2343,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-3-relations",
@@ -5401,6 +6067,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 17,
+   "block_at": 2581,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-3-relations",
@@ -5417,6 +6085,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 80,
+   "block_at": 3404,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5433,6 +6103,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 17,
+   "block_at": 3558,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5449,6 +6121,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 23,
+   "block_at": 3586,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5465,6 +6139,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 72,
+   "block_at": 3590,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5481,6 +6157,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 135,
+   "block_at": 3590,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5497,6 +6175,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 60,
+   "block_at": 3627,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5513,6 +6193,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 57,
+   "block_at": 3720,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5529,6 +6211,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 31,
+   "block_at": 3733,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5545,6 +6229,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 99,
+   "block_at": 3733,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5561,6 +6247,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 28,
+   "block_at": 3772,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5577,6 +6265,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 23,
+   "block_at": 3809,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5593,6 +6283,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 60,
+   "block_at": 3813,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5609,6 +6301,8 @@
   },
   {
    "keyword": "SHALL NOT",
+   "keyword_at": 109,
+   "block_at": 4271,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5625,6 +6319,8 @@
   },
   {
    "keyword": "SHALL",
+   "keyword_at": 119,
+   "block_at": 4341,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-1-4-object-definitions",
@@ -5641,6 +6337,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4502,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-2-1-class-definitions",
@@ -5657,6 +6355,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 20,
+   "block_at": 4680,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5673,6 +6373,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4682,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5689,6 +6391,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 15,
+   "block_at": 4697,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5705,6 +6409,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4699,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5721,6 +6427,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 11,
+   "block_at": 4727,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5737,6 +6445,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4729,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5753,6 +6463,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 31,
+   "block_at": 4742,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5769,6 +6481,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 19,
+   "block_at": 4744,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5785,6 +6499,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4746,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5801,6 +6517,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 31,
+   "block_at": 4759,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5817,6 +6535,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 20,
+   "block_at": 4761,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5833,6 +6553,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4763,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5849,6 +6571,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 38,
+   "block_at": 4776,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5865,6 +6589,8 @@
   },
   {
    "keyword": "OPTIONAL",
+   "keyword_at": 0,
+   "block_at": 4778,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5881,6 +6607,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 12,
+   "block_at": 4793,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5897,6 +6625,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 0,
+   "block_at": 4795,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-1-class-definitions",
@@ -5913,6 +6643,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 20,
+   "block_at": 4966,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -5929,6 +6661,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 141,
+   "block_at": 4998,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -5945,6 +6679,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 79,
+   "block_at": 5013,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -5961,6 +6697,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 174,
+   "block_at": 5013,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -5977,6 +6715,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 143,
+   "block_at": 5028,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -5993,6 +6733,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 43,
+   "block_at": 5045,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6009,6 +6751,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 197,
+   "block_at": 5060,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6025,6 +6769,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 46,
+   "block_at": 5112,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6041,6 +6787,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 56,
+   "block_at": 5138,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6057,6 +6805,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 47,
+   "block_at": 5151,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6073,6 +6823,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 41,
+   "block_at": 5164,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6089,6 +6841,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 100,
+   "block_at": 5177,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6105,6 +6859,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 0,
+   "block_at": 5179,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6121,6 +6877,8 @@
   },
   {
    "keyword": "REQUIRED",
+   "keyword_at": 44,
+   "block_at": 5192,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "a-3-4-object-definitions",
@@ -6137,6 +6895,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5438,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6153,6 +6913,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5442,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6169,6 +6931,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5458,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6185,6 +6949,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5462,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6201,6 +6967,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5466,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6217,6 +6985,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5470,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6233,6 +7003,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5482,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6249,6 +7021,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5486,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6265,6 +7039,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5490,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6281,6 +7057,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5494,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6297,6 +7075,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5498,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6313,6 +7093,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5502,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6329,6 +7111,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5510,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6345,6 +7129,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5514,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6361,6 +7147,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5518,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6377,6 +7165,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5526,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6393,6 +7183,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5542,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6409,6 +7201,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5546,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6425,6 +7219,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5570,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6441,6 +7237,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5574,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6457,6 +7255,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5582,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6473,6 +7273,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5590,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6489,6 +7291,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5598,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6505,6 +7309,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5642,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6521,6 +7327,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5650,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6537,6 +7345,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5702,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6553,6 +7363,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5710,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6569,6 +7381,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5714,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6585,6 +7399,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5734,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6601,6 +7417,8 @@
   },
   {
    "keyword": "0..1",
+   "keyword_at": 0,
+   "block_at": 5758,
    "absolute": true,
    "stated_as": "cardinality",
    "section": "a-5-properties-and-relations-overview",
@@ -6617,6 +7435,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 13,
+   "block_at": 5765,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-1-overview",
@@ -6633,6 +7453,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 25,
+   "block_at": 5766,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-1-overview",
@@ -6649,6 +7471,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 78,
+   "block_at": 5772,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-2-iirds-xhtml5",
@@ -6665,6 +7489,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 21,
+   "block_at": 5773,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-3-conformance-criteria",
@@ -6681,6 +7507,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 24,
+   "block_at": 5774,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-3-conformance-criteria",
@@ -6697,6 +7525,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 3,
+   "block_at": 5775,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-3-conformance-criteria",
@@ -6713,6 +7543,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 3,
+   "block_at": 5776,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-3-conformance-criteria",
@@ -6729,6 +7561,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 51,
+   "block_at": 5777,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-3-conformance-criteria",
@@ -6745,6 +7579,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 67,
+   "block_at": 5778,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "b-4-global-attributes",
@@ -6761,6 +7597,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 135,
+   "block_at": 5779,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-4-global-attributes",
@@ -6777,6 +7615,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 255,
+   "block_at": 5787,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-4-global-attributes",
@@ -6793,6 +7633,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 311,
+   "block_at": 5787,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-4-global-attributes",
@@ -6809,6 +7651,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 111,
+   "block_at": 5789,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-elements",
@@ -6825,6 +7669,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 19,
+   "block_at": 5792,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-2-document-metadata",
@@ -6841,6 +7687,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 131,
+   "block_at": 5792,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-2-document-metadata",
@@ -6857,6 +7705,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 217,
+   "block_at": 5792,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-2-document-metadata",
@@ -6873,6 +7723,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 10,
+   "block_at": 5864,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-7-scripting",
@@ -6889,6 +7741,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 6,
+   "block_at": 5886,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-10-forms",
@@ -6905,6 +7759,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 40,
+   "block_at": 5887,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-5-11-svg-mathml-and-iframes",
@@ -6921,6 +7777,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 42,
+   "block_at": 5888,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -6937,6 +7795,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 100,
+   "block_at": 5888,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -6953,6 +7813,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 84,
+   "block_at": 5889,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -6969,6 +7831,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 24,
+   "block_at": 5891,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -6985,6 +7849,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 126,
+   "block_at": 5891,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -7001,6 +7867,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 66,
+   "block_at": 5904,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -7017,6 +7885,8 @@
   },
   {
    "keyword": "MUST",
+   "keyword_at": 137,
+   "block_at": 5904,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-6-additional-semantic-tagging-of-content",
@@ -7033,6 +7903,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 21,
+   "block_at": 5914,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "b-7-styling",
@@ -7049,6 +7921,8 @@
   },
   {
    "keyword": "RECOMMENDED",
+   "keyword_at": 77,
+   "block_at": 5915,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "b-7-styling",
@@ -7065,6 +7939,8 @@
   },
   {
    "keyword": "MAY",
+   "keyword_at": 29,
+   "block_at": 5916,
    "absolute": false,
    "stated_as": "rfc2119",
    "section": "b-7-styling",
@@ -7081,6 +7957,8 @@
   },
   {
    "keyword": "MUST NOT",
+   "keyword_at": 69,
+   "block_at": 5916,
    "absolute": true,
    "stated_as": "rfc2119",
    "section": "b-7-styling",

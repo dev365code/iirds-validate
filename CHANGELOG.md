@@ -6,6 +6,23 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**Rows the requirement index could not tell apart, and the two facts that tell
+them apart.** Nine sets of obligations were identical in every field the index
+recorded — same sentence, same section, same context — and they are not the
+same obligation. A sentence carrying two keywords becomes two rows and the
+whole sentence is written into both: "The file MUST be the first entry in the
+ZIP file and it MUST be stored uncompressed" is one sentence and two things to
+check, and C6 checks both. Section 8.3.2 states one sentence for the package's
+product variant and states it again for the document's, and again inside each
+of two identity branches — four rows, four different rules checking the four
+positions.
+
+The index now records where in its block a keyword sits and which block of the
+document it is. Both are positions rather than readings, and the sentence is
+kept whole beside them, so nothing about what an obligation *says* has been
+interpreted here. No id moves, no count moves: 439 statements, 314 absolute,
+280 distinct, before and after.
+
 **Appendix B's rules had never looked at the content list, and the reason was
 another rule.** Their population is the files the metadata declares as XHTML
 renditions. Section 8.3.1.1 says the content list MUST NOT be referenced in the

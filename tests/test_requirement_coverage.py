@@ -531,9 +531,26 @@ def test_rows_the_index_cannot_tell_apart_are_claimed_alike():
     assert not uneven, uneven
 
 
-def test_the_index_still_holds_rows_it_cannot_tell_apart():
-    """The gate above passes if the grouping finds nothing, and the grouping
-    is over a file this project generates. Nine groups today; if that becomes
-    zero it is because the index learned to tell them apart, and this test
-    should be read again rather than deleted."""
-    assert len(_rows_the_index_cannot_tell_apart()) == 9
+def test_the_index_records_what_the_document_distinguishes():
+    """Read again, as the version before this one said to.
+
+    It asserted nine groups, because nine sets of rows were identical in every
+    recorded field, and it existed so the gate above could not pass by finding
+    nothing. The index now records two more facts about each obligation and
+    there are none: `keyword_at`, which says where in its block the keyword
+    sits -- so the two halves of "MUST be the first entry ... and MUST be
+    stored uncompressed" are two rows that differ -- and `block_at`, which
+    says which block of the document it is, so section 8.3.2's four statements
+    of one sentence are four rows that differ. Both are positions, not
+    readings: the sentence is still kept whole beside them.
+
+    The gate is kept and this replaces the count it leaned on. It is not
+    vacuous while the two facts are recorded, which is what is asserted here;
+    take either away and the groups come back.
+    """
+    absolute = [r for r in INDEX["requirements"] if r["absolute"]]
+    assert absolute, "no absolute obligations; the assertions below say nothing"
+    missing = [r["id"] for r in absolute
+               if r.get("keyword_at") is None or r.get("block_at") is None]
+    assert missing == [], missing[:5]
+    assert _rows_the_index_cannot_tell_apart() == []

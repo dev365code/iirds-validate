@@ -8,11 +8,12 @@ over the same package and diffed rule by rule.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Callable, Dict, List, Optional, Tuple
 
 from . import resources
-from .model import Rule
+from .model import Rule, rule_source
 
 _registry: Dict[str, Rule] = {}
 
@@ -84,6 +85,54 @@ def all_rules() -> List[Rule]:
         digits = "".join(c if c.isdigit() or c == "." else " " for c in r.id[1:]).split()
         return (head, [int(p) if p.isdigit() else 0 for p in (digits[0].split(".") if digits else ["0"])], r.id)
     return sorted(_registry.values(), key=sort_key)
+
+
+def rule_set_digest(rules: Optional[List[Rule]] = None) -> str:
+    """What this build's rules *are*, in one string, so two reports can be
+    asked whether they were judged by the same set before they are compared.
+
+    What it sees: every registered rule's id, whose rule it is, its kind, the
+    severity its priority produces, the versions and variants it applies to,
+    and whether it runs on a conformance check. Change any of those and this
+    string moves.
+
+    What it does not see, and the reason `toolVersion` is recorded beside it:
+
+    * **the rules' implementations.** A rule whose body was rewritten has the
+      same identity and the same digest. `tests/test_report_envelope.py` pins
+      that as a fact rather than leaving it a caveat here, because a later
+      difference view must not be built on a promise this string cannot keep.
+    * **the runner's own policy** -- which kinds a command selects, which
+      rules an unpacked container cannot answer, which a fragment suspends,
+      and the run-time severity demotion. None of them is a property of a
+      rule, and each changes what a run says.
+
+    So "the same digest" means "the same registered rule metadata", never "the
+    same rules". The severity is hashed rather than the priority keyword
+    because MUST, MUST NOT, REQUIRED and SHALL all produce an error: hashing
+    the spelling would refuse to compare two reports over a difference no
+    verdict can express. The source is hashed because `B*`, `L*` and `S4`-`S8`
+    share an identifier namespace with the catalogue -- if the catalogue ever
+    mints a real `B1`, this string moves and the comparison stops, which is
+    the safe direction for a report that cannot be repaired after the fact.
+
+    Pure, and takes its input, so a test can ask what a *different* rule set
+    would hash to without touching the registry every other test reads.
+    """
+    if rules is None:
+        _ensure_registered()
+        rules = all_rules()
+    identities = [{
+        "id": rule.id,
+        "source": rule_source(rule.id),
+        "kind": rule.kind,
+        "severity": str(rule.severity),
+        "versions": sorted(rule.versions),
+        "variants": sorted(rule.variants),
+        "conformance": bool(rule.conformance),
+    } for rule in sorted(rules, key=lambda r: r.id)]
+    blob = json.dumps(identities, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def rules_of_kind(kind: str) -> List[Rule]:

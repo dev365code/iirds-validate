@@ -91,6 +91,17 @@ def _profile_label(variants) -> str:
     return "for iiRDS/%s" % "/".join(named) if named else "for another profile"
 
 
+#: Reasons that are not about the profile a rule is for, and so are named
+#: rather than grouped by variant. Without an entry here a reason falls
+#: through to the profile grouping and a suspended rule is reported as
+#: belonging to some other edition, which is a different sentence entirely.
+_REASON_LABELS = {
+    "version": "for other editions",
+    "fragment": "suspended for a fragment",
+    "raised": "not answered -- the rule raised",
+}
+
+
 def _not_applicable_groups(report: Report):
     """(label, ids) for every group of rules that did not run: the version
     ones together, the profile ones grouped by the profiles they are for."""
@@ -101,8 +112,8 @@ def _not_applicable_groups(report: Report):
     for reason, ids in report.not_applicable.items():
         if not ids:
             continue
-        if reason == "version":
-            out.append(("for other editions", list(ids)))
+        if reason in _REASON_LABELS:
+            out.append((_REASON_LABELS[reason], list(ids)))
             continue
         groups = {}
         for rule_id in ids:

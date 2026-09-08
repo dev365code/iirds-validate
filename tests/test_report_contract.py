@@ -33,6 +33,18 @@ DOCUMENT = {
     "notes",             # what the run wants said before the findings
     "notApplicable",     # which rules did not run, by reason
     "suppressed",        # rules whose findings were demoted out of the listing
+    "judgedBy",          # what judged it, so a later run can be compared to it
+}
+
+#: The envelope. A stored report is read next quarter against a run of a
+#: later build, and `rulesChecked` as a number can say the two runs differed
+#: while being unable to say *which* rule appeared. Every key here exists to
+#: stop a difference claiming more than it knows.
+JUDGED_BY = {
+    "toolVersion",       # the build
+    "kinds",             # what the command asked to be checked
+    "rulesRun",          # which rules this run actually answered, by name
+    "ruleSetDigest",     # the cheap "same rule set?" before anything is compared
 }
 
 SUMMARY = {"errors", "warnings", "info", "rulesChecked", "rulesSkipped",
@@ -52,6 +64,7 @@ def test_the_document_carries_exactly_these_keys(make_package):
     document = report_of(make_package).as_dict()
     assert set(document) == DOCUMENT
     assert set(document["summary"]) == SUMMARY
+    assert set(document["judgedBy"]) == JUDGED_BY
     assert document["findings"], "this fixture must produce findings to pin them"
     for finding in document["findings"]:
         assert set(finding) == FINDING, finding.get("rule")

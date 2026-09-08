@@ -270,9 +270,13 @@ def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
 def test_the_not_applicable_rules_are_listed_by_id_in_the_json_report(make_package):
     result = runner.run(make_package(), runner.ALL_KINDS)
     listed = result.as_dict()["notApplicable"]
-    # "unpacked" is the third reason and it changes the published JSON: the
-    # six requirements about the ZIP archive itself were being counted among
-    # the rules a directory had checked, and came back clean. A consumer
-    # reading `notApplicable` now sees them.
-    assert set(listed) == {"variant", "version", "unpacked"}
+    # Each reason here arrived the same way: rules that were being counted
+    # among the ones a run had checked, and came back clean. "unpacked" was
+    # the six requirements about the ZIP archive itself, answered by no
+    # directory. "fragment" is the four a snippet cannot satisfy, whose
+    # findings `--fragment` deletes. "raised" is a rule that threw, beside the
+    # S3 finding that exists so its silence is not read as a pass. A consumer
+    # reading `notApplicable` sees all of them, and every rule a run
+    # considered is in exactly one of these lists or in `judgedBy.rulesRun`.
+    assert set(listed) == {"variant", "version", "unpacked", "fragment", "raised"}
     assert "M15.1" in listed["variant"] or any(i.startswith("M15") for i in listed["variant"])

@@ -16,6 +16,8 @@ from iirds import (  # noqa: F401  (re-exported)
     is_absolute_name,
 )
 
+from . import __version__
+
 # --- iiRDS namespaces -------------------------------------------------------
 IIRDS = Namespace("http://iirds.tekom.de/iirds#")
 HOV = Namespace("http://iirds.tekom.de/iirds/domain/handover#")
@@ -119,6 +121,19 @@ PRIO_SEVERITY = {
     "MAY": Severity.INFO,
     "OPTIONAL": Severity.INFO,
 }
+
+
+def rule_source(rule_id: str) -> str:
+    """Whose rule this is.
+
+    `B*`, `L*` and `S4`-`S8` share an identifier namespace with the catalogue.
+    If the catalogue ever mints a real `B1`, a stored report would become
+    ambiguous and could not be repaired after the fact, so every finding says
+    where its rule came from -- and so does the digest of the rule set, which
+    is why this is a function and not two copies of one conditional.
+    """
+    from .registry import CATALOG
+    return "catalogue" if rule_id in CATALOG else "iirds-validate"
 
 
 @dataclass(frozen=True)
@@ -241,15 +256,7 @@ class Finding:
 
     @property
     def source(self) -> str:
-        """Whose rule this is.
-
-        `B*`, `L*` and `S4`-`S8` share an identifier namespace with the
-        catalogue. If the catalogue ever mints a real `B1`, a stored report
-        would become ambiguous and could not be repaired after the fact, so
-        every finding says where its rule came from.
-        """
-        from .registry import CATALOG
-        return "catalogue" if self.rule.id in CATALOG else "iirds-validate"
+        return rule_source(self.rule.id)
 
     def as_dict(self) -> dict:
         return {
@@ -301,8 +308,17 @@ class Report:
     version: Optional[str] = None            # as declared by the package, if it did
     effective_version: Optional[str] = None  # what the rules were actually run against
     variant: str = "unrestricted"
-    checked: int = 0                 # rules actually executed
-    skipped: int = 0                 # rules not applicable to this version/variant
+    #: What the command asked to be checked. A run of `lint` and a run of
+    #: `check` are judged by different rules out of one build, and a stored
+    #: report that does not say which was asked cannot be read later.
+    kinds: Tuple[str, ...] = ()
+    #: The rules this run answered, by name and in the order it answered them.
+    #: A count could say two runs differed; it could not say *which* rule
+    #: appeared, which is the whole question a stored report is read for.
+    ran: list = field(default_factory=list)
+    #: The digest of the build's rule set, set by the runner (the model cannot
+    #: import the registry without a cycle). None means nobody recorded one.
+    rule_set: Optional[str] = None
     #: The same rules by id, by the reason they did not apply: "variant" (the
     #: package does not declare the profile the rule is for) or "version". A
     #: count told a reader that twenty-one rules did not run; which ones, and
@@ -310,8 +326,14 @@ class Report:
     #: Why a rule did not run, by reason. "unpacked" is the third: the six
     #: requirements about the ZIP archive itself cannot be answered by a
     #: directory, and were being counted as checked-and-clean.
+    #: "fragment" and "raised" are the fourth and fifth. `--fragment` runs
+    #: four rules and then withdraws their findings; a rule that raised
+    #: answered nothing. Both were being reported as run-and-clean, which is
+    #: the same defect twice: silence read as a pass. Every registered rule a
+    #: run considered is now in exactly one of `ran` and these lists.
     not_applicable: dict = field(
-        default_factory=lambda: {"variant": [], "version": [], "unpacked": []})
+        default_factory=lambda: {"variant": [], "version": [], "unpacked": [],
+                                 "fragment": [], "raised": []})
     unimplemented: int = 0           # catalogued but not yet implemented here
     notes: list = field(default_factory=list)
     #: rule id -> how many of its findings were counted but not listed.
@@ -320,6 +342,24 @@ class Report:
     _unlisted_severity: dict = field(default_factory=dict, repr=False)
     _order: list = field(default_factory=lambda: [0], repr=False)
     _flat: Optional[list] = field(default=None, repr=False)
+
+    @property
+    def checked(self) -> int:
+        """How many rules this run answered.
+
+        Derived rather than counted. `summary.rulesChecked` and
+        `judgedBy.rulesRun` are then one fact with two renderings, and cannot
+        drift apart -- a counter incremented beside a list is two facts, and
+        the second one to be updated is the one that gets forgotten.
+        """
+        return len(self.ran)
+
+    @property
+    def skipped(self) -> int:
+        """How many rules did not run. Same argument as `checked`: the reasons
+        are recorded per rule in `not_applicable`, so the number is read off
+        them rather than kept beside them."""
+        return sum(len(ids) for ids in self.not_applicable.values())
 
     @property
     def findings(self) -> list:
@@ -366,14 +406,34 @@ class Report:
         severity = dropped.severity
         self._unlisted_severity[severity] = self._unlisted_severity.get(severity, 0) + 1
 
-    def drop(self, rule_ids) -> None:
-        """Forget a rule entirely -- listing, tally and all.
+    def answered(self, rule_id: str) -> None:
+        """Record that this run answered that rule's question.
+
+        The one way into `ran`, so the list stays a set of names rather than a
+        tally: the runner answers some questions itself -- an unreadable
+        container, metadata that will not parse, a rule that raised -- and the
+        same rule can be reported twice out of one parse.
+        """
+        if rule_id not in self.ran:
+            self.ran.append(rule_id)
+
+    def drop(self, rule_ids, reason: str) -> None:
+        """Withdraw a rule's verdict entirely -- listing, tally and all.
 
         `--fragment` suspends the rules a snippet cannot satisfy, and a rule
         removed from the listing while its suppressed tally stayed behind
         would leave a summary counting findings the report does not contain.
+
+        The rule also stops being one this run answered, and `reason` says
+        why. Reporting it as run-and-clean is the same defect as counting a
+        rule that raised: silence read as a pass.
         """
         rule_ids = set(rule_ids)
+        for rule_id in rule_ids:
+            if rule_id in self.ran:
+                self.ran.remove(rule_id)
+            if rule_id not in self.not_applicable[reason]:
+                self.not_applicable[reason].append(rule_id)
         for rule_id in rule_ids & set(self._kept):
             severity = self._kept[rule_id][0][2].severity
             if rule_id in self.suppressed:
@@ -402,6 +462,16 @@ class Report:
             "validatedAgainst": self.effective_version,
             "variant": self.variant,
             "ok": self.ok,
+            #: Everything needed to read this report against another one: the
+            #: build, what was asked of it, and which rules answered. Without
+            #: it a rule that exists in one run and not the other is
+            #: indistinguishable from a rule that changed its answer.
+            "judgedBy": {
+                "toolVersion": __version__,
+                "kinds": list(self.kinds),
+                "rulesRun": sorted(self.ran),
+                "ruleSetDigest": self.rule_set,
+            },
             "summary": {
                 "errors": self.count(Severity.ERROR),
                 "warnings": self.count(Severity.WARNING),

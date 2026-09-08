@@ -10,7 +10,7 @@ from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
 from .package import PackageError, UnreadablePath, open_package
-from .registry import CATALOG, all_rules
+from .registry import CATALOG, all_rules, rule_set_digest
 from .rules.container import c9_violation, rdfxml_refusal
 
 #: "system" is in every set: a container that could not be read has to be
@@ -116,7 +116,7 @@ def run_fragment(path, kinds, version=None):
 
     report.path = str(source)
     suspended = sorted({f.rule.id for f in report.findings} & FRAGMENT_SUSPENDED)
-    report.drop(FRAGMENT_SUSPENDED)
+    report.drop(FRAGMENT_SUSPENDED, "fragment")
     report.notes.append(
         "fragment mode: validated inside a throwaway container; "
         "package-level rules suspended (%s)"
@@ -126,7 +126,7 @@ def run_fragment(path, kinds, version=None):
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,
         include_info: bool = True) -> Report:
-    report = Report(path=str(path))
+    report = Report(path=str(path), kinds=tuple(kinds), rule_set=rule_set_digest())
 
     try:
         package = open_package(path)
@@ -136,11 +136,15 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
         # C1 for both left S1 unable to fire at all while its own docstring
         # claimed this was where it came from.
         unreadable = isinstance(exc, UnreadablePath)
-        report.add(Finding(
+        finding = Finding(
             _emitted("S1", "system") if unreadable else _emitted("C1", "container"),
             Violation("cannot read container" if unreadable else "cannot open container",
-                      subject=str(path), detail=str(exc))))
-        report.checked = 1
+                      subject=str(path), detail=str(exc)))
+        report.add(finding)
+        # Read off the finding rather than written out again: the id is
+        # already decided one line above, and a second copy of it is a second
+        # thing to keep in step.
+        report.answered(finding.rule.id)
         return report
 
     with package:
@@ -205,7 +209,6 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
         if rule.kind not in kinds and not (conformance_run and rule.conformance):
             continue
         if not rule.applies_to(ctx.version, ctx.variant):
-            report.skipped += 1
             reason = "version" if rule.versions and ctx.version not in rule.versions else "variant"
             report.not_applicable[reason].append(rule.id)
             continue
@@ -215,10 +218,8 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
         # came back clean. "Not assessed" was a sentence in `notes` and nothing
         # a consumer of the report could read.
         if rule.id in ARCHIVE_ONLY and not package.is_archive:
-            report.skipped += 1
             report.not_applicable["unpacked"].append(rule.id)
             continue
-        report.checked += 1
         try:
             for violation in rule.fn(ctx) or ():
                 if rule.severity is Severity.INFO and not include_info:
@@ -226,12 +227,28 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                 report.add(Finding(rule, violation,
                                    demoted_to=severity_override(rule, ctx.variant)))
         except Exception as exc:                      # a broken rule must not hide the rest
-            report.add(Finding(
+            # S3's own words: "A rule that raised has checked nothing, and this
+            # finding exists so that its silence is not read as a pass." The
+            # count was incremented before the rule was called, so the report
+            # said it had checked it anyway. Whatever it managed to yield
+            # first goes with it -- a partial list of a rule's findings reads
+            # exactly like a complete one.
+            crash = Finding(
                 _emitted("S3"),
-                Violation("rule %s raised %s" % (rule.id, type(exc).__name__), detail=str(exc))))
+                Violation("rule %s raised %s" % (rule.id, type(exc).__name__), detail=str(exc)))
+            report.drop((rule.id,), "raised")
+            report.add(crash)
+            report.answered(crash.rule.id)
+            continue
+        report.answered(rule.id)
 
     for finding in _metadata_findings(ctx, kinds):
+        # The runner answered this rule's question itself, so the rule belongs
+        # in the list as much as one the loop above called. A finding whose
+        # rule is missing from `rulesRun` leaves a reader unable to say which
+        # of the two is lying.
         report.add(finding)
+        report.answered(finding.rule.id)
 
     implemented = {r.id for r in all_rules()}
     report.unimplemented = sum(

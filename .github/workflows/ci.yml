@@ -12,9 +12,15 @@ on:
 permissions:
   contents: read
 
+# A run cancelled to make room for a newer one leaves its commit with no
+# verdict at all: this project holds every commit to being green on its own,
+# and the CI half of that evidence is simply missing for a cancelled run --
+# the badge rendering it red is the consequence, not the problem. So pushes to
+# main are never cancelled; a pull request, where only the latest push is
+# being judged, still is.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:

@@ -371,3 +371,23 @@ def test_the_lint_gate_does_not_answer_from_a_cache():
         "the CI lint row reads ruff's cache"
     assert "ruff check --no-cache --fix ." in _normalise(MAKEFILE), \
         "make fix repairs from a cached reading"
+
+
+def test_a_push_to_main_is_never_cancelled_to_make_room():
+    """A cancelled run is a commit that was never judged.
+
+    Every commit here is meant to be green on its own, and half of that
+    evidence is CI's; a run cancelled because a newer push arrived leaves that
+    half empty, permanently, for the commit it was about. The badge showing it
+    red is downstream of that and is the cheaper half of the reason.
+
+    Pull requests are different: there, only the newest push is the thing
+    being judged, so cancelling the older one costs nothing.
+    """
+    stated = re.search(r"cancel-in-progress:\s*(.+)", WORKFLOW)
+    assert stated, "the workflow no longer says whether it cancels runs"
+    setting = stated.group(1).strip()
+    assert setting != "true", \
+        "every push cancels the run before it, so a commit can go unjudged"
+    assert "pull_request" in setting, \
+        "cancelling should be the pull-request case and nothing else: %s" % setting

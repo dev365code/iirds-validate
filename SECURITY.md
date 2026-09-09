@@ -23,6 +23,18 @@ is not an edge case here; it is the working assumption.
 The tool never executes content, never extracts archives to disk, and reads
 entries one at a time in memory.
 
+One thing is written to disk and it is worth saying plainly rather than
+leaving a reader to infer it from the sentence above. `iirds serve` receives a
+dropped package as an HTTP body, and writes that body -- the archive itself,
+not anything unpacked from it -- to a single file in a temporary directory
+created for that one request. The alternative is holding a quarter of a
+gigabyte in memory for each check running at the time. The directory is
+removed before the answer is sent, on every path out of the request: a
+verdict, a refused body, a crash inside the checker. So by the time the page
+has a verdict to show, the copy is already gone.
+`tests/test_drop_leaves_nothing.py` holds that, and holds it on the failing
+paths in particular, because a failure is when nobody is watching.
+
 ## Reporting a vulnerability
 
 If you find a way to make this tool misbehave on a hostile package — crash,

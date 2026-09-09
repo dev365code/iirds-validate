@@ -48,6 +48,11 @@ from . import report as report_module
 #: limit at all because it opens the file where it lies.
 MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 
+#: What the page calls the part carrying the package. Said once here and read
+#: by `data/web/app.js`; a body whose first file-carrying part was called
+#: something else used to be validated as the package regardless.
+PACKAGE_FIELD = "package"
+
 #: How many drops the process will check at once. A thread per request with
 #: nothing above it: measured, thirty-two posts left forty-six threads
 #: standing, each one a whole validation run over the same graph. The
@@ -285,25 +290,44 @@ class _Handler(BaseHTTPRequestHandler):
             # process's memory and time, and this is the line that stops it.
             self._fail(403, "this page answers the machine it runs on\n")
             return
-        spool = None
-        try:
-            name, spool = self._read_upload()
-        except ValueError as exc:
-            self._fail(400, "%s\n" % exc)
-            return
-        try:
-            with self.server.checks:              # type: ignore[attr-defined]
-                text, code, machine = verdict(name, spool)
-        except Exception as exc:                  # a crash is not an answer
-            body = json.dumps({"text": "could not read %s: %s\n" % (name, exc),
-                               "exit": 2, "report": None}, ensure_ascii=False)
-            self._send(200, body.encode("utf-8"), "application/json; charset=utf-8")
-            return
-        body = json.dumps({"text": text, "exit": code, "report": machine},
-                          ensure_ascii=False)
-        self._send(200, body.encode("utf-8"), "application/json; charset=utf-8")
+        status, body, content_type = self._judge_a_drop()
+        self._send(status, body, content_type)
 
-    def _read_upload(self) -> Tuple[str, str]:
+    def _judge_a_drop(self):
+        """The answer to one drop, with the copy already gone when it returns.
+
+        One directory per request, and the copy of somebody's package lives
+        inside it. The spool used to be made on its own and removed by
+        whoever happened to be holding it -- `_read_upload` on a bad body,
+        `verdict` by moving it -- which left every path between the two
+        leaking a complete archive into the system temporary directory.
+        Measured: 1008 of them, every one a whole package. A context manager
+        has no path between two owners, so there is nothing left to forget.
+
+        The response is composed here and sent by the caller, outside the
+        directory's lifetime, so the page cannot be told the verdict while
+        the copy is still on disk -- and a test can look at the directory the
+        moment it has an answer, instead of waiting to see whether a thread
+        has caught up.
+        """
+        json_type = "application/json; charset=utf-8"
+        with tempfile.TemporaryDirectory(prefix="drop-") as scratch:
+            try:
+                name, spool = self._read_upload(scratch)
+            except ValueError as exc:
+                return 400, ("%s\n" % exc).encode("utf-8"), "text/plain; charset=utf-8"
+            try:
+                with self.server.checks:          # type: ignore[attr-defined]
+                    text, code, machine = verdict(name, spool)
+            except Exception as exc:              # a crash is not an answer
+                body = json.dumps({"text": "could not read %s: %s\n" % (name, exc),
+                                   "exit": 2, "report": None}, ensure_ascii=False)
+                return 200, body.encode("utf-8"), json_type
+            body = json.dumps({"text": text, "exit": code, "report": machine},
+                              ensure_ascii=False)
+            return 200, body.encode("utf-8"), json_type
+
+    def _read_upload(self, scratch: str) -> Tuple[str, str]:
         """The sent file name, and the path of a spool file holding the bytes.
 
         Streamed, not parsed. The first version read the whole body and gave
@@ -340,18 +364,23 @@ class _Handler(BaseHTTPRequestHandler):
             headers = reader.read_until(b"\r\n\r\n", limit=64 * 1024)
             if headers is None:
                 raise ValueError("no multipart boundary in the body")
-            candidate = _filename_in(headers)
-            if candidate is None:
+            field, candidate = _part_names(headers)
+            # The part the form called `package`, not merely the first one
+            # carrying a file name. A body that put anything else first had
+            # that read as the package -- a report dropped beside a package
+            # would have been validated as one.
+            if candidate is None or field != PACKAGE_FIELD:
                 if reader.drain_to(delimiter) is None:
-                    raise ValueError("no file in the form")
+                    raise ValueError("no %s in the form" % PACKAGE_FIELD)
                 continue
             name = candidate
 
         # delete=False because the path outlives this block: verdict() moves
-        # the file into its own directory. On any failure it is removed here,
-        # so a refused upload leaves nothing behind.
-        with tempfile.NamedTemporaryFile(delete=False, prefix="drop-",
-                                         suffix=".spool") as handle:
+        # the file into its own directory. It is written inside the caller's
+        # directory, which is removed however this request ends, so nothing
+        # here has to remember to clean up after a path nobody thought of.
+        with tempfile.NamedTemporaryFile(delete=False, dir=scratch,
+                                         prefix="drop-", suffix=".spool") as handle:
             spool = handle.name
             try:
                 if reader.copy_to(handle, delimiter) is None:
@@ -371,25 +400,33 @@ def _boundary_of(content_type: str) -> bytes:
     return (found.group(1) or found.group(2)).encode("latin-1")
 
 
-def _filename_in(headers: bytes):
-    """The file name from a part's headers, or None for a plain field.
+def _part_names(headers: bytes):
+    """(what the form called this part, the file name it carries).
 
-    Read off the raw Content-Disposition line rather than through a MIME
-    parser, for the reason `_sent_filename` gives: parameter tidying strips
-    the trailing whitespace a real name can carry, and the extension rule
-    reads that name.
+    Either may be None. Read off the raw Content-Disposition line rather than
+    through a MIME parser, for the reason `_sent_filename` gives: parameter
+    tidying strips the trailing whitespace a real name can carry, and the
+    extension rule reads that name.
+
+    `filename=` has to be looked for before `name=`, because `filename` ends
+    in it -- a bare search for `name=` finds the file name and calls it the
+    field.
     """
     for line in headers.split(b"\r\n"):
         if line.lower().startswith(b"content-disposition:"):
             text = line.decode("utf-8", errors="replace")
+            filename = None
             quoted = re.search(r'filename="([^"\\]*)"', text)
-            if quoted:
-                return quoted.group(1)
             bare = re.search(r"filename=([^;\s]+)", text)
-            if bare:
-                return bare.group(1)
-            return None
-    return None
+            if quoted:
+                filename = quoted.group(1)
+            elif bare:
+                filename = bare.group(1)
+            without = re.sub(r'filename="[^"\\]*"|filename=[^;\s]+', "", text)
+            field = re.search(r'name="([^"\\]*)"', without) or \
+                re.search(r"name=([^;\s]+)", without)
+            return (field.group(1) if field else None), filename
+    return None, None
 
 
 class _Counted:

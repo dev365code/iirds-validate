@@ -139,6 +139,36 @@ def page_html(nonce: str = "") -> str:
     return page
 
 
+#: Names Windows reserves for devices, in every directory. Opening one opens
+#: the device, wherever the path says it is.
+_DEVICES = frozenset({"CON", "PRN", "AUX", "NUL"}
+                     | {"COM%d" % n for n in range(1, 10)}
+                     | {"LPT%d" % n for n in range(1, 10)})
+
+
+def _not_a_file_name(candidate: str) -> bool:
+    """Whether a path join would read this as more than a file name.
+
+    The drive specifier is the one that matters and it is invisible from a
+    POSIX machine: `ntpath.join` **discards the directory** when the second
+    component carries a drive, so `D:evil.iirds` is written to that drive's
+    working directory and the directory made for the request never sees it
+    again. Measured before this existed, and the docstring below has claimed
+    the opposite since the first release that shipped this page.
+
+    Replaced rather than repaired. Trimming the name would give the page a
+    different verdict from the command line for the same file -- C3 answers a
+    MUST by reading the container's path -- so a name that cannot be used is
+    swapped whole for one that can, and the name the sender chose still
+    reaches the report.
+    """
+    if ":" in candidate or "\x00" in candidate:
+        return True
+    if any(character < " " for character in candidate):
+        return True
+    return candidate.split(".")[0].upper() in _DEVICES
+
+
 def dropped_name(name: str) -> str:
     """The name to give the copy on disk.
 
@@ -151,14 +181,21 @@ def dropped_name(name: str) -> str:
 
     What it does change, because a name is not a path and what arrives in a
     multipart header is whatever the sender chose: everything up to the last
-    separator goes, so nothing can be written outside the directory made for
-    it, and the three names that would still escape or fail to open are
-    replaced. Backslashes count as separators regardless of the server's
-    platform -- a name from a Windows client should not become a filename
-    here that it would not be there.
+    separator goes, and a name a path join would read as more than a name is
+    swapped whole for one that would not (`_not_a_file_name`). Backslashes
+    count as separators regardless of the server's platform -- a name from a
+    Windows client should not become a filename here that it would not be
+    there.
+
+    An earlier version of this docstring said that removing everything up to
+    the last separator meant nothing could be written outside the directory
+    made for it. That was false on Windows and shipped: `ntpath.join` drops
+    the directory when the name carries a drive, so `D:evil.iirds` went to
+    that drive's working directory. The separator rule was never the whole
+    rule -- it was the whole rule on one platform.
     """
     candidate = name.replace("\\", "/").rsplit("/", 1)[-1]
-    if candidate in ("", ".", "..") or "\x00" in candidate:
+    if candidate in ("", ".", "..") or _not_a_file_name(candidate):
         return "dropped.iirds"
     return candidate
 

@@ -150,3 +150,56 @@ def test_the_field_is_read_even_when_the_file_name_comes_first(tmp_path, server)
     with urllib.request.urlopen(request, timeout=30) as response:
         assert response.status == 200
         assert "plain.iirds" in response.read().decode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# The name a client sends, and the one place it reaches the filesystem
+# ---------------------------------------------------------------------------
+
+#: Names that a path join reads as more than a file name. The first three are
+#: the ones that matter: `ntpath.join` **discards the directory** when the
+#: second component carries a drive, so a package dropped as `D:evil.iirds`
+#: is written to that drive's working directory and the directory made for
+#: the request never sees it again. `dropped_name`'s own docstring says
+#: "nothing can be written outside the directory made for it", and that
+#: sentence is in the published release.
+NOT_A_FILE_NAME = ["D:evil.iirds", "x:y", "C:evil.iirds",
+                   "CON", "NUL", "COM1", "LPT1", "\x01odd.iirds"]
+
+
+@pytest.mark.parametrize("sent", NOT_A_FILE_NAME + ["ok.iirds", "handover.iirds "])
+def test_the_copy_stays_inside_the_directory_made_for_the_request(sent):
+    """Asserted on the composed path and on both platforms' rules, because
+    the escape is in the join and not in the name -- and a mac cannot see a
+    Windows join unless it is asked for one by name. A guard tested only
+    against the interpreter it runs on is a guard for that interpreter.
+    """
+    import ntpath
+    import posixpath
+
+    from iirds_validate.serve import dropped_name
+
+    safe = dropped_name(sent)
+    for join, scratch, sep in ((posixpath.join, "/tmp/drop-abc", "/"),
+                               (ntpath.join, "C:\\Temp\\drop-abc", "\\")):
+        target = join(scratch, safe)
+        assert target.startswith(scratch + sep), (sent, safe, target)
+        assert sep not in target[len(scratch) + 1:], (sent, safe, target)
+
+
+@pytest.mark.parametrize("sent", NOT_A_FILE_NAME)
+def test_a_name_that_is_not_a_file_name_is_replaced(sent):
+    from iirds_validate.serve import dropped_name
+
+    assert dropped_name(sent) == "dropped.iirds", sent
+
+
+def test_a_name_that_is_one_is_kept_exactly(make_package):
+    """Including its trailing space. C3 answers a MUST by reading the
+    container's path, so tidying the name here would give the page a
+    different verdict from the command line for the same file -- which is
+    why the rule above replaces rather than repairs."""
+    from iirds_validate.serve import dropped_name
+
+    assert dropped_name("handover.iirds ") == "handover.iirds "
+    assert dropped_name("a/b/c.iirds") == "c.iirds"

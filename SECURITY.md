@@ -32,6 +32,13 @@ gigabyte in memory for each check running at the time. The directory is
 removed before the answer is sent, on every path out of the request: a
 verdict, a refused body, a crash inside the checker. So by the time the page
 has a verdict to show, the copy is already gone.
+
+The name the copy is given comes from the sender, and a name is not a path.
+Everything up to the last separator is dropped, and a name that a path join
+would read as more than a name -- one carrying a drive, a Windows device
+name, a control character -- is replaced rather than repaired, because
+tidying it would change the verdict: one rule answers a MUST by reading the
+container's file name.
 `tests/test_drop_leaves_nothing.py` holds that, and holds it on the failing
 paths in particular, because a failure is when nobody is watching.
 

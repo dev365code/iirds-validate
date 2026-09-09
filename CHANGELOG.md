@@ -6,6 +6,27 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A dropped file could be written outside the directory made for it, on
+Windows.** `iirds serve` gives the copy the name the sender chose, minus
+anything up to the last separator, and the function that does it has said
+since the first release that shipped the page that this means nothing can be
+written outside that directory. That was true on one platform. `ntpath.join`
+**discards the directory** when the name carries a drive, so a package dropped
+as `D:evil.iirds` was written to that drive's working directory, where the
+per-request cleanup never saw it again.
+
+What it is not: a way past any boundary. The page is loopback-only, a browser
+cannot produce such a name from a file chooser, and a local client that can
+post one can already write files as the same user. What broke is a property
+this project states, which is the thing it sells.
+
+A name a path join would read as more than a name — one carrying a drive, a
+Windows device name, a control character — is now replaced whole rather than
+repaired. Repairing it would change a verdict: one rule answers a MUST by
+reading the container's file name, and the page must not answer differently
+from the command line for the same file. The name the sender chose still
+reaches the report.
+
 **`iirds diff <report.json> <package>` — what changed since a report you kept.**
 The command line could say whether a package is conformant and not what moved
 since the last one you signed off. This reads a stored report against a fresh

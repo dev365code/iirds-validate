@@ -49,6 +49,14 @@ READS_REPORT_VERSION = 2
 #: "no limit at all" belongs to the second and not to the first.
 MAX_DOCUMENT_BYTES = 32 * 1024 * 1024
 
+#: How deep a report nests: the document, `findings`, one finding, and the
+#: two-level `judgedBy`. Anything past this is not a report, and the depth is
+#: counted rather than left to `RecursionError` -- CPython 3.12 raised the
+#: limit, so the same file was refused on one interpreter and read on the
+#: next. A guard whose answer depends on which Python is installed is not a
+#: guard.
+MAX_DOCUMENT_DEPTH = 64
+
 #: Everything outside the package that decides what a run says. Two reports
 #: that disagree on any of it were not asked the same question.
 BASIS = ("ruleSetDigest", "toolVersion", "kinds", "includesInfo",
@@ -79,6 +87,40 @@ def _refuse(sentence: str):
     raise Refused(sentence)
 
 
+def _refuse_if_deep(text, limit: int = MAX_DOCUMENT_DEPTH) -> None:
+    """Counted, not caught.
+
+    `json` offers no depth hook, and the exception it raises when the stack
+    runs out is a `RecursionError` -- not a `ValueError`, so the obvious guard
+    misses it and the tool exits with a traceback where it meant to print a
+    sentence. Worse, how deep is too deep moved between interpreters: measured,
+    a file refused on 3.9 is read without complaint on 3.12. So the depth is
+    read off the text, before the parser sees it, in one pass.
+    """
+    characters = text.decode("utf-8", "replace") if isinstance(text, bytes) else text
+    depth = 0
+    in_string = False
+    escaped = False
+    for character in characters:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > limit:
+                _refuse("that file is nested %d deep; a report is a handful of levels, "
+                        "and this one is not read" % depth)
+        elif character in "]}":
+            depth -= 1
+
+
 def parse(text, limit: int = MAX_DOCUMENT_BYTES) -> dict:
     """A stored report, read from bytes this tool did not write.
 
@@ -93,6 +135,8 @@ def parse(text, limit: int = MAX_DOCUMENT_BYTES) -> dict:
     if size > limit:
         _refuse("that file is %d bytes; a report of the largest package this tool can "
                 "read is far smaller, and this one is not read" % size)
+
+    _refuse_if_deep(text)
 
     def no_duplicates(pairs):
         seen = {}

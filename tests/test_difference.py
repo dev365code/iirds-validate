@@ -233,14 +233,27 @@ def test_a_number_that_is_not_a_number_is_refused(clean):
 
 def test_a_document_too_large_to_be_a_report_is_refused():
     with pytest.raises(diff.Refused):
-        diff.parse("[" * 10 + "]" * 10, limit=4)
+        diff.parse("[]" * 10, limit=4)
 
 
 def test_a_document_nested_past_reading_is_refused():
-    """`json` raises RecursionError, which is not a ValueError, so the obvious
-    `except ValueError` misses it and the tool exits with a traceback."""
+    """Counted rather than caught. `json` raises `RecursionError`, which is
+    not a `ValueError`, so the obvious guard misses it -- and how deep is too
+    deep moved between interpreters: this file was refused on 3.9 and read
+    without complaint on 3.12, so the suite was green here and red in CI.
+    A guard whose answer depends on which Python is installed is not a guard.
+    """
+    deep = diff.MAX_DOCUMENT_DEPTH + 1
     with pytest.raises(diff.Refused):
-        diff.parse("[" * 4000 + "]" * 4000)
+        diff.parse("[" * deep + "]" * deep)
+
+
+def test_a_report_is_not_refused_for_being_a_report():
+    """The discriminating half: a limit low enough to catch the attack has to
+    stay above the shape a real report has."""
+    document = json.dumps({"a": [{"b": [{"c": 1}]}]})
+    diff._refuse_if_deep(document)
+    assert '"' in document
 
 
 # ---------------------------------------------------------------------------

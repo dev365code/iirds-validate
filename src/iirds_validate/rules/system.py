@@ -427,3 +427,32 @@ def s12_side_scan_stopped(ctx):
                     "so the rest of META-INF was not examined",
                     subject=stopped_at,
                     detail="%d bytes read of a %d byte ceiling" % (read, limit))
+
+
+@rule("S13", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
+      covers=("dfn-iirds-package#1",), diagnosis="cause",
+      title="the container could not be opened at all",
+      fix="Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on it "
+          "should list mimetype first. Nothing else here has run, because there was "
+          "nothing to run against.")
+def s13_container_would_not_open(ctx):
+    """Emitted by `runner.run` when something was read and it is not a container.
+
+    Distinct from S1, which is a path nothing could be read from -- a mistake
+    in the command rather than a package that arrived broken -- and from C1,
+    which asks whether every entry of an archive that *did* open comes back
+    out again.
+
+    Its own body has nothing to inspect, like S1's: by the time a Context
+    exists the container has opened. What it exists for is the identity, and
+    the identity has to be `system` rather than `container`. The finding used
+    to carry C1's, and `iirds lint` does not put the container rules -- so a
+    clean lint report never mentioned it and a broken one did, which is not a
+    rule going from clean to firing but a rule appearing out of nowhere. A
+    difference between two such reports reads a package that stopped being a
+    ZIP as a rule that has just been written.
+
+    `system` is in every kind set, so this one is answered whichever question
+    was asked: clean when the container opened, firing when it did not.
+    """
+    return ()

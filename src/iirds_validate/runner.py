@@ -61,23 +61,6 @@ def _emitted(rule_id: str, kind: str = "system") -> Rule:
 #: must not list them as unasked when the runner is about to ask them.
 METADATA_ANSWERED = ("C9", "C16.1", "C16.2")
 
-#: Known and not closed: C1 is not in the list above, and it is asymmetric.
-#: A `lint` run that cannot open the container reports C1 and records it as
-#: answered, because the finding exists; a `lint` run that opens it records
-#: nothing, because the rule's own check -- every entry read back -- was not
-#: run. So C1 is absent from a clean lint report and present in a broken one,
-#: and a difference between the two reads the breakage as a rule that has
-#: just arrived rather than one that started firing.
-#:
-#: Neither cheap repair is honest. Recording C1 as answered on the readable
-#: path would claim its check ran when it did not, and a corrupt-but-openable
-#: archive would then be reported clean. Running its check under `lint` reads
-#: every entry, which is what `lint` exists not to do. The third way is to
-#: give "the container would not open" an identity of its own, and that moves
-#: an id that appears in published reports. Left as it stands, said here, and
-#: carried to the difference as a case with a test rather than a surprise.
-UNSYMMETRIC_UNDER_LINT = ("C1",)
-
 
 def _selected(rule, kinds: Sequence[str]) -> bool:
     """Whether the rule loop runs that rule.
@@ -186,7 +169,7 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
         # claimed this was where it came from.
         unreadable = isinstance(exc, UnreadablePath)
         finding = Finding(
-            _emitted("S1", "system") if unreadable else _emitted("C1", "container"),
+            _emitted("S1", "system") if unreadable else _emitted("S13", "system"),
             Violation("cannot read container" if unreadable else "cannot open container",
                       subject=str(path), detail=str(exc)))
         report.add(finding)

@@ -214,6 +214,28 @@ def test_the_runners_own_questions_are_in_play_whatever_the_container_did(tmp_pa
         assert rule_id in reasons["unreadable"], (rule_id, reasons)
 
 
+def test_every_rule_a_broken_container_reports_was_answered_by_a_good_one(tmp_path, make_package):
+    """A rule that can only appear when it fires is a rule whose clean state
+    does not exist, and a difference reads its appearance as a new rule rather
+    than as something that broke.
+
+    The container that will not open was reported by `C1`, a container rule.
+    Under `lint` the container rules are not put at all, so `C1` was absent
+    from every clean lint report and present in every broken one. Asking the
+    question under `lint` means answering it under `lint`.
+    """
+    not_a_zip = tmp_path / "broken.iirds"
+    not_a_zip.write_bytes(b"this is not a ZIP archive at all")
+    for kinds in (runner.CONFORMANCE_KINDS, runner.LINT_KINDS, runner.ALL_KINDS):
+        broken = runner.run(not_a_zip, kinds).as_dict()
+        clean = report_of(make_package, kinds, metadata=MINIMAL_RDF).as_dict()
+        reported = {f["rule"] for f in broken["findings"]}
+        assert reported, kinds
+        answered_when_clean = set(clean["judgedBy"]["rulesRun"])
+        assert reported <= answered_when_clean, (
+            kinds, sorted(reported - answered_when_clean))
+
+
 def test_a_clean_lint_run_names_the_rules_the_runner_answers_itself(make_package):
     """`lint` does not run the container rules, so the runner answers three
     of their questions itself -- did each metadata file parse. It recorded

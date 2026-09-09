@@ -115,7 +115,7 @@ def test_c1_a_file_that_is_not_a_zip_at_all(tmp_path):
     broken = tmp_path / "not-a-zip.iirds"
     broken.write_bytes(b"this is not a ZIP archive at all")
     report = runner.run(broken, runner.ALL_KINDS)
-    assert "C1" in {f.rule.id for f in report.findings}, \
+    assert "S13" in {f.rule.id for f in report.findings}, \
         "something was read; it is simply not a usable ZIP"
     assert not report.ok
 

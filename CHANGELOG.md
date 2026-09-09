@@ -6,6 +6,18 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A container that will not open is reported as `S13`, not `C1`.** The two are
+different questions and one id was answering both: `C1` asks whether an
+archive that opened gives every entry back, and it was also being reported for
+a file that is not an archive at all. That made it invisible to `iirds lint`,
+which does not put the container rules — so a clean lint report never mentioned
+it and a broken one did, and a rule that appears only when it fails has no
+clean state for anything to compare against. `S13` is a system rule, and the
+system rules are put whichever question was asked: it is answered on every run,
+clean when the container opened and firing when it did not. `C1` keeps its own
+meaning. Both claim the same obligation, so the coverage figures do not move;
+the rule count goes to 233.
+
 **The machine-readable report is version 2, and a report from an earlier
 release cannot be read against a run of this one.** Not one key changed shape.
 `judgedBy.rulesRun` changed meaning: three rules the runner answers itself on

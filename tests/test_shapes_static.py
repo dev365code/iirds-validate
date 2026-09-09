@@ -53,7 +53,7 @@ def test_the_census_numbers_hold():
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 36
     assert counts["deferred_v1.1"] == 9
-    assert counts["not_expressible"] == 51
+    assert counts["not_expressible"] == 52
     assert counts["noop"] == 1
 
 

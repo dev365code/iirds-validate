@@ -117,7 +117,7 @@ def test_an_undecodable_entry_name_is_reported_not_crashed(tmp_path):
     report anything. The reader was never involved.
     """
     report = runner.check(_entry_name_that_is_not_utf8(tmp_path))
-    assert "C1" in ids(report), sorted(ids(report))
+    assert "S13" in ids(report), sorted(ids(report))
     assert not report.ok
 
 
@@ -163,7 +163,9 @@ def test_not_a_zip(tmp_path):
     path = tmp_path / "broken.iirds"
     path.write_bytes(b"this is not a zip file")
     report = runner.check(path)
-    assert "C1" in ids(report)
+    # S13, not C1: "this is not a container" is a question every command puts,
+    # and C1 asks whether an archive that opened gives its entries back.
+    assert "S13" in ids(report)
     assert not report.ok
 
 

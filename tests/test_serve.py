@@ -153,14 +153,14 @@ def test_a_post_that_is_not_a_package_is_answered_not_crashed(server):
     ever with no way to tell why.
 
     Sixteen bytes of prose is a finding about the package and not an operator
-    error, which is the command line's own reading: it opens, C1 says it is
-    not a ZIP, and the run exits 1. Measured before this was written, because
-    the first draft asserted 2."""
+    error, which is the command line's own reading: it opens, S13 says it is
+    not a container, and the run exits 1. Measured before this was written,
+    because the first draft asserted 2."""
     status, body = _post(server + "/check", "junk.iirds", b"not a zip at all")
     assert status == 200
     payload = json.loads(body)
     assert payload["exit"] == 1, payload
-    assert "C1" in payload["text"], payload["text"]
+    assert "S13" in payload["text"], payload["text"]
 
 
 def test_an_unknown_path_is_a_404_and_not_a_directory_listing(server):
@@ -332,12 +332,12 @@ def test_the_machine_readable_half_names_the_file_that_was_dropped(tmp_path, ser
 
 def test_a_container_that_cannot_be_opened_names_the_copy_and_says_so(tmp_path,
                                                                       server):
-    """The one divergence the docs promise. C1 puts the container's own path
+    """The one divergence the docs promise. S13 puts the container's own path
     into the finding, and the page's path is the copy it made -- so this is
     pinned rather than claimed, and the rest of the text still matches."""
     _, body = _post(server + "/check", "torn.iirds", b"not a zip at all")
     payload = json.loads(body)
-    assert "C1" in payload["text"]
+    assert "S13" in payload["text"]
     assert "torn.iirds" in payload["text"], payload["text"]
     assert payload["report"]["package"] == "torn.iirds"
 

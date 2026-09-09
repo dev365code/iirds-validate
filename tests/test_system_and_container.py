@@ -33,7 +33,7 @@ def test_s1_when_the_file_is_not_a_zip(tmp_path):
     path = tmp_path / "broken.iirds"
     path.write_bytes(b"definitely not a zip")
     report = runner.check(path)
-    assert "C1" in ids(report) and not report.ok
+    assert "S13" in ids(report) and not report.ok
 
 
 def test_s2_when_nothing_parses(make_package):

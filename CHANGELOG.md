@@ -6,6 +6,42 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The machine-readable report is version 2, and a report from an earlier
+release cannot be read against a run of this one.** Not one key changed shape.
+`judgedBy.rulesRun` changed meaning: three rules the runner answers itself on
+a `lint` run were listed only when they failed, so a clean answer from them
+could not be told apart from a rule that did not exist. Comparing across that
+change would report a package as having broken something it never touched, so
+the version says the two are not comparable rather than leaving a reader to
+find out. Re-validating the package produces a current report; nothing else is
+needed and nothing is lost.
+
+The report also says why every rule it did not answer went unanswered,
+whatever command was asked of it. `iirds check` used to leave the fourteen
+interoperability rules unmentioned, `iirds lint` two hundred and four, and a
+container that would not open named one rule and was silent about the rest.
+Two reasons are new: a kind this command never put, and a rule never put
+because the container would not open. The printed line is unchanged — rules
+nobody asked for are not counted among the rules that did not apply.
+
+**`--fragment` gave a different report on every run.** The rules a snippet
+cannot satisfy were written into the report in the order a set produced them,
+which depends on the hash seed a process starts with: seven distinct documents
+across eight seeds, on a tool whose first stated property is that the same file
+gives the same verdict byte for byte. Fixed, and the gate for that property now
+covers the fragment path, a run of every rule, and an unpacked container
+instead of one command on one archive.
+
+**The drop page no longer leaves a copy of what you dropped.** `iirds serve`
+writes the package it receives to a file — the alternative is holding a
+quarter of a gigabyte in memory for each check running at the time — and moved
+that file into a directory it removed. Every other way out of a request left
+it behind: a checker that raised, which the page catches and answers, so
+nothing downstream noticed. Counted on one machine: 1008 of them. The copy now
+lives in a directory made for the request and removed before the answer is
+sent, so by the time the page shows a verdict it is already gone. SECURITY.md
+says what is written, where, why, and when it goes.
+
 **The lint gate could answer from a cache, and the import gate now reports
 every place rather than the first.** `ruff` keeps a verdict per file and gives
 it back rather than looking again; after a move of nineteen files in a sibling

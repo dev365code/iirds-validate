@@ -181,6 +181,57 @@ def test_the_report_is_byte_identical_across_hash_seeds(tmp_path):
     assert len(reports) == 1, "%d distinct reports across five seeds" % len(reports)
 
 
+#: What `test_the_report_is_byte_identical_across_hash_seeds` does not reach.
+#: It calls `runner.check`, which is one command on one archive; the flag a
+#: user can type (`--fragment`), the command that runs every rule, and the
+#: unpacked container are three other paths, and a report that varies on any
+#: of them is a report two runs of one package disagree about.
+#:
+#: `--fragment` is where this was found: the rules a snippet cannot satisfy
+#: are held in a `frozenset`, and writing them into the report by iterating
+#: it put them in whatever order the seed produced. Seven distinct documents
+#: across eight seeds.
+OTHER_ENTRY_POINTS = {
+    "fragment": "runner.run_fragment(%r, runner.ALL_KINDS)",
+    "every rule": "runner.run(%r, runner.ALL_KINDS)",
+    "unpacked": "runner.run(%r, runner.ALL_KINDS)",
+}
+
+
+@pytest.mark.parametrize("entry", sorted(OTHER_ENTRY_POINTS))
+def test_every_way_in_gives_one_report_across_hash_seeds(tmp_path, entry):
+    import subprocess
+    import sys
+    import zipfile
+
+    package = build_package(tmp_path, "seeds.iirds", metadata=MANY_TITLES)
+    if entry == "fragment":
+        target = tmp_path / "metadata.rdf"
+        target.write_text(MANY_TITLES, "utf-8")
+    elif entry == "unpacked":
+        target = tmp_path / "unpacked"
+        with zipfile.ZipFile(package) as archive:
+            archive.extractall(target)
+    else:
+        target = package
+
+    script = ("import json, sys;"
+              "sys.path[:0] = [%r];"
+              "from iirds_validate import runner;"
+              "print(json.dumps(" + OTHER_ENTRY_POINTS[entry] + ".as_dict(), sort_keys=True))"
+              ) % (str(ROOT / "src"), str(target))
+
+    reports = set()
+    for seed in ("0", "1", "2", "3", "4", "5", "6", "7"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        out = subprocess.run([sys.executable, "-c", script], env=env,
+                             capture_output=True, text=True, check=True).stdout
+        assert '"findings"' in out, out
+        reports.add(out)
+    assert len(reports) == 1, ("%d distinct reports across eight seeds via %s"
+                               % (len(reports), entry))
+
+
 #: Two container packages side by side -- neither nested, so both survive
 #: into the pool and the choice between them is what has to be stable. M3
 #: reports the pair; detection still has to answer, and answer the same way

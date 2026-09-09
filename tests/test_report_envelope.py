@@ -27,7 +27,7 @@ import pytest
 
 import iirds_validate
 from conftest import MINIMAL_RDF
-from iirds_validate import registry, runner
+from iirds_validate import model, registry, runner
 from iirds_validate.model import Rule, Severity, Violation
 
 
@@ -151,12 +151,109 @@ def test_a_suspended_rule_did_not_judge_the_fragment(tmp_path):
     assert set(document["notApplicable"]["fragment"]) == set(runner.FRAGMENT_SUSPENDED)
 
 
+def excused(document) -> dict:
+    """rule id -> the reason this run gives for not answering it."""
+    return {rule_id: reason
+            for reason, ids in document["notApplicable"].items() for rule_id in ids}
+
+
+def test_the_account_is_total_whatever_the_command_asked(make_package):
+    """Every rule this build has is either answered or excused with a reason,
+    for each of the three commands.
+
+    Held for `all` since the envelope landed, and that was the only shape it
+    held for: `check` left the fourteen lint rules in neither list and `lint`
+    left two hundred and four. A rule in neither is a rule a later difference
+    has to guess about -- and the guess it would make, "the two builds have
+    different rules", is wrong in the most alarming direction available.
+    """
+    for kinds in (runner.CONFORMANCE_KINDS, runner.LINT_KINDS, runner.ALL_KINDS):
+        document = report_of(make_package, kinds).as_dict()
+        accounted = set(document["judgedBy"]["rulesRun"]) | set(excused(document))
+        assert accounted == registry.implemented_ids(), (
+            kinds, sorted(registry.implemented_ids() - accounted))
+
+
+def test_a_container_that_could_not_be_opened_still_accounts_for_every_rule():
+    """The report a reader is most likely to keep and re-run, and the one
+    that used to name one rule and say nothing about the other two hundred."""
+    document = runner.run("/nonexistent/nowhere.iirds", runner.ALL_KINDS).as_dict()
+    accounted = set(document["judgedBy"]["rulesRun"]) | set(excused(document))
+    assert accounted == registry.implemented_ids()
+    assert set(document["notApplicable"]["unreadable"]), "the reason has to be named"
+
+
+def test_a_rule_is_excused_once_and_for_one_reason(tmp_path):
+    """`--fragment` withdraws four rules, and under `lint` two of them were
+    never put in the first place. Filing them under `fragment` as well as
+    `unasked` left the same rule in two lists, so the reason a difference
+    prints for it depends on which key the parse happened to see last, and
+    the summary counted them as suspended when nobody had asked them.
+    """
+    fragment = tmp_path / "metadata.rdf"
+    fragment.write_text(MINIMAL_RDF, "utf-8")
+    document = runner.run_fragment(fragment, runner.LINT_KINDS).as_dict()
+    reasons = document["notApplicable"]
+    twice = {rule_id: [r for r, ids in reasons.items() if rule_id in ids]
+             for ids in reasons.values() for rule_id in ids}
+    assert not [r for r, where in twice.items() if len(where) > 1], twice
+    assert (document["summary"]["rulesChecked"] + document["summary"]["rulesSkipped"]
+            + sum(len(reasons[r]) for r in model.NOT_IN_PLAY)
+            == len(registry.implemented_ids()))
+
+
+def test_the_runners_own_questions_are_in_play_whatever_the_container_did(tmp_path):
+    """Under `lint` the runner asks three questions the rule loop does not,
+    and a container that will not open means it never got to ask them. That
+    is `unreadable`, not `unasked`: nobody stopped asking them, the container
+    stopped being readable. A difference reading `unasked` would tell somebody
+    they had typed a different command."""
+    document = runner.run(tmp_path / "nowhere.iirds", runner.LINT_KINDS).as_dict()
+    reasons = document["notApplicable"]
+    for rule_id in runner.METADATA_ANSWERED:
+        assert rule_id in reasons["unreadable"], (rule_id, reasons)
+
+
+def test_a_clean_lint_run_names_the_rules_the_runner_answers_itself(make_package):
+    """`lint` does not run the container rules, so the runner answers three
+    of their questions itself -- did each metadata file parse. It recorded
+    them only when the answer was no, which makes a clean answer
+    unrepresentable and every failure an arrival rather than a change."""
+    document = report_of(make_package, runner.LINT_KINDS,
+                         metadata=MINIMAL_RDF).as_dict()
+    ran = set(document["judgedBy"]["rulesRun"])
+    assert set(runner.METADATA_ANSWERED) <= ran, sorted(set(runner.METADATA_ANSWERED) - ran)
+    assert not [f for f in document["findings"] if f["rule"] in runner.METADATA_ANSWERED]
+
+
+def test_breaking_the_metadata_moves_a_rule_inside_the_list(make_package):
+    """The whole point of the one above. A rule that goes from clean to
+    firing is a regression; a rule that goes from absent to firing is news,
+    and a difference must not be able to confuse the two because the report
+    could not say the rule had been clean."""
+    clean = report_of(make_package, runner.LINT_KINDS, metadata=MINIMAL_RDF).as_dict()
+    broken = report_of(make_package, runner.LINT_KINDS, metadata="<not xml").as_dict()
+    fired = {f["rule"] for f in broken["findings"]} & set(runner.METADATA_ANSWERED)
+    assert fired, "this fixture must make one of them fire"
+    for rule_id in fired:
+        assert rule_id in clean["judgedBy"]["rulesRun"], rule_id
+        assert rule_id in broken["judgedBy"]["rulesRun"], rule_id
+        assert rule_id not in {f["rule"] for f in clean["findings"]}
+
+
 def test_the_rules_that_did_not_run_are_the_reason_they_did_not(make_package):
     """`rulesSkipped` is read off `notApplicable` rather than counted beside
     it -- the same argument as the list above, one field down."""
     document = report_of(make_package).as_dict()
     reasons = document["notApplicable"]
-    assert document["summary"]["rulesSkipped"] == sum(len(ids) for ids in reasons.values())
+    # Two identities. What this command put to the package is checked plus
+    # skipped; every rule the build has is that plus the ones nobody put.
+    in_play = sum(len(ids) for reason, ids in reasons.items()
+                  if reason not in model.NOT_IN_PLAY)
+    assert document["summary"]["rulesSkipped"] == in_play
+    assert (document["summary"]["rulesChecked"] + document["summary"]["rulesSkipped"]
+            + sum(len(reasons[reason]) for reason in model.NOT_IN_PLAY)
+            == len(registry.implemented_ids()))
     ran = set(document["judgedBy"]["rulesRun"])
     for reason, ids in reasons.items():
         assert not (ran & set(ids)), (reason, sorted(ran & set(ids)))

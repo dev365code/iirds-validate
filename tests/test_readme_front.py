@@ -183,10 +183,13 @@ def test_the_terminal_picture_is_a_run_that_happened(tmp_path):
 
     stated = re.search(r"(\d+) rules checked, (\d+) not applicable", picture)
     assert stated, "the picture no longer states how many rules ran"
-    skipped = sum(len(v) for v in report.not_applicable.values())
-    assert (int(stated.group(1)), int(stated.group(2))) == (report.checked, skipped), (
+    # `report.skipped`, not a sum taken here: the picture quotes the line the
+    # report prints, and a second way of counting in a test is a second thing
+    # that can be right about a number the tool got wrong. It counted the
+    # rules this command never asked for, which the printed line does not.
+    assert (int(stated.group(1)), int(stated.group(2))) == (report.checked, report.skipped), (
         "the picture says %s and the run says %s"
-        % (stated.groups(), (report.checked, skipped)))
+        % (stated.groups(), (report.checked, report.skipped)))
 
     shown = re.findall(r">(C\d+|M\d+(?:\.\d+)?)<", picture)
     reported = [f.rule.id for f in report.findings]

@@ -276,7 +276,11 @@ def test_the_not_applicable_rules_are_listed_by_id_in_the_json_report(make_packa
     # directory. "fragment" is the four a snippet cannot satisfy, whose
     # findings `--fragment` deletes. "raised" is a rule that threw, beside the
     # S3 finding that exists so its silence is not read as a pass. A consumer
-    # reading `notApplicable` sees all of them, and every rule a run
-    # considered is in exactly one of these lists or in `judgedBy.rulesRun`.
-    assert set(listed) == {"variant", "version", "unpacked", "fragment", "raised"}
+    # reading `notApplicable` sees all of them. "unasked" is a kind this
+    # command did not ask for and "unreadable" is a rule never put because
+    # the container would not open; with those two the account is total on
+    # every path, not only for a run of every kind, and every rule this
+    # build has is in exactly one of these lists or in `judgedBy.rulesRun`.
+    assert set(listed) == {"variant", "version", "unpacked", "fragment",
+                           "raised", "unasked", "unreadable"}
     assert "M15.1" in listed["variant"] or any(i.startswith("M15") for i in listed["variant"])

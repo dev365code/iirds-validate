@@ -7,7 +7,7 @@ import re
 import sys
 from typing import Optional, TextIO
 
-from .model import Report, Severity
+from .model import NOT_IN_PLAY, Report, Severity
 
 _COLOURS = {Severity.ERROR: "\033[31m", Severity.WARNING: "\033[33m", Severity.INFO: "\033[36m"}
 _RESET = "\033[0m"
@@ -99,7 +99,15 @@ _REASON_LABELS = {
     "version": "for other editions",
     "fragment": "suspended for a fragment",
     "raised": "not answered -- the rule raised",
+    "unreadable": "never put -- the container would not open",
 }
+
+#: Said once, in the model, because the same list decides what the summary
+#: counts. "This command did not ask for the other kinds of rule" is not news
+#: to somebody who typed the command; for a program reading two reports
+#: against each other it is the difference between a rule that vanished and a
+#: rule nobody put.
+_UNSPOKEN_REASONS = NOT_IN_PLAY
 
 
 def _not_applicable_groups(report: Report):
@@ -110,7 +118,7 @@ def _not_applicable_groups(report: Report):
     by_id = {rule.id: rule for rule in all_rules()}
     out = []
     for reason, ids in report.not_applicable.items():
-        if not ids:
+        if not ids or reason in _UNSPOKEN_REASONS:
             continue
         if reason in _REASON_LABELS:
             out.append((_REASON_LABELS[reason], list(ids)))

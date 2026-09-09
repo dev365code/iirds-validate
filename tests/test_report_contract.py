@@ -2,7 +2,9 @@
 
 `--format json` and `report.as_dict()` are what another program reads: a
 build that fails on `ok`, a dashboard that counts `summary.errors`, a
-stored report compared against next quarter's. The README offers them and
+stored report compared against next quarter's. The last of those is why
+`schemaVersion` follows the meaning of the fields and not only their
+names: two documents of one shape can answer differently. The README offers them and
 `schemaVersion` announces that they are a contract — and nothing held
 either. A key could be renamed, or the version bumped, and every test
 still passed, because the tests that read the report each read the one
@@ -71,11 +73,22 @@ def test_the_document_carries_exactly_these_keys(make_package):
         assert set(finding) == FINDING, finding.get("rule")
 
 
-def test_the_schema_version_is_one(make_package):
-    """It changes when the shape above changes incompatibly, and a stored
-    report from an older release must stay readable, so it changes rarely
-    and never by accident."""
-    assert report_of(make_package).as_dict()["schemaVersion"] == 1
+def test_the_schema_version_is_two(make_package):
+    """It changes when the shape above changes incompatibly **or when the
+    meaning of a field changes**, and a stored report from an older release
+    must stay readable, so it changes rarely and never by accident.
+
+    The second half is what moved it to 2, and it is the harder half to see.
+    Not one key changed: `judgedBy.rulesRun` did. It used to name the three
+    rules the runner answers itself only when they fired, so a clean answer
+    from them was unrepresentable and every failure looked like a rule that
+    had just arrived. Now it names them either way. Two reports, identical in
+    shape, mean different things -- and a reader comparing them across the
+    change would be told a package broke something it never touched, which is
+    the failure the envelope exists to prevent. A per-key check cannot see
+    that. Only the number can say it.
+    """
+    assert report_of(make_package).as_dict()["schemaVersion"] == 2
 
 
 def test_what_the_cli_prints_is_what_the_library_returns(make_package):

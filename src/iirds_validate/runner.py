@@ -55,6 +55,54 @@ def _emitted(rule_id: str, kind: str = "system") -> Rule:
                 spec=meta.get("spec"), fn=lambda ctx: ())
 
 
+#: The questions the runner answers itself when the container rules were not
+#: asked for: did each metadata file parse, and was the RDF/XML refused. Named
+#: once and read twice -- by the emitter below and by the accounting, which
+#: must not list them as unasked when the runner is about to ask them.
+METADATA_ANSWERED = ("C9", "C16.1", "C16.2")
+
+#: Known and not closed: C1 is not in the list above, and it is asymmetric.
+#: A `lint` run that cannot open the container reports C1 and records it as
+#: answered, because the finding exists; a `lint` run that opens it records
+#: nothing, because the rule's own check -- every entry read back -- was not
+#: run. So C1 is absent from a clean lint report and present in a broken one,
+#: and a difference between the two reads the breakage as a rule that has
+#: just arrived rather than one that started firing.
+#:
+#: Neither cheap repair is honest. Recording C1 as answered on the readable
+#: path would claim its check ran when it did not, and a corrupt-but-openable
+#: archive would then be reported clean. Running its check under `lint` reads
+#: every entry, which is what `lint` exists not to do. The third way is to
+#: give "the container would not open" an identity of its own, and that moves
+#: an id that appears in published reports. Left as it stands, said here, and
+#: carried to the difference as a case with a test rather than a surprise.
+UNSYMMETRIC_UNDER_LINT = ("C1",)
+
+
+def _selected(rule, kinds: Sequence[str]) -> bool:
+    """Whether the rule loop runs that rule.
+
+    A conformance run also takes the two lint rules that are marked as
+    conformance, so "the rules of the selected kinds" is not the set and a
+    second copy of this expression would be wrong in a way nothing catches.
+    """
+    return rule.kind in kinds or ("schema" in kinds and rule.conformance)
+
+
+def _put(rule, kinds: Sequence[str]) -> bool:
+    """Whether this command puts that rule's question at all.
+
+    Wider than `_selected`, and the difference is `METADATA_ANSWERED`: on a
+    run that does not take the container rules, the runner asks those three
+    itself. A container that would not open means it never got that far --
+    which is `unreadable`, not `unasked`. Nobody stopped asking them; the
+    container stopped being readable, and a reader told otherwise would think
+    they had typed a different command.
+    """
+    return _selected(rule, kinds) or (rule.id in METADATA_ANSWERED
+                                      and "container" not in kinds)
+
+
 def _metadata_findings(ctx: Context, kinds: Sequence[str]):
     """Metadata that did not parse must fail the run whatever is being checked.
 
@@ -146,6 +194,15 @@ def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] =
         # already decided one line above, and a second copy of it is a second
         # thing to keep in step.
         report.answered(finding.rule.id)
+        # Nothing else was put to this container, and saying so is the point:
+        # a rule missing from both lists is one a later reader has to guess
+        # about. The report a person is most likely to keep and re-run named
+        # one rule and was silent about the other two hundred.
+        for rule in all_rules():
+            if rule.id in report.ran:
+                continue
+            reason = "unreadable" if _put(rule, kinds) else "unasked"
+            report.not_applicable[reason].append(rule.id)
         return report
 
     with package:
@@ -205,9 +262,18 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
     if not ctx.sources:
         report.notes.append("no usable metadata found; the graph rules had nothing to check")
 
-    conformance_run = "schema" in kinds
+    # Before the loop, so that the three questions the runner answers itself
+    # are already recorded when the loop decides what was never asked.
+    if "container" not in kinds:
+        for rule_id in METADATA_ANSWERED:
+            report.answered(rule_id)
+    for finding in _metadata_findings(ctx, kinds):
+        report.add(finding)
+
     for rule in all_rules():
-        if rule.kind not in kinds and not (conformance_run and rule.conformance):
+        if not _selected(rule, kinds):
+            if rule.id not in report.ran:
+                report.not_applicable["unasked"].append(rule.id)
             continue
         if not rule.applies_to(ctx.version, ctx.variant):
             reason = "version" if rule.versions and ctx.version not in rule.versions else "variant"
@@ -243,13 +309,6 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             continue
         report.answered(rule.id)
 
-    for finding in _metadata_findings(ctx, kinds):
-        # The runner answered this rule's question itself, so the rule belongs
-        # in the list as much as one the loop above called. A finding whose
-        # rule is missing from `rulesRun` leaves a reader unable to say which
-        # of the two is lying.
-        report.add(finding)
-        report.answered(finding.rule.id)
 
     implemented = {r.id for r in all_rules()}
     report.unimplemented = sum(

@@ -302,6 +302,17 @@ class _Latest:
         return self.key > other.key
 
 
+#: The reason that is not about this package at all. A rule whose kind the
+#: command never asked for was not in play, so it is not one of the rules
+#: that "did not run" -- counting it there turns "190 checked, 28 not
+#: applicable" into "42 not applicable" and tells a reader that fourteen
+#: rules could not be answered when nobody put them.
+#:
+#: Two identities, both held by tests: checked + skipped is what this command
+#: put to the package, and adding this is every rule the build has.
+NOT_IN_PLAY = ("unasked",)
+
+
 @dataclass
 class Report:
     path: str
@@ -330,14 +341,22 @@ class Report:
     #: Why a rule did not run, by reason. "unpacked" is the third: the six
     #: requirements about the ZIP archive itself cannot be answered by a
     #: directory, and were being counted as checked-and-clean.
-    #: "fragment" and "raised" are the fourth and fifth. `--fragment` runs
-    #: four rules and then withdraws their findings; a rule that raised
-    #: answered nothing. Both were being reported as run-and-clean, which is
-    #: the same defect twice: silence read as a pass. Every registered rule a
-    #: run considered is now in exactly one of `ran` and these lists.
+    #: Why each rule this build has did not answer. Every registered rule is
+    #: in exactly one of `ran` and these lists, on every path -- a rule in
+    #: neither is one a later reader has to guess about, and the guess is
+    #: "the two builds have different rules", which is wrong in the most
+    #: alarming direction available.
+    #:
+    #: They arrived one defect at a time, and all of them the same defect:
+    #: silence read as a pass. "unpacked" was the archive requirements a
+    #: directory cannot answer; "fragment" the four a snippet cannot satisfy,
+    #: whose findings `--fragment` withdraws; "raised" a rule that threw;
+    #: "unasked" a kind this command did not ask for; "unreadable" the rules
+    #: that were never put because the container would not open.
     not_applicable: dict = field(
         default_factory=lambda: {"variant": [], "version": [], "unpacked": [],
-                                 "fragment": [], "raised": []})
+                                 "fragment": [], "raised": [], "unasked": [],
+                                 "unreadable": []})
     unimplemented: int = 0           # catalogued but not yet implemented here
     notes: list = field(default_factory=list)
     #: rule id -> how many of its findings were counted but not listed.
@@ -360,10 +379,14 @@ class Report:
 
     @property
     def skipped(self) -> int:
-        """How many rules did not run. Same argument as `checked`: the reasons
-        are recorded per rule in `not_applicable`, so the number is read off
-        them rather than kept beside them."""
-        return sum(len(ids) for ids in self.not_applicable.values())
+        """How many of the rules this command put to the package did not run.
+
+        Same argument as `checked`: the reasons are recorded per rule in
+        `not_applicable`, so the number is read off them rather than kept
+        beside them. `NOT_IN_PLAY` is left out, and says why.
+        """
+        return sum(len(ids) for reason, ids in self.not_applicable.items()
+                   if reason not in NOT_IN_PLAY)
 
     @property
     def findings(self) -> list:
@@ -432,13 +455,25 @@ class Report:
         why. Reporting it as run-and-clean is the same defect as counting a
         rule that raised: silence read as a pass.
         """
-        rule_ids = set(rule_ids)
-        for rule_id in rule_ids:
+        # Sorted, not iterated as a set: `FRAGMENT_SUSPENDED` is a frozenset,
+        # and writing its members into the report in iteration order made the
+        # document depend on the hash seed. Measured: seven distinct reports
+        # across eight seeds, from a flag a user can type.
+        withdrawn = sorted(set(rule_ids))
+        # A rule that already has a reason keeps it. `--fragment` withdraws
+        # four rules whatever was asked, and under `lint` two of them were
+        # never put -- filing those under `fragment` as well left one rule in
+        # two lists, so the reason a reader is given depends on which key was
+        # seen last, and the summary counted them as suspended when nobody
+        # had asked them.
+        excused = {rid for ids in self.not_applicable.values() for rid in ids}
+        for rule_id in withdrawn:
             if rule_id in self.ran:
                 self.ran.remove(rule_id)
-            if rule_id not in self.not_applicable[reason]:
+            if rule_id not in excused:
                 self.not_applicable[reason].append(rule_id)
-        for rule_id in rule_ids & set(self._kept):
+                excused.add(rule_id)
+        for rule_id in [r for r in withdrawn if r in self._kept]:
             severity = self._kept[rule_id][0][2].severity
             if rule_id in self.suppressed:
                 self._unlisted_severity[severity] = max(
@@ -460,7 +495,7 @@ class Report:
 
     def as_dict(self) -> dict:
         return {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "package": self.path,
             "iirdsVersion": self.version,
             "validatedAgainst": self.effective_version,

@@ -105,6 +105,34 @@ def localized(block: str, lang: str):
     return json.loads(f'"{m.group(1)}"') if m else None
 
 
+def differences(committed: dict, fresh: dict):
+    """(added, removed, changed) between two catalogues, by rule id.
+
+    Over `rules` and nothing else. The provenance keys -- which commit, which
+    day, which script -- are facts about the extraction and not about the
+    rules, and comparing whole documents is what made this gate unable to
+    answer "no": CI asks with `--ref master` while the committed file names
+    the pinned commit, so the two strings differed at `_commit` whatever
+    upstream had done. It reported a change every time it ran, for a year of
+    runs in which the rules had not moved.
+
+    `changed` names the fields, because "something changed" sends a person to
+    read a hundred and fifty-seven rules and the fields are what tells them
+    whether it matters.
+    """
+    here = {r["id"]: r for r in committed.get("rules", ())}
+    there = {r["id"]: r for r in fresh.get("rules", ())}
+    added = sorted(set(there) - set(here))
+    removed = sorted(set(here) - set(there))
+    changed = []
+    for rule_id in sorted(set(here) & set(there)):
+        moved = [field for field in sorted(set(here[rule_id]) | set(there[rule_id]))
+                 if here[rule_id].get(field) != there[rule_id].get(field)]
+        if moved:
+            changed.append((rule_id, moved))
+    return added, removed, changed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--offline", help="path to a local clone of the plusmeta repo")
@@ -157,12 +185,18 @@ def main() -> int:
     }, ensure_ascii=False, indent=2) + "\n"
 
     if args.check:
-        current = OUT.read_text("utf-8") if OUT.exists() else ""
-        if current == payload:
-            print("catalogue is up to date with %s" % args.ref[:12])
+        committed = json.loads(OUT.read_text("utf-8")) if OUT.exists() else {"rules": []}
+        added, removed, changed = differences(committed, json.loads(payload))
+        if not (added or removed or changed):
+            print("catalogue rules are those of %s" % args.ref[:12])
             return 0
-        print("catalogue differs from %s — upstream rules have changed" % args.ref[:12],
-              file=sys.stderr)
+        print("catalogue rules differ from %s" % args.ref[:12], file=sys.stderr)
+        for rule_id in added:
+            print("  added   %s" % rule_id, file=sys.stderr)
+        for rule_id in removed:
+            print("  removed %s" % rule_id, file=sys.stderr)
+        for rule_id, fields in changed:
+            print("  changed %-8s %s" % (rule_id, ", ".join(fields)), file=sys.stderr)
         return 1
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

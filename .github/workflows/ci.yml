@@ -293,9 +293,27 @@ jobs:
           print("%d rules ran with the network disabled" % report.checked)
           PY
 
+  vendored-catalogue:
+    # Two questions were one job and one of them swallowed the other. This is
+    # the half about us: does the catalogue in this repository still hold the
+    # rules of the commit it says it came from? NOTICE and THIRD_PARTY.md rest
+    # on that sentence, so it is a failure and not a notice — and it needs the
+    # network, which is why it cannot live in the main pipeline.
+    name: vendored catalogue is faithful to its pin
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: are the vendored rules the ones that commit has?
+        run: python tools/extract_catalog.py --check
+
   upstream-catalogue:
-    # Advisory. plusmeta actively maintains their rule set; this says so out
-    # loud instead of letting the pinned catalogue quietly go stale.
+    # Advisory, and the half about them. plusmeta actively maintains their
+    # rule set; this says so out loud instead of letting the pinned catalogue
+    # quietly go stale.
     name: upstream rule catalogue
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

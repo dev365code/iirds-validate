@@ -199,6 +199,69 @@ def test_one_build_answers_with_one_digest_whatever_was_asked(make_package):
     assert digests == {registry.rule_set_digest()}
 
 
+#: Every argument of `run()` except the package itself, and where the report
+#: writes down what it was given. A run's answer is a function of the package
+#: and of these; an argument that is not written down is an axis on which two
+#: reports can differ with nothing in either of them saying so, and a
+#: difference between them then attributes the change to the package.
+#:
+#: `version` is recorded as its outcome rather than as the request:
+#: `validatedAgainst` is the edition the rules actually ran against, which is
+#: what a later reader needs. The profile is not here because it is not an
+#: argument -- the package declares it, and the report carries it at the top
+#: level as `variant`.
+AXES = {
+    "kinds": lambda doc: doc["judgedBy"]["kinds"],
+    "version": lambda doc: doc["validatedAgainst"],
+    "include_info": lambda doc: doc["judgedBy"]["includesInfo"],
+}
+
+
+def test_nothing_stands_in_front_of_the_runner():
+    """The suite replaces `run`, `check` and `lint` to record what fired.
+
+    A replacement that does not carry the function it stands for answers
+    `(*args, **kwargs)` to anything that asks the runner about itself, and the
+    gate below would then be reading the harness rather than the code. Held
+    separately so the two failures have two names: that one going red must
+    mean an argument is unrecorded, not that something got in the way.
+    """
+    import inspect
+
+    for name in ("run", "check", "lint"):
+        stands_there = getattr(runner, name)
+        assert stands_there.__module__ == "iirds_validate.runner", (
+            name, stands_there.__module__)
+        assert stands_there.__qualname__ == name, (name, stands_there.__qualname__)
+        assert inspect.unwrap(stands_there).__code__.co_filename.endswith("runner.py"), name
+
+
+def test_every_argument_that_shapes_a_report_is_written_down_in_it(make_package):
+    """The list above is the whole state space, and this is what holds it
+    closed: add an argument to `run()` and this goes red until the report
+    says what it was given."""
+    import inspect
+
+    arguments = [name for name in inspect.signature(inspect.unwrap(runner.run)).parameters
+                 if name != "path"]
+    assert set(arguments) == set(AXES), sorted(set(arguments) ^ set(AXES))
+
+    document = report_of(make_package).as_dict()
+    for name, read in AXES.items():
+        assert read(document) is not None, name
+
+
+def test_dropping_the_quiet_findings_is_recorded(make_package):
+    """`include_info` throws away every INFO finding. A run that dropped them
+    and a run that did not are two different questions, and comparing them
+    reports every INFO rule as fixed."""
+    package = make_package(metadata=MINIMAL_RDF.replace(
+        "<iirds:title>A topic</iirds:title>", ""))
+    for asked in (True, False):
+        document = runner.run(package, runner.ALL_KINDS, include_info=asked).as_dict()
+        assert document["judgedBy"]["includesInfo"] is asked
+
+
 # ---------------------------------------------------------------------------
 # The digest: what moves it
 # ---------------------------------------------------------------------------

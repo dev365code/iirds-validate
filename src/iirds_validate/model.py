@@ -319,6 +319,10 @@ class Report:
     #: The digest of the build's rule set, set by the runner (the model cannot
     #: import the registry without a cycle). None means nobody recorded one.
     rule_set: Optional[str] = None
+    #: Whether the run kept its INFO findings. A run that threw them away and
+    #: a run that did not are two different questions: comparing them reports
+    #: every rule that only ever says something quiet as fixed.
+    includes_info: bool = True
     #: The same rules by id, by the reason they did not apply: "variant" (the
     #: package does not declare the profile the rule is for) or "version". A
     #: count told a reader that twenty-one rules did not run; which ones, and
@@ -471,6 +475,7 @@ class Report:
                 "kinds": list(self.kinds),
                 "rulesRun": sorted(self.ran),
                 "ruleSetDigest": self.rule_set,
+                "includesInfo": self.includes_info,
             },
             "summary": {
                 "errors": self.count(Severity.ERROR),

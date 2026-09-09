@@ -45,6 +45,7 @@ JUDGED_BY = {
     "kinds",             # what the command asked to be checked
     "rulesRun",          # which rules this run actually answered, by name
     "ruleSetDigest",     # the cheap "same rule set?" before anything is compared
+    "includesInfo",      # whether the quiet findings were kept
 }
 
 SUMMARY = {"errors", "warnings", "info", "rulesChecked", "rulesSkipped",

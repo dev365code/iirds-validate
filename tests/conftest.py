@@ -6,6 +6,7 @@ pytest. One builder, imported here, rather than two that drift apart.
 """
 from __future__ import annotations
 
+import functools
 import os
 import sys
 from pathlib import Path
@@ -191,6 +192,12 @@ def _observe_which_rules_fire():
     originals = {name: getattr(runner, name) for name in ("run", "check", "lint")}
 
     def wrap(fn):
+        # `functools.wraps` so the replacement still answers about the
+        # function it stands in for. Without it every entry point in the
+        # suite reports its signature as `(*args, **kwargs)`, and a test that
+        # asks the runner what arguments it takes is answered by the harness
+        # rather than by the code it is testing.
+        @functools.wraps(fn)
         def wrapped(*args, **kwargs):
             report = fn(*args, **kwargs)
             ids = {f.rule.id for f in report.findings}

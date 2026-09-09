@@ -126,7 +126,8 @@ def run_fragment(path, kinds, version=None):
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,
         include_info: bool = True) -> Report:
-    report = Report(path=str(path), kinds=tuple(kinds), rule_set=rule_set_digest())
+    report = Report(path=str(path), kinds=tuple(kinds), rule_set=rule_set_digest(),
+                    includes_info=include_info)
 
     try:
         package = open_package(path)

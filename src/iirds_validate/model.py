@@ -330,6 +330,19 @@ class Report:
     #: The digest of the build's rule set, set by the runner (the model cannot
     #: import the registry without a cycle). None means nobody recorded one.
     rule_set: Optional[str] = None
+    #: Which bytes were judged, or why there is no answer. A difference
+    #: between two reports is a sentence about one package and nothing said
+    #: which; two reports about two different files compared without a
+    #: murmur. It answers "the same bytes or different bytes" and nothing
+    #: else -- recompressing the same content moves it and the verdict does
+    #: not, so it is not the identity of a package.
+    package_digest: dict = field(
+        default_factory=lambda: {"digest": None, "bytes": None,
+                                 "reason": "nobody recorded what was judged"})
+    #: The rule bodies, which the rule-set digest is designed not to see.
+    rules_source: dict = field(
+        default_factory=lambda: {"digest": None,
+                                 "reason": "nobody recorded the rule sources"})
     #: Whether the run kept its INFO findings. A run that threw them away and
     #: a run that did not are two different questions: comparing them reports
     #: every rule that only ever says something quiet as fixed.
@@ -511,7 +524,9 @@ class Report:
                 "rulesRun": sorted(self.ran),
                 "ruleSetDigest": self.rule_set,
                 "includesInfo": self.includes_info,
+                "rulesSource": dict(self.rules_source),
             },
+            "packageDigest": dict(self.package_digest),
             "summary": {
                 "errors": self.count(Severity.ERROR),
                 "warnings": self.count(Severity.WARNING),

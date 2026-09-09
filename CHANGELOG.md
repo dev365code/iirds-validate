@@ -6,6 +6,23 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A report now says which bytes it judged, and which rule sources ran.** Two
+reports about two different files compared without a murmur, because nothing in
+either document said which package it was about. The container's sha256 and its
+size are recorded, and they answer one question — the same bytes or different
+bytes — and never the identity of a package: recompressing the same content
+moves the digest and leaves the verdict where it was. An unpacked container is
+not one file and an unreadable path has no bytes, so both come back null with
+the reason said beside them rather than as a digest of nothing.
+
+Beside it, a digest of the rule sources. The rule-set digest is over registered
+identities and cannot see a rule's implementation, and `toolVersion` moves only
+at a release — measured over this project's history, a hundred and twelve
+commits changed a rule file and not one of them moved it. This is the field
+that can say the bodies differ. It is hashed with line endings normalised, so a
+Windows checkout and a Linux one of the same release agree, and it is null with
+a reason where there are no source files to read, as in the zipapp.
+
 **A container that will not open is reported as `S13`, not `C1`.** The two are
 different questions and one id was answering both: `C1` asks whether an
 archive that opened gives every entry back, and it was also being reported for

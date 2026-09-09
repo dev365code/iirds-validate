@@ -9,8 +9,8 @@ from rdflib import URIRef
 from . import rules as _rules  # noqa: F401  — importing registers every rule
 from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
-from .package import PackageError, UnreadablePath, open_package
-from .registry import CATALOG, all_rules, rule_set_digest
+from .package import PackageError, UnreadablePath, file_digest, open_package
+from .registry import CATALOG, all_rules, rule_set_digest, rules_source_digest
 from .rules.container import c9_violation, rdfxml_refusal
 
 #: "system" is in every set: a container that could not be read has to be
@@ -146,6 +146,11 @@ def run_fragment(path, kinds, version=None):
         shutil.rmtree(staging, ignore_errors=True)
 
     report.path = str(source)
+    # And the digest with it: the container this ran against was staged here
+    # and is already gone, so naming its bytes would name something the reader
+    # never had. What they handed over is the fragment.
+    digest, size, why = file_digest(source)
+    report.package_digest = {"digest": digest, "bytes": size, "reason": why}
     suspended = sorted({f.rule.id for f in report.findings} & FRAGMENT_SUSPENDED)
     report.drop(FRAGMENT_SUSPENDED, "fragment")
     report.notes.append(
@@ -157,8 +162,12 @@ def run_fragment(path, kinds, version=None):
 
 def run(path, kinds: Sequence[str] = CONFORMANCE_KINDS, version: Optional[str] = None,
         include_info: bool = True) -> Report:
+    digest, size, why = file_digest(path)
+    source, source_why = rules_source_digest()
     report = Report(path=str(path), kinds=tuple(kinds), rule_set=rule_set_digest(),
-                    includes_info=include_info)
+                    includes_info=include_info,
+                    package_digest={"digest": digest, "bytes": size, "reason": why},
+                    rules_source={"digest": source, "reason": source_why})
 
     try:
         package = open_package(path)

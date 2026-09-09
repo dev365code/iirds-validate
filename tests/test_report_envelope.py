@@ -22,6 +22,9 @@ feature is built on.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import pathlib
+import zipfile
 
 import pytest
 
@@ -379,6 +382,102 @@ def test_dropping_the_quiet_findings_is_recorded(make_package):
     for asked in (True, False):
         document = runner.run(package, runner.ALL_KINDS, include_info=asked).as_dict()
         assert document["judgedBy"]["includesInfo"] is asked
+
+
+# ---------------------------------------------------------------------------
+# What was judged, and what the digest of the rules cannot see
+# ---------------------------------------------------------------------------
+
+def test_the_report_says_which_bytes_it_judged(make_package, tmp_path):
+    """A difference between two reports is a sentence about one package, and
+    nothing in the report said which. Two reports about two different files
+    compare without a murmur.
+
+    A digest is not the identity of a package -- recompressing the same
+    content changes it and the verdict does not -- so this answers one
+    question and only that one: the same bytes, or different bytes.
+    """
+    package = make_package(metadata=MINIMAL_RDF)
+    document = runner.run(package, runner.ALL_KINDS).as_dict()
+    judged = document["packageDigest"]
+    assert set(judged) == {"digest", "bytes", "reason"}
+    assert judged["digest"] == "sha256:" + hashlib.sha256(
+        pathlib.Path(package).read_bytes()).hexdigest()
+    assert judged["bytes"] == pathlib.Path(package).stat().st_size
+    assert judged["reason"] is None
+
+
+def test_a_directory_has_no_bytes_to_name_and_says_so(tmp_path, make_package):
+    """An unpacked container is not one file. The field is null and the
+    reason says why -- not an empty string, not a digest of something else."""
+    package = make_package(metadata=MINIMAL_RDF)
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    judged = runner.run(unpacked, runner.ALL_KINDS).as_dict()["packageDigest"]
+    assert judged["digest"] is None and judged["bytes"] is None
+    # Not merely that a reason exists. Opening a directory raises, so a
+    # version with no branch for this also comes back null -- with the name
+    # of an exception, which reads as a failure. A directory is not a
+    # failure; it is one of the two shapes a container comes in.
+    assert "unpacked container" in judged["reason"], judged["reason"]
+    assert "Error" not in judged["reason"], judged["reason"]
+
+
+def test_a_container_that_would_not_open_still_says_what_it_read(tmp_path):
+    """The report most worth keeping is the one that failed, and the bytes it
+    failed on are exactly what a later reader wants named."""
+    broken = tmp_path / "broken.iirds"
+    broken.write_bytes(b"this is not a ZIP archive at all")
+    judged = runner.run(broken, runner.ALL_KINDS).as_dict()["packageDigest"]
+    assert judged["digest"] == "sha256:" + hashlib.sha256(broken.read_bytes()).hexdigest()
+    assert judged["bytes"] == broken.stat().st_size
+
+
+def test_a_fragment_names_the_bytes_the_reader_handed_over(tmp_path):
+    """`--fragment` stages the snippet inside a throwaway container and runs
+    that. The report keeps the fragment's own path -- the person pointed at a
+    file, not at our scratch directory -- and the digest has to keep the same
+    company. Naming the temporary archive would name bytes the reader never
+    had and cannot produce again."""
+    fragment = tmp_path / "metadata.rdf"
+    fragment.write_text(MINIMAL_RDF, "utf-8")
+    judged = runner.run_fragment(fragment, runner.ALL_KINDS).as_dict()["packageDigest"]
+    assert judged["digest"] == "sha256:" + hashlib.sha256(fragment.read_bytes()).hexdigest()
+    assert judged["bytes"] == fragment.stat().st_size
+
+
+def test_the_report_names_the_rule_sources_it_ran(make_package):
+    """The rule-set digest is over registered identities and cannot see a
+    rule's body; `toolVersion` moves only at a release. This is the third
+    thing, and it is a banner rather than a gate: it says the bodies differ,
+    which the other two cannot."""
+    source = report_of(make_package).as_dict()["judgedBy"]["rulesSource"]
+    assert set(source) == {"digest", "reason"}
+    assert source["digest"] and source["digest"].startswith("sha256:")
+    assert source["reason"] is None
+
+
+def test_the_rule_source_digest_does_not_depend_on_line_endings(tmp_path):
+    """A checkout with CRLF and one with LF are the same release. Hashing the
+    bytes as they sit would make every report from a Windows install differ
+    from every report from a Linux one, and a banner that fires on every
+    ordinary comparison is a banner nobody reads."""
+    lf, crlf = tmp_path / "lf", tmp_path / "crlf"
+    for where, ending in ((lf, b"\n"), (crlf, b"\r\n")):
+        where.mkdir()
+        (where / "a.py").write_bytes(b"one" + ending + b"two" + ending)
+        (where / "b.py").write_bytes(b"three" + ending)
+    assert registry.rules_source_digest(lf) == registry.rules_source_digest(crlf)
+
+
+def test_sources_that_cannot_be_read_are_null_with_a_reason(tmp_path):
+    """Installed as a zipapp there are no files to read. The field says so
+    rather than carrying a digest of nothing, which would be a different
+    build's value from the reader's point of view."""
+    digest, reason = registry.rules_source_digest(tmp_path / "not-here")
+    assert digest is None
+    assert reason, "a missing value has to say why it is missing"
 
 
 # ---------------------------------------------------------------------------

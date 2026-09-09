@@ -36,6 +36,7 @@ DOCUMENT = {
     "notApplicable",     # which rules did not run, by reason
     "suppressed",        # rules whose findings were demoted out of the listing
     "judgedBy",          # what judged it, so a later run can be compared to it
+    "packageDigest",     # which bytes were judged, or why there is no answer
 }
 
 #: The envelope. A stored report is read next quarter against a run of a
@@ -48,6 +49,7 @@ JUDGED_BY = {
     "rulesRun",          # which rules this run actually answered, by name
     "ruleSetDigest",     # the cheap "same rule set?" before anything is compared
     "includesInfo",      # whether the quiet findings were kept
+    "rulesSource",       # the rule bodies, which the rule-set digest cannot see
 }
 
 SUMMARY = {"errors", "warnings", "info", "rulesChecked", "rulesSkipped",

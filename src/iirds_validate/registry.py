@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import pathlib
 from typing import Callable, Dict, List, Optional, Tuple
 
 from . import resources
@@ -133,6 +134,50 @@ def rule_set_digest(rules: Optional[List[Rule]] = None) -> str:
     } for rule in sorted(rules, key=lambda r: r.id)]
     blob = json.dumps(identities, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+#: Where the rule bodies live, when they live in files at all.
+RULES_SOURCE = pathlib.Path(__file__).resolve().parent / "rules"
+
+
+def rules_source_digest(where=None):
+    """(digest of the rule bodies, or None and the reason there is none).
+
+    The rule-set digest above is over registered identities and says so: it
+    cannot see a rule's implementation. `toolVersion` moves only at a release,
+    and this project has shipped thirty-odd commits under one of them, thirteen
+    of which changed a rule body. This is the third thing, and the only one
+    that can say the bodies differ.
+
+    A banner, never a gate. It moves for a comment, so refusing a comparison on
+    it would refuse most of them; naming the difference is what it is for.
+
+    Line endings are normalised to LF before hashing. A checkout with CRLF and
+    one with LF are the same release, and hashing the bytes as they sit would
+    make every report from a Windows install differ from every report from a
+    Linux one -- a banner that fires on every ordinary comparison is a banner
+    nobody reads.
+
+    Installed as a zipapp there are no files to read, and then this is None
+    with a reason rather than a digest of nothing: an absent value that
+    pretends to be a value is a different build's answer from the reader's
+    point of view.
+    """
+    where = RULES_SOURCE if where is None else pathlib.Path(where)
+    try:
+        files = sorted(where.glob("*.py"))
+    except OSError as exc:                        # noqa: BLE001 -- reported, not raised
+        return None, "the rule sources could not be listed (%s)" % type(exc).__name__
+    if not files:
+        return None, "no rule sources on disk at %s" % where.name
+    running = hashlib.sha256()
+    try:
+        for path in files:
+            running.update(path.name.encode("utf-8") + b"\0")
+            running.update(path.read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    except OSError as exc:                        # noqa: BLE001
+        return None, "the rule sources could not be read (%s)" % type(exc).__name__
+    return "sha256:" + running.hexdigest(), None
 
 
 def rules_of_kind(kind: str) -> List[Rule]:

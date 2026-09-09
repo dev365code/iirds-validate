@@ -13,6 +13,7 @@ and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import posixpath
 import zipfile
@@ -135,6 +136,37 @@ def entry_or_reason(source: str):
     if name == ".." or name.startswith("../"):
         return None, ESCAPES
     return name, None
+
+
+def file_digest(path):
+    """(sha256 of the file, its size, or None and why not).
+
+    Streamed, because a container may be a quarter of a gigabyte and this runs
+    on every check. What it answers is one question and only that one: the
+    same bytes, or different bytes. It is **not** the identity of a package --
+    recompressing the same content changes it while the verdict does not -- so
+    nothing may read it as "a different package".
+
+    A directory has no single file to hash, and an unreadable path has no
+    bytes at all. Both come back as None with the reason said, rather than as
+    a digest of nothing.
+    """
+    path = Path(path)
+    if path.is_dir():
+        return None, None, "an unpacked container is not one file, so it has no digest"
+    running = hashlib.sha256()
+    size = 0
+    try:
+        with open(path, "rb") as handle:
+            while True:
+                chunk = handle.read(_INTEGRITY_CHUNK)
+                if not chunk:
+                    break
+                running.update(chunk)
+                size += len(chunk)
+    except OSError as exc:                        # noqa: BLE001 -- reported, not raised
+        return None, None, "the bytes could not be read (%s)" % type(exc).__name__
+    return "sha256:" + running.hexdigest(), size, None
 
 
 class PackageError(Exception):

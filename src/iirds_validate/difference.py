@@ -75,8 +75,17 @@ REMEDY = {
                 "cannot be answered by one",
     "fragment": "one side was a fragment; the rules a snippet cannot satisfy were suspended",
     "package": "the two reports name different files",
+    "packageDigest": "the two reports are about different bytes -- which is what an edited "
+                     "package looks like, and also what recompressing the same content "
+                     "looks like, so it is said and not acted on",
     "iirdsVersion": "the package declares a different edition than it did",
 }
+
+
+#: What a finding's severity may say. A stored file carrying a fourth word is
+#: not one this tool wrote, and a typo read as "not an error" made a rule the
+#: stored report showed failing look clean.
+SEVERITIES = ("error", "warning", "info")
 
 
 class Refused(Exception):
@@ -241,6 +250,25 @@ def checked(document, which: str) -> dict:
         if finding["rule"] not in ran:
             _refuse("%s carries a finding from %s and says that rule never answered"
                     % (which, finding["rule"]))
+        if finding.get("severity") not in SEVERITIES:
+            _refuse("%s carries a finding whose severity is %r, which this tool does not "
+                    "write" % (which, finding.get("severity")))
+
+    # A report is a claim about itself as well as about a package, and the two
+    # halves have to agree. Shape alone let a stored file say PASS beside a
+    # failing rule, and a difference read from it printed a verdict line and a
+    # footer that contradicted each other.
+    errors = sum(1 for finding in findings if finding["severity"] == "error")
+    summary = document.get("summary")
+    if not isinstance(summary, dict) or not isinstance(summary.get("errors"), int) \
+            or isinstance(summary.get("errors"), bool):
+        _refuse("%s does not carry a summary" % which)
+    if summary["errors"] < errors:
+        _refuse("%s counts %d errors and lists %d" % (which, summary["errors"], errors))
+    if document["ok"] != (summary["errors"] == 0):
+        _refuse("%s says %s and counts %d errors"
+                % (which, "the package is clean" if document["ok"] else "the package is not",
+                   summary["errors"]))
     return {"ran": ran, "excused": excused, "envelope": envelope, "document": document,
             "findings": findings, "suppressed": suppressed, "reasons": reasons}
 
@@ -375,6 +403,17 @@ def difference(stored, here) -> Difference:
         if left["document"].get(what) != right["document"].get(what):
             banners.append({"what": what, "stored": left["document"].get(what),
                             "here": right["document"].get(what), "remedy": REMEDY[what]})
+    # Said, never acted on. A digest answers "the same bytes or different
+    # bytes" and that is all it may be read as: recompressing one package
+    # moves it while the verdict stays put, so making it a basis would refuse
+    # a comparison the design calls legitimate. Recorded and never read was
+    # the other mistake -- two reports about two different files compared
+    # without a murmur.
+    stored_bytes = (left["document"].get("packageDigest") or {}).get("digest")
+    here_bytes = (right["document"].get("packageDigest") or {}).get("digest")
+    if stored_bytes != here_bytes:
+        banners.append({"what": "packageDigest", "stored": stored_bytes,
+                        "here": here_bytes, "remedy": REMEDY["packageDigest"]})
     comparable = not any(b["what"] in BASIS for b in banners)
 
     rows = {name: [] for name in ("regression", "fixed", "startedFiring", "stoppedFiring",
@@ -385,6 +424,12 @@ def difference(stored, here) -> Difference:
         stored_totals = _totals(left, rule_id) if in_left else None
         here_totals = _totals(right, rule_id) if in_right else None
         if in_right and not in_left:
+            # The class says nobody may be told they broke this: the stored
+            # run never put the rule. The number is a different question --
+            # this run has an error the stored report does not, which is true
+            # whichever rule found it and says nothing about why.
+            if here_totals[1]:
+                worse = True
             rows["newlyChecked"].append(
                 Row(rule_id, left["excused"].get(rule_id), None, here_totals))
             continue
@@ -396,6 +441,7 @@ def difference(stored, here) -> Difference:
         if fires_now and (here_totals[1] > stored_totals[1]
                           or (here_totals[1] and here_totals[2] > stored_totals[2])):
             worse = True
+
         if not fired_then and not fires_now:
             continue
         capped = bool(stored_totals[2] or here_totals[2])

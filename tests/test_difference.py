@@ -352,3 +352,90 @@ def test_the_difference_is_the_same_document_whatever_the_hash_seed(tmp_path, ma
         assert '"noLongerChecked"' in out and out.count("      ") > 50, out[:400]
         seen.add(out)
     assert len(seen) == 1, "%d distinct differences across eight seeds" % len(seen)
+
+
+# ---------------------------------------------------------------------------
+# Sentences the documents do not support
+# ---------------------------------------------------------------------------
+
+def error_rules(document):
+    return sorted({f["rule"] for f in document["findings"] if f["severity"] == "error"})
+
+
+def test_an_error_from_a_rule_the_stored_run_never_put_still_counts(make_package):
+    """The footer said "no rule has errors here that the stored report did
+    not" while this run carried an error the stored report had no rule for.
+
+    The class stays `newlyChecked` -- a rule the stored run never put did not
+    regress, and nobody may be told they broke it. The number is a different
+    question: this run has an error the stored report does not, which is true
+    whichever rule found it and carries no cause at all.
+    """
+    here = report_for(make_package(name="e.iirds", metadata=two_formats(MINIMAL_RDF)))
+    fired = error_rules(here)
+    assert fired, "this fixture must produce an error"
+    stored = copy.deepcopy(here)
+    for rule_id in fired:
+        stored["judgedBy"]["rulesRun"] = [r for r in stored["judgedBy"]["rulesRun"]
+                                          if r != rule_id]
+        stored["notApplicable"]["version"] = list(stored["notApplicable"]["version"]) + [rule_id]
+    stored["findings"] = [f for f in stored["findings"] if f["rule"] not in fired]
+    stored["ok"] = True
+    stored["summary"] = dict(stored["summary"], errors=0)
+
+    answer = diff.difference(stored, here)
+    assert answer.worse, answer.as_dict()
+    assert [row["rule"] for row in answer.as_dict()["newlyChecked"]] == fired
+    assert answer.as_dict()["regression"] == []
+
+
+def test_the_bytes_that_were_judged_are_compared(make_package, clean):
+    """`packageDigest` was recorded and never read. Two reports about two
+    different files compared without a murmur, which is the sentence the
+    field was added under.
+
+    A banner and not a basis: recompressing the same content moves the digest
+    and leaves the verdict alone, so refusing on it would refuse a comparison
+    the design says is legitimate.
+    """
+    # Different content, because packing is deterministic: two packages built
+    # from one metadata are byte-identical, which is the property the release
+    # gate rests on and the reason a digest can mean anything at all.
+    other = report_for(make_package(name="other.iirds", metadata=two_formats(MINIMAL_RDF)))
+    assert clean["packageDigest"]["digest"] != other["packageDigest"]["digest"]
+    banners = diff.difference(clean, other).as_dict()["banners"]
+    assert any(banner["what"] == "packageDigest" for banner in banners), banners
+    assert all(banner["remedy"] for banner in banners)
+
+
+def test_a_report_that_contradicts_itself_is_refused(clean):
+    """`ok` is a claim about the findings beside it. A stored file where the
+    two disagree is not a report anybody wrote, and reading it produced a
+    verdict line and a footer that said opposite things."""
+    forged = copy.deepcopy(clean)
+    forged["ok"] = False
+    with pytest.raises(diff.Refused):
+        diff.difference(forged, clean)
+
+
+def test_a_severity_the_tool_does_not_write_is_refused(clean, make_package):
+    """A typo in a stored severity was read as "not an error", so a rule that
+    the stored report showed failing looked clean and this run looked worse."""
+    firing = report_for(make_package(name="s.iirds", metadata=two_formats(MINIMAL_RDF)))
+    forged = copy.deepcopy(firing)
+    forged["findings"][0]["severity"] = "erorr"
+    with pytest.raises(diff.Refused):
+        diff.difference(forged, firing)
+
+
+def test_a_summary_that_disagrees_with_the_findings_is_refused(clean, make_package):
+    """`ok` and `errors` moved together here, so the check that holds those
+    two against each other is satisfied and only the one that reads the
+    findings themselves can catch it. A forgery that keeps its story straight
+    at one level is the one worth testing."""
+    firing = report_for(make_package(name="t.iirds", metadata=two_formats(MINIMAL_RDF)))
+    forged = copy.deepcopy(firing)
+    forged["summary"] = dict(forged["summary"], errors=0)
+    forged["ok"] = True
+    with pytest.raises(diff.Refused):
+        diff.difference(forged, firing)

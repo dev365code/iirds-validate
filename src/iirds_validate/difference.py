@@ -126,7 +126,7 @@ def _names(value, where):
         _refuse("%s must be a list of rule names" % where)
 
 
-def _checked(document, which: str) -> dict:
+def checked(document, which: str) -> dict:
     """One side, validated. Raises `Refused` with a sentence, never a shape."""
     if not isinstance(document, dict):
         _refuse("%s is not a report: a report is an object, and this is %s. A run of "
@@ -199,6 +199,24 @@ def _checked(document, which: str) -> dict:
                     % (which, finding["rule"]))
     return {"ran": ran, "excused": excused, "envelope": envelope, "document": document,
             "findings": findings, "suppressed": suppressed, "reasons": reasons}
+
+
+def kinds_this_build_offers(side) -> tuple:
+    """The command the stored report was made with, if this build has it.
+
+    Running the package with everything instead would fill the difference
+    with rules the stored run never put -- measured, a stored `check` against
+    a run of everything is a screen of arrivals and not one of them news
+    about the package.
+    """
+    from . import runner
+
+    asked = tuple(side["envelope"]["kinds"])
+    for known in (runner.CONFORMANCE_KINDS, runner.LINT_KINDS, runner.ALL_KINDS):
+        if asked == tuple(known):
+            return asked
+    _refuse("the stored report was made by a command this build does not offer (%s)"
+            % ", ".join(asked))
 
 
 def _basis_of(side) -> dict:
@@ -301,7 +319,7 @@ class Difference:
 
 def difference(stored, here) -> Difference:
     """Read the stored report against this run. Raises `Refused`."""
-    left, right = _checked(stored, "the stored report"), _checked(here, "this run")
+    left, right = checked(stored, "the stored report"), checked(here, "this run")
     basis_left, basis_right = _basis_of(left), _basis_of(right)
 
     banners = []

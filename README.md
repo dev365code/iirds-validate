@@ -148,6 +148,7 @@ flowchart LR
 | `iirds check` | a person at a terminal | colour, evidence, prescriptions |
 | `iirds serve` | non-developers | a local drop page, loopback only |
 | `iirds check -f json` | CI and pipelines | machine-readable findings, exit codes |
+| `iirds diff` | anyone with a report they kept | what changed since it, and what moved underneath the comparison |
 | `import iirds` | Python programs | reader + writer as a library |
 | `iirds.pyz` | locked-down machines | one reproducible file, no install — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
 

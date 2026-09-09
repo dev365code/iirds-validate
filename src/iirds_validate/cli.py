@@ -5,8 +5,10 @@
     iirds check --fragment x.rdf   a bare metadata snippet, package rules suspended
     iirds all   pkg.iirds      both
     iirds rules --kind lint    what this tool knows how to check
+    iirds diff  was.json pkg.iirds   what changed since a report you kept
 
-Exit codes: 0 clean, 1 errors found, 2 could not run.
+Exit codes: 0 clean, 1 errors found, 2 could not run. For `diff`, "errors
+found" means errors this run has and the stored report does not.
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from iirds import PackError, pack
 
@@ -209,7 +212,15 @@ def _cmd_serve(args) -> int:
         return EXIT_ERROR
 
 
-def main(argv=None) -> int:
+def build_parser():
+    """The parser, and the subparser action that knows every verb.
+
+    Built here rather than inside `main` so the list of verbs has one
+    source. `main` used to check argv against a set written out beside the
+    parser, and a name missing from it was read as a path -- so a new
+    subcommand arrived silently broken, with its arguments validated as
+    packages.
+    """
     parser = argparse.ArgumentParser(
         prog=PROGRAM,
         description="Offline validator and interoperability linter for iiRDS packages.")
@@ -248,6 +259,14 @@ def main(argv=None) -> int:
     p_serve.add_argument("-v", "--verbose", action="store_true",
                          help="log requests; they carry the name of the file dropped")
 
+    p_diff = sub.add_parser(
+        "diff", help="what changed between a report you kept and this package")
+    p_diff.add_argument("report", help="a machine-readable report this tool wrote")
+    p_diff.add_argument("package")
+    p_diff.add_argument("-f", "--format", choices=("text", "json"), default="text")
+    p_diff.add_argument("-q", "--quiet", action="store_true",
+                        help="exit code only; refusals still go to stderr")
+
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
     p_rules.add_argument("ids", nargs="*", metavar="RULE",
                          help="show only these rules, in full (e.g. M11 B8 R3)")
@@ -256,13 +275,56 @@ def main(argv=None) -> int:
     p_rules.add_argument("-v", "--verbose", action="store_true",
                          help="also print versions, spec link, source and remedy")
     p_rules.add_argument("-f", "--format", choices=("text", "json"), default="text")
+    return parser, sub
 
+
+def subcommands() -> set:
+    """Every verb this tool has, read off the parser."""
+    return set(build_parser()[1].choices)
+
+
+def _cmd_diff(args) -> int:
+    """One report read against a fresh run of a package.
+
+    The stored document is a file this tool did not write, so everything it
+    says is checked before anything is compared, and a refusal is a sentence
+    on stderr with exit 2 -- never 1, which means "errors found" and would
+    send a reader looking for a defect in the package instead of at their own
+    baseline.
+    """
+    from . import difference as difference_module
+
+    try:
+        text = Path(args.report).read_bytes()
+    except OSError as exc:
+        print("%s: %s" % (PROGRAM, exc), file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        stored = difference_module.parse(text)
+        side = difference_module.checked(stored, "the stored report")
+        kinds = difference_module.kinds_this_build_offers(side)
+        answer = difference_module.difference(stored, runner.run(args.package, kinds).as_dict())
+    except difference_module.Refused as refusal:
+        print("%s: %s" % (PROGRAM, refusal), file=sys.stderr)
+        return EXIT_ERROR
+    if args.quiet:
+        pass
+    elif args.format == "json":
+        json.dump(answer.as_dict(), sys.stdout, ensure_ascii=False, indent=2)
+        sys.stdout.write("\n")
+    else:
+        difference_module.render_text(answer)
+    return EXIT_FINDINGS if answer.worse else EXIT_OK
+
+
+def main(argv=None) -> int:
+    parser, sub = build_parser()
     # `iirds some/path` with no subcommand means `all`. Typing the verb is
     # friction, and "check it" is what anybody pointing at a package wants.
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"check", "lint", "all", "pack", "rules", "serve",
-             "-h", "--help", "--version"}
-    if argv and argv[0] not in known and not argv[0].startswith("-"):
+    # A `-` argument never reaches this branch, so the flags that used to sit
+    # in the set beside it were never read.
+    if argv and argv[0] not in sub.choices and not argv[0].startswith("-"):
         argv.insert(0, "all")
 
     args = parser.parse_args(argv)
@@ -289,6 +351,8 @@ def main(argv=None) -> int:
             return _cmd_rules(args)
         if args.command == "serve":
             return _cmd_serve(args)
+        if args.command == "diff":
+            return _cmd_diff(args)
     except KeyboardInterrupt:
         return EXIT_ERROR
     except OSError as exc:

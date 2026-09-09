@@ -6,6 +6,28 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**`iirds diff <report.json> <package>` — what changed since a report you kept.**
+The command line could say whether a package is conformant and not what moved
+since the last one you signed off. This reads a stored report against a fresh
+run and says which rules went from clean to firing, which stopped, which each
+run answered that the other did not, and — for every one of those — why.
+
+It exits 1 when this run has errors the stored report does not, 0 otherwise,
+and 2 when it will not read the stored file, which is a sentence on stderr and
+never a traceback. That keeps the documented meaning of the codes: 0 clean, 1
+errors found, 2 could not run.
+
+Two things it will not do. It does not say a package broke something when the
+comparison itself moved underneath: if the two runs were judged by different
+builds, different rules, a different command, a different profile or a
+different edition, it names each of those with what to do about it and drops
+the word "regression" — the change is real and the cause is not attributable.
+And it takes no `-W`: the gate is about errors, warnings never set it, and a
+stored report does not record whether the run that made it was gated that way.
+
+It reads reports this release writes. An older one is refused with the reason,
+and re-validating the package produces a current one.
+
 **A report now says which bytes it judged, and which rule sources ran.** Two
 reports about two different files compared without a murmur, because nothing in
 either document said which package it was about. The container's sha256 and its

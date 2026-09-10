@@ -223,7 +223,8 @@ def test_an_archive_has_no_links_to_follow(make_package):
 @pytest.mark.skipif(os.name != "nt", reason="a junction is a Windows directory link")
 def test_a_junction_that_leaves_is_named_too(unpacked, outside):
     """`islink` does not call a junction a link, and a walk that asks only
-    `islink` would go through one."""
+    `islink` walks straight through one -- listing what is behind it as though
+    the package held it."""
     import _winapi
     (unpacked / "content").mkdir(exist_ok=True)
     _winapi.CreateJunction(str(outside.parent), str(unpacked / "content" / "junction"))
@@ -235,7 +236,11 @@ def test_a_junction_that_leaves_is_named_too(unpacked, outside):
     # the package. A junction `islink` does not recognise is one a walk goes
     # straight through.
     assert not [name for name in package.names if name.startswith("content/junction")], told
-    assert package.outward_links == ("content/junction",), told
+    # Windows hands a junction's target back as an absolute path, so that is
+    # what it is reported as. Which of the two it is matters less than that it
+    # is named and that nothing behind it is in the package.
+    assert package.absolute_links == ("content/junction",), told
+    assert package.outward_links == (), told
     assert named_by_s6(runner.run(unpacked, runner.ALL_KINDS)) == ["content/junction"]
 
 

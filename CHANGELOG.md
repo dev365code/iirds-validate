@@ -6,6 +6,10 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.6.1 — 2026-09-11
 
+**Who should take this release:** anyone on 0.6.0 or earlier who checks an
+unpacked directory, or points the checker at a directory of packages. Checking
+`.iirds` files and nothing else is not affected.
+
 **Security. Checking a directory could have the checker read files outside
 it, and quote them.** A directory was listed with a file test that answers for the far
 end of a link, so a link to any file the user running the check could read was

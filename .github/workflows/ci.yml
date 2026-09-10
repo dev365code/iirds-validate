@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # A patch release is prepared on a branch and tagged from its tip, so the
+    # commit that gets tagged has to be one this has judged.
+    branches: [main, "release/**"]
   pull_request:
   schedule:
     # Monday morning: check whether plusmeta has changed the rule catalogue.

@@ -112,3 +112,38 @@ def test_the_documents_do_not_point_at_files_that_moved(path):
     missing = sorted({name for name in named
                       if not (ROOT / name).exists() and "*" not in name})
     assert missing == [], missing
+
+
+def test_a_defence_that_names_a_rule_cites_a_test_that_names_it():
+    """`SECURITY.md` says, per threat, which rule defends against it and which
+    test pins that. The check above asks only that a cited file exists, and
+    every one did -- while the file cited for S6 had never mentioned S6. The
+    tests that pin it were in `tests/test_silent_pass.py` from the first
+    release. A row is a claim about a rule, so every file it cites has to be
+    about that rule.
+
+    Every cited file, not one of them: citing the right test beside a wrong
+    one is the same mistake with a witness. And a row this cannot read into
+    three cells is a row it does not hold, so that is a failure here rather
+    than a silent pass -- a pipe inside a backtick is enough to make one.
+    """
+    rows = [line for line in (ROOT / "SECURITY.md").read_text("utf-8").splitlines()
+            if line.startswith("|") and not line.startswith("|---")][1:]
+    checked, uncited, unreadable = set(), [], []
+    for row in rows:
+        cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
+        if len(cells) != 3:
+            unreadable.append(row[:60])
+            continue
+        threat, defence, pinned = cells
+        cited = re.findall(r"`(tests/[\w./-]+\.py)`", pinned)
+        for rule in set(RULE_ID.findall(threat)) | set(RULE_ID.findall(defence)):
+            checked.add(rule)
+            named_by = [name for name in cited
+                        if (ROOT / name).exists()
+                        and re.search(r"\b%s\b" % re.escape(rule), (ROOT / name).read_text("utf-8"))]
+            if not cited or len(named_by) != len(cited):
+                uncited.append((rule, sorted(set(cited) - set(named_by))))
+    assert unreadable == [], unreadable
+    assert {"S6", "S10"} <= checked, checked
+    assert uncited == [], uncited

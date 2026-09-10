@@ -15,7 +15,7 @@ from __future__ import annotations
 import posixpath
 
 from ..model import VARIANTS, VERSIONS, Violation
-from ..package import descriptor_readings
+from ..package import MAX_LINK_HOPS, descriptor_readings
 from ..registry import rule
 
 #: Every kind of run, so a container that cannot be read is reported whether
@@ -108,7 +108,7 @@ def s5_declared_variant_exists(ctx):
 
 @rule("S6", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
       title="every entry in the container must stay inside it",
-       fix="Rewrite the entry with a path inside the container. A name containing .. or beginning with / escapes the extraction directory, so unpacking this archive would write outside it.")
+       fix="Put a file inside the container in the entry's place, or take the entry out. A name containing .. or beginning with / escapes the extraction directory, so unpacking this archive would write outside it. In an unpacked container a link is read only while it stays inside: one that leads out, one written as an absolute path, one passing through more links than a system will follow, and one pointing at nothing are each not part of the package.")
 def s6_entries_stay_inside_the_container(ctx):
     """An archive entry named `../../../etc/passwd` or `/tmp/x`.
 
@@ -116,6 +116,18 @@ def s6_entries_stay_inside_the_container(ctx):
     consumer that unpacks the package is. Since the packages being checked
     arrive from suppliers, and since a build gate is the last thing that looks
     at them before something else does unpack them, it is worth failing on.
+
+    An unpacked container is where this validator is the one at risk. A
+    directory can hold a link, and a link to a file outside it had that file
+    listed, read and judged as though it were in the package -- a private key
+    linked as `mimetype` had its first bytes quoted in a finding. The unpacked
+    form names such links instead of listing them (`package._walk`), and they
+    are reported here, by name only: what they lead to is not read, and where
+    it is is the checking machine's business, not the report's.
+
+    A chain of links too long to follow is neither of those things, so it is
+    reported as itself. Calling it an escape would say the package points
+    somewhere it may well not.
 
     No catalogued rule covers it: the specification constrains name characters
     and path length but says nothing about escaping the root, because it
@@ -130,6 +142,22 @@ def s6_entries_stay_inside_the_container(ctx):
             yield Violation("container entry escapes the package root",
                             subject=name,
                             detail="resolves to %s" % posixpath.normpath(name))
+    for name in ctx.package.outward_links:
+        yield Violation("container entry is a link that leads out of the package",
+                        subject=name,
+                        detail="not read: what it leads to is not in the container")
+    for name in ctx.package.chained_links:
+        yield Violation("container entry is a chain of links too long to follow",
+                        subject=name,
+                        detail="not read: more than %d links deep" % MAX_LINK_HOPS)
+    for name in ctx.package.absolute_links:
+        yield Violation("container entry is a link to an absolute path",
+                        subject=name,
+                        detail="not read: a package names its own files relative to itself")
+    for name in ctx.package.dangling_links:
+        yield Violation("container entry is a link that leads nowhere",
+                        subject=name,
+                        detail="not read: the name it points at is not in the container")
 
 
 #: Section 5.2.2 states two requirements about the archive itself that no

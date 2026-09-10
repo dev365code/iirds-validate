@@ -4,6 +4,58 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.6.1 — 2026-09-11
+
+**Security. Checking a directory could have the checker read files outside
+it, and quote them.** A directory was listed with a file test that answers for the far
+end of a link, so a link to any file the user running the check could read was
+listed, read and judged as part of the package. Linked as `mimetype`, any such
+file had its first 80 bytes quoted in a finding -- a private key reads back out
+of the report. Linked as `META-INF/metadata.rdf`, somebody else's metadata was
+judged in place of the package's own, which passed with nothing to say, and
+what that file declared went into the report in the field that names it, in a
+note and in a finding. The same happened one layer up: a directory of packages
+was searched by the same means, so `x.iirds` as a link to any file put that
+file's SHA-256 and its size in the report, and a link to somebody else's
+package had that package's metadata quoted. S6, which reports any entry that
+leaves the container, said nothing about any of it, and `SECURITY.md` has said
+since the first release that it does. Every release up to 0.6.0 does this.
+
+What it is not: anything the checker does with an archive. A `.iirds` file
+holds bytes -- an entry whose mode marks it as a link is read as the link's
+text, and nothing is followed. It takes a directory: one somebody else
+prepared, or one an extractor that restores links made out of their archive,
+which Info-ZIP `unzip` does. Nothing is written and nothing is extracted, and
+the checker could read only what the user running it can read; what could
+leave the machine is what a report carries. Until you are on this release,
+check the `.iirds` file rather than a directory you did not unpack yourself.
+
+A name is now resolved the way the kernel resolves one: from the container's
+root downwards, one component at a time, each link replaced by its own text
+where it stands, and never a step outside. Nothing out there is consulted to
+decide, so the answer cannot depend on what happens to be there. S6 reports
+four things by name, and none of them is read: a link that leads out of the
+container, a link written as an absolute path -- which is not how a package
+names its own files -- a chain of more links than a system will follow, and a
+link that points at nothing. Neither what any of them leads to nor where it is
+goes into the report. A link that stays inside reads as before. A directory the
+check cannot list is refused by name rather than skipped, because a container
+read in part would otherwise be reported as a container with nothing wrong.
+Searching a directory of packages refuses a `.iirds` name that leads out of it,
+says which, and exits 2. And whether a file somewhere else exists no longer
+decides whether a directory is a container at all.
+
+**Breaking, for one shape of input, and said here because the exit codes are a
+stable surface.** A directory holding a `.iirds` name that is a link out of it
+used to be searched with that link followed, so the run checked the package at
+the far end and exited 0 or 1. It now refuses the name, says which, and exits
+2. A build that points at a directory of links to packages elsewhere should
+name those files instead.
+
+The table in `SECURITY.md` cited, as the proof for S6, a test file that has
+never mentioned it; it now cites the two that test it, and a test holds every
+row of that table that names a rule to every test file it cites.
+
 ## 0.6.0 — 2026-09-05
 
 Ten new rules, and a coverage figure that means something it did not mean

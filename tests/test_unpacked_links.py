@@ -598,3 +598,20 @@ def test_a_junction_that_stays_inside_is_not_called_an_escape(unpacked):
 
     package = DirectoryPackage(unpacked)
     assert package.outward_links == () and package.absolute_links == ()
+# 기준선 뒤 tests/test_unpacked_links.py 끝에 덧붙일 것
+
+
+def test_a_linked_content_file_does_not_put_a_private_file_in_the_report(unpacked, tmp_path):
+    """The metadata names a rendition, and the rules that read one quote what
+    they find in it. Linked, that is another way for a file from elsewhere to
+    reach a report -- the same hole as `mimetype`, one layer along."""
+    private = tmp_path / "notes.txt"
+    private.write_text("<html data-role='%s'/>\n" % MARK, "utf-8")
+    rendition = unpacked / "content" / "topic1.xhtml"
+    assert rendition.exists()
+    rendition.unlink()
+    link(rendition, private)
+
+    report = runner.run(unpacked, runner.ALL_KINDS)
+    assert "content/topic1.xhtml" in named_by_s6(report)
+    assert MARK not in json.dumps(report.as_dict())

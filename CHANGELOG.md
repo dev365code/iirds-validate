@@ -56,6 +56,10 @@ The table in `SECURITY.md` cited, as the proof for S6, a test file that has
 never mentioned it; it now cites the two that test it, and a test holds every
 row of that table that names a rule to every test file it cites.
 
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: it moves no rule and adds none. What it changes is
+what a directory may make the checker read.
+
 ## 0.6.0 — 2026-09-05
 
 Ten new rules, and a coverage figure that means something it did not mean

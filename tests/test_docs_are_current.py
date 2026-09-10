@@ -137,7 +137,8 @@ def test_a_defence_that_names_a_rule_cites_a_test_that_names_it():
             continue
         threat, defence, pinned = cells
         cited = re.findall(r"`(tests/[\w./-]+\.py)`", pinned)
-        for rule in set(RULE_ID.findall(threat)) | set(RULE_ID.findall(defence)):
+        ids = re.compile(r"\b([CMLBRS]\d+(?:\.\d+[A-Za-z]?)?)(?![\w.-])")
+        for rule in set(ids.findall(threat)) | set(ids.findall(defence)):
             checked.add(rule)
             named_by = [name for name in cited
                         if (ROOT / name).exists()

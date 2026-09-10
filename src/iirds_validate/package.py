@@ -16,6 +16,7 @@ from __future__ import annotations
 import contextlib
 import os
 import posixpath
+import stat
 import zipfile
 from pathlib import Path
 from typing import Iterator, List, NamedTuple, Optional, Tuple
@@ -318,9 +319,12 @@ class _FileInfo:
         self.file_size = file_size
 
 
-#: IO_REPARSE_TAG_MOUNT_POINT: what a junction's `st_reparse_tag` says. The
-#: stat module names it only on Windows, which is the only place it is read.
-_JUNCTION_TAG = 0xA0000003
+#: FILE_ATTRIBUTE_REPARSE_POINT: what Windows sets on a name that stands for
+#: somewhere else -- a junction, a symbolic link, and a few things that are
+#: neither, such as a file a cloud client has not downloaded yet. Asked for by
+#: attribute rather than by tag: `st_reparse_tag` is not on every build, and
+#: `os.path.islink` says no to a junction.
+_REPARSE_POINT = 0x400
 
 
 #: How many links one name may be followed through before this gives up: the
@@ -355,15 +359,27 @@ def _under(child: str, top: str) -> bool:
     return child == top or child.startswith(top + os.sep)
 
 
-def _is_junction(path: str) -> bool:
-    """A Windows directory junction, which `os.path.islink` does not call a link."""
-    asks = getattr(os.path, "isjunction", None)         # Python 3.12 and later
-    if asks is not None:
-        return asks(path)
+def _is_link(path: str) -> bool:
+    """Whether this name stands for somewhere else rather than holding bytes.
+
+    A junction is one and `os.path.islink` says it is not, so Windows is asked
+    for the attribute instead -- and then for the target, because a name can
+    carry that attribute and be no kind of link: a file a cloud client has not
+    fetched yet is one, and reading it is reading a file, not following it.
+    """
     try:
-        return os.lstat(path).st_reparse_tag == _JUNCTION_TAG
-    except (OSError, AttributeError):                   # the field is Windows-only
+        info = os.lstat(path)
+    except OSError:
         return False
+    if stat.S_ISLNK(info.st_mode):
+        return True
+    if not getattr(info, "st_file_attributes", 0) & _REPARSE_POINT:
+        return False
+    try:
+        os.readlink(path)
+    except OSError:                                     # standing for nothing this can follow
+        return False
+    return True
 
 
 def _split(text: str) -> List[str]:
@@ -444,7 +460,7 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
             done.pop()
             continue
         here = os.path.join(top, *done, part)
-        if os.path.islink(here) or _is_junction(here):
+        if _is_link(here):
             hops += 1
             if hops > MAX_LINK_HOPS:
                 return CHAINED, None
@@ -520,7 +536,7 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
         prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
         for name in list(directories):
             full = os.path.join(here, name)
-            if os.path.islink(full) or _is_junction(full):
+            if _is_link(full):
                 directories.remove(name)
                 verdict, _target = _resolve(roots, (prefix + name).split("/"))
                 if verdict == LEAVES:
@@ -532,7 +548,7 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
         for name in files:
             entry = prefix + name
             full = os.path.join(here, name)
-            if os.path.islink(full):
+            if _is_link(full):
                 verdict, target = _resolve(roots, entry.split("/"))
                 if verdict == LEAVES:
                     leaving.append(entry)

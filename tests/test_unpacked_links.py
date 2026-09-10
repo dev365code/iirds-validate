@@ -228,7 +228,14 @@ def test_a_junction_that_leaves_is_named_too(unpacked, outside):
     (unpacked / "content").mkdir(exist_ok=True)
     _winapi.CreateJunction(str(outside.parent), str(unpacked / "content" / "junction"))
 
-    assert DirectoryPackage(unpacked).outward_links == ("content/junction",)
+    package = DirectoryPackage(unpacked)
+    told = (package.names, package.outward_links, package.absolute_links,
+            package.chained_links, package.dangling_links)
+    # The one that matters even more than the name: nothing behind it is in
+    # the package. A junction `islink` does not recognise is one a walk goes
+    # straight through.
+    assert not [name for name in package.names if name.startswith("content/junction")], told
+    assert package.outward_links == ("content/junction",), told
     assert named_by_s6(runner.run(unpacked, runner.ALL_KINDS)) == ["content/junction"]
 
 

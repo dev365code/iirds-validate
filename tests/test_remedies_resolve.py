@@ -12,9 +12,12 @@ provokes the branch, reads the remedy off the finding, and then does what it
 says, which is the only test that cannot be satisfied by rewording.
 
 Rules whose one remedy genuinely serves every branch are not listed and do
-not need to be: C6's two-pass recipe produces both properties, S6's "rewrite
-the entry with a path inside the container" answers both escapes, and S10's
-"rebuild the archive with one tool in one pass" answers all four. The defect
+not need to be: C6's two-pass recipe produces both properties, S6's "put a file
+inside the container in the entry's place, or take the entry out" answers all
+six of its branches -- two names that escape an archive and, in an unpacked
+container, a link that leads out, one written as an absolute path, one passing
+through too many links and one pointing at nothing -- and S10's "rebuild the
+archive with one tool in one pass" answers all four. The defect
 is a remedy that is *false* for a branch, not a remedy that is shared.
 """
 from __future__ import annotations

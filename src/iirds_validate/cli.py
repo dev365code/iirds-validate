@@ -23,7 +23,7 @@ from iirds import PackError, pack
 from . import PROGRAM, __version__, runner
 from .banner import banner
 from .model import VERSIONS, Severity
-from .package import discover
+from .package import search
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -55,17 +55,18 @@ def _targets(paths):
     with packages somewhere underneath. Pointing at a build output directory
     should do the obvious thing rather than require a shell glob.
     """
-    found, missing, empty = [], [], []
+    found, missing, empty, leaving = [], [], [], []
     for path in paths:
         if not os.path.exists(path):
             missing.append(path)
             continue
-        expanded = discover(path)
+        expanded, out = search(path)
+        leaving.extend(out)
         if expanded:
             found.extend(expanded)
-        else:
+        elif not out:
             empty.append(path)
-    return found, missing, empty
+    return found, missing, empty, leaving
 
 
 def _run(args, kinds) -> int:
@@ -82,12 +83,20 @@ def _run(args, kinds) -> int:
         reports = [runner.run_fragment(path, kinds, version=args.version)
                    for path in args.package]
     else:
-        targets, missing, empty = _targets(args.package)
+        targets, missing, empty, leaving = _targets(args.package)
         for path in missing:
             print("%s: no such file or directory: %s" % (PROGRAM, path), file=sys.stderr)
         for path in empty:
             print("%s: no iiRDS package found under %s" % (PROGRAM, path), file=sys.stderr)
-        if missing or empty:
+        for path in leaving:
+            # Not a verdict about a package: a name that was going to be
+            # followed out of the directory being searched, and was not. Said
+            # rather than skipped, and exit 2 rather than 0, because a gate
+            # that quietly checks less than it was asked to is one that passes
+            # for the wrong reason.
+            print("%s: not checked: %s is a link that leads out of the directory "
+                  "being searched" % (PROGRAM, path), file=sys.stderr)
+        if missing or empty or leaving:
             return EXIT_ERROR
         reports = [runner.run(path, kinds, version=args.version) for path in targets]
 

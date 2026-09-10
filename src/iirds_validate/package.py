@@ -13,6 +13,7 @@ and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import posixpath
@@ -188,6 +189,12 @@ class Package:
     """An .iirds archive."""
 
     is_archive = True
+    #: An entry is its bytes, whatever its mode says, and nothing here follows
+    #: one. The unpacked form fills these in; S6 reads them from both.
+    outward_links: Tuple[str, ...] = ()
+    chained_links: Tuple[str, ...] = ()
+    dangling_links: Tuple[str, ...] = ()
+    absolute_links: Tuple[str, ...] = ()
 
     def __init__(self, path):
         self.path = Path(path)
@@ -383,6 +390,238 @@ class _FileInfo:
         self.file_size = file_size
 
 
+#: IO_REPARSE_TAG_MOUNT_POINT: what a junction's `st_reparse_tag` says. The
+#: stat module names it only on Windows, which is the only place it is read.
+_JUNCTION_TAG = 0xA0000003
+
+
+#: How many links one name may be followed through before this gives up: the
+#: smallest of the limits the systems this runs on enforce. Measured -- macOS
+#: refuses the thirty-third with ELOOP, Linux allows forty. Asking the system
+#: instead is worse than useless: `pathconf("PC_SYMLINK_MAX")` answers 255 on
+#: the machine whose kernel stops at 32. Reading further than the number here
+#: would judge a package on entries a consumer cannot open by name, which is
+#: the opposite of what this rule is for, and a number that moved with the
+#: machine would make one package two verdicts.
+MAX_LINK_HOPS = 32
+
+#: What `_resolve` answers. Four facts about a name, because they are four
+#: different things to tell a reader: it resolves, it leads out, it is a chain
+#: nothing will follow to the end, or it is written as an absolute path -- which
+#: this cannot show to be inside the container without walking out of it, and
+#: which is not how a package names its own files.
+INSIDE, LEAVES, CHAINED, ABSOLUTE = "inside", "leaves", "chained", "absolute"
+
+
+def _under(child: str, top: str) -> bool:
+    """Whether a path is `top` or spelled beneath it -- as text, on purpose.
+
+    Asking the filesystem is the thing being avoided: `os.path.realpath` walks
+    a path to answer, and what it finds out there -- whether a directory
+    exists, whether it may be searched -- would then be readable off the
+    report. Every path compared here is a link's own text against a root this
+    tool was handed.
+    """
+    top = os.path.normcase(os.path.normpath(top))
+    child = os.path.normcase(os.path.normpath(child))
+    return child == top or child.startswith(top + os.sep)
+
+
+def _is_junction(path: str) -> bool:
+    """A Windows directory junction, which `os.path.islink` does not call a link."""
+    asks = getattr(os.path, "isjunction", None)         # Python 3.12 and later
+    if asks is not None:
+        return asks(path)
+    try:
+        return os.lstat(path).st_reparse_tag == _JUNCTION_TAG
+    except (OSError, AttributeError):                   # the field is Windows-only
+        return False
+
+
+def _split(text: str) -> List[str]:
+    """A link's own text, cut into components on this platform's separators."""
+    if os.altsep:
+        text = text.replace(os.altsep, os.sep)
+    return text.split(os.sep)
+
+
+def _absolute(text: str) -> bool:
+    """Whether a link's text starts somewhere other than at the link.
+
+    `os.path.isabs` is not enough on Windows, where a name that begins with a
+    separator starts at the current drive's root and 3.13 stopped calling that
+    absolute.
+    """
+    return (os.path.isabs(text) or bool(os.path.splitdrive(text)[0])
+            or text[:1] == os.sep or (bool(os.altsep) and text[:1] == os.altsep))
+
+
+#: What Windows puts in front of a target it hands back for a junction, and
+#: sometimes for a symbolic link. It names the same directory; left on, every
+#: junction inside a container reads as one leading out of it.
+_EXTENDED = "\\\\?\\"
+
+
+def _rooted(target: str, roots: Tuple[str, ...]) -> Optional[List[str]]:
+    """An absolute target as components under the container, or None.
+
+    Two spellings of the root, because a container reached through a link has
+    two: the one the operator named and the one it resolves to. On macOS
+    `/tmp` and `/private/tmp` are that pair, and an absolute link inside a
+    package is written in whichever of them its author had.
+    """
+    if target.startswith(_EXTENDED):
+        target = target[len(_EXTENDED):]
+        if target[:4].upper() == "UNC" + os.sep:
+            target = os.sep + os.sep + target[4:]
+    for root in roots:
+        if root and _under(target, root):
+            return [part for part in _split(os.path.relpath(target, root))
+                    if part and part != os.curdir]
+    return None
+
+
+def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
+    """Where a name in a container leads: one component at a time, from the
+    root down, and never a step outside it.
+
+    A path is resolved the way the kernel resolves one, because the kernel is
+    what opens it. Reading a link's text and judging the whole joined string
+    was not that: `os.readlink` looks at the last component only, so a link to
+    `b/secret` was judged inside while `b` itself was a link out of the
+    container, and `os.path.normpath` folded `sub/link/..` textually while the
+    kernel followed the link first and went somewhere else entirely. Both put
+    a file from outside into a report.
+
+    So each component is joined to what has been resolved so far, and if that
+    is a link its own text is walked in its place; `..` is applied to what is
+    already resolved rather than to the text. Every path touched is under the
+    root when it is touched, so nothing out there is looked at -- not `stat`,
+    not `readlink` -- and the answer cannot depend on what happens to be
+    there. Three answers, because a name can be three things: it resolves
+    (`INSIDE`, with the file to open), it leads out (`LEAVES`), or it passes
+    through more links than a reader would follow (`CHAINED`).
+    """
+    top = roots[0]
+    pending = [part for part in reversed(list(parts)) if part and part != os.curdir]
+    done: List[str] = []
+    hops = 0
+    while pending:
+        part = pending.pop()
+        if not part or part == os.curdir:
+            continue
+        if part == os.pardir:
+            if not done:
+                return LEAVES, None                     # a step above the root
+            done.pop()
+            continue
+        here = os.path.join(top, *done, part)
+        if os.path.islink(here) or _is_junction(here):
+            hops += 1
+            if hops > MAX_LINK_HOPS:
+                return CHAINED, None
+            try:
+                target = os.readlink(here)
+            except OSError:                             # not ours to follow
+                return LEAVES, None
+            if _absolute(target):
+                inner = _rooted(target, roots)
+                if inner is None:
+                    # It may well be inside: a container reached by one of its
+                    # names holds links written with the other. Saying it leads
+                    # out would be a claim this did not check -- checking it
+                    # means resolving a path outside the container, which is
+                    # the thing that put files from out there into reports.
+                    return ABSOLUTE, None
+                done = []
+                pending.extend(reversed(inner))
+            else:
+                pending.extend(reversed([p for p in _split(target)
+                                         if p and p != os.curdir] or [os.curdir]))
+            continue
+        done.append(part)
+    return INSIDE, os.path.join(top, *done)
+
+
+class Unlistable(PackageError):
+    """A directory in the container that could not be listed.
+
+    Not a finding about a package: what is in there was not looked at, and a
+    check that quietly covers less than the container holds is the one thing
+    this tool must not do. `os.walk` skips such a directory in silence, and a
+    package can make one -- so the container is refused instead, by name.
+    """
+
+
+def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str, ...],
+                                           Tuple[str, ...], Tuple[str, ...]]:
+    """The files of an unpacked container, and the links that are not files.
+
+    `rglob` and `is_file()` answered this before, and `is_file()` answers for
+    the far end of a link. So a link to any file the user running the check
+    could read was listed, read and judged: a container whose metadata was a
+    link to somebody else's passed on a file it does not contain, and one
+    whose `mimetype` was a link to a private key had the first bytes of that
+    key quoted into the report.
+
+    Every link is resolved here instead (`_resolve`), and a link that is not a
+    file inside the container becomes a name S6 reports rather than a name any
+    rule can read.
+
+    A directory that is a link is not walked through, in or out, which is what
+    `rglob` did too. A junction is not walked through either, and that is the
+    one listing this changes for a container holding one: `rglob` walked
+    through those, because a junction is not what `islink` calls a link.
+    """
+    top = roots[0]
+    names: List[str] = []
+    leaving: List[str] = []
+    chained: List[str] = []
+    dangling: List[str] = []
+    absolute: List[str] = []
+
+    def refuse(error: OSError) -> None:
+        where = error.filename or top
+        with contextlib.suppress(ValueError):           # another drive: named as given
+            where = os.path.relpath(where, top).replace(os.sep, "/")
+        raise Unlistable("a directory in the container could not be listed: %s (%s)"
+                         % (where, error.strerror or error))
+
+    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):
+        relative = os.path.relpath(here, top)
+        prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
+        for name in list(directories):
+            full = os.path.join(here, name)
+            if os.path.islink(full) or _is_junction(full):
+                directories.remove(name)
+                verdict, _target = _resolve(roots, (prefix + name).split("/"))
+                if verdict == LEAVES:
+                    leaving.append(prefix + name)
+                elif verdict == CHAINED:
+                    chained.append(prefix + name)
+                elif verdict == ABSOLUTE:
+                    absolute.append(prefix + name)
+        for name in files:
+            entry = prefix + name
+            full = os.path.join(here, name)
+            if os.path.islink(full):
+                verdict, target = _resolve(roots, entry.split("/"))
+                if verdict == LEAVES:
+                    leaving.append(entry)
+                elif verdict == CHAINED:
+                    chained.append(entry)
+                elif verdict == ABSOLUTE:
+                    absolute.append(entry)
+                elif os.path.isfile(target):
+                    names.append(entry)
+                elif not os.path.lexists(target):
+                    dangling.append(entry)
+            elif os.path.isfile(full):
+                names.append(entry)
+    return (sorted(names), tuple(sorted(leaving)), tuple(sorted(chained)),
+            tuple(sorted(dangling)), tuple(sorted(absolute)))
+
+
 class DirectoryPackage:
     """An unpacked container: the shape a package has while you are building it.
 
@@ -398,13 +637,19 @@ class DirectoryPackage:
         self.path = Path(path)
         if not self.path.is_dir():
             raise PackageError("not a directory: %s" % self.path)
-        if not (self.path / METADATA_RDF).exists() and not (self.path / MIMETYPE_FILE).exists():
+        if not (os.path.lexists(str(self.path / METADATA_RDF))
+                or os.path.lexists(str(self.path / MIMETYPE_FILE))):
             raise PackageError(
                 "%s is not an unpacked iiRDS container: no %s and no %s"
                 % (self.path, MIMETYPE_FILE, METADATA_RDF))
-        self.names: List[str] = sorted(
-            p.relative_to(self.path).as_posix()
-            for p in self.path.rglob("*") if p.is_file())
+        self._top = os.path.realpath(str(self.path))
+        #: Both spellings of the root: the one that was named and the one it
+        #: resolves to. An absolute link inside a package is written in one of
+        #: them, and on macOS every path under `/tmp` has both.
+        self._roots = (self._top, os.path.abspath(str(self.path)))
+        self.names: List[str]
+        (self.names, self.outward_links, self.chained_links,
+         self.dangling_links, self.absolute_links) = _walk(self._roots)
         self.infos: List = []
         self._name_set = frozenset(self.names)
 
@@ -444,17 +689,38 @@ class DirectoryPackage:
         and off in the other, which is how both size gates came to be
         silently disabled for the unpacked form once before.
         """
-        with (self.path / name).open("rb") as handle:
+        if name not in self._name_set:
+            # What `zipfile` raises for a name the archive does not hold. Every
+            # rule asks `has()` first, so none has come this way; it was the
+            # one path by which a caller could open a file the listing never
+            # offered, `../` and all.
+            raise KeyError("There is no item named %r in the container" % name)
+        where = self._entry(name)
+        with open(where, "rb") as handle:
             data = handle.read(limit + 1)
         return data, len(data) > limit
 
     def text(self, name: str, encoding: str = "utf-8") -> str:
         return self.read(name).decode(encoding, errors="replace")
 
+    def _entry(self, name: str) -> str:
+        """The file to open for a listed name, followed again at the read.
+
+        The listing is taken when the container is opened and the rules read
+        it later, so the question is asked twice on purpose: a name that was a
+        file when it was listed and is a link out of the container now is one
+        the directory changed under the check, and it is refused rather than
+        read.
+        """
+        verdict, where = _resolve(self._roots, name.split("/"))
+        if verdict != INSIDE:
+            raise PackageError("%s changed while it was being checked" % name)
+        return where
+
     def info(self, name: str):
         if name not in self._name_set:
             return None
-        return _FileInfo((self.path / name).stat().st_size)
+        return _FileInfo(os.stat(self._entry(name)).st_size)
 
     @property
     def first_entry(self):
@@ -618,7 +884,15 @@ def nested_containers(package) -> List[str]:
 
 
 def looks_like_a_container(path: Path) -> bool:
-    return (path / MIMETYPE_FILE).exists() or (path / METADATA_RDF).exists()
+    """Whether either marker is there -- as a name, not as a far end.
+
+    `exists()` answers for what a link points at, so a directory whose
+    `META-INF/metadata.rdf` was a link out of it was a container when the file
+    at the far end happened to be there and was not one when it was not. That
+    is one bit about a path of the sender's choosing, read off the verdict.
+    """
+    return (os.path.lexists(str(path / MIMETYPE_FILE))
+            or os.path.lexists(str(path / METADATA_RDF)))
 
 
 def open_package(path):
@@ -629,23 +903,55 @@ def open_package(path):
     return Package(path)
 
 
-def discover(path, recursive: bool = True) -> List[Path]:
-    """Every package under `path`, in a stable order.
+def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
+    """Every package under `path`, and every name under it that leads out.
 
     A `.iirds` file is itself. A directory that is an unpacked container is
     itself. Any other directory is searched for `.iirds` files, so pointing at
     a build output directory does the obvious thing.
+
+    The path named on the command line is followed wherever it goes: it is the
+    operator's own choice. A name *found* under it is not, and this followed
+    those too -- a directory holding `x.iirds -> ~/.ssh/id_ed25519` put that
+    file's digest and its size in the report, and one holding a link to
+    somebody else's package had that package's metadata quoted in it. They
+    come back in the second list, to be refused out loud rather than skipped
+    in silence.
     """
     path = Path(path)
     if path.is_file():
-        return [path]
+        return [path], []
     if not path.is_dir():
-        return []
+        return [], []
     if looks_like_a_container(path):
-        return [path]
+        return [path], []
+    # Both spellings again, and every candidate judged by the same walk from
+    # the root down: a name found under a directory link was judged on its own
+    # text before, so `build/x.iirds -> b/theirs.iirds`, with `b` a link out,
+    # read somebody else's package and said nothing.
+    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
     pattern = "**/*.iirds" if recursive else "*.iirds"
-    found = sorted(p for p in path.glob(pattern) if p.is_file())
-    if found:
-        return found
+    found: List[Path] = []
+    leaving: List[Path] = []
+    for candidate in sorted(path.glob(pattern)):
+        verdict, where = _resolve(roots, candidate.relative_to(path).parts)
+        if verdict != INSIDE:
+            leaving.append(candidate)
+        elif os.path.isfile(where):
+            found.append(candidate)
+    if found or leaving:
+        return found, leaving
     # No archives: perhaps a directory of unpacked containers.
-    return sorted(p for p in path.iterdir() if p.is_dir() and looks_like_a_container(p))
+    for candidate in sorted(path.iterdir()):
+        verdict, where = _resolve(roots, (candidate.name,))
+        if verdict != INSIDE:
+            leaving.append(candidate)
+        elif os.path.isdir(where) and looks_like_a_container(candidate):
+            found.append(candidate)
+    return found, leaving
+
+
+def discover(path, recursive: bool = True) -> List[Path]:
+    """The packages `search` finds, for a caller with nothing to say about
+    the names it refused."""
+    return search(path, recursive)[0]

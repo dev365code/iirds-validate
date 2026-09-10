@@ -127,7 +127,13 @@ def c6_mimetype_stored_first(ctx):
        covers=("x5-1-1-metadata-location-and-rdf-serializations#1",),
        fix="Create a META-INF directory in the root of the archive. It is where a consumer looks for metadata, and nowhere else is searched.")
 def c7_meta_inf(ctx):
-    if not any(n.startswith(META_DIR + "/") for n in ctx.package.names):
+    # Names the container holds, readable or not: an entry S6 refuses to read
+    # is still an entry, and saying the directory is missing because its one
+    # file is a link out of the container describes the wrong defect.
+    entries = (list(ctx.package.names) + list(ctx.package.outward_links)
+               + list(ctx.package.chained_links) + list(ctx.package.dangling_links)
+               + list(ctx.package.absolute_links))
+    if not any(n.startswith(META_DIR + "/") for n in entries):
         yield Violation("container must have a META-INF directory")
 
 

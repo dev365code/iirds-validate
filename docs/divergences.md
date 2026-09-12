@@ -126,8 +126,9 @@ sharing one unmended domain are two failures.
 Correcting it moved `docs/agreement.json` by exactly two pairs, both of them
 `M15.10` against a fixture the catalogue marks as passing, and both classified
 `extra` — the category for a finding this project reports and the reference
-does not. The file now records none: 113 pairs, `agree` 42, `silent` 61,
-`untestable` 10. Cross-validation did not find this, because a rule can be
+does not. The file records none, and did so at 113 pairs when this was
+written; moving the vendored revision has since taken it to
+114 pairs, `agree` 43, `silent` 61, `untestable` 10. Cross-validation did not find this, because a rule can be
 wrong about the standard while both implementations are wrong together; what
 found it was reading section 8.3.2 and then noticing that the reference's own
 passing fixture was one this rule failed.
@@ -213,7 +214,51 @@ sentence, there is no defence.
 | rule | difference | why |
 |---|---|---|
 | M22.1 | counts roles on the party in the graph | the reference counts child elements, so a party written as several repeated `<iirds:Party rdf:about="…"/>` declarations is counted many times; both find the sample's role-less party, but only one of them says so once |
-| M30 | only flags redeclared **iiRDS** terms | the reference rejects any `subClassOf`/`domain`/`range` element at all, which would forbid the proprietary subclasses section 7 explicitly permits |
+| M30 | reports a schema statement whose both ends are **iiRDS** terms — `subClassOf`, `subPropertyOf`, `domain`, `range` — as well as a redeclared class or property | at the revision this project was first cut against, the reference rejected any such element at all, which would forbid the proprietary subclasses section 7 explicitly permits. At the revision vendored here its catalogue entry names only class and property declarations -- no upstream source is vendored here, so that is what the catalogue records rather than what their code does. This project keeps the longer reading, for the reason below |
+
+### M30 and the statement the reference stopped looking at
+
+`path` is the catalogue's record of which constructs a rule inspects. Moving the
+vendored revision changed exactly one rule and only that field and its fixtures:
+M30's `path` went from `Class, Property, subPropertyOf, subClassOf, domain,
+range, domainIncludes, rangeIncludes` to `Class, Property`.
+
+This project keeps the longer reading. Section 7.1 says the metadata "MUST NOT
+contain the iiRDS schema or iiRDS domain extensions" and does not say which RDF
+elements carry it; reading `iirds:X rdfs:subClassOf iirds:Y` as the schema
+written out is this project's inference from that sentence, not a quotation of
+it, and it is recorded here so somebody can argue with it. A statement whose
+other end is proprietary is the extension mechanism and stays permitted — that
+is the distinction the entry under "Found by the standard's own examples" was
+written for, with Example 43 as the case that forced it.
+
+Two things the reading overshoots, said here because they are the cost of it.
+The test is namespace membership and not definedness, so an invented name in the
+iiRDS namespace, and a statement the ontology never makes, are both reported
+with the remedy "restates a relationship the iiRDS ontology already defines" —
+true of neither. And the `schema:domainIncludes` / `schema:rangeIncludes` axis is
+not aligned, it is a shared blind spot: the bundled `iirds-core.rdf` uses those
+vocabularies 80 and 65 times, so a package restating the schema through them is
+reported by nobody. Upstream has dropped them from its catalogue entry; this
+project never looked at them.
+
+Both fixtures that arrived with the move are agreed on. `M30_false.rdf`
+redeclares `iirds:Event` as an `rdfs:Class` and a machinery property as an
+`rdf:Property`, and this project reports it — the one pair the reference asserts
+for M30, and it agrees. `M30_true.rdf` declares classes and a property in
+namespaces that are not iiRDS, one of them a subclass of an iiRDS class, and M30
+does not fire on it; M3 does, because the file is a metadata fragment rather
+than a package, which is the corpus's ordinary noise.
+
+It would be neater to say neither file touches the axis the readings differ on,
+and it is not true. `M30_false.rdf` carries
+`iirdsMch:has-part rdfs:domain iirds:Component` — both ends in an iiRDS
+namespace, and the only statement of that shape in all 132 fixtures. It changes
+no verdict because its subject is also redeclared, so the rule reports the
+declaration and never reaches the statement. That is why the corpus cannot
+settle this one: not that the material is absent, but that the one file carrying
+it fails under either reading.
+
 
 ## Rules where this project is more lenient, deliberately
 
@@ -332,10 +377,21 @@ the iiRDS vocabulary. One rule forbade what another recommended.
 
 Now it fires only when both ends of the statement are the standard's own terms,
 which is what "restating the schema" means. Worth recording where this came
-from: no fixture in the reference corpus exercises it, and fixing it moved not
-one figure in `docs/agreement.json`. Cross-validation against another
-implementation could not have found it. The specification's own examples could,
-and did, on the first run.
+from: at the revision this was written against, no fixture in the reference
+corpus exercised it, and fixing it moved not one figure in
+`docs/agreement.json`. Cross-validation against another implementation could
+not have found it. The specification's own examples could, and did, on the
+first run: the corpus does carry the example as a file,
+`Example 43 - Adding a proprietary class as an equivalent class.rdf`, with
+`iirds:Component rdfs:subClassOf myCompany:ProductPart` in it, and no rule in
+the catalogue names that file, so nothing compared the two tools on it.
+
+Upstream has since written fixtures for M30, and they arrived with the revision
+vendored here, but not for this case. `M30_true.rdf` puts a proprietary class
+*under* an iiRDS one — the other direction — and the rule as it stood before
+this correction fired on the subject alone, so it would have passed that file
+too. `M30_false.rdf`, which redeclares `iirds:Event`, is reported here as it is
+there. The fixtures are agreement about something else.
 
 ## The Consortium's own sample packages, run for real
 
@@ -894,7 +950,7 @@ A plain literal has no encoding layer: a producer with a file named
 `a b.xhtml` writes `a b.xhtml`, because nothing in literal syntax asks for
 anything else.
 
-**What the corpus says: nothing.** Across the 97 that parse of the 130
+**What the corpus says: nothing.** Across the 99 that parse of the 132
 vendored metadata documents, plus the three packages under `fixtures/`,
 **1,395 `iirds:source` values carry no `%`, `#`, `?`, space or backslash** — and neither do the spec's own
 examples in either release. Every real value available is spelled the same
@@ -1151,7 +1207,7 @@ the one piece of iiRDS XHTML5 the authors of Appendix B wrote themselves, and
 ## Current agreement
 
 Measured by `tools/crossvalidate.py` and `tools/explain_silence.py` over the
-vendored corpus at `0bcf19dd` — the same revision the rule catalogue came from.
+vendored corpus at `f1119bea` — the same revision the rule catalogue came from.
 Both read `tests/corpus/plusmeta/`, so anyone can reproduce these offline:
 
 ```sh
@@ -1160,14 +1216,14 @@ python tools/crossvalidate.py
 python tools/explain_silence.py
 ```
 
-The reference marks 113 rule/fixture pairs as "this fixture must fail this
+The reference marks 114 rule/fixture pairs as "this fixture must fail this
 rule". Ten of those name one of the two fixtures upstream committed as
-zero-byte files, which nothing can test. Of the remaining **103 pairs, across
-66 distinct fixtures**:
+zero-byte files, which nothing can test. Of the remaining **104 pairs, across
+67 distinct fixtures**:
 
 | | pairs | |
 |---:|---|---|
-| **42** | the expected rule fires here | |
+| **43** | the expected rule fires here | |
 | 32 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
 | 9 | silent — the fixture does not parse | 9 pairs, whose fixtures are among the corpus's 11 malformed files; no comparison is possible, and none is repaired — see below |
 | 13 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
@@ -1189,9 +1245,9 @@ counted, and this document previously published the flattering one:
 
 | | |
 |---|---|
-| 42 of 103 pairs (41%) | the expected rule fires |
-| 40 of 66 fixtures (61%) | the expected rule fires somewhere on the fixture |
-| 65 of 66 fixtures (98%) | **some** finding is produced on the fixture |
+| 43 of 104 pairs (41%) | the expected rule fires |
+| 41 of 67 fixtures (61%) | the expected rule fires somewhere on the fixture |
+| 66 of 67 fixtures (99%) | **some** finding is produced on the fixture |
 
 The last was published here as "64 of 66 fixtures it says must fail are failed
 here". It is true, and it reads as a hit rate, and it is not one — producing

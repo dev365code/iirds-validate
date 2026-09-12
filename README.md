@@ -267,7 +267,7 @@ typed into prose goes stale on the day the thing it counts moves:
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
 | Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 191 run and 42 excused, no overlap, together the whole registry of 233; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
-| The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from 0bcf19ddaec369289f128f3016c5a3c3f0c95f4d, retrieved 2026-08-17` |
+| The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
 | The ids that fire are the recorded ones | `make check` — the gate is `tools/rule_coverage.py --check`, which reads what a run observed, so a fresh checkout has nothing for it to read yet | a rule that stops firing stops the build |
 | A validation run makes no network request | `tests/test_offline.py`, which runs a check with the socket sealed | the suite |

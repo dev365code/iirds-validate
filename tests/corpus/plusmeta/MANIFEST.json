@@ -1,8 +1,8 @@
 {
   "_source": "https://github.com/plusmeta/iirds-validation-tool",
-  "_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
+  "_commit": "f1119bea7b64fd826ded9e06d9abae287cbad9c1",
   "_path": "tests/files/util/iirds-validation",
-  "_retrieved": "2026-08-20",
+  "_retrieved": "2026-09-13",
   "_licence": "MIT, Copyright 2020 plusmeta GmbH — see LICENSE beside this file",
   "_generated_by": "tools/vendor_corpus.py",
   "_note": "Verbatim. The defective fixtures below are upstream's and are recorded rather than repaired: a repaired fixture would be our reading of what they meant, and would contaminate the only external oracle this project has.",
@@ -337,6 +337,16 @@
     "M24-6-2_true.rdf": {
       "sha256": "77d6591ab408832ceef69ae16901265090e7ee00c0f4e5e70dcb4a9cd53ab964",
       "bytes": 20011,
+      "parses": "ok"
+    },
+    "M30_false.rdf": {
+      "sha256": "1b4fda2e13fb0937d04edcf796d2988d4d8d2add1b0b7ea04a94e8506de3483b",
+      "bytes": 887,
+      "parses": "ok"
+    },
+    "M30_true.rdf": {
+      "sha256": "2cbebbfc5de7ef2649ab465a497fd2d474c35b6bc14cf099dc3ac0dbb5edba0a",
+      "bytes": 1938,
       "parses": "ok"
     },
     "M96-1_false.rdf": {

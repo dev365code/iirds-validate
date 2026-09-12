@@ -26,7 +26,14 @@ import urllib.request
 #: Pinned so the catalogue is reproducible. NOTICE and THIRD_PARTY.md rest on
 #: provenance, and regenerating against a moved `master` would silently produce
 #: a different file. Pass --ref master to see what upstream has changed.
-DEFAULT_REF = "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d"
+DEFAULT_REF = "f1119bea7b64fd826ded9e06d9abae287cbad9c1"
+
+#: The date the pin above was fetched. It is written into the catalogue from
+#: here; `tests/corpus/plusmeta/MANIFEST.json` records that date as well, put
+#: there by `tools/vendor_corpus.py --retrieved`, which does not read this
+#: constant. Nothing compares the two values, so they match by hand -- said
+#: here rather than left for whoever finds them disagreeing.
+RETRIEVED = "2026-09-13"
 RAW = ("https://raw.githubusercontent.com/plusmeta/iirds-validation-tool/"
        "{ref}/src/config/validation/{name}.js")
 FILES = ("container-rules", "schema-rules", "system-rules")
@@ -202,7 +209,7 @@ def main() -> int:
     payload = json.dumps({
         "_source": "https://github.com/plusmeta/iirds-validation-tool",
         "_commit": args.ref,
-        "_retrieved": "2026-08-17",
+        "_retrieved": RETRIEVED,
         "_licence": "MIT, Copyright 2020 plusmeta GmbH — metadata only, see THIRD_PARTY.md",
         "_generated_by": "tools/extract_catalog.py",
         "rules": rules,

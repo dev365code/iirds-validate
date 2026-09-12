@@ -6,6 +6,27 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The vendored rule catalogue and the reference corpus move to a newer upstream
+commit, and one reading now differs where it did not.** The catalogue and the
+132 fixtures beside it are taken from `f1119bea`, retrieved 2026-09-13, instead
+of `0bcf19dd`. Between those revisions exactly one rule changed, and only in
+which constructs it says it inspects and which fixtures exercise it: M30's
+`path` narrowed from `Class, Property, subPropertyOf, subClassOf, domain,
+range, domainIncludes, rangeIncludes` to `Class, Property`. No rule was added,
+removed, renumbered or reworded, and no verdict this tool gives has changed --
+neither field is read by the shipped library at all, and neither is part of the
+rule-set digest a report carries, which is the same string under both
+revisions. What reads them is the cross-validation tooling in `tools/`.
+
+This project keeps the longer reading -- a statement whose both ends are iiRDS
+terms is the standard's schema written out inside a package, which section 7
+says a package may not carry -- and `docs/divergences.md` now records that as a
+divergence with the specification's sentence behind it, rather than as
+agreement. Two fixtures arrived with the move and both are agreed on: the file
+that redeclares `iirds:Event` is reported, and the file that subclasses an
+iiRDS class into a proprietary namespace is not. Cross-validation therefore
+moves by one pair, to 114 with `agree` 43.
+
 **The front page says which surfaces move, and a command says the rest back.**
 "What is stable here, and what is not" sits under "Using this validator in your
 product": the packaging is not the contract, the verdicts move and every move

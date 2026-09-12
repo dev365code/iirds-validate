@@ -1,9 +1,9 @@
 {
- "_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
+ "_commit": "f1119bea7b64fd826ded9e06d9abae287cbad9c1",
  "_generated_by": "tools/crossvalidate.py --write-baseline",
  "_note": "Per-pair agreement with the reference tool over the vendored corpus. Regenerate deliberately, never to make CI green: a pair moving from agree to silent is a regression, and a pair moving the other way still wants a look at why.",
  "counts": {
-  "agree": 42,
+  "agree": 43,
   "silent": 61,
   "untestable": 10
  },
@@ -61,6 +61,7 @@
   "M24.6|M24-6-2_false.rdf": "agree",
   "M25|Example 38 - Table of contents-M36_false.rdf": "silent",
   "M26|Example 38 - Table of contents-M37_false.rdf": "silent",
+  "M30|M30_false.rdf": "agree",
   "M35|Example 26 - Identity type of product variant-M46_false.rdf": "silent",
   "M36|Example 26 - Identity type of product variant-M47_false.rdf": "silent",
   "M37|metadata_iirds_sample_pass-M37_false.rdf": "agree",

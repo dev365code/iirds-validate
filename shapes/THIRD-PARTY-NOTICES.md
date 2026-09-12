@@ -14,7 +14,7 @@ The remedy texts (`sh:description`) are this project's own throughout:
     iiRDS Validation Tool
     https://github.com/plusmeta/iirds-validation-tool
     Copyright 2020 plusmeta GmbH
-    Pinned at commit 0bcf19dd
+    Pinned at commit f1119bea
 
 Shapes whose `ivm:ruleSource` is `"iirds-validate"` are this project's own
 wording. The SHACL constraint logic in every shape is this project's

@@ -387,8 +387,8 @@ def test_the_corpus_figure_the_changelog_publishes():
                 conforming += 1 if "_true" in name else 0
                 empty += 0 if str(obj).strip() else 1
 
-    assert len(manifest["files"]) == 130, len(manifest["files"])
-    assert well_formed == 117, well_formed
+    assert len(manifest["files"]) == 132, len(manifest["files"])
+    assert well_formed == 119, well_formed
     assert refused == XML_BUT_NOT_RDF, sorted(refused ^ XML_BUT_NOT_RDF)
     assert (hits, len(files), empty) == (10, 9, 7), (hits, sorted(files), empty)
     # Not "four of them conform": the corpus's word for a file that breaks

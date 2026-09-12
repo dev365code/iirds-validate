@@ -1,7 +1,7 @@
 # The reference corpus
 
-130 RDF fixtures from [plusmeta/iirds-validation-tool][repo], at commit
-`0bcf19dd` — the same revision `src/iirds_validate/data/rule-catalog.json` was
+132 RDF fixtures from [plusmeta/iirds-validation-tool][repo], at commit
+`f1119bea` — the same revision `src/iirds_validate/data/rule-catalog.json` was
 extracted from. MIT, Copyright 2020 plusmeta GmbH; their licence is in
 `LICENSE` beside this file.
 
@@ -27,7 +27,7 @@ point — the moment these stop being upstream's bytes they stop being evidence.
 
 ## What is defective in it, and why none of it is repaired
 
-    100  parse as they stand
+    102  parse as they stand
      17  fragments: excerpts from the specification's numbered examples, which
           carry no <rdf:RDF> element because the surrounding prose declared the
           namespaces. Not breakage — material this project could be checking

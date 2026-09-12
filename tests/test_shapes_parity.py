@@ -444,7 +444,7 @@ VERSION_GATED_EXTRAS = {
 
 
 def test_the_whole_corpus_agrees_between_encodings(tmp_path):
-    """117 parsable reference fixtures, rule-set equality per file. The same
+    """119 parsable reference fixtures, rule-set equality per file. The same
     corpus that cross-validates the Python rules against plusmeta now
     cross-validates the shapes against the Python rules."""
     disagreements = []
@@ -493,7 +493,7 @@ def test_the_whole_corpus_agrees_between_encodings(tmp_path):
                                   sorted(python_ids - shacl_ids)))
         checked += 1
 
-    assert checked == 114, checked   # 117 parsable - the 3 pinned rejects
+    assert checked == 116, checked   # 119 parsable - the 3 pinned rejects
     # Named, not merely bounded: "<= 5" would let two more files drop out of
     # the comparison without anyone saying so. These three trip an
     # rdflib RDF/XML error path; the Python side still validates them because

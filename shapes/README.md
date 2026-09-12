@@ -65,7 +65,7 @@ has to be an IRI — that is what `publicID=` supplies above. `rdf:about=""`
 resolves to the parsing base, so metadata using the empty `about` (both
 official samples do) needs this convention to be checked rather than
 blessed. The command line cannot set a base, and the gap is not one narrow
-check: with a `file:` base, 23 of the 97 cleanly-parsing reference fixtures
+check: with a `file:` base, 23 of the 99 cleanly-parsing reference fixtures
 report *fewer* violations than under the documented convention, across ten
 rules. The Python API form above is the one the differential gate
 certifies; treat CLI runs of `about=""` metadata as a smoke test.
@@ -121,7 +121,7 @@ shapes file cannot make. The shapes always state the undemoted severity.
 The shapes are generated (`tools/emit_shacl.py` in the main repository) from
 the same rule definitions the Python validator runs — the community rule
 catalogue ([plusmeta's](https://github.com/plusmeta/iirds-validation-tool),
-MIT, pinned at commit `0bcf19dd`) plus this project's own system, packaging
+MIT, pinned at commit `f1119bea`) plus this project's own system, packaging
 and lint rules — and CI byte-compares the committed files against the
 generator, so what you read is what the generator says. Rule identifiers
 come from that catalogue, and where a catalogue-sourced shape's `sh:message`
@@ -192,8 +192,8 @@ Every emitted shape is **differentially tested against the 233-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both
-encodings, and the vendored reference corpus — 114 fixtures compared
-rule-for-rule on fire-set equality (117 parse cleanly; the three rdflib's
+encodings, and the vendored reference corpus — 116 fixtures compared
+rule-for-rule on fire-set equality (119 parse cleanly; the three rdflib's
 RDF/XML reader rejects are pinned by name in the gate), plus a closing
 check that every emitted shape has fired somewhere in the suite, so a shape
 cannot pass by never engaging. The gate has caught real defects on

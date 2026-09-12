@@ -7,7 +7,7 @@ downloaded at run time from a moving branch. A figure nobody else can reproduce
 is a figure, not evidence — and this repository's whole argument is that a
 validator should be able to show its work.
 
-So the corpus is vendored: 130 files, about 4 MB, under the revision the rule
+So the corpus is vendored: 132 files, about 4 MB, under the revision the rule
 catalogue was extracted from, with a hash for each one. That makes "these are
 their fixtures, unmodified" checkable rather than trusted, offline and
 tomorrow, by someone who is not us. It is the same treatment the bundled

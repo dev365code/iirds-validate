@@ -141,3 +141,14 @@ and the two compatibility packages under `shims/` (their `version` and their
 `iirds>=` floor). Change them all, give the top entry of `CHANGELOG.md` its
 date, run `python tools/emit_shacl.py` so the shape manifest records the
 version, then `make check`. The tag is `v` and the number.
+
+Look at the action pins before you tag. Every `uses:` in
+`.github/workflows/` names a commit rather than a tag, which means none
+of them moves on its own and none of them picks up the fix its owner
+published last month; `tests/test_workflow_supply_chain.py` says why that
+trade was made. Moving a pin is reading the action's releases since the
+one in the comment, taking the commit that release resolves to, and
+changing every place that action appears -- a test refuses a pin that
+disagrees with itself across the three files. Do it here, before a tag,
+rather than during one: `release.yml` cannot be exercised without a tag,
+so the first run of a changed publisher is a real release.

@@ -20,8 +20,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: "3.12"
 
@@ -87,7 +87,7 @@ jobs:
           cd dist && shasum -a 256 * > SHA256SUMS && cat SHA256SUMS
 
       # The publishers below upload exactly these bytes; nothing is rebuilt.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a   # v7.0.1
         with:
           name: dist
           path: dist/
@@ -101,6 +101,19 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it. Upgrading an environment that has \`iirds-validate\` 0.4.2 or earlier: \`pip uninstall -y iirds-validate\` first, then \`pip install -U iirds\`. If you already ran \`pip install -U iirds-validate\` and no command runs, \`pip install --force-reinstall --no-deps iirds\` restores it. Installs that began at 0.5.0 or later are unaffected."
 
+  # Every `uses:` in this file names a commit, not a tag or a branch. The
+  # publisher below runs in the job that holds `id-token: write` and uploads
+  # under this project's name; `@release/v1` would have been whatever that
+  # branch pointed at on the morning of a release, decided by somebody else
+  # after this file was reviewed. The comment beside each pin is the version it
+  # is, because the next person moving one needs to know what they are moving
+  # from. `tests/test_workflow_supply_chain.py` refuses any ref that is not a
+  # full commit; upgrades are made by hand, and no tool is given write access
+  # to these lines. One consequence worth knowing: the publisher resolves to a
+  # container image tagged with the same ref, so pinning it by commit pulls the
+  # image tag named after that commit rather than the branch tag, which is
+  # always republished.
+
   # Trusted Publishing (OIDC), one job and one GitHub environment per PyPI
   # project. `iirds` goes first: the other two declare `iirds>=<this version>`
   # and must not be resolvable before it is. Until pypi.org trusts this
@@ -113,12 +126,12 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131   # v7.0.0
         with:
           name: dist
           path: dist
       - run: mkdir up && cp dist/iirds-[0-9]*.whl dist/iirds-[0-9]*.tar.gz up/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33   # v1.14.2
         with:
           packages-dir: up
 
@@ -129,12 +142,12 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131   # v7.0.0
         with:
           name: dist
           path: dist
       - run: mkdir up && cp dist/iirds_validate-[0-9]*.whl dist/iirds_validate-[0-9]*.tar.gz up/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33   # v1.14.2
         with:
           packages-dir: up
 
@@ -145,11 +158,11 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131   # v7.0.0
         with:
           name: dist
           path: dist
       - run: mkdir up && cp dist/iirds_sdk-[0-9]*.whl dist/iirds_sdk-[0-9]*.tar.gz up/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33   # v1.14.2
         with:
           packages-dir: up

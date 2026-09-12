@@ -47,6 +47,14 @@ jobs:
       # edited into the picture and the generator fell fifteen rules behind.
       - run: python tools/gen_door.py --check
 
+      - name: the front page's table is what the commands print
+        # Every cell comes from a run. The pinned catalogue commit is in there,
+        # and it moves at the next pin. It belongs in this job because every
+        # command it runs answers offline and it builds the two containers it
+        # measures; a draft that quoted `extract_catalog.py --check` put this
+        # job on the network, which is the one thing it is not allowed.
+        run: python tools/gen_stable_section.py --check
+
       - name: no rule claims a version whose vocabulary it predates
         # Every `versions` array came from the reference tool. A rule applicable
         # to a release whose ontology lacked its class runs, matches nothing and

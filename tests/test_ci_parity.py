@@ -155,6 +155,7 @@ CHECK_COMMANDS = (
     "ruff check --no-cache .",
     "tools/propose_class_rules.py --check",
     "tools/gen_door.py --check",
+    "tools/gen_stable_section.py --check",
     "tools/vendor_corpus.py --check",
     "tools/crossvalidate.py --check",
     "tools/explain_silence.py --quiet",

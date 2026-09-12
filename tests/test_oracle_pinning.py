@@ -14,8 +14,12 @@ All of them were computed against a moving input.
 from __future__ import annotations
 
 import re
+import sys
+
+import pytest
 
 import crossvalidate
+import extract_catalog
 from iirds_validate.registry import PROVENANCE
 
 #: A full git object name. A branch or tag would reintroduce the defect while
@@ -29,6 +33,41 @@ def test_the_catalogue_records_the_commit_it_came_from():
 
 def test_the_corpus_is_fetched_at_the_catalogue_s_commit():
     assert PROVENANCE["_commit"] == crossvalidate.REF
+
+
+def test_the_pin_in_the_script_is_the_commit_in_the_file():
+    """Two records of one fact, and nothing compared them.
+
+    `--ref` regenerates against another revision; committing that file without
+    moving `DEFAULT_REF` leaves the script pinning one commit and the catalogue
+    carrying another, and every sentence resting on provenance names whichever
+    of the two its author happened to read.
+    """
+    assert PROVENANCE["_commit"] == extract_catalog.DEFAULT_REF
+
+
+def test_asking_which_commit_it_came_from_fetches_nothing(monkeypatch, capsys):
+    """The front page quotes this command, so it runs where the front page is
+    gated -- in CI's lint job, which is not allowed the network. `--check`, the
+    flag beside it, fetches three files; this one may not touch `fetch` at all.
+    """
+    def refuse(*args, **kwargs):
+        raise AssertionError("--pin reached for the network")
+
+    monkeypatch.setattr(extract_catalog, "fetch", refuse)
+    monkeypatch.setattr(sys, "argv", ["extract_catalog.py", "--pin"])
+    assert extract_catalog.main() == 0
+    assert PROVENANCE["_commit"] in capsys.readouterr().out
+
+
+def test_a_catalogue_from_another_commit_than_the_pin_is_a_failure(monkeypatch, capsys):
+    """What `--pin` is for. The front page quotes its output as provenance, so
+    it has to be the file's own answer and not the script's opinion of it."""
+    monkeypatch.setattr(extract_catalog, "fetch",
+                        lambda *a, **k: pytest.fail("--pin reached for the network"))
+    monkeypatch.setattr(sys, "argv", ["extract_catalog.py", "--pin", "--ref", "0" * 40])
+    assert extract_catalog.main() == 1
+    assert "the pin says" in capsys.readouterr().err
 
 
 def test_no_url_reaches_for_a_moving_ref():

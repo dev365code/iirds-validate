@@ -7,9 +7,12 @@ No plusmeta code is copied; the assertions in this project are independent
 implementations that operate on an RDF graph rather than an XML DOM.
 
 Usage:  python tools/extract_catalog.py [--offline DIR]
+        python tools/extract_catalog.py --pin        # what the file says, offline
 
 Requires network unless --offline points at a checkout of
-https://github.com/plusmeta/iirds-validation-tool
+https://github.com/plusmeta/iirds-validation-tool, or --pin is given, which
+asks the committed catalogue which commit it was taken from and never leaves
+the disk.
 """
 from __future__ import annotations
 
@@ -140,7 +143,28 @@ def main() -> int:
                     help="git ref to extract from (default: the pinned commit)")
     ap.add_argument("--check", action="store_true",
                     help="do not write; exit 1 if the result differs from the committed file")
+    ap.add_argument("--pin", action="store_true",
+                    help="print the commit the committed catalogue was taken from, and exit 1 "
+                         "if it is not the pin above; no network")
     args = ap.parse_args()
+
+    # Offline, and first: whether upstream still agrees is a different question,
+    # asked weekly with the network. This one is about this repository alone --
+    # the pin in this file and the commit written into the catalogue are two
+    # records of one fact, and a `--ref` regeneration that is never committed
+    # leaves them disagreeing with nothing to say so.
+    if args.pin:
+        if not OUT.exists():
+            print("no catalogue at %s" % OUT, file=sys.stderr)
+            return 1
+        provenance = json.loads(OUT.read_text("utf-8"))
+        if provenance.get("_commit") != args.ref:
+            print("the catalogue says %s; the pin says %s"
+                  % (provenance.get("_commit"), args.ref), file=sys.stderr)
+            return 1
+        print("catalogue taken from %s, retrieved %s"
+              % (provenance["_commit"], provenance["_retrieved"]))
+        return 0
 
     rules, seen = [], set()
     for name in FILES:

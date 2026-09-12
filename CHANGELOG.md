@@ -6,6 +6,20 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The front page says which surfaces move, and a command says the rest back.**
+"What is stable here, and what is not" sits under "Using this validator in your
+product": the packaging is not the contract, the verdicts move and every move
+is written down here, and then a table of what has held -- the report's
+`schemaVersion` and its keys, each exit code, the account that every registered
+rule is answered for, the commit the rule catalogue was taken from, the
+ontology digests. Every cell in it is what a command printed, written by
+`tools/gen_stable_section.py`, and `--check` fails the build when the page and
+the commands disagree; three copies of one coverage figure in this repository
+are why a figure on that page is no longer typed. `tools/extract_catalog.py`
+grew `--pin`, which answers offline which commit the committed catalogue came
+from and fails when that is not the commit the script pins -- two records of
+one fact that nothing had compared.
+
 **Checking a directory could have the checker read files outside it, and
 quote them.** A directory was listed with a file test that answers for the far
 end of a link, so a link to any file the user running the check could read was

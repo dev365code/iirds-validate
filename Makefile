@@ -77,6 +77,12 @@ generated:
 # edited into the picture to satisfy that test, and the generator fell fifteen
 # rules behind while the picture stayed true.
 	$(PYTHON) tools/gen_door.py --check
+# The front page's table of what has held. Every cell is what a command printed,
+# so a figure that moves -- the pinned catalogue commit is the next one to -- is
+# a red line here rather than a sentence a reader has no way to doubt. Every one
+# of those commands answers offline, and a command that fails is a failure here
+# rather than a value written into the page.
+	$(PYTHON) tools/gen_stable_section.py --check
 
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.

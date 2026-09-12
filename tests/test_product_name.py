@@ -31,10 +31,11 @@ OLD_DISTRIBUTION_ALLOWED = {
     "CHANGELOG.md": (None, "history"),
     "NOTICE": (1, "the name earlier releases were published under"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),
-    "README.md": (22, "the badge and workflow addresses, the alias sentence, the absolute "
-                       "links into the repository's tree, under the repository's address until "
-                       "it is renamed, so that PyPI can follow them, and the upgrade warning, "
-                       "which has to name the distribution a reader is upgrading *from*"),
+    "README.md": (23, "the badge and workflow addresses, the alias sentence, the absolute "
+                       "links into the repository's tree -- the changelog the stable section "
+                       "sends an upgrader to is one of them -- under the repository's address "
+                       "until it is renamed, so that PyPI can follow them, and the upgrade "
+                       "warning, which has to name the distribution a reader is upgrading *from*"),
     "docs/divergences.md": (2, "an issue's address"),
     "docs/library-changelog.md": (None, "history"),
     "pyproject.toml": (5, "the alias console script, and the repository's address"),

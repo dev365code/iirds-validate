@@ -238,6 +238,55 @@ Embed it in commercial products, ship it to customers, run it in closed networks
 
 </details>
 
+### What is stable here, and what is not
+
+**This is 0.x, and the packaging is not the contract.** Three names on PyPI
+install the same code, the module layout moves, and what a wheel carries beyond
+the command may change in any release.
+
+**The verdicts move, and every move is written down.** A rule's reading is a
+claim about the specification, and when a reading changes, so does the verdict
+on a package that sits on that line. Those changes are in
+[CHANGELOG.md](https://github.com/dev365code/iirds-validate/blob/main/CHANGELOG.md), each with the reading behind it, and a paragraph
+that moves an exit code says so in those words. If you gate a build on the exit
+code, read that file before upgrading. That much is discipline, not a gate.
+What a gate holds is narrower and worth more: a rule id is a citation somebody
+else made, so what fired is compared against a committed record on every build,
+and a rule that quietly stops firing stops the build.
+
+What has held, and how to see it for yourself. The table below is written by
+`tools/gen_stable_section.py` from what those commands print, because a number
+typed into prose goes stale on the day the thing it counts moves:
+
+<!-- what-has-held: written by tools/gen_stable_section.py -->
+
+| what it says | how to see it | what came back |
+|---|---|---|
+| The report is a document with a `schemaVersion`, and keys are added without moving it | `iirds check fixtures/good.iirds -f json` | `"schemaVersion": 2`, then `package`, `iirdsVersion`, `validatedAgainst`, `variant`, `ok`, `judgedBy`, `packageDigest`, `summary`, `notes`, `notApplicable`, `suppressed`, `findings` |
+| `iirds check` exits `0` when the package drew no error (with `-W`, a warning is one) | `iirds check fixtures/good.iirds; echo $?` | `0` |
+| `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
+| `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
+| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 191 run and 42 excused, no overlap, together the whole registry of 233; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
+| The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from 0bcf19ddaec369289f128f3016c5a3c3f0c95f4d, retrieved 2026-08-17` |
+| The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
+| The ids that fire are the recorded ones | `make check` — the gate is `tools/rule_coverage.py --check`, which reads what a run observed, so a fresh checkout has nothing for it to read yet | a rule that stops firing stops the build |
+| A validation run makes no network request | `tests/test_offline.py`, which runs a check with the socket sealed | the suite |
+
+<!-- /what-has-held -->
+
+The two containers the exit-code rows name are built by the repository rather
+than committed, and the generator builds them if they are missing; it runs the
+checker as `python -m iirds_validate` from the tree, which is the entry point
+the `iirds` command is.
+
+What is not the contract, beyond packaging: the set of rules grows, so a count
+of them is not a promise; the wording of a finding's message is prose for a
+person to read; and the Python names the next section uses -- `iirds.open`,
+`iirds_validate.check` -- work, and are meant to, but they are not among the
+surfaces whose changes are announced as breaking. What is held still for
+another program to depend on is the command, its exit codes, and a report that
+says which `schemaVersion` it is.
+
 ## Reading and writing packages from Python
 
 ```python

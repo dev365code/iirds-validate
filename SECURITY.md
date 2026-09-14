@@ -70,3 +70,13 @@ get fixed, tested and credited rather than argued with.
 
 Supported versions: the latest release. There is no backporting; upgrading is
 copying one file.
+
+## Advisories
+
+A security fix that shipped in a release has a GitHub security advisory on
+this repository, naming the versions it reaches and the release that fixes it.
+
+- [GHSA-836f-9r66-gxcc](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-836f-9r66-gxcc):
+  checking a directory could read files outside it and put parts of them in
+  the report. `iirds-validate` 0.1.0 through 0.6.0, `iirds` and `iirds-sdk`
+  0.5.0 through 0.6.0; fixed in 0.6.1.

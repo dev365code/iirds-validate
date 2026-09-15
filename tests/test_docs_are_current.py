@@ -204,3 +204,59 @@ def test_a_defence_that_names_a_rule_cites_a_test_that_names_it():
     assert unreadable == [], unreadable
     assert {"S6", "S10"} <= checked, checked
     assert uncited == [], uncited
+
+
+#: The rows of the table in "Current agreement" that break the silence down,
+#: as (number, what it says). A row is one of the silent kinds when its middle
+#: cell opens with the word; the one row that does not is the agreeing half.
+SILENCE_ROW = re.compile(r"^\|\s*\*{0,2}(\d+)\*{0,2}\s*\|\s*([^|]*?)\s*\|", re.M)
+
+def _silence_table():
+    """The breakdown rows, split into the agreeing one and the silent ones."""
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    start = text.index("## Current agreement")
+    rows = SILENCE_ROW.findall(text[start:start + 6000])
+    agreeing = [int(n) for n, said in rows if not said.startswith("silent")]
+    silent = [int(n) for n, said in rows if said.startswith("silent")]
+    return agreeing, silent
+
+
+def test_the_silence_table_adds_up_to_the_measurement():
+    """The table breaks 104 pairs into eight rows and nothing held the eight.
+
+    The gate above holds the three totals `docs/agreement.json` carries. The
+    rows *under* them are a finer partition of the same fact, written by hand,
+    and the pin move moved `agree` from 42 to 43 while every one of these rows
+    stayed as it was -- correctly, as it turned out, which is not the same as
+    checked. What this holds is the sum: two rows that swap values pass it,
+    and closing that needs the buckets recorded per name rather than counted.
+    """
+    counts = json.loads((ROOT / "docs" / "agreement.json").read_text("utf-8"))["counts"]
+    agreeing, silent = _silence_table()
+    assert agreeing == [counts["agree"]], (agreeing, counts["agree"])
+    assert sum(silent) == counts["silent"], (silent, sum(silent), counts["silent"])
+
+
+def test_the_prose_under_that_table_quotes_the_table():
+    """A paragraph twenty lines below the table restated three of its rows and
+    got two of them wrong -- 34 for 32, 11 for 13 -- and said so for as long as
+    nobody read the two together. Every figure the summary states has to be a
+    row of the table it is summarising.
+
+    Two things this does not do, said here rather than assumed. It does not
+    pair a figure with its category, so the right number under the wrong
+    heading passes; and it stops where the summary does, so the sentence after
+    it that counts what is left over is held by nothing. Both want the
+    classification written down as a file the way `docs/agreement.json` is --
+    the classifier runs in four seconds -- and that is a unit, not a regex.
+    """
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    start = text.index("almost all of the silence")
+    summary = text[start:text.index("Read the table above", start)]
+    _agreeing, silent = _silence_table()
+    stated = [int(n) for n in re.findall(r"\b(\d+)\b(?!%)", summary)]
+    assert stated, summary
+    stray = [n for n in stated if n not in silent]
+    assert not stray, (
+        "docs/divergences.md summarises the silence table with %s, and the "
+        "table's silent rows are %s" % (stray, sorted(silent)))

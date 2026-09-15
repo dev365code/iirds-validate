@@ -20,7 +20,7 @@ Worth knowing about the corpus this project leans on:
   fixture is named `metadata_iirds_sample-M11_false.rdf`, so only the
   `testFiles` field is authoritative
 - two fixtures are committed as zero-byte files
-- nine are not well-formed XML
+- eleven are not well-formed XML
 - its unit test calls `validateSingleRule` directly, bypassing the version and
   variant filters the product itself applies
 - the repository runs no tests in CI; its only workflow is a code review action
@@ -352,11 +352,11 @@ byte-identical graphs — `tools/explain_silence.py` classifies these as
 `invisible` by computing the diff. A package with two *different* values is
 still caught.
 
-**Malformed fixtures.** Nine fixtures are not well-formed XML. This validator
+**Malformed fixtures.** Eleven fixtures are not well-formed XML. This validator
 reports the parse failure (C16.1) and fails the package; a browser `DOMParser`
 recovers a partial document and keeps going.
 
-**Version and variant gating.** Six pairs name a rule that does not apply to
+**Version and variant gating.** Thirteen pairs name a rule that does not apply to
 the fixture's declared version or profile — M8 is 1.1+ and the fixture declares
 1.0. The reference's product applies the same filters; only its unit test does
 not.
@@ -1217,20 +1217,21 @@ python tools/explain_silence.py
 ```
 
 The reference marks 114 rule/fixture pairs as "this fixture must fail this
-rule". Ten of those name one of the two fixtures upstream committed as
-zero-byte files, which nothing can test. Of the remaining **104 pairs, across
+rule". Ten of those nothing can test: eight name one of the two fixtures
+upstream committed as zero-byte files, and two name a fixture their catalogue
+lists and their repository does not ship. Of the remaining **104 pairs, across
 67 distinct fixtures**:
 
 | | pairs | |
 |---:|---|---|
 | **43** | the expected rule fires here | |
 | 32 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
-| 9 | silent — the fixture does not parse | 9 pairs, whose fixtures are among the corpus's 11 malformed files; no comparison is possible, and none is repaired — see below |
+| 9 | silent — the fixture does not parse | 9 pairs over 8 fixtures. Seven are among the corpus's 11 malformed files; the eighth is well-formed XML that is not valid RDF/XML, which is a wider category than the manifest's word for it. No comparison is possible, and none is repaired — see below |
 | 13 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
 | 2 | silent — mismatched | the defect is reported, under a different rule id |
 | 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |
-| 1 | silent — **unclassified** | M25, whose only fixture is one of the nine malformed |
+| 1 | silent — **unclassified** | M25's failing fixture parses; the passing fixture it is held against, `Example 38 - Table of contents.rdf`, does not — one of the eleven malformed. M25 has a second passing fixture that does parse, and `tools/explain_silence.py` gives up at the first one it cannot read rather than trying the rest, so this row is this project's classifier and not the corpus |
 
 No finding fires on a fixture the reference says should pass. Two did, both
 M15.10, and both were this project's error rather than the reference's: the
@@ -1273,10 +1274,11 @@ validator, and quoting one without saying so would be the third version of the
 same mistake this document already records twice.
 
 The 41% is misleading in the other direction, because almost all of the silence
-is accounted for: 34 pairs are cases where the reference does not report
-either, 11 are gated by a version or variant, and 9 are fixtures nobody can
-parse. Read the table above rather than any single
-figure. What is actually unresolved is **four pairs** — the 2 mismatched, the 1
+is accounted for: 32 pairs are cases where the reference does not report
+either, 13 are gated by a version or variant, 9 are fixtures nobody can parse,
+and 3 are defects that exist only in the XML tree. Those four groups, and the
+four pairs named below, are the whole of it. Read the table above rather than
+any single figure. What is actually unresolved is **four pairs** — the 2 mismatched, the 1
 ours and the 1 unclassified.
 
 ### What the classifier behind that table cannot support

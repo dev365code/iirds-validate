@@ -406,3 +406,42 @@ def test_every_row_of_the_silence_table_is_its_own_bucket():
     # bucket appearing that no row of the table accounts for.
     silent = sum(counts["silence"].values())
     assert silent == counts["agreement"]["silent"], (silent, counts["agreement"])
+
+
+#: The packages this project owns. A name under one of these, shown on the
+#: front page, is something a reader will type; a name under anything else is
+#: somebody else's and not ours to hold.
+OURS = ("iirds", "iirds_validate")
+
+#: `iirds_validate.check(...)` in a fenced example. Only the attribute access
+#: is read: a bare `import iirds` says nothing a reader can get wrong.
+SHOWN = re.compile(r"\b(%s)\.([A-Za-z_][A-Za-z0-9_]*)" % "|".join(OURS))
+
+
+def test_every_name_the_front_page_shows_can_be_imported():
+    """README.md's one Python example is the only place this project documents
+    calling it from another program, and nothing ran it.
+
+    `iirds_validate.__init__` resolves its exports lazily through `__getattr__`
+    from a table of names to modules, so a module that moves leaves the table
+    pointing at nothing and the failure appears where somebody typed what the
+    front page showed them.
+
+    Only `README.md`: a snippet in `CHANGELOG.md` may name something a release
+    removed, and it is right that it still does.
+    """
+    from importlib import import_module
+
+    shown = set()
+    for block in re.findall(r"```python\n(.*?)```", (ROOT / "README.md").read_text("utf-8"),
+                            re.S):
+        shown.update(SHOWN.findall(block))
+    assert shown, "README.md shows no name from this project's own packages"
+
+    missing = []
+    for package, name in sorted(shown):
+        module = import_module(package)
+        if not hasattr(module, name):
+            missing.append("%s.%s" % (package, name))
+    assert not missing, (
+        "README.md shows %s, and importing gives no such name" % missing)

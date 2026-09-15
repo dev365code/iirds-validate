@@ -1,6 +1,7 @@
 # Runs when a version tag is pushed. Proves the tree green, builds the three
-# distributions and the single file, proves the .pyz reproducible by building
-# it twice, attaches everything to a GitHub Release with the checksums beside
+# distributions and the single file, proves this runner's two builds of the
+# .pyz agree -- which is determinism on one machine, not the whole claim --
+# attaches everything to a GitHub Release with the checksums beside
 # it -- for the air-gapped audience, "the hash on the release page is the hash
 # of the file I carried in" is the entire trust story -- and then publishes
 # the same bytes to PyPI, `iirds` first so that the two compatibility names
@@ -67,12 +68,12 @@ jobs:
           /tmp/v/bin/python tools/shim_overlap.py
           /tmp/v/bin/iirds --version && /tmp/v/bin/iirds-validate --version && /tmp/v/bin/iirdsv --version
 
-      - name: build the .pyz twice; the hashes must match
+      - name: build the .pyz twice on this runner; the hashes must match
         run: |
           python tools/build_zipapp.py -o dist/iirds.pyz --check
           python tools/build_zipapp.py -o /tmp/again.pyz
           cmp dist/iirds.pyz /tmp/again.pyz
-          echo "reproducible: yes"
+          echo "this runner builds it the same twice"
 
       - name: bundle the SHACL shapes
         # The language-neutral encoding travels with every release, zipped
@@ -99,7 +100,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
-            --notes "See CHANGELOG.md. Verify what you download: \`shasum -a 256 -c SHA256SUMS\`. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it. Upgrading an environment that has \`iirds-validate\` 0.4.2 or earlier: \`pip uninstall -y iirds-validate\` first, then \`pip install -U iirds\`. If you already ran \`pip install -U iirds-validate\` and no command runs, \`pip install --force-reinstall --no-deps iirds\` restores it. Installs that began at 0.5.0 or later are unaffected."
+            --notes "See CHANGELOG.md. Verify what you download: carry SHA256SUMS beside the file and ask it about that file, \`grep \" iirds.pyz$\" SHA256SUMS | shasum -a 256 -c -\` — \`-c\` on the whole file fails on the assets you did not take. The .pyz needs only a Python — \`python iirds.pyz your-package.iirds\`. On PyPI this release is \`iirds\`; \`iirds-validate\` and \`iirds-sdk\` are compatibility names that install it. Upgrading an environment that has \`iirds-validate\` 0.4.2 or earlier: \`pip uninstall -y iirds-validate\` first, then \`pip install -U iirds\`. If you already ran \`pip install -U iirds-validate\` and no command runs, \`pip install --force-reinstall --no-deps iirds\` restores it. Installs that began at 0.5.0 or later are unaffected."
 
   # Every `uses:` in this file names a commit, not a tag or a branch. The
   # publisher below runs in the job that holds `id-token: write` and uploads

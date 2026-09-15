@@ -6,6 +6,27 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The single-file `.pyz` no longer carries pip's record of the machine that
+built it.** A build on Python 3.9 and a build on 3.12 now produce the same
+bytes, where before they produced two files that differed in four entries on
+one and five on the other -- `RECORD` for each bundled dependency, and
+`REQUESTED` for each one pip was asked for by name, which is a different set
+depending on which dependencies the builder's own Python already satisfies. Neither is a term the dependency is redistributed under -- every `METADATA`, every
+`WHEEL` and every licence file still travels, which is why the `dist-info` is
+kept at all -- and both are written by pip about an installation the archive
+is not. rdflib 7.6.0's `RECORD` listed a hundred and fifty paths, six of them the
+console scripts this build deletes on purpose, so the archive shipped a list
+that was false about its own contents and named the very files removed to make
+it reproducible. Two builds whose pip wrote different bookkeeping now give the
+same bytes; the hash on a release page is something a rebuild of the tagged
+commit can be compared against, with the dependency versions as the one thing
+nobody pins. `SECURITY.md` and `docs/offline-install.md` say which
+reproducibility this is, and the latter now tells the reader carrying a file
+across an air gap how to check it against what was published. **The `.pyz`'s
+hash therefore moves against 0.6.0's**: an approval record or a build pinning
+the old one has to be re-pinned against this release's, which is on the
+release page beside the file. Two entry attributes that came from the building machine are pinned with the timestamps now, and a dependency that started publishing platform-specific wheels would stop the build rather than put a compiled file into an archive that promises none.
+
 **The vendored rule catalogue and the reference corpus move to a newer upstream
 commit, and one reading now differs where it did not.** The catalogue and the
 132 fixtures beside it are taken from `f1119bea`, retrieved 2026-09-13, instead

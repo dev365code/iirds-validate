@@ -57,8 +57,24 @@ needs — `pyparsing`, and `isodate` below Python 3.11.
 ## Verifying what you carried in
 
 ```sh
+grep ' iirds.pyz$' SHA256SUMS | shasum -a 256 -c -
 python -m iirds_validate.ontology --verify
 ```
+
+`SHA256SUMS` is a release asset, so carry it across beside the file you want.
+It names every asset the release carries, and `shasum -c` on the whole of it
+fails on the seven you did not bring -- hence asking it about the one line.
+
+**A mismatch means the file is not the one that was published.** It does not
+say why. An innocent difference and a tampered file look the same here, which
+is the reason to run it at all.
+
+If you built the `.pyz` yourself with `python tools/build_zipapp.py` instead of
+downloading it, there is no `SHA256SUMS` on the machine and the sum to compare
+against is the one on the release page. A build of the tagged commit matches it
+when the dependency versions and `SOURCE_DATE_EPOCH` match; the versions the
+release bundled are named by the `*.dist-info` directories inside the archive
+itself, which is a weaker thing to rely on than a record published beside it.
 
 Checks the bundled ontology files against the SHA-256 sums recorded at build
 time. Useful when the files crossed an air gap on removable media, and also the

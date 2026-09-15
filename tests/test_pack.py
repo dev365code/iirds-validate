@@ -388,3 +388,81 @@ Requires-Dist: lxml (>=4.3,<6.0) ; extra == "lxml"
     assert set(wanted[0][len("isodate ("):-1].split(",")) == {">=0.7.2", "<1.0.0"}
     assert build_zipapp.missing_for_floor([metadata], staged, "3.12") == []
     assert build_zipapp.missing_for_floor([metadata], staged | {"isodate"}, "3.9") == []
+
+
+def test_the_archive_leaves_pips_bookkeeping_behind(tmp_path):
+    """A dependency's `dist-info` travels for its licence. Two of the files in
+    there are not about the dependency at all.
+
+    `RECORD` is pip's manifest of an installation, and the archive is not one:
+    measured on a real build, rdflib 7.6.0's listed a hundred and fifty paths,
+    six of which are the `bin/` console scripts this builder deletes on purpose -- so
+    the archive carried a list that was false about its own contents, naming
+    the very files removed to make it reproducible. `REQUESTED` records that
+    somebody asked pip for that distribution by name rather than getting it as
+    a dependency, which is a fact about the build command.
+
+    Both differ between machines that resolve the same versions with different
+    pips, which is why one commit did not give one file anywhere but here.
+    """
+    import build_zipapp
+
+    staged = tmp_path / "staged"
+    info = staged / "rdflib-7.6.0.dist-info"
+    info.mkdir(parents=True)
+    for name, text in (("RECORD", "rdflib/__init__.py,sha256=x,1\n../../bin/rdfpipe,,\n"),
+                       ("REQUESTED", ""), ("METADATA", "Name: rdflib\n"),
+                       ("LICENSE", "BSD-3-Clause\n"), ("WHEEL", "Wheel-Version: 1.0\n")):
+        (info / name).write_text(text, "utf-8")
+    (staged / "iirds_validate").mkdir()
+    (staged / "iirds_validate" / "__init__.py").write_text("", "utf-8")
+
+    pyz = tmp_path / "out.pyz"
+    build_zipapp.create_archive(staged, pyz)
+    with zipfile.ZipFile(pyz) as archive:
+        carried = set(archive.namelist())
+
+    assert "rdflib-7.6.0.dist-info/METADATA" in carried, carried
+    assert "rdflib-7.6.0.dist-info/LICENSE" in carried, carried
+    assert "rdflib-7.6.0.dist-info/WHEEL" in carried, carried
+    assert "rdflib-7.6.0.dist-info/RECORD" not in carried, carried
+    assert "rdflib-7.6.0.dist-info/REQUESTED" not in carried, carried
+
+
+def test_the_archive_says_so_if_pips_bookkeeping_got_in(tmp_path):
+    """`inspect` is the one place that reads the file that ships rather than
+    the tree it was meant to be written from, so it is where this belongs."""
+    import build_zipapp
+
+    pyz = tmp_path / "smuggled.pyz"
+    with zipfile.ZipFile(pyz, "w") as archive:
+        for name in build_zipapp.REDISTRIBUTED:
+            archive.writestr(name, "terms\n")
+        archive.writestr("rdflib-7.6.0.dist-info/RECORD", "a,b,c\n")
+
+    problems = build_zipapp.inspect(pyz)
+    assert any("RECORD" in problem for problem in problems), problems
+
+
+def test_a_wheel_that_is_not_pure_is_refused(tmp_path):
+    """`--only-binary=:all:` asks for a wheel, not for a portable one. pip
+    resolves against the building machine's platform tags unless told
+    otherwise, so a dependency that starts publishing platform wheels would
+    put a `.so` in an archive whose whole pitch is that the same file runs on
+    Linux, macOS and Windows -- and nothing would say so.
+    """
+    import build_zipapp
+
+    good = tmp_path / "rdflib-7.6.0.dist-info"
+    good.mkdir()
+    (good / "WHEEL").write_text("Wheel-Version: 1.0\nRoot-Is-Purelib: true\n"
+                                "Tag: py3-none-any\n", "utf-8")
+    build_zipapp.refuse_anything_compiled(tmp_path)          # no complaint
+
+    bad = tmp_path / "charset_normalizer-3.0.dist-info"
+    bad.mkdir()
+    (bad / "WHEEL").write_text("Wheel-Version: 1.0\nRoot-Is-Purelib: false\n"
+                               "Tag: cp39-cp39-macosx_10_9_universal2\n", "utf-8")
+    with pytest.raises(SystemExit) as refused:
+        build_zipapp.refuse_anything_compiled(tmp_path)
+    assert "charset_normalizer" in str(refused.value), refused.value

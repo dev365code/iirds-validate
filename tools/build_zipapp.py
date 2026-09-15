@@ -51,7 +51,9 @@ sys.exit(main())
 SHEBANG = b"#!/usr/bin/env python3\n"
 
 #: Every entry gets the same timestamp so two builds of one commit, against
-#: the same index with the same pip, give the same file. `zipapp.create_archive` uses each
+#: the same index, give the same file -- the same pip is no longer part of the
+#: condition, because what pip wrote about its own installation is now left out
+#: of the archive. `zipapp.create_archive` uses each
 #: file's modification time, and git does not preserve those -- so the archive
 #: was reproducible on one machine and nowhere else, which is the half that
 #: does not matter. For a shop that has to approve a file before it crosses
@@ -85,16 +87,45 @@ def _timestamp():
     return min(max(stamp, ZIP_EARLIEST), ZIP_LATEST)
 
 
+#: Files pip writes into a `dist-info` about an installation, which this
+#: archive is not. `RECORD` is a manifest of installed paths -- on a real
+#: build rdflib 7.6.0's named a hundred and fifty, six of them the `bin/`
+#: console scripts staging deletes, so the archive carried a list that was false about
+#: its own contents. `REQUESTED` records that pip was asked for that
+#: distribution by name. Neither is a term the dependency is redistributed
+#: under, and both differ between machines resolving the same versions with
+#: different pips -- which is what kept one commit from giving one file.
+PIP_BOOKKEEPING = ("RECORD", "REQUESTED")
+
+
+def _pip_bookkeeping(name: str) -> bool:
+    head, _, tail = name.rpartition("/")
+    return head.endswith(".dist-info") and tail in PIP_BOOKKEEPING
+
+
 def create_archive(source: Path, target: Path) -> None:
-    """zipapp.create_archive, with the timestamps and order pinned."""
+    """zipapp.create_archive, with the timestamps and order pinned.
+
+    And without pip's bookkeeping: every dependency's `dist-info` travels for
+    its licence, and two of the files in there are about an installation on
+    the building machine rather than about the dependency.
+    """
     stamp = _timestamp()
     with open(target, "wb") as handle:
         handle.write(SHEBANG)
         with zipfile.ZipFile(handle, "w", zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(p for p in source.rglob("*") if p.is_file()):
-                info = zipfile.ZipInfo(path.relative_to(source).as_posix(), date_time=stamp)
+                entry = path.relative_to(source).as_posix()
+                if _pip_bookkeeping(entry):
+                    continue
+                info = zipfile.ZipInfo(entry, date_time=stamp)
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16
+                # `ZipInfo` reads this from `sys.platform`: 0 on Windows and 3
+                # everywhere else. Pinning it is the difference between "the
+                # same bytes wherever it is built" and "wherever it is built on
+                # something that is not Windows".
+                info.create_system = 3
                 archive.writestr(info, path.read_bytes())
     target.chmod(target.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -254,6 +285,33 @@ def complete_for_floor(target: Path) -> None:
                         "--python-version", python_floor(), *wanted], check=True)
 
 
+def refuse_anything_compiled(target: Path) -> None:
+    """Every staged wheel has to be the same wheel on every platform.
+
+    `--only-binary=:all:` asks pip for a wheel; it does not ask for a portable
+    one, and without `--platform` pip resolves against the building machine's
+    tags. The archive's pitch is that the same file runs on Linux, macOS and
+    Windows, and today every dependency here is pure -- so the day one of them
+    starts publishing platform wheels, this says so rather than shipping a
+    `.so` into an air gap.
+    """
+    impure = []
+    for info in sorted(target.glob("*.dist-info")):
+        wheel = info / "WHEEL"
+        if not wheel.exists():
+            continue
+        said = dict(line.split(":", 1) for line in wheel.read_text("utf-8").splitlines()
+                    if ":" in line)
+        pure = said.get("Root-Is-Purelib", "").strip().lower() == "true"
+        tags = [value.strip() for key, value in said.items() if key == "Tag"]
+        if not pure or any(not tag.endswith("-none-any") for tag in tags):
+            impure.append("%s (%s)" % (info.name, ", ".join(tags) or "no tag"))
+    if impure:
+        raise SystemExit(
+            "the archive would carry a platform-specific wheel, and it is meant to "
+            "run the same everywhere: %s" % ", ".join(impure))
+
+
 def stage(target: Path) -> None:
     copy_sources(target)
     copy_licences(target)
@@ -264,6 +322,9 @@ def stage(target: Path) -> None:
     # no use for them, and they are why two machines' builds of one commit
     # used to differ.
     shutil.rmtree(target / "bin", ignore_errors=True)
+    # The same files under the name a Windows builder's pip uses for them.
+    shutil.rmtree(target / "Scripts", ignore_errors=True)
+    refuse_anything_compiled(target)
     (target / "__main__.py").write_text(MAIN, "utf-8")
 
     for cache in target.rglob("__pycache__"):
@@ -297,8 +358,11 @@ def inspect(pyz: Path) -> list:
         empty = {name for name in REDISTRIBUTED
                  if name in names and not archive.read(name).strip()}
     missing = sorted(name for name in REDISTRIBUTED if name not in names)
+    bookkeeping = sorted(name for name in names if _pip_bookkeeping(name))
     return ([f"{name} is not in the archive" for name in missing]
-            + [f"{name} is in the archive and empty" for name in sorted(empty)])
+            + [f"{name} is in the archive and empty" for name in sorted(empty)]
+            + [f"{name} is pip's record of an installation, not a term this "
+               f"archive redistributes under" for name in bookkeeping])
 
 
 def smoke(pyz: Path) -> int:

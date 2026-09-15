@@ -150,7 +150,7 @@ flowchart LR
 | `iirds check -f json` | CI and pipelines | machine-readable findings, exit codes |
 | `iirds diff` | anyone with a report they kept | what changed since it, and what moved underneath the comparison |
 | `import iirds` | Python programs | reader + writer as a library |
-| `iirds.pyz` | locked-down machines | one reproducible file, no install — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
+| `iirds.pyz` | locked-down machines | one file, no install, byte-identical for a commit and a set of dependency versions — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
 
 ## Honest coverage
 

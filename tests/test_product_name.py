@@ -30,6 +30,10 @@ OLD_DISTRIBUTION_ALLOWED = {
                                           "a reader is upgrading *from*"),
     "CHANGELOG.md": (None, "history"),
     "NOTICE": (1, "the name earlier releases were published under"),
+    "SECURITY.md": (2, "the advisory's address, under the repository's address until it is "
+                      "renamed, and the distribution the advisory names as affected -- those "
+                      "releases were published under that name, and calling them anything "
+                      "else would make the advisory point at versions that never existed"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),
     "README.md": (23, "the badge and workflow addresses, the alias sentence, the absolute "
                        "links into the repository's tree -- the changelog the stable section "

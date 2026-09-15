@@ -226,6 +226,7 @@ FIGURES = {
     "mismatched, the": ("silence", "mismatched"),
     "ours and the": ("silence", "ours"),
     "unclassified.": ("silence", "unclassified"),
+    "malformed": ("manifest", "malformed_xml"),
     "are not well-formed XML": ("manifest", "malformed_xml"),
     "fixtures are not well-formed XML": ("manifest", "malformed_xml"),
     "fixtures are committed as zero-byte files": ("manifest", "zero_byte"),

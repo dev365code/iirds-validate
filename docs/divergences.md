@@ -795,15 +795,20 @@ refuses, and nothing read it — a document is not a gate. It is one now:
 claim `covers=…`" and fails if any rule claims what a paragraph here says it
 does not.
 
-Its only fixture, `Example 38 - Table of contents-M36_false.rdf`, is one of the
-eleven that do not parse — `mismatched tag` at line 27. There is nothing to run,
-so the rule here is neither confirmed nor contradicted, and it is listed as
-`unclassified` rather than folded into one of the explained categories.
+Its failing fixture, `Example 38 - Table of contents-M36_false.rdf`, parses —
+fifteen triples. What does not parse is the passing fixture it is compared
+against, `Example 38 - Table of contents.rdf`, one of the eleven malformed,
+with `mismatched tag` at line 27. M25 lists a second passing fixture,
+`min_requirements.rdf`, which does parse, and `tools/explain_silence.py` gives
+up at the first baseline it cannot read rather than trying the rest. So
+`unclassified` here is this project's classifier and not the corpus, and the
+comparison it declines to make is one it could make.
 
-Repairing the fixture would settle it by supplying our own reading of what the
-file was meant to contain, which is the one thing an oracle must not be. The
-honest disposition is "no comparison possible", and the way out is a mutation
-of a package we control, not a repair of a package we do not.
+Repairing the malformed fixture would settle it by supplying our own reading of
+what that file was meant to contain, which is the one thing an oracle must not
+be. Reaching for the second baseline instead is the cheap half of the way out;
+the other half, for the part `min_requirements.rdf` cannot settle, is a
+mutation of a package we control rather than a repair of a package we do not.
 
 ## M2.6 — one title, or one title per language? (open, raised from outside)
 

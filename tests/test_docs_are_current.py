@@ -446,3 +446,31 @@ def test_every_name_the_front_page_shows_can_be_imported():
             missing.append("%s.%s" % (package, name))
     assert not missing, (
         "README.md shows %s, and importing gives no such name" % missing)
+
+
+#: Backticked `.rdf` names in the documents that are not corpus fixtures: the
+#: file every iiRDS package carries, the ontology this project bundles, and the
+#: path the specification writes them under. Named here so the sweep below can
+#: be about the corpus without guessing which names belong to it.
+NOT_FIXTURES = {"metadata.rdf", "META-INF/metadata.rdf", "iirds-core.rdf"}
+
+
+def test_every_corpus_fixture_the_document_names_is_in_the_corpus():
+    """`docs/divergences.md` argues about the reference corpus a fixture at a
+    time, and the corpus moves: the last pin move brought two files in, and a
+    later one can rename or drop any of them.
+
+    A rule id that stopped existing is already held above. A fixture name that
+    stopped existing was not, and a paragraph citing one reads exactly as
+    confidently as a paragraph citing a real one.
+    """
+    manifest = _read("tests", "corpus", "plusmeta", "MANIFEST.json")["files"]
+    text = prose(ROOT / "docs" / "divergences.md")
+    named = {name.rsplit("/", 1)[-1]: name
+             for name in re.findall(r"`([^`]+\.rdf)`", text)
+             if name not in NOT_FIXTURES}
+    assert named, "docs/divergences.md names no fixture at all"
+    gone = sorted(written for bare, written in named.items() if bare not in manifest)
+    assert not gone, (
+        "docs/divergences.md names %s, and the vendored corpus has no such "
+        "fixture" % gone)

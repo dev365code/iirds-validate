@@ -1216,6 +1216,13 @@ python tools/crossvalidate.py
 python tools/explain_silence.py
 ```
 
+Both write what they measured down: `docs/agreement.json` holds the verdict on
+each pair, `docs/silence.json` which bucket each silent one is in, and `--check`
+on either fails when a run no longer matches the file. Every figure below is
+read from one of the two by a test, named bucket by named bucket -- a total
+would let two of these rows swap values and say nothing, which is how a
+paragraph here came to state 34 where the table said 32.
+
 The reference marks 114 rule/fixture pairs as "this fixture must fail this
 rule". Ten of those nothing can test: eight name one of the two fixtures
 upstream committed as zero-byte files, and two name a fixture their catalogue

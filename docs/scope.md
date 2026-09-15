@@ -58,6 +58,7 @@ Written down because each of these was, at some point, about to be built.
 | `tests/corpus/plusmeta/` | the reference corpus, verbatim and hashed — the only external check |
 | `tools/` | development and release machinery: extraction, cross-validation, vendoring, and the `.pyz` build a user may run once |
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |
+| `docs/silence.json` | why this validator is silent on each pair the reference reports; CI fails if it moves |
 | `docs/divergences.md` | every place this project and the reference differ, and why |
 
 ## How this project knows it is right

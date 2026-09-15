@@ -152,7 +152,19 @@ def compare_to_baseline(verdicts: dict) -> int:
     if not BASELINE.exists():
         print("no baseline; run --write-baseline", file=sys.stderr)
         return 2
-    recorded = json.loads(BASELINE.read_text("utf-8"))["verdicts"]
+    document = json.loads(BASELINE.read_text("utf-8"))
+    recorded = document["verdicts"]
+
+    # The counts are what docs/divergences.md is held to, and comparing the
+    # pairs alone leaves them unchecked: two numbers swapped in this field,
+    # with the prose made to agree, passed every gate this project had.
+    tally = {}
+    for verdict in recorded.values():
+        tally[verdict] = tally.get(verdict, 0) + 1
+    if document.get("counts") != tally:
+        print("docs/agreement.json counts %s, and its own pairs are %s"
+              % (document.get("counts"), tally), file=sys.stderr)
+        return 1
 
     changed = sorted(k for k in set(recorded) & set(verdicts) if recorded[k] != verdicts[k])
     gone = sorted(set(recorded) - set(verdicts))

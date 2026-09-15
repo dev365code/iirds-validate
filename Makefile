@@ -124,8 +124,10 @@ corpus:
 	$(PYTHON) tools/crossvalidate.py --check
 # A number is not a diagnosis: this says, per rule, why the two tools differ.
 # It ran in CI and not here, which nothing had decided — it reads only files
-# that ship and takes nine seconds.
-	$(PYTHON) tools/explain_silence.py --quiet
+# that ship and takes nine seconds. --check rather than --quiet since the
+# classification became a file: the front of docs/divergences.md states it a
+# figure at a time, and a figure with no source is one nobody can be held to.
+	$(PYTHON) tools/explain_silence.py --check
 
 tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify

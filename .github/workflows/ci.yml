@@ -257,12 +257,14 @@ jobs:
         # and fails on any movement in either direction. Not a target and not a
         # score: a pair going from agree to silent is a regression, and one
         # going the other way still wants somebody to say why. explain_silence
-        # is informational — its classifier is not strong enough to gate on,
-        # which docs/divergences.md says in as many words.
+        # is still not strong enough to judge a rule — docs/divergences.md says
+        # so in as many words — but its buckets are now a file, and --check
+        # gates on that file moving rather than on the classification being
+        # right. The figures on the front of that document are read from it.
         run: |
           /tmp/v/bin/python tools/vendor_corpus.py --check
           /tmp/v/bin/python tools/crossvalidate.py --check
-          /tmp/v/bin/python tools/explain_silence.py --quiet
+          /tmp/v/bin/python tools/explain_silence.py --check
 
       - name: the central claim, on a real container
         # Same graph written four ways must produce the same findings. This is

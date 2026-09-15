@@ -158,7 +158,7 @@ CHECK_COMMANDS = (
     "tools/gen_stable_section.py --check",
     "tools/vendor_corpus.py --check",
     "tools/crossvalidate.py --check",
-    "tools/explain_silence.py --quiet",
+    "tools/explain_silence.py --check",
     "tools/version_inventory.py",
     "tools/extract_requirements.py",
     "tools/requirement_coverage.py",

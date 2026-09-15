@@ -20,17 +20,34 @@ than trusted.
     python tools/explain_silence.py               # every silent rule
     python tools/explain_silence.py --rule M24.2  # one
     python tools/explain_silence.py --category ours
+    python tools/explain_silence.py --check       # the record has not moved
+
+`docs/divergences.md` states this classification a figure at a time -- seven
+rows of a table, and sentences that restate them. Nothing read the two
+together, so a paragraph said 34 where the table said 32, and "Six pairs" sat
+four weeks beside a table that said thirteen. So the classification is written
+down the way `docs/crossvalidate` writes agreement: `docs/silence.json`, one
+line per pair, and the tests hold each figure to the bucket it names rather
+than to a total, which two rows swapping values would pass.
 """
 from __future__ import annotations
 
 import argparse
 import io
+import json
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+RECORD = ROOT / "docs" / "silence.json"
+
+#: Every bucket, in the order the human view prints them. One list: the
+#: record is built from the buckets and checked against this, so a bucket
+#: that exists and is not named here stops the tool rather than vanishing.
+ORDER = ("ours", "invisible", "mismatched", "gated", "neither", "malformed",
+         "unclassified")
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -40,7 +57,7 @@ from rdflib.compare import graph_diff, to_isomorphic  # noqa: E402
 from crossvalidate import load_fixtures  # noqa: E402
 from iirds_validate import runner  # noqa: E402
 from iirds_validate.model import PACKAGE_BASE  # noqa: E402
-from iirds_validate.registry import CATALOG, implemented_ids  # noqa: E402
+from iirds_validate.registry import CATALOG, PROVENANCE, implemented_ids  # noqa: E402
 
 RDF_ABOUT = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about"
 RDF_RESOURCE = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource"
@@ -112,6 +129,70 @@ def triple(t) -> str:
     return "%s  %s  %s" % tuple(short(x) for x in t)
 
 
+def write_record(verdicts: dict) -> int:
+    """Record which bucket each silent pair is in, so a figure has a source.
+
+    Not a target and not a score, the same as `docs/agreement.json`: what is
+    asserted is that it does not move without somebody saying so. The figures
+    in `docs/divergences.md` are read from here per bucket, which is what a
+    total could not do -- two rows swapping values leave the total alone.
+    """
+    counts = dict.fromkeys(ORDER, 0)
+    for bucket in verdicts.values():
+        counts[bucket] += 1
+    RECORD.parent.mkdir(parents=True, exist_ok=True)
+    RECORD.write_text(json.dumps({
+        "_commit": PROVENANCE["_commit"],
+        "_generated_by": "tools/explain_silence.py --write-record",
+        "_note": ("Why this validator is silent on each pair the reference tool "
+                  "reports, one line per pair. `ours` is this project's bug and "
+                  "the rest are not; regenerate deliberately, and say in "
+                  "docs/divergences.md what moved."),
+        "counts": dict(sorted(counts.items())),
+        "verdicts": dict(sorted(verdicts.items())),
+    }, indent=1, ensure_ascii=False) + "\n", "utf-8")
+    print("recorded %d pairs: %s" % (len(verdicts), dict(sorted(counts.items()))))
+    return 0
+
+
+def compare_to_record(verdicts: dict) -> int:
+    if not RECORD.exists():
+        print("no record; run --write-record", file=sys.stderr)
+        return 2
+    document = json.loads(RECORD.read_text("utf-8"))
+    recorded = document["verdicts"]
+
+    # The counts are what `docs/divergences.md` is held to, and comparing the
+    # pairs alone leaves them unchecked: swapping two numbers in this field and
+    # making the document agree with the swap passed both gates green.
+    tally = dict.fromkeys(ORDER, 0)
+    for bucket in recorded.values():
+        tally[bucket] = tally.get(bucket, 0) + 1
+    if document.get("counts") != tally:
+        print("docs/silence.json counts %s, and its own pairs are %s"
+              % (document.get("counts"), tally), file=sys.stderr)
+        return 1
+
+    changed = sorted(k for k in set(recorded) & set(verdicts) if recorded[k] != verdicts[k])
+    gone = sorted(set(recorded) - set(verdicts))
+    fresh = sorted(set(verdicts) - set(recorded))
+
+    for key in changed:
+        print("  %-64s %s -> %s" % (key[:64], recorded[key], verdicts[key]))
+    for key in gone:
+        print("  %-64s %s -> pair no longer silent" % (key[:64], recorded[key]))
+    for key in fresh:
+        print("  %-64s newly silent, %s" % (key[:64], verdicts[key]))
+
+    if changed or gone or fresh:
+        print("\nthe classification has moved from the record. If that is intended, "
+              "rerun with --write-record and say why in docs/divergences.md.",
+              file=sys.stderr)
+        return 1
+    print("classification unchanged: %d pairs: %s" % (len(verdicts), tally))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -120,7 +201,17 @@ def main() -> int:
                     choices=("invisible", "mismatched", "ours", "gated", "neither",
                              "malformed", "unclassified"))
     ap.add_argument("--quiet", action="store_true", help="counts only")
+    ap.add_argument("--write-record", action="store_true",
+                    help="record the current classification in docs/silence.json")
+    ap.add_argument("--check", action="store_true",
+                    help="fail if the classification has moved from the record")
     args = ap.parse_args()
+    # Neither combination has a use, and both would quietly replace a record
+    # that a failing --check is pointing at.
+    if args.write_record and args.check:
+        ap.error("--write-record and --check ask opposite questions")
+    if args.write_record and (args.rule or args.category):
+        ap.error("--write-record records every pair; --rule and --category do not")
 
     fixtures = load_fixtures()
     implemented = implemented_ids()
@@ -218,8 +309,19 @@ def main() -> int:
 
             buckets[category].append((rule_id, bad_name, good_name, changes))
 
-    order = ("ours", "invisible", "mismatched", "gated", "neither", "malformed",
-             "unclassified")
+    order = ORDER
+    # Built from what was filled, not from the printing order: a bucket missing
+    # from that tuple dropped its pairs out of the record while the header
+    # above still counted them, and `--check` read the loss as a movement.
+    assert set(buckets) == set(ORDER), sorted(set(buckets) ^ set(ORDER))
+    verdicts = {"%s|%s" % (rule_id, bad_name): name
+                for name, rows in buckets.items()
+                for rule_id, bad_name, _why, _changes in rows}
+    if args.write_record:
+        return write_record(verdicts)
+    if args.check:
+        return compare_to_record(verdicts)
+
     print()
     print("=" * 78)
     print("Why this validator is silent, %d rule/fixture pairs" %

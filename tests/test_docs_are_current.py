@@ -23,6 +23,7 @@ numbers and the names drift, which is how both of today's went wrong.
 """
 from __future__ import annotations
 
+import collections
 import json
 import re
 from pathlib import Path
@@ -206,57 +207,202 @@ def test_a_defence_that_names_a_rule_cites_a_test_that_names_it():
     assert uncited == [], uncited
 
 
-#: The rows of the table in "Current agreement" that break the silence down,
-#: as (number, what it says). A row is one of the silent kinds when its middle
-#: cell opens with the word; the one row that does not is the agreeing half.
-SILENCE_ROW = re.compile(r"^\|\s*\*{0,2}(\d+)\*{0,2}\s*\|\s*([^|]*?)\s*\|", re.M)
+#: Every figure about the classification, and which count it has to be. The
+#: key is the words the number sits in front of, because that is what a reader
+#: pairs it with; the value names the file and the key that answers.
+#:
+#: The first version held only the sum of the table's rows, so two rows could
+#: swap values and pass, and it accepted any figure in the summary paragraph
+#: that was *some* row -- the right number under the wrong heading, which is
+#: exactly the error it had been written to catch. It also could not see "Six
+#: pairs name a rule that does not apply", four weeks stale beside a table
+#: saying thirteen. Naming the bucket closes all three.
+FIGURES = {
+    "pairs are cases where the reference does not report": ("silence", "neither"),
+    "are gated by a version or variant": ("silence", "gated"),
+    "are fixtures nobody can parse": ("silence", "malformed"),
+    "are defects that exist only in the XML tree": ("silence", "invisible"),
+    "pairs name a rule that does not apply": ("silence", "gated"),
+    "mismatched, the": ("silence", "mismatched"),
+    "ours and the": ("silence", "ours"),
+    "unclassified.": ("silence", "unclassified"),
+    "are not well-formed XML": ("manifest", "malformed_xml"),
+    "fixtures are not well-formed XML": ("manifest", "malformed_xml"),
+    "fixtures are committed as zero-byte files": ("manifest", "zero_byte"),
+}
 
-def _silence_table():
-    """The breakdown rows, split into the agreeing one and the silent ones."""
-    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
-    start = text.index("## Current agreement")
-    rows = SILENCE_ROW.findall(text[start:start + 6000])
-    agreeing = [int(n) for n, said in rows if not said.startswith("silent")]
-    silent = [int(n) for n, said in rows if said.startswith("silent")]
-    return agreeing, silent
+#: The rows of the table in "Current agreement", keyed by a phrase of the
+#: middle cell. A row whose wording moves has to be re-pointed here on purpose.
+TABLE_ROWS = {
+    "the expected rule fires here": ("agreement", "agree"),
+    "the reference's own assertion passes too": ("silence", "neither"),
+    "the fixture does not parse": ("silence", "malformed"),
+    "gated by version or variant here": ("silence", "gated"),
+    "the defect exists only in the XML tree": ("silence", "invisible"),
+    "silent — mismatched": ("silence", "mismatched"),
+    "labelled **ours**": ("silence", "ours"),
+    "**unclassified**": ("silence", "unclassified"),
+}
+
+ROW = re.compile(r"^\|\s*\*{0,2}(\d+)\*{0,2}\s*\|([^|]*)\|", re.M)
+
+#: A figure, written where a named one belongs: digits or one of the words
+#: below, on its own, with emphasis stripped. What it deliberately refuses to
+#: read is anything glued to something else -- `M76`, `iiRDS 1.2`, `1,013`,
+#: `Forty-three`. An earlier version took the last alphabetic run and read
+#: `Forty-three` as three, which is the failure this gate exists to prevent
+#: happening inside it.
+FIGURE = re.compile(r"(?:^|[\s(\[])(\d+|[A-Za-z]+)\s*$")
+
+#: Small numbers this document writes as words, where a named figure sits.
+#: Read only in front of an anchor above, never swept for.
+WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+         "twelve": 12, "thirteen": 13}
+
+#: Words that are plainly a number and are not in the list above, and the
+#: shape of a compound (`Forty-three`). Where a named figure belongs these are
+#: *refused*, not skipped: skipping them would let a wrong figure through in
+#: the one spelling this cannot check, and the document writes every figure
+#: above thirteen in digits already. The message says what to write instead.
+BIGGER = {"fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+          "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty",
+          "ninety", "hundred", "thousand", "zero"}
+COMPOUND = re.compile(r"(?:^|[\s(\[])([A-Za-z]+)-([A-Za-z]+)\s*$")
 
 
-def test_the_silence_table_adds_up_to_the_measurement():
-    """The table breaks 104 pairs into eight rows and nothing held the eight.
+def _read(*where):
+    return json.loads(ROOT.joinpath(*where).read_text("utf-8"))
 
-    The gate above holds the three totals `docs/agreement.json` carries. The
-    rows *under* them are a finer partition of the same fact, written by hand,
-    and the pin move moved `agree` from 42 to 43 while every one of these rows
-    stayed as it was -- correctly, as it turned out, which is not the same as
-    checked. What this holds is the sum: two rows that swap values pass it,
-    and closing that needs the buckets recorded per name rather than counted.
+
+def _counts():
+    """The three records these figures come from, by the name they answer to.
+
+    Counted from the per-pair verdicts rather than read out of each file's
+    `counts` field. The field is written by the same tool and is the obvious
+    thing to read, and nothing checks it: `--check` on either tool compares
+    `verdicts` and never looks at `counts`, so a hand-edited `counts` moved
+    six published figures with both gates green. Counting here needs no field
+    to be trustworthy.
     """
-    counts = json.loads((ROOT / "docs" / "agreement.json").read_text("utf-8"))["counts"]
-    agreeing, silent = _silence_table()
-    assert agreeing == [counts["agree"]], (agreeing, counts["agree"])
-    assert sum(silent) == counts["silent"], (silent, sum(silent), counts["silent"])
+    manifest = _read("tests", "corpus", "plusmeta", "MANIFEST.json")["files"]
+    return {
+        "agreement": collections.Counter(
+            _read("docs", "agreement.json")["verdicts"].values()),
+        "silence": collections.Counter(
+            _read("docs", "silence.json")["verdicts"].values()),
+        "manifest": collections.Counter(
+            entry["parses"] for entry in manifest.values()),
+    }
 
 
-def test_the_prose_under_that_table_quotes_the_table():
-    """A paragraph twenty lines below the table restated three of its rows and
-    got two of them wrong -- 34 for 32, 11 for 13 -- and said so for as long as
-    nobody read the two together. Every figure the summary states has to be a
-    row of the table it is summarising.
+#: `_figure` says which of three things is in front of an anchor.
+NO_FIGURE, UNREADABLE = "no figure", "unreadable figure"
 
-    Two things this does not do, said here rather than assumed. It does not
-    pair a figure with its category, so the right number under the wrong
-    heading passes; and it stops where the summary does, so the sentence after
-    it that counts what is left over is held by nothing. Both want the
-    classification written down as a file the way `docs/agreement.json` is --
-    the classifier runs in four seconds -- and that is a unit, not a regex.
+
+def _figure(said: str):
+    """What is written in front of an anchor: a number, nothing, or a refusal.
+
+    `NO_FIGURE` is skipped. A figure separated from its anchor by an aside --
+    "13 of the 61 silent pairs are gated by ..." -- is true and unreadable, and
+    a gate that refuses a true sentence teaches the next person to work around
+    it. One was withdrawn from this file for doing exactly that.
+
+    `UNREADABLE` is not skipped, because it is a number: a word above thirteen
+    or a compound. Reading `Forty-three` as its last word gave three, which
+    happened to be a real bucket, so a wrong figure passed inside the gate
+    written to catch wrong figures.
     """
-    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
-    start = text.index("almost all of the silence")
-    summary = text[start:text.index("Read the table above", start)]
-    _agreeing, silent = _silence_table()
-    stated = [int(n) for n in re.findall(r"\b(\d+)\b(?!%)", summary)]
-    assert stated, summary
-    stray = [n for n in stated if n not in silent]
-    assert not stray, (
-        "docs/divergences.md summarises the silence table with %s, and the "
-        "table's silent rows are %s" % (stray, sorted(silent)))
+    said = said.replace("*", "").replace("`", "")
+    compound = COMPOUND.search(said)
+    if compound and any(part.lower() in WORDS or part.lower() in BIGGER
+                        for part in compound.groups()):
+        return UNREADABLE
+    found = FIGURE.search(said)
+    if found is None:
+        return NO_FIGURE
+    seen = found.group(1).lower()
+    if seen.isdigit():
+        return int(seen)
+    if seen in WORDS:
+        return WORDS[seen]
+    return UNREADABLE if seen in BIGGER else NO_FIGURE
+
+
+def test_every_figure_about_the_classification_is_the_measured_one():
+    """Six figures under one table had gone stale or had never been right, and
+    the gate above them held only the three totals `docs/agreement.json`
+    carries. These are tied to the bucket each one is about.
+
+    What this does not hold, said rather than assumed: a figure written in a
+    form `_figure` cannot read, and every derived figure in that section --
+    "9 pairs over 8 fixtures", "48% of the 61 silent pairs", the per-fixture
+    percentages. Those are arithmetic over the buckets rather than a bucket,
+    and they want a different mechanism.
+    """
+    counts = _counts()
+    text = prose(ROOT / "docs" / "divergences.md")
+    # A longer anchor is here to stop a shorter one reading the noun between
+    # the number and itself; it is a disambiguator and not a claim site, so it
+    # may be reworded away. Every other anchor has to still be there: one that
+    # stops appearing is a figure that stopped being held, quietly.
+    disambiguators = {phrase for phrase in FIGURES
+                      for other in FIGURES if other != phrase and phrase.endswith(other)}
+    missing = [phrase for phrase in FIGURES
+               if phrase not in text and phrase not in disambiguators]
+    assert not missing, (
+        "docs/divergences.md no longer says %s; a figure that moves out from "
+        "under its anchor is one nothing holds. Re-point it here on purpose."
+        % missing)
+
+    wrong, taken, read = [], set(), 0
+    # Longest first: one anchor is a tail of another ("fixtures are not
+    # well-formed XML" ends in "are not well-formed XML"), and the shorter one
+    # would read the noun between the number and itself as the figure.
+    for phrase in sorted(FIGURES, key=len, reverse=True):
+        where, key = FIGURES[phrase]
+        at = -1
+        while True:
+            at = text.find(phrase, at + 1)
+            if at < 0:
+                break
+            if at + len(phrase) in taken:
+                continue
+            taken.add(at + len(phrase))
+            said = _figure(text[max(0, at - 40):at])
+            if said == NO_FIGURE:
+                continue
+            if said == UNREADABLE:
+                wrong.append((phrase, "a number this gate cannot read; write it "
+                                      "in digits", where, key))
+                continue
+            read += 1
+            if said != counts[where].get(key, 0):
+                wrong.append((phrase, said, where, key, counts[where].get(key, 0)))
+    assert not wrong, wrong
+    assert read, "no figure in docs/divergences.md was read; the anchors have moved"
+
+
+def test_every_row_of_the_silence_table_is_its_own_bucket():
+    """Rows are a partition, and a partition is not a sum: the first version of
+    this held `sum(rows) == silent`, which two rows swapping values pass.
+
+    Read over the whole document rather than the section, so a copy of the
+    table with stale figures somewhere else is held to the same counts.
+    """
+    counts = _counts()
+    rows = ROW.findall(prose(ROOT / "docs" / "divergences.md"))
+    matched, wrong = set(), []
+    for number, said in rows:
+        for phrase, (where, key) in TABLE_ROWS.items():
+            if phrase in said:
+                matched.add(phrase)
+                if int(number) != counts[where].get(key, 0):
+                    wrong.append((phrase, int(number), key, counts[where].get(key, 0)))
+    assert not wrong, wrong
+    assert matched == set(TABLE_ROWS), sorted(set(TABLE_ROWS) - matched)
+    # Near-vacuous on a fresh run -- both records are written from one walk of
+    # the catalogue -- and not vacuous against a hand-edited file, or against a
+    # bucket appearing that no row of the table accounts for.
+    silent = sum(counts["silence"].values())
+    assert silent == counts["agreement"]["silent"], (silent, counts["agreement"])

@@ -93,6 +93,36 @@ def _open_directory(path: Path):
     return raw, offset, _records(raw, offset, total)
 
 
+def stdlib_opens_the_duplicated_entry(package) -> bool:
+    """Whether this interpreter will hand the duplicated entry over at all.
+
+    It is not the same answer everywhere, and the difference is not this
+    project's. CPython grew a guard against overlapping entries -- one entry's
+    data reaching into another's, which is how a small archive is made to
+    unpack into a large one -- and its first form computed each entry's end
+    from the next header offset in sorted order. Fifty records pointing at one
+    header make that end equal to the entry's own start, so the guard refuses
+    a member that overlaps nothing but itself. Later releases compute it from
+    distinct offsets and hand the entry over.
+
+    Measured across the interpreters this project is tested on: 3.9.6 (no
+    guard) reads it, 3.12.14 and 3.13.15 (refined guard) read it, and 3.9.25
+    and 3.11 on the runners refuse it -- which is where this was found, with
+    the suite green on the machine it was written on.
+
+    Both outcomes are acceptable and neither is this project's to choose. What
+    must hold on both is the bound: the run may not do that entry's work once
+    per record. So the question is asked here rather than assumed, and the
+    assertions below branch on the answer.
+    """
+    try:
+        with zipfile.ZipFile(package) as archive, archive.open(BOMB) as handle:
+            handle.read(1)
+    except Exception:
+        return False
+    return True
+
+
 def one_name_many_records(tmp_path, copies=COPIES, name="duplicated.iirds"):
     """A conformant container, with one entry's record copied `copies` times.
 
@@ -207,9 +237,20 @@ def test_the_damage_check_reads_each_name_once_not_each_record(tmp_path):
                           dict(per_name)))
     assert per_name[BOMB] <= 2 * BOMB_BYTES, (
         "the duplicated entry alone was decompressed %d times" % (per_name[BOMB] // BOMB_BYTES))
-    # The entry was read -- this is not passing by reading nothing.
-    assert per_name[BOMB] >= BOMB_BYTES
-    assert "C1" not in ids(report), "the archive is not damaged; C1 must not fire on it"
+    if stdlib_opens_the_duplicated_entry(package):
+        # It was read -- this is not passing by reading nothing -- and once.
+        assert per_name[BOMB] >= BOMB_BYTES
+        assert "C1" not in ids(report), "the archive is not damaged; C1 must not fire on it"
+    else:
+        # The interpreter refused the member before this project saw it. Then
+        # nothing is read, C1 reports what it was handed, and the bound holds
+        # for the reason that matters least -- so the figure is pinned as zero
+        # rather than left to mean either thing.
+        assert per_name[BOMB] == 0, per_name[BOMB]
+        assert "C1" in ids(report), (
+            "the interpreter would not open the entry, so the damage check has "
+            "nothing to report it as but damaged: %r" % ids(report))
+    assert "S15" in ids(report), "the duplication is the finding, on either interpreter"
 
 
 def test_a_name_the_directory_carries_more_than_once_is_reported(tmp_path):

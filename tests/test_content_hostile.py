@@ -240,3 +240,144 @@ def test_an_external_dtd_is_not_refused_for_declaring_nothing(tmp_path, encoding
     refusals = [f for f in runner.check(package).findings
                 if f.rule.id == "B1" and "entit" in (f.violation.detail or "")]
     assert refusals == [], refusals[0].violation.detail
+
+
+def _many_renditions(tmp_path, count, size):
+    """A container of almost no size on disk that declares `count` renditions.
+
+    The shape the budget exists for. Each rendition is one byte repeated, so
+    it compresses to nothing and decompresses to `size`; the archive is a few
+    tens of kilobytes and what reading it costs is `count * size`.
+    """
+    topics = "".join("""  <iirds:Topic rdf:about="urn:test:t%d">
+    <iirds:title>T%d</iirds:title>
+    <iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/r%d.xhtml</iirds:source>
+    </iirds:Rendition></iirds:has-rendition>
+  </iirds:Topic>\n""" % (i, i, i) for i in range(count))
+    body = ("<html xmlns='%s'><body><p>%s</p></body></html>" % (XHTML, "a" * size)).encode()
+    return build_package(
+        tmp_path,
+        metadata=MINIMAL_RDF.replace("</rdf:RDF>", topics + "</rdf:RDF>"),
+        extra=[("content/r%d.xhtml" % i, body) for i in range(count)],
+    )
+
+
+def test_the_content_budget_bounds_what_a_run_reads(tmp_path, monkeypatch):
+    """The ceiling is on what a run reads, and it did not hold.
+
+    `MAX_CONTENT_TOTAL_BYTES` exists so that an archive of no size cannot make
+    a run decompress without bound, and `charge` raises past it. But the read
+    came first and the charge second, and the refusal that followed was kept
+    per file rather than for the run -- so every later rendition was read in
+    full before being charged for and refused. Measured on a 49,510 byte
+    archive declaring forty renditions of a megabyte each, against a two
+    megabyte ceiling: 41,945,847 bytes came out, twenty times the ceiling.
+
+    What the ceiling bounds is reading, and this measures reading. A run that
+    crossed it never held the bytes -- the crossing read is discarded -- so a
+    gate on peak memory passes against the defect and says nothing.
+
+    One read may still cross it. A size is not knowable without reading, and
+    that read is bounded by the per-file limit. What must not happen is the
+    read after it.
+
+    Both ceilings are moved together, and they have to be: at their shipped
+    sizes the sum this asserts is 64 MiB, which a package small enough to
+    build in a test is under however many times it is read. The first version
+    of this test moved only the budget and passed against the defect.
+    """
+    from iirds_validate import package as package_module
+    from iirds_validate.rules import content as content_module
+
+    package = _many_renditions(tmp_path, count=8, size=64 * 1024)
+    budget, per_file = 96 * 1024, 128 * 1024
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", budget)
+    monkeypatch.setattr(content_module, "MAX_CONTENT_BYTES", per_file)
+
+    held = []
+    real = package_module.Package.read_bounded
+
+    def counting(self, name, limit):
+        raw, oversize = real(self, name, limit)
+        if name.startswith("content/"):
+            held.append(len(raw))
+        return raw, oversize
+
+    monkeypatch.setattr(package_module.Package, "read_bounded", counting)
+    runner.run(package, runner.ALL_KINDS)
+
+    assert held, "no content entry was read; the test is measuring nothing"
+    assert sum(held) <= budget + per_file, (
+        "a run read %d bytes of content against a ceiling of %d; the ceiling "
+        "allows one read to cross it and none after" % (sum(held), budget))
+
+
+def test_the_damage_check_asks_for_bounded_reads(tmp_path, monkeypatch):
+    """C1 opens every entry, and no ceiling in this project bounds that pass.
+
+    Asking whether an archive is damaged means decompressing all of it: there
+    is no cheaper way to find the entry that will not come back out, and no
+    size the archive declares can be trusted to answer it. So the pass is
+    outside the content budget on purpose, and the one thing that keeps it
+    from being a whole archive in memory at once is that it asks for a
+    bounded slice at a time and keeps none of what comes back.
+
+    This measures the asking, which is all this pass controls. What CPython
+    hands back for a given request is not the same question and is not
+    asserted here.
+
+    Two mutations that leave this pass useless and were not caught by the
+    first version of this test, which is why it is written this way:
+
+    * `Package.testzip` gutted to `return None`. Every read the test saw came
+      from the content rules, which chunk their own reads, so the gate was
+      green with the damage check doing nothing. The pass is now identified
+      by its call site rather than by the shape of its reads.
+    * `_INTEGRITY_CHUNK` raised to a gigabyte. The old bound was
+      `max(_INTEGRITY_CHUNK, ...)` -- the constant under test -- so raising
+      it moved the assertion with it and a whole entry came back in one
+      block. The bound here is a number written here.
+    """
+    import zipfile
+
+    from iirds_validate import package as package_module
+
+    #: Larger than any request this pass should make and far smaller than an
+    #: entry. Written here rather than read from the code being tested.
+    SLICE = 1024 * 1024
+
+    package = _many_renditions(tmp_path, count=3, size=4 * 1024 * 1024)
+
+    ran, inside, asked = [], [], []
+    real_testzip = package_module.Package.testzip
+    real_read = zipfile.ZipExtFile.read
+
+    def watched(self):
+        ran.append(True)
+        inside.append(True)
+        try:
+            return real_testzip(self)
+        finally:
+            inside.pop()
+
+    def measured(self, n=-1):
+        # Only what this pass asks for. A flag that stayed set after the pass
+        # returned would collect the content rules' own chunked reads, and a
+        # damage check that read nothing would look like one that behaved.
+        if inside:
+            asked.append(n)
+        return real_read(self, n)
+
+    monkeypatch.setattr(package_module.Package, "testzip", watched)
+    monkeypatch.setattr(zipfile.ZipExtFile, "read", measured)
+    runner.run(package, runner.ALL_KINDS)
+
+    assert ran, ("the damage check never ran, so this test measured nothing -- "
+                 "C1 is what calls it, and it is archive-only")
+    assert asked, "the damage check ran and read nothing"
+    assert all(n is not None and 0 < n <= SLICE for n in asked), (
+        "the damage check asked for %r; a request for a whole entry -- "
+        "`read()` with no argument -- is one archive in memory at once"
+        % sorted({n for n in asked if n is None or n <= 0 or n > SLICE}))

@@ -217,3 +217,86 @@ PLEDGE = (
 @pytest.mark.parametrize("paragraph", PLEDGE, ids=["transfer-on-request", "unofficial"])
 def test_the_readme_carries_the_stewardship_pledge_word_for_word(paragraph):
     assert paragraph in (ROOT / "README.md").read_text("utf-8")
+
+
+#: Every file the distribution carries that is not code, and what licences it.
+#: A list rather than a rule, because the answer for each one is a judgement
+#: somebody made: `version-terms.json` shipped for five releases with its
+#: argument for why it is not restricted written inside the file itself, where
+#: no reader of NOTICE would meet it. A new data file has to be added here,
+#: which is the moment to ask the question about it.
+BUNDLED_DATA = {
+    "src/iirds_validate/data/ontologies/1.3/iirds-core.rdf": "NOTICE item 1",
+    "src/iirds_validate/data/ontologies/1.3/iirds-handover.rdf": "NOTICE item 1",
+    "src/iirds_validate/data/ontologies/1.3/iirds-machinery.rdf": "NOTICE item 1",
+    "src/iirds_validate/data/ontologies/1.3/iirds-skos.rdf": "NOTICE item 1",
+    "src/iirds_validate/data/ontologies/1.3/iirds-software.rdf": "NOTICE item 1",
+    "src/iirds_validate/data/ontologies/README.md": "ours",
+    "src/iirds_validate/data/ontologies/sha256sums.txt": "ours",
+    "src/iirds_validate/data/rule-catalog.json": "NOTICE item 2",
+    "src/iirds_validate/data/version-terms.json": "NOTICE item 3",
+    "src/iirds_validate/data/web/app.js": "ours",
+    "src/iirds_validate/data/web/i18n.json": "ours",
+    "src/iirds_validate/data/web/page.html": "ours",
+    "src/iirds_validate/data/web/style.css": "ours",
+    "src/iirds_validate/py.typed": "ours",
+}
+
+
+def _shipped_data():
+    """Every non-code file under `src/`, as the wheel carries them."""
+    import subprocess
+    listed = subprocess.run(["git", "-C", str(ROOT), "ls-files", "src"],
+                            capture_output=True, text=True)
+    if listed.returncode != 0:                       # pragma: no cover - no git
+        pytest.skip("no git checkout to ask")
+    return {p for p in listed.stdout.split() if not p.endswith(".py")}
+
+
+def test_every_bundled_data_file_has_been_licensed_on_purpose():
+    """A file that ships and is not code is either ours or somebody else's.
+
+    The distribution is what a reader receives, so this asks `git ls-files`
+    rather than a glob: a file that is committed under `src/` and is not code
+    reaches them, whatever any packaging list says.
+    """
+    shipped = _shipped_data()
+    assert shipped == set(BUNDLED_DATA), (
+        "the distribution's data files and this list disagree -- new: %s, gone: %s"
+        % (sorted(shipped - set(BUNDLED_DATA)), sorted(set(BUNDLED_DATA) - shipped)))
+
+
+@pytest.mark.parametrize("path", sorted(p for p, who in BUNDLED_DATA.items() if who != "ours"))
+def test_third_party_data_is_named_where_a_reader_looks(path):
+    """NOTICE is where somebody checks what they may redistribute, and a file
+    whose provenance is argued only inside itself is not findable from there.
+
+    Findable, not spelled one way: NOTICE heads the ontologies with the
+    directory that holds them, and THIRD_PARTY.md's table names several of
+    them by file name in one cell. Either reaches a reader; what must not
+    happen is that neither does.
+    """
+    import posixpath
+    import re
+
+    def findable(text):
+        """Does this document name the file, or a directory that contains it?
+
+        Not "does the path appear anywhere": the first version of this asked
+        whether any ancestor string occurred in the text, and
+        `src/iirds_validate/data/` occurs inside the heading for the
+        ontologies -- so removing this file's own item left the gate green.
+        A directory counts only when it is a real ancestor of the file.
+        """
+        if path in text or posixpath.basename(path) in text:
+            return True
+        here = posixpath.dirname(path) + "/"
+        for named in re.findall(r"src/[\w./-]+", text):
+            named = named if named.endswith("/") else named + "/"
+            if here.startswith(named):
+                return True
+        return False
+
+    assert findable(NOTICE), "NOTICE does not name %s or the directory it is in" % path
+    assert findable((ROOT / "THIRD_PARTY.md").read_text("utf-8")), (
+        "THIRD_PARTY.md's table does not name %s" % path)

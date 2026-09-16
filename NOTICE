@@ -67,7 +67,24 @@ adds to, removes from, or otherwise varies the terms of that material.
     the catalogue's "_commit" field.
 
 ================================================================================
-3. Trademarks
+3. Version term inventory  —  src/iirds_validate/data/version-terms.json
+================================================================================
+
+    Which term names each edition of the standard defines, taken from the
+    schema downloads iirds.org publishes for 1.0, 1.0.1, 1.1 and 1.2, and from
+    the bundled ontologies for 1.3.
+
+    Term IRIs only. No ontology file is redistributed through this inventory
+    and no statement from one is reproduced in it: a list of the names a
+    vocabulary defines is a fact about that vocabulary, and it is what lets a
+    rule say "this name arrived in a later edition than the package declares".
+    The ontologies themselves are item 1 above and carry their own terms.
+
+    Regenerate with `tools/version_inventory.py --refresh`; the file records
+    its own source and the editions it could not reach.
+
+================================================================================
+4. Trademarks
 ================================================================================
 
     "iiRDS" is a standard of the iiRDS Consortium, hosted by tekom Deutschland

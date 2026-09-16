@@ -53,12 +53,14 @@ says what the archive does to a reader: how many records carry the name, that
 this run resolved it to the last of them, and, where the records give different
 offsets, that they describe different bytes. That last case is two whole
 entries, each consistent with its own local file header, delivered under one
-name to whichever reader picks differently, and nothing reported it: the
-archive passes S10, because every record there does describe the entry its own
-local header describes. **An archive whose directory names one entry twice
-passed before and fails now**: which of the two records a reader acts on is not
-settled by the format, so which file it received is not a thing this run can
-report, and saying nothing was the wrong answer to that.
+name to whichever reader picks differently, and nothing said which: the archive
+passes S10, because every record there does describe the entry its own local
+header describes. Such an archive failed before and fails now -- C15 has always
+reported a duplicated name -- and what changes is what the report says about
+it. Fifty records used to draw forty-nine findings claiming one file collided
+with itself; they draw one now that says how many records carry the name, which
+of them this run resolved it to, and, where they point at different offsets,
+that the records describe different bytes.
 
 **S10's extents are one per entry a reader receives, not one per record.** Its
 last section sorts the entries by offset and compares each with the next, to
@@ -102,9 +104,10 @@ first version of that test.
 B1 reported all forty files as "over the 64 MiB limit uncompressed", which is a
 claim about a file nobody looked at, and sent the reader to shrink something
 that may be a few hundred bytes. The second value of `_bytes_of` is a reason
-rather than a flag now, and the three cases read differently: the document
-declares XML entities, the file is itself over the limit, or the run had
-reached its total -- the last naming `IIRDS_CONTENT_BUDGET` as the remedy.
+rather than a flag now, and the cases read differently: the document declares
+XML entities, the file is itself over the limit, the run had reached its total
+-- that one naming `IIRDS_CONTENT_BUDGET` as the remedy -- or, with the
+refusal above, the entry is in a method this tool will not read at all.
 
 The sentence in S9 saying the renditions past the ceiling "are named as not
 examined rather than silently passed" was not true when it was written. It is
@@ -702,7 +705,7 @@ applications", and "hard to check" belongs in none of them.
 
 **An unpacked container no longer reports nine rules it did not run
 (`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
-175 rules checked`, and nine of those were the requirements about the ZIP
+193 rules checked`, and nine of those were the requirements about the ZIP
 archive itself — that it is not encrypted, that a large one uses ZIP64, that the
 first entry is an uncompressed `mimetype`, that the container sits at the root
 of the archive rather than inside a folder, that every entry is compressed with
@@ -715,10 +718,10 @@ The runner said so in a note all along, in prose no test read and no consumer of
 the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
-container the count moves from 175 to 166 and the nine appear where a reader
+container the count moves from 193 to 184 and the nine appear where a reader
 and a machine both look.
 
-**Six of the seven were repaired first, and the seventh was found by counting
+**Six of the seven there were then were repaired first, and the seventh was found by counting
 lines no package can reach.** Moving the decision into the runner left each of
 those rules opening on a guard nothing could satisfy, and the record of
 unreached decision lines went from eleven to seventeen in one measurement. Six

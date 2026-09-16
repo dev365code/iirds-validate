@@ -163,3 +163,87 @@ def test_the_two_methods_this_tool_reads_are_read(tmp_path, method):
         assert not refused, "%s was refused; it is one of the two that are read" % method
     else:
         assert refused
+
+
+def _with_method(tmp_path, entries, metadata, name="m.iirds", mimetype_method=None):
+    """A container where named entries carry a method of their own."""
+    path = tmp_path / name
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        first = zipfile.ZipInfo("mimetype")
+        first.compress_type = mimetype_method or zipfile.ZIP_STORED
+        archive.writestr(first, MIMETYPE)
+        archive.writestr("META-INF/metadata.rdf", metadata)
+        archive.writestr("content/topic1.xhtml", b"<html/>")
+        for entry, body, method in entries:
+            info = zipfile.ZipInfo(entry)
+            info.compress_type = method
+            archive.writestr(info, body)
+    return path
+
+
+def test_a_rule_that_reads_an_entry_stands_down_rather_than_raising(tmp_path):
+    """C5 reads `mimetype`, and reading it now raises.
+
+    An unhandled raise costs the whole rule: the run reported `S3 rule C5
+    raised`, told the reader to open an issue about their own package, and
+    answered for one rule fewer -- for a package whose fault it had already
+    identified twice, in C6 and in S14. Standing down loses nothing, because
+    C6 requires this entry to be stored and every method that stops the read
+    is already a C6 violation.
+    """
+    package = _with_method(tmp_path, (), MINIMAL_RDF, mimetype_method=zipfile.ZIP_BZIP2)
+    report = runner.run(package, runner.ALL_KINDS)
+    ids = {f.rule.id for f in report.findings}
+
+    assert "C5" in report.ran, "C5 did not run: %s" % sorted(ids)
+    assert "S3" not in ids, "a rule raised: %s" % [
+        f.violation.detail for f in report.findings if f.rule.id == "S3"]
+    assert {"C6", "S14"} <= ids, sorted(ids)
+
+
+def test_the_handover_content_list_is_reported_rather_than_silently_skipped(tmp_path):
+    """The one file an iiRDS/H package promises a person with a browser.
+
+    C11.2 asks whether it is an HTML document, which cannot be asked of a file
+    this run will not open. Answering anyway is the defect this project keeps
+    finding in itself, and saying nothing is the other one, so it says that it
+    did not look.
+    """
+    from test_content_list_is_content import HANDOVER
+
+    package = _with_method(
+        tmp_path, (("index.html", b"<html><body>list</body></html>", zipfile.ZIP_BZIP2),),
+        HANDOVER, name="h.iirds")
+    report = runner.run(package, runner.ALL_KINDS)
+    ids = {f.rule.id for f in report.findings}
+
+    assert "S3" not in ids, "a rule raised: %s" % [
+        f.violation.detail for f in report.findings if f.rule.id == "S3"]
+    assert "S14" in ids, sorted(ids)
+    said = [f for f in report.findings if f.rule.id == "C11.2"]
+    assert said, "the content list was passed over in silence: %s" % sorted(ids)
+    assert "was not read" in said[0].violation.message, said[0].violation.message
+
+
+def test_an_unpacked_container_has_no_method_to_refuse(tmp_path):
+    """A directory is not an archive, and the guards must not ask it.
+
+    `DirectoryPackage.info` answers with the one thing a directory can say
+    honestly -- a size -- and carries no compression method. The guards added
+    for C5 and C11.2 asked for one anyway, so every rule that reads an entry
+    raised on an unpacked container and was lost: three unrelated tests about
+    directories went red with `S3 rule ... raised` and nothing else.
+    """
+    import zipfile as zf
+
+    from iirds_validate import runner as r
+
+    package = _package(tmp_path, "deflate")
+    unpacked = tmp_path / "unpacked"
+    zf.ZipFile(package).extractall(unpacked)
+
+    report = r.check(unpacked)
+    ids = {f.rule.id for f in report.findings}
+    assert "S3" not in ids, "a rule raised on a directory: %s" % [
+        f.violation.detail for f in report.findings if f.rule.id == "S3"]
+    assert "S14" not in ids, "a directory has no compression method to refuse"

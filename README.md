@@ -85,7 +85,7 @@ $ echo $?
 | metadata with no `iirds:Package` root | `ERROR M3` — zero leaves the package unidentified, two leave it ambiguous |
 | a Package that identifies no product variant while every Document looks fine | `ERROR R13` — the Package itself must say what it documents |
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
-| a zip bomb, or XML with external entities | refused safely — every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded |
+| a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
 Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
 

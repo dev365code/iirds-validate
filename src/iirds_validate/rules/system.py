@@ -278,8 +278,10 @@ def _disagreements(info, header, descriptor):
       title="every entry must be compressed with a method a bounded read can be made of",
       fix="Rebuild the archive with deflate, or store the entry uncompressed; `iirds pack` "
           "writes deflate. Nothing is wrong with the file itself -- it was not opened, so "
-          "nothing here has an opinion about its contents -- and nothing about it is refused "
-          "by the specification either. What cannot be done is read it within a stated limit: "
+          "nothing here has an opinion about its contents. The specification is silent about "
+          "which method an entry uses, with one exception: `mimetype` must be stored, and "
+          "where this names `mimetype` C6 reports that beside it and storing is the only "
+          "remedy. What cannot be done is read it within a stated limit: "
           "the decompressors for these methods are not given the length the caller asked for, "
           "so the entry comes out whole or not at all, and a container from a stranger is the "
           "wrong place to find out how large whole is. Every consumer that applies the same "
@@ -470,7 +472,7 @@ def s9_content_budget(ctx):
     """Per-entry limits bound each rendition and nothing bounded their sum,
     so an archive that compresses to nothing could make a run decompress as
     much as it declared: measured, forty one-megabyte renditions in a package
-    of no size at all made the run read a hundred and sixty, the memo in
+    of no size at all made the run read a hundred and sixty megabytes, the memo in
     `_bytes_of` not yet existing and each rendition being read four times.
     The ceiling is a number the report states, and the renditions past it are
     named as not examined rather than silently passed.

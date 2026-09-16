@@ -11,7 +11,7 @@ import re
 import zipfile
 from collections import Counter
 
-from iirds import NOT_RDFXML
+from iirds import NOT_RDFXML, unreadable_method
 
 from ..model import (
     META_DIR,
@@ -97,6 +97,14 @@ def c4_mimetype_present(ctx):
        fix="Make the file contain exactly application/iirds+zip, ASCII, with no trailing newline and no byte order mark. Editors add both silently, so write it with a tool that does not.")
 def c5_mimetype_content(ctx):
     if not ctx.package.has(MIMETYPE_FILE):
+        return
+    info = ctx.package.info(MIMETYPE_FILE)
+    if info is not None and unreadable_method(info) is not None:
+        # Reading it raises, and an unhandled raise costs the whole rule: the
+        # run reported "rule C5 raised" and told the reader to open an issue
+        # about their own package. Nothing is lost by standing down here --
+        # C6 requires this entry to be stored, so any method that stops this
+        # read is already a C6 violation, and S14 names the entry besides.
         return
     raw = ctx.package.read(MIMETYPE_FILE)
     if raw != MIMETYPE_VALUE.encode("ascii"):
@@ -234,6 +242,21 @@ def c11_2_handover_content_list(ctx):
     if not ctx.package.has(CONTENT_LIST):
         yield Violation("an iiRDS/H package must contain a content list named index.html "
                         "in the root directory")
+        return
+    info = ctx.package.info(CONTENT_LIST)
+    if info is not None and unreadable_method(info) is not None:
+        # Whether it is an HTML document cannot be asked of a file this run
+        # will not open, and answering anyway is the defect this project keeps
+        # finding in itself. Said rather than passed over in silence.
+        yield Violation("the content list index.html was not read, so whether it is an "
+                        "HTML document was not checked",
+                        subject=CONTENT_LIST,
+                        fix="Rebuild index.html with deflate, or store it uncompressed. The "
+                            "file is present; its compression method is one this tool will "
+                            "not decompress, which S14 reports beside this and explains. An "
+                            "iiRDS/H package is meant to be openable by a person with a "
+                            "browser, and a consumer applying the same guard will not open "
+                            "this one either.")
         return
     body = ctx.package.text(CONTENT_LIST)
     if "<html" not in body.lower():

@@ -11,14 +11,20 @@ build themselves. Every release up to 0.6.1 can be made to spend far more time
 and memory on a container than its size suggests, by a container that says so
 in its own records.
 
-**Two kinds of package that passed on 0.6.1 fail on 0.6.2**, and that is the
-repair rather than a side effect of it. An entry compressed with bzip2 or lzma
-now draws `ERROR S14`: those entries cannot be read within a stated limit, so
-this release does not open them at all, and an entry nothing will read is worth
-saying rather than passing over. An archive whose central directory carries one
-name in more than one record now draws `ERROR S15`: which of those records a
-reader acts on is not settled by the format, so which file was checked is not
-something a run can honestly report.
+**A package that passed on 0.6.1 can fail on 0.6.2**, and that is the repair
+rather than a side effect of it. An entry compressed with bzip2 or lzma now
+draws `ERROR S14`: those entries cannot be read within a stated limit, so this
+release does not open them at all, and an entry nothing will read is worth
+saying rather than passing over. If you check packages built by a tool that
+uses either method, this release will start refusing them and `iirds pack`
+shows what to rebuild them with.
+
+The second new rule changes no verdict. An archive whose central directory
+carries one name in more than one record already failed, on C15; `ERROR S15`
+now says what the archive does to a reader -- how many records carry the name,
+which of them this run resolved it to, and, where they point at different
+offsets, that the records describe different bytes. Before, fifty such records
+drew forty-nine findings claiming one file collided with itself.
 
 Two new rules, then, and no rule's reading of the specification changed: these
 two carry no specification reference at all. The exit codes mean what they

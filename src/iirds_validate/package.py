@@ -376,9 +376,11 @@ class Package:
         # directory may carry the same name many times, and `zipfile` resolves
         # a name to the last of them -- so the others describe nothing any
         # reader here will open, and checking them charges this pass once per
-        # record for one local header. Measured: 10,714 bytes on disk, fifty
+        # record for one local header. Measured: 11,890 bytes on disk, fifty
         # records over one header declaring 8 MiB, 419,430,400 bytes
-        # decompressed. S10 reports the duplicate records themselves.
+        # decompressed -- that entry's share, fifty times over. S15 reports
+        # the duplicate records; S10 does not, because every record there
+        # agrees with the one local header it points at.
         for info in self._zip.NameToInfo.values():
             if unreadable_method(info) is not None:
                 # Not read, so not judged either way. S14 says so; answering

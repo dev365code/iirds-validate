@@ -224,9 +224,11 @@ Every limit in this project is a limit on what a read hands back: 64 MiB per
 file, a total per run, a slice at a time for the damage check. Python's zip
 reader passes the caller's length down to the decompressor for deflate, and for
 no other method — `zipfile.ZipExtFile._read1` calls `decompress(data, n)` in the
-deflate branch and `decompress(data)` in the branch beside it, then slices the
-result to the length that was asked for. The slicing happens after the
-allocation. So for those methods the number a caller passes bounds what it
+deflate branch and `decompress(data)` in the branch beside it. Neither the
+slicing there nor the one in `read()` above it gives the memory back: `_read1`
+trims to what is left of the entry, and `read()` keeps whatever it did not
+return in the handle's buffer for as long as the handle is open. The
+allocation happens first and outlives the call. So for those methods the number a caller passes bounds what it
 receives and says nothing about what the call costs.
 
 Measured on the interpreter this project supports, one entry declaring 64 MiB,

@@ -179,10 +179,16 @@ def unreadable_method(info) -> Optional[str]:
     decompresses by. A local header naming a different method is a disagreement
     between the archive's two accounts of one entry, which is a different fault
     and has its own rule.
+
+    An unpacked container answers with the one thing a directory honestly can,
+    a size, and carries no method at all -- a file on disk is not compressed,
+    so there is nothing here to refuse. Asking it anyway is how a guard written
+    for archives raised on a directory, and the rule that raised was lost.
     """
-    if info.compress_type in READ_METHODS:
+    method = getattr(info, "compress_type", None)
+    if method is None or method in READ_METHODS:
         return None
-    return describe_method(info.compress_type)
+    return describe_method(method)
 
 
 class Package:

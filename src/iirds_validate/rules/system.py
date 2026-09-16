@@ -335,15 +335,26 @@ def s10_local_headers_agree_with_the_directory(ctx):
       fix="Nothing in the package is necessarily wrong: the run declined to "
           "decompress more than its ceiling, and the renditions past that point "
           "were not examined. Check the package on the command line with a "
-          "larger IIRDS_CONTENT_BUDGET, or split a delivery this large into "
-          "nested packages, which is what nesting is for.")
+          "larger IIRDS_CONTENT_BUDGET. A delivery this large can also be split, "
+          "but not by nesting if this is an iiRDS/H handover package: R9 reports "
+          "that as a MUST NOT, and a component tree is what the handover profile "
+          "uses to say what is inside what.")
 def s9_content_budget(ctx):
     """Per-entry limits bound each rendition and nothing bounded their sum,
     so an archive that compresses to nothing could make a run decompress as
     much as it declared: measured, forty one-megabyte renditions in a package
-    of no size at all made the run read a hundred and sixty. The ceiling is a
-    number the report states, and the renditions past it are named as not
-    examined rather than silently passed."""
+    of no size at all made the run read a hundred and sixty, the memo in
+    `_bytes_of` not yet existing and each rendition being read four times.
+    The ceiling is a number the report states, and the renditions past it are
+    named as not examined rather than silently passed.
+
+    That last sentence was not true when it was written. The ceiling refused
+    each rendition after reading it, so "not examined" named forty files the
+    run had decompressed in full: 49,510 bytes on disk drew 41,945,847 bytes
+    of decompression against a two megabyte ceiling. What a rendition costs
+    is not knowable without reading it, so one read crosses the ceiling;
+    every one after it is now refused without a read, and what the content
+    rules read is the ceiling plus one per-file limit."""
     hit = ctx.__dict__.get("content_budget")
     if hit is None:
         return

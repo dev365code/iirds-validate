@@ -6,6 +6,48 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**The ceiling on how much content one run decompresses did not bound it.**
+`_bytes_of` read each rendition in full and charged for it afterwards, and the
+refusal that followed was memoised against that one file rather than stopping
+the run -- so every rendition past the ceiling was read as well, each crossing
+it again on its own. Measured: a 49,510-byte archive declaring forty
+one-megabyte renditions drew 41,945,847 bytes of decompression against a
+two-megabyte ceiling, twenty times over, from a file that fits in an email.
+
+Past the ceiling a rendition is now refused without being read. One read may
+still cross it and cannot be avoided -- what a rendition costs is not knowable
+without reading it, and that read is bounded by the per-file limit -- so what
+the content rules decompress is the ceiling plus one per-file limit, once. The
+same package now draws 2,097,292 bytes.
+
+This is not a claim about what a run *holds*. The read that crosses the
+ceiling is discarded, so the repair moves peak memory by a fraction of a
+percent, and a gate written against peak memory passes against the defect
+and says nothing. What was unbounded was reading, which is what the ceiling
+is written about.
+
+**The ceiling is not a bound on what a whole run decompresses, and cannot be.**
+Asking whether an archive is damaged means opening every entry, and no size the
+archive declares can answer it, so one run reads the whole declared size once
+however small the ceiling is: 83,916,368 bytes for the package above before the
+repair, 44,067,813 after, of which about forty-two megabytes is that pass. It
+asks for a bounded slice at a time and keeps none of it. `SECURITY.md` now says
+this rather than implying the ceiling covers it, and a test holds the pass to
+bounded requests, identified by where they come from: a damage check gutted to
+read nothing, and one whose slice is raised to a gigabyte, both passed the
+first version of that test.
+
+B1 reported all forty files as "over the 64 MiB limit uncompressed", which is a
+claim about a file nobody looked at, and sent the reader to shrink something
+that may be a few hundred bytes. The second value of `_bytes_of` is a reason
+rather than a flag now, and the three cases read differently: the document
+declares XML entities, the file is itself over the limit, or the run had
+reached its total -- the last naming `IIRDS_CONTENT_BUDGET` as the remedy.
+
+The sentence in S9 saying the renditions past the ceiling "are named as not
+examined rather than silently passed" was not true when it was written. It is
+now.
+
 **`-W` decided the verdict and left no mark, so the command printed `PASS` and
 exited 1 on the same run.** A package with one warning and no errors, checked
 with `--warnings-as-errors`, printed `PASS  0 error(s), 1 warning(s)` and

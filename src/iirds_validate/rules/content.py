@@ -162,29 +162,54 @@ def _xhtml_renditions(ctx):
 
 
 def _bytes_of(ctx, name):
-    """The rendition's bytes and whether it ran over, read once per run.
+    """The rendition's bytes, and why they were not read if they were not.
 
     Measured before this existed: one rendition was decompressed four times
     in a run -- B1 read it to refuse or accept it and again to parse it, and
     the tree cache B2 draws from did the same pair over. The bytes are kept
     on the context after the first read, so every later question about a
     rendition is answered from memory already paid for.
+
+    The second value used to be a flag meaning "over the per-file limit", and
+    both refusals were reported with that one sentence. It is a reason now
+    because two of them are not that: a run that has reached its total does
+    not read this file at all, and saying it was too big is a claim about a
+    file nobody looked at -- which sends the reader of B1 to shrink something
+    that may be a few hundred bytes.
     """
     memo = ctx.__dict__.get("_content_bytes")
     if memo is None:
         memo = ctx.__dict__["_content_bytes"] = {}
     if name not in memo:
+        spent = ctx.__dict__.get("content_budget")
+        if spent is not None:
+            # The ceiling has already been passed, and reading this one to
+            # find out by how much is the amplification the ceiling exists to
+            # refuse. What must not happen is the read, not the charge: the
+            # old order read the file in full and charged for it afterwards,
+            # so a package of no size on disk declaring forty megabytes made
+            # a run decompress all forty against a two megabyte ceiling --
+            # the refusal was per file and the reading went on.
+            memo[name] = (b"", "not read: the run had already reached its "
+                               "%d byte content budget" % spent[1])
+            return memo[name]
         try:
             raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
             ctx.package.charge(len(raw))
-            memo[name] = (raw, oversize)
+            memo[name] = (raw, "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
+                               if oversize else None)
         except ContentBudgetExceeded as exc:
-            # Recorded once, on the context, where S9 reads it. Every later
-            # rendition is refused without a read, so the rules that walk the
-            # renditions stop asking rather than each hitting the ceiling.
-            if "content_budget" not in ctx.__dict__:
-                ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
-            memo[name] = (b"", True)
+            # The one read allowed to cross the ceiling, and it cannot be
+            # avoided: what a file costs is not knowable without reading it,
+            # and that read is bounded by the per-file limit above. So what
+            # the content rules read is the budget plus one per-file limit,
+            # once. That is a statement about reading and not about memory,
+            # and not about the run: the damage check in C1 opens every entry
+            # and pays no budget. Recorded on the context, where S9 reads it
+            # and where the branch above sees it.
+            ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
+            memo[name] = (b"", "reading this took the run past its %d byte "
+                               "content budget" % exc.limit)
     return memo[name]
 
 
@@ -193,9 +218,9 @@ def _refusal(ctx, name):
     # The same reasoning as the metadata gate: the declared size belongs to
     # the sender, so the limit is on what is read rather than on what is
     # claimed, and one read answers both questions.
-    raw, oversize = _bytes_of(ctx, name)
-    if oversize:
-        return "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
+    raw, refused = _bytes_of(ctx, name)
+    if refused:
+        return refused
     if _declares_entities(raw):
         return "the document declares XML entities"
     return None
@@ -269,11 +294,17 @@ def b1_well_formed(ctx):
             # to an XML parser would find the file perfectly well-formed.
             yield Violation("content declared as iiRDS XHTML5 was refused rather than parsed",
                             subject=name, detail=refused,
-                            fix="Read the reason reported alongside this and remove what it "
-                                "names -- entity declarations, or bytes past the limit a run "
-                                "will read. The file was turned away before it was parsed, so "
-                                "there is no syntax error in it to find; an XML parser would "
-                                "open it and a consumer applying the same guard will not.")
+                            fix="Read the reason reported alongside this. A file turned away "
+                                "for what it declares -- XML entities -- is fixed by removing "
+                                "them. The other two are not about this file being malformed at "
+                                "all: one says the file is larger on its own than a run will "
+                                "read, which is a fixed limit and asks for a smaller rendition; "
+                                "the other says the run had already spent what it will "
+                                "decompress in total, and `IIRDS_CONTENT_BUDGET` raises that. "
+                                "Either way the file was turned away "
+                                "before it was parsed, so there is no syntax error in it to "
+                                "find; an XML parser would open it and a consumer applying the "
+                                "same guard will not.")
             continue
         try:
             ElementTree.fromstring(_bytes_of(ctx, name)[0])

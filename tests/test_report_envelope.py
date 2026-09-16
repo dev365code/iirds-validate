@@ -577,3 +577,22 @@ def test_the_runners_own_policy_is_outside_the_digest(monkeypatch):
     monkeypatch.setattr(runner, "FRAGMENT_SUSPENDED", frozenset())
     monkeypatch.setattr(runner, "severity_override", lambda rule, variant: None)
     assert registry.rule_set_digest() == before
+
+
+def test_the_report_says_which_gate_the_run_was_judged_by(make_package):
+    """`-W` decides the verdict and left no mark on the document. A report of a
+    gated run said `"ok": true` about a run whose operator was shown a failure,
+    and a stored one would go on saying it to whoever read it later."""
+    relative = MINIMAL_RDF.replace("</rdf:RDF>",
+                                   '  <iirds:Component rdf:about="c/1"/>\n</rdf:RDF>')
+    package = make_package(metadata=relative)
+
+    plain = runner.run(package)
+    assert plain.as_dict()["judgedBy"]["gate"] == "errors"
+    assert plain.ok is True
+
+    gated = runner.run(package)
+    gated.gate = "errors+warnings"
+    assert gated.as_dict()["judgedBy"]["gate"] == "errors+warnings"
+    assert gated.ok is False, "a warning is an error under this gate"
+    assert gated.as_dict()["ok"] is False

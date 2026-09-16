@@ -7,7 +7,9 @@
     iirds rules --kind lint    what this tool knows how to check
     iirds diff  was.json pkg.iirds   what changed since a report you kept
 
-Exit codes: 0 clean, 1 errors found, 2 could not run. For `diff`, "errors
+Exit codes: 0 clean, 1 errors found, 2 could not run. Under `-W` a warning is
+one of those errors -- the run is judged by the gate it was given, and the
+report records which one. For `diff`, "errors
 found" means errors this run has and the stored report does not.
 """
 from __future__ import annotations
@@ -22,7 +24,7 @@ from iirds import PackError, pack
 
 from . import PROGRAM, __version__, runner
 from .banner import banner
-from .model import VERSIONS, Severity
+from .model import VERSIONS, WARNINGS_ARE_ERRORS
 from .package import search
 from .registry import CATALOG, all_rules, coverage
 from .report import render
@@ -100,6 +102,13 @@ def _run(args, kinds) -> int:
             return EXIT_ERROR
         reports = [runner.run(path, kinds, version=args.version) for path in targets]
 
+    # The gate is the caller's, not the package's, so it is set here and the
+    # document carries it: `ok` cannot be read without knowing which one was
+    # asked for.
+    if getattr(args, "warnings_as_errors", False):
+        for report in reports:
+            report.gate = WARNINGS_ARE_ERRORS
+
     if args.format == "json":
         payload = [r.as_dict() for r in reports]
         json.dump(payload[0] if len(payload) == 1 else payload,
@@ -111,9 +120,10 @@ def _run(args, kinds) -> int:
                 print()
             render(report, "text", verbose=args.verbose)
 
+    # One source for the verdict. These were two: the exit code counted
+    # warnings when `-W` was given and the printed headline did not, so a
+    # package with one warning printed PASS and exited 1.
     failed = any(not r.ok for r in reports)
-    if args.warnings_as_errors:
-        failed = failed or any(r.count(Severity.WARNING) for r in reports)
 
     if len(reports) > 1 and args.format == "text" and not args.quiet:
         bad = sum(1 for r in reports if not r.ok)
@@ -275,6 +285,8 @@ def build_parser():
     p_diff.add_argument("-f", "--format", choices=("text", "json"), default="text")
     p_diff.add_argument("-q", "--quiet", action="store_true",
                         help="exit code only; refusals still go to stderr")
+    p_diff.add_argument("-W", "--warnings-as-errors", action="store_true",
+                        help="judge this run the way a baseline stored with -W was")
 
     p_rules = sub.add_parser("rules", help="list the rules this tool implements")
     p_rules.add_argument("ids", nargs="*", metavar="RULE",
@@ -312,7 +324,14 @@ def _cmd_diff(args) -> int:
         stored = difference_module.parse(text)
         side = difference_module.checked(stored, "the stored report")
         kinds = difference_module.kinds_this_build_offers(side)
-        answer = difference_module.difference(stored, runner.run(args.package, kinds).as_dict())
+        # The gate is the caller's here as well. Without it, a baseline stored
+        # by a build that gates on warnings could never be compared against
+        # anything -- and the remedy printed for that mismatch asked the reader
+        # to run both the same way, which this command had no way to do.
+        fresh = runner.run(args.package, kinds)
+        if args.warnings_as_errors:
+            fresh.gate = WARNINGS_ARE_ERRORS
+        answer = difference_module.difference(stored, fresh.as_dict())
     except difference_module.Refused as refusal:
         print("%s: %s" % (PROGRAM, refusal), file=sys.stderr)
         return EXIT_ERROR

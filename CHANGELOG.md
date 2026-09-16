@@ -6,6 +6,26 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**`-W` decided the verdict and left no mark, so the command printed `PASS` and
+exited 1 on the same run.** A package with one warning and no errors, checked
+with `--warnings-as-errors`, printed `PASS  0 error(s), 1 warning(s)` and
+returned 1. Whichever of those a reader believed, the other was lying to them,
+and the JSON said `"ok": true` alongside both.
+
+The gate a run was judged by is now a fact the run records: `judgedBy.gate` is
+`errors` or `errors+warnings`, `ok` means "no finding at or above that gate",
+and the printed headline, the JSON and the exit code are read from the one
+place. A `-W` run over a package with warnings now says `FAIL` -- the exit
+code has always said so.
+
+`iirds diff` reads it too. Two reports judged by different gates are not
+comparable and say which, because a baseline stored by a build that gates on
+warnings and a run that does not were never asked the same question. A report written
+before this -- by a development build, since no release has ever written this
+report shape -- carries no gate; that side reads as "cannot say" rather than as
+`errors`, which would make two questions look like one, and it is told to store
+a fresh baseline rather than to run both the same way, which its build cannot do.
+
 **The single-file `.pyz` no longer carries pip's record of the machine that
 built it.** A build on Python 3.9 and a build on 3.12 now produce the same
 bytes, where before they produced two files that differed in four entries on

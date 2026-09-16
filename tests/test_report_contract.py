@@ -50,6 +50,8 @@ JUDGED_BY = {
     "ruleSetDigest",     # the cheap "same rule set?" before anything is compared
     "includesInfo",      # whether the quiet findings were kept
     "rulesSource",       # the rule bodies, which the rule-set digest cannot see
+    "gate",              # what the caller counted as a failure; `ok` is unreadable
+                         # without it, and `-W` used to leave no mark at all
 }
 
 SUMMARY = {"errors", "warnings", "info", "rulesChecked", "rulesSkipped",
@@ -89,6 +91,15 @@ def test_the_schema_version_is_two(make_package):
     change would be told a package broke something it never touched, which is
     the failure the envelope exists to prevent. A per-key check cannot see
     that. Only the number can say it.
+
+    `ok` has since changed meaning too -- it is read under `judgedBy.gate`, so
+    a gated run's `ok` is false with no errors -- and the number did not move.
+    The argument, because the rule above says it should have: **2 has never
+    been released.** `v0.5.0`, `v0.6.0` and `v0.6.1` all write
+    `"schemaVersion": 1`, and this build refuses a 1 before it reads anything
+    else, so no document outside this branch can reach the gate logic. There is
+    no reader of 2 to keep readable. A meaning corrected before its shape is
+    published is not a meaning that moved under anybody.
     """
     assert report_of(make_package).as_dict()["schemaVersion"] == 2
 

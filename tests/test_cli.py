@@ -159,3 +159,21 @@ def test_a_fragment_written_without_the_rdf_root_is_still_a_fragment(tmp_path):
     frag = tmp_path / "rootless.rdf"
     frag.write_text(rootless, "utf-8")
     assert main(["check", str(frag), "--fragment"]) == EXIT_OK
+
+
+def test_a_run_gated_on_warnings_does_not_call_it_a_pass(make_package, capsys):
+    """`-W` made the exit code and the printed verdict disagree: a package with
+    one warning and no errors printed `PASS` and exited 1. Whichever a reader
+    believes, the other one is lying to them."""
+    from conftest import MINIMAL_RDF
+    relative = MINIMAL_RDF.replace("</rdf:RDF>",
+                                   '  <iirds:Component rdf:about="c/1"/>\n</rdf:RDF>')
+    package = str(make_package(metadata=relative))
+
+    assert main(["check", package]) == EXIT_OK
+    assert "PASS" in capsys.readouterr().out
+
+    assert main(["check", package, "-W"]) == EXIT_FINDINGS
+    said = capsys.readouterr().out
+    assert "FAIL" in said, said
+    assert "PASS" not in said, said

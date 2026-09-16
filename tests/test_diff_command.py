@@ -10,10 +10,9 @@ from __future__ import annotations
 import json
 import pathlib
 
-import pytest
-
 from conftest import MINIMAL_RDF
 from iirds_validate import cli, runner
+from iirds_validate import difference as diff
 
 
 def two_formats(metadata):
@@ -118,16 +117,32 @@ def test_json_is_the_document_the_library_returns(tmp_path, make_package, capsys
     assert printed == json.loads(json.dumps(expected))
 
 
-def test_warnings_as_errors_is_not_offered(tmp_path, make_package):
-    """The gate is about errors this run has and the stored report does not.
-    `-W` on the other subcommands changes only the exit code and is recorded
-    nowhere in a report, so a stored one cannot say whether it was gated that
-    way -- offering it here would promise a comparison the documents cannot
-    support."""
-    good = make_package(name="good.iirds", metadata=MINIMAL_RDF)
-    with pytest.raises(SystemExit) as exit_:
-        cli.main(["diff", stored(tmp_path, good), str(good), "-W"])
-    assert exit_.value.code == 2
+def test_the_run_can_be_asked_the_question_the_baseline_was(tmp_path, make_package):
+    """This refused `-W`, on the reasoning that a stored report could not say
+    whether it had been gated. It can now, and refusing left a baseline stored
+    by a build that gates on warnings permanently incomparable -- while the
+    remedy printed for that mismatch told the reader to run both the same way.
+
+    `-W` here judges this run the way that baseline was judged; it does not
+    reach into the stored document.
+    """
+    relative = MINIMAL_RDF.replace("</rdf:RDF>",
+                                   '  <iirds:Component rdf:about="c/1"/>\n</rdf:RDF>')
+    package = make_package(name="warn.iirds", metadata=relative)
+    report = runner.run(package, runner.ALL_KINDS)
+    report.gate = "errors+warnings"
+    path = tmp_path / "gated.json"
+    path.write_text(json.dumps(report.as_dict()), "utf-8")
+
+    assert cli.main(["diff", str(path), str(package), "-q"]) != 2
+    ungated = diff.difference(json.loads(path.read_text("utf-8")),
+                              runner.run(package, runner.ALL_KINDS).as_dict())
+    assert not ungated.comparable, "the gates differ, so this is the wrong question"
+
+    gated = runner.run(package, runner.ALL_KINDS)
+    gated.gate = "errors+warnings"
+    assert diff.difference(json.loads(path.read_text("utf-8")),
+                           gated.as_dict()).comparable
 
 
 def test_the_exit_codes_are_the_ones_the_module_documents():

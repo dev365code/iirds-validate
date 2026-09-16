@@ -439,3 +439,18 @@ def test_a_summary_that_disagrees_with_the_findings_is_refused(clean, make_packa
     forged["ok"] = True
     with pytest.raises(diff.Refused):
         diff.difference(forged, firing)
+
+
+def test_a_run_gated_on_warnings_is_not_the_same_question(clean):
+    """`-W` decides whether a warning is a failure, so two runs that differ on
+    it were not asked the same thing. Before the gate was recorded, a report of
+    a gated run was indistinguishable from an ungated one -- so a baseline
+    stored by a CI job that gates on warnings compared clean against a local
+    run that does not, and the verdicts read as agreeing."""
+    gated = copy.deepcopy(clean)
+    gated["judgedBy"]["gate"] = "errors+warnings"
+    answer = diff.difference(gated, clean)
+    document = answer.as_dict()
+    assert not answer.comparable
+    assert any(banner["what"] == "gate" for banner in document["banners"]), document["banners"]
+    assert all(banner["remedy"] for banner in document["banners"]), document["banners"]

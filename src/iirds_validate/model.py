@@ -313,6 +313,11 @@ class _Latest:
 NOT_IN_PLAY = ("unasked",)
 
 
+#: The two gates a run can be judged by. A third would be a new word in a
+#: stored document, so they are named here rather than spelled inline.
+ERRORS_ONLY, WARNINGS_ARE_ERRORS = "errors", "errors+warnings"
+
+
 @dataclass
 class Report:
     path: str
@@ -323,6 +328,9 @@ class Report:
     #: `check` are judged by different rules out of one build, and a stored
     #: report that does not say which was asked cannot be read later.
     kinds: Tuple[str, ...] = ()
+    #: What the caller asked to count as a failure. The command decides it and
+    #: the document records it, because `ok` cannot be read without it.
+    gate: str = ERRORS_ONLY
     #: The rules this run answered, by name and in the order it answered them.
     #: A count could say two runs differed; it could not say *which* rule
     #: appeared, which is the whole question a stored report is read for.
@@ -504,7 +512,16 @@ class Report:
 
     @property
     def ok(self) -> bool:
-        return self.count(Severity.ERROR) == 0
+        """Whether the package passed, under the gate this run was given.
+
+        `-W` decides the verdict and used to leave no mark: the command exited
+        1 and the same run printed `PASS` and wrote `"ok": true`. Whichever of
+        those a reader believed, the other was lying to them, and a stored
+        report would have gone on saying it.
+        """
+        if self.count(Severity.ERROR):
+            return False
+        return self.gate != WARNINGS_ARE_ERRORS or not self.count(Severity.WARNING)
 
     def as_dict(self) -> dict:
         return {
@@ -524,6 +541,7 @@ class Report:
                 "rulesRun": sorted(self.ran),
                 "ruleSetDigest": self.rule_set,
                 "includesInfo": self.includes_info,
+                "gate": self.gate,
                 "rulesSource": dict(self.rules_source),
             },
             "packageDigest": dict(self.package_digest),

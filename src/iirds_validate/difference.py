@@ -32,6 +32,12 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
+from .model import ERRORS_ONLY, WARNINGS_ARE_ERRORS
+
+#: The gates a document may say it was judged by. A word outside this is a
+#: document this build cannot read, not a document it may guess about.
+GATES = (ERRORS_ONLY, WARNINGS_ARE_ERRORS)
+
 #: This document's own contract, moved when its shape or the meaning of a
 #: field changes -- the same rule the report follows and for the same reason.
 SCHEMA_VERSION = 1
@@ -59,14 +65,22 @@ MAX_DOCUMENT_DEPTH = 64
 
 #: Everything outside the package that decides what a run says. Two reports
 #: that disagree on any of it were not asked the same question.
-BASIS = ("ruleSetDigest", "toolVersion", "kinds", "includesInfo",
+BASIS = ("ruleSetDigest", "toolVersion", "kinds", "includesInfo", "gate",
          "variant", "validatedAgainst", "unpacked", "fragment")
+
+#: What to do when one side simply does not carry a field -- a report an
+#: earlier build wrote. Nothing about that run can be recovered from it, so
+#: the only way to a comparable pair is a fresh one.
+UNRECORDED = ("the stored report is from a build that did not record this; store a "
+              "fresh baseline with this build before the next comparison")
 
 REMEDY = {
     "toolVersion": "store a fresh baseline with this build before the next comparison",
     "ruleSetDigest": "the two runs did not have the same rules; store a fresh baseline",
     "kinds": "run the command the stored report was made with",
     "includesInfo": "one of the runs discarded its INFO findings; run both the same way",
+    "gate": "one run counted warnings as failures and the other did not, so the two "
+            "verdicts are not the same question; run both the same way",
     "variant": "the package declares a different profile, or none because its metadata "
                "stopped parsing; check the declaration before reading anything below",
     "validatedAgainst": "the edition the rules ran against moved, and a rule that reads it "
@@ -263,12 +277,34 @@ def checked(document, which: str) -> dict:
     if not isinstance(summary, dict) or not isinstance(summary.get("errors"), int) \
             or isinstance(summary.get("errors"), bool):
         _refuse("%s does not carry a summary" % which)
+    if not isinstance(summary.get("warnings"), int) or isinstance(summary.get("warnings"), bool):
+        # Read below, so checked here. It was read and not checked for one
+        # commit, and a stored report missing it left this function raising
+        # where its caller's contract is a sentence and exit 2.
+        _refuse("%s does not count its warnings" % which)
     if summary["errors"] < errors:
         _refuse("%s counts %d errors and lists %d" % (which, summary["errors"], errors))
-    if document["ok"] != (summary["errors"] == 0):
-        _refuse("%s says %s and counts %d errors"
+    warnings = sum(1 for finding in findings if finding["severity"] == "warning")
+    if summary["warnings"] < warnings:
+        # The same guard the errors line has, for the same reason: `ok` reads
+        # this count under a gate, so a document that counts fewer warnings
+        # than it lists can assert a pass over a warning it is showing.
+        _refuse("%s counts %d warnings and lists %d" % (which, summary["warnings"], warnings))
+    # `ok` is read under the gate the run recorded: with `errors+warnings` a
+    # warning is a failure, so the two halves agree differently. A document
+    # from a build before the gate was recorded has none, and is read the way
+    # that build meant it.
+    gate = envelope.get("gate")
+    if gate is not None and gate not in GATES:
+        # Every other field of the basis is type-checked, and this one was not:
+        # `errors+warning` was validated as ungated and announced as gated, so
+        # the document was read one way and reported another.
+        _refuse("%s was judged by %r, which is not a gate this tool knows" % (which, gate))
+    clean = summary["errors"] == 0 and not (gate == WARNINGS_ARE_ERRORS and summary["warnings"])
+    if document["ok"] != clean:
+        _refuse("%s says %s and counts %d errors and %d warnings under the %s gate"
                 % (which, "the package is clean" if document["ok"] else "the package is not",
-                   summary["errors"]))
+                   summary["errors"], summary["warnings"], gate or ERRORS_ONLY))
     return {"ran": ran, "excused": excused, "envelope": envelope, "document": document,
             "findings": findings, "suppressed": suppressed, "reasons": reasons}
 
@@ -298,6 +334,10 @@ def _basis_of(side) -> dict:
         "toolVersion": envelope["toolVersion"],
         "kinds": list(envelope["kinds"]),
         "includesInfo": envelope["includesInfo"],
+        # Absent from a report an older build wrote. None reads as "this side
+        # cannot say", which a banner can carry; guessing "errors" would make
+        # two runs look like one question when one of them was gated.
+        "gate": envelope.get("gate"),
         "variant": document["variant"],
         "validatedAgainst": document.get("validatedAgainst"),
         "unpacked": bool(reasons.get("unpacked")),
@@ -397,8 +437,14 @@ def difference(stored, here) -> Difference:
     banners = []
     for what in BASIS:
         if basis_left[what] != basis_right[what]:
+            # A side that carries nothing for a field is not a side that
+            # disagrees about it: every report an earlier build wrote is
+            # missing `gate`, and telling its reader to "run both the same
+            # way" asks for something that build cannot do.
+            cannot_say = basis_left[what] is None or basis_right[what] is None
             banners.append({"what": what, "stored": basis_left[what],
-                            "here": basis_right[what], "remedy": REMEDY[what]})
+                            "here": basis_right[what],
+                            "remedy": UNRECORDED if cannot_say else REMEDY[what]})
     for what in ("package", "iirdsVersion"):
         if left["document"].get(what) != right["document"].get(what):
             banners.append({"what": what, "stored": left["document"].get(what),
@@ -501,8 +547,12 @@ def render_text(answer: Difference, stream=None) -> None:
     out = sys.stdout if stream is None else stream
     document = answer.as_dict()
     for banner in document["banners"]:
-        out.write("  ! %s: stored %r, here %r\n      %s\n"
-                  % (banner["what"], banner["stored"], banner["here"], banner["remedy"]))
+        # A side that carries nothing for a field reads as words, not as a
+        # Python repr: `stored None` looks like a value that was recorded.
+        said = ["not recorded" if banner[side] is None else repr(banner[side])
+                for side in ("stored", "here")]
+        out.write("  ! %s: stored %s, here %s\n      %s\n"
+                  % (banner["what"], said[0], said[1], banner["remedy"]))
     if not answer.comparable:
         out.write("  ! the two runs were not judged on the same basis, so nothing below "
                   "is attributed to the package\n")

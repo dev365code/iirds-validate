@@ -6,6 +6,16 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**Announced, for the release after this one: a command-line usage error will
+exit `64` rather than `2`.** Measured today, every one of them exits `2` --
+`iirds --bogus`, `iirds check` with no package, an unknown value for `-f` --
+which is the value that also means "there was nothing to judge here", so a
+build gating on `2` cannot tell a package it could not read from a command it
+could not parse. `64` is `EX_USAGE` from `sysexits`, and `2` keeps the meaning
+it has. Nothing changes in this release; this paragraph is the notice that
+precedes the change, because an exit code is a contract somebody's build
+depends on.
+
 **An entry compressed with bzip2 or lzma is no longer opened.** Every limit
 here is on what a read hands back -- 64 MiB per file, a total per run, a slice
 at a time for the damage check. Python's zip reader passes the caller's length

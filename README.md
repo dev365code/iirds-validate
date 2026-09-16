@@ -250,6 +250,13 @@ on a package that sits on that line. Those changes are in
 [CHANGELOG.md](https://github.com/dev365code/iirds-validate/blob/main/CHANGELOG.md), each with the reading behind it, and a paragraph
 that moves an exit code says so in those words. If you gate a build on the exit
 code, read that file before upgrading. That much is discipline, not a gate.
+
+**Announced for 0.7.0: a command-line usage error will exit `64`, not `2`.**
+Today a mistyped option and an input the run could not read both exit `2`, so a
+build that treats `2` as "this package could not be judged" also catches its
+own broken command line and reports it as a package problem. `64` is the
+conventional value for a usage error (`EX_USAGE`); `2` keeps its present
+meaning and nothing else moves.
 What a gate holds is narrower and worth more: a rule id is a citation somebody
 else made, so what fired is compared against a committed record on every build,
 and a rule that quietly stops firing stops the build.

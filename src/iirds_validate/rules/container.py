@@ -289,7 +289,7 @@ def c15_unique_names(ctx):
 
 @rule("C16.1",
        covers=("x5-1-1-metadata-location-and-rdf-serializations#2", "x6-12-rdf-serialization#1"),
-       fix="Read the error reported alongside this: a syntax error means the markup is malformed and has to be corrected, while an encoding error means the bytes were damaged or cut short in transit and the file has to be sent again. Until it parses, no statement in it reaches a consumer.")
+       fix="Read the error reported alongside this. A syntax error means the markup is malformed and has to be corrected; an encoding error means the bytes were damaged or cut short in transit and the file has to be sent again; and a refusal to read the entry at all -- reported here as it was raised -- means nothing has looked at the markup, so there is nothing in it to correct: S14 names the entry and says what to rebuild. Until it parses, no statement in it reaches a consumer.")
 def c16_1_rdf_parses(ctx):
     for err in ctx.parse_errors:
         if err.startswith(METADATA_RDF) and rdfxml_refusal(err) is None:

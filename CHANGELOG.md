@@ -6,6 +6,68 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**An entry compressed with bzip2 or lzma is no longer opened.** Every limit
+here is on what a read hands back -- 64 MiB per file, a total per run, a slice
+at a time for the damage check. Python's zip reader passes the caller's length
+down to the decompressor for deflate and for no other method; the rest are
+decompressed whole and the result is sliced afterwards, so the slice obeys the
+limit and the allocation behind it does not. One 64 KiB read of an entry
+declaring 64 MiB: stored allocated 79,898 bytes, deflate 238,399, bzip2
+71,530,984 from an archive of 189 bytes, lzma 79,972,634 from 9,657. Through
+the whole tool at its default ceiling, a 1,292-byte container declaring two
+64 MiB bzip2 renditions cost a run 269,480,527 bytes traced and 724,271,104
+resident. Lowering a ceiling does not reach it: the overshoot is inside one
+read.
+
+`ERROR S14` now names each such entry, and says what the refusal costs -- the
+entry was not decompressed, not parsed, and not checked for damage either,
+because answering that last one would mean decompressing it. **A package
+carrying such an entry passed before and fails now**, which is the repair
+rather than a side effect of it: an entry nothing will read, passed over in
+silence, is the defect. Stored and deflate
+are unaffected, which is what `iirds pack` writes and what the containers in
+the wild use. The specification names a method for `mimetype` alone and is
+silent about the rest, so this is a refusal this project decides on its own;
+`docs/divergences.md` carries the argument, including the alternative that was
+rejected and why.
+
+The front page said a zip bomb was "refused safely -- bounded reads". That was
+true of the two methods it read and not of the two it did not. It now says
+which.
+
+**One name, fifty records in the central directory, and the damage check read
+the entry fifty times.** A ZIP's central directory is a list rather than a map,
+and nothing in the format stops two of its records from carrying one entry
+name. `zipfile` assigns into its name table as it walks that list, so the last
+record carrying a name is the one every read here resolves to and the records
+before it describe bytes nothing opens — but C1, which asks whether every entry
+comes back out again, walked the records. Measured: an 11,890-byte archive with
+fifty records naming one 8 MiB entry made the run decompress 419,431,868 bytes
+in 0.23 s, and each repetition is bought with a 46-byte record plus the name.
+The pass walks the name table now and the same archive costs 8,390,076.
+
+**The duplication is a finding of its own, S15.** C15 already reports such an
+archive for the reason the specification gives — two entries may not share a
+name inside a directory — which is a claim about the package's namespace. S15
+says what the archive does to a reader: how many records carry the name, that
+this run resolved it to the last of them, and, where the records give different
+offsets, that they describe different bytes. That last case is two whole
+entries, each consistent with its own local file header, delivered under one
+name to whichever reader picks differently, and nothing reported it: the
+archive passes S10, because every record there does describe the entry its own
+local header describes. **An archive whose directory names one entry twice
+passed before and fails now**: which of the two records a reader acts on is not
+settled by the format, so which file it received is not a thing this run can
+report, and saying nothing was the wrong answer to that.
+
+**S10's extents are one per entry a reader receives, not one per record.** Its
+last section sorts the entries by offset and compares each with the next, to
+catch data running into the following header. Fifty records for one name put
+fifty identical extents in that list, and every neighbouring pair then looked
+like two entries at one offset — forty-nine findings saying that the directory
+"gives two entries the same local file header", subject and detail naming one
+file, which collides with nothing.
+
 **The ceiling on how much content one run decompresses did not bound it.**
 `_bytes_of` read each rendition in full and charged for it afterwards, and the
 refusal that followed was memoised against that one file rather than stopping
@@ -638,12 +700,14 @@ A third list rather than a wider second one, because merging them would let
 "the word means something else here" hide inside "addressed to reading
 applications", and "hard to check" belongs in none of them.
 
-**An unpacked container no longer reports seven rules it did not run
+**An unpacked container no longer reports nine rules it did not run
 (`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
-175 rules checked`, and seven of those were the requirements about the ZIP
+175 rules checked`, and nine of those were the requirements about the ZIP
 archive itself — that it is not encrypted, that a large one uses ZIP64, that the
 first entry is an uncompressed `mimetype`, that the container sits at the root
-of the archive rather than inside a folder. Each returns at its first line when
+of the archive rather than inside a folder, that every entry is compressed with
+a method a bounded read can be made of, that the central directory carries one
+record per entry name. Each returns at its first line when
 there is no archive, and the count was incremented before it ran, so they were
 presented as checked and clean.
 
@@ -651,7 +715,7 @@ The runner said so in a note all along, in prose no test read and no consumer of
 the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
-container the count moves from 175 to 168 and the seven appear where a reader
+container the count moves from 175 to 166 and the nine appear where a reader
 and a machine both look.
 
 **Six of the seven were repaired first, and the seventh was found by counting

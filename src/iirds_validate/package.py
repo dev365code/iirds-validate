@@ -22,6 +22,8 @@ import zipfile
 from pathlib import Path
 from typing import Iterator, List, NamedTuple, Optional, Tuple
 
+from iirds import UnreadableMethod, unreadable_method
+
 from .model import METADATA_RDF, MIMETYPE_FILE, MIMETYPE_VALUE
 
 #: Read in pieces this big. Large enough that a normal entry costs one or
@@ -305,6 +307,12 @@ class Package:
         archive rather than a bound on a read: S10 compares the two records
         for every entry, through `local_headers` below.
         """
+        info = self.info(name)
+        if info is not None and unreadable_method(info) is not None:
+            # The limit below bounds what comes back and not what the read
+            # allocates, and for these methods those are different numbers.
+            # S14 reports the entry; nothing here reads it.
+            raise UnreadableMethod(name, info.compress_type)
         out = bytearray()
         with self._zip.open(name) as handle:
             while len(out) <= limit:
@@ -364,7 +372,18 @@ class Package:
         was the ordinary reading -- the branch that produced it was marked
         as defensive.
         """
-        for info in self._zip.infolist():
+        # One entry per name, not one per central-directory record. The
+        # directory may carry the same name many times, and `zipfile` resolves
+        # a name to the last of them -- so the others describe nothing any
+        # reader here will open, and checking them charges this pass once per
+        # record for one local header. Measured: 10,714 bytes on disk, fifty
+        # records over one header declaring 8 MiB, 419,430,400 bytes
+        # decompressed. S10 reports the duplicate records themselves.
+        for info in self._zip.NameToInfo.values():
+            if unreadable_method(info) is not None:
+                # Not read, so not judged either way. S14 says so; answering
+                # it here would mean decompressing the entry.
+                continue
             try:
                 with self._zip.open(info) as handle:
                     while handle.read(_INTEGRITY_CHUNK):

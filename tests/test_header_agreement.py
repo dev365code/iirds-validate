@@ -281,20 +281,51 @@ def test_reads_stay_bounded_on_a_hostile_name_length(tmp_path):
     assert [f.violation.subject for f in findings] == [SPARE]
 
 
-def test_two_directory_entries_sharing_one_local_header_are_said_so(tmp_path):
-    """Two central records, the same name, the same offset: a reader that
-    trusts the directory hands out one file twice, and the second record's
-    entry does not exist. Said as what it is rather than as data running
-    into a neighbour."""
+def test_two_directory_records_sharing_one_local_header_are_one_name(tmp_path):
+    """Two central records, the same name, the same offset -- and not S10's.
+
+    This rule used to claim it, as "the central directory gives two entries the
+    same local file header", and the finding named the same file as its subject
+    and in its detail. That was not a slip in the wording: reaching that check
+    means both records agreed with the local header they point at, agreement
+    includes the name, and a header declares one name -- so "two entries"
+    could only ever be one name listed twice, which is a fact about the
+    directory rather than about any local header. S15 states it, with the
+    record count and which one a reader resolves to.
+
+    What this rule still says about a bent offset is one line up and is
+    checked by `test_a_record_pointed_at_another_entrys_header_is_said_so`:
+    move a record's offset and leave its name alone, and the name disagreement
+    fires before an extent is ever recorded.
+    """
     def change(data):
         other = Z.local_header(data, OTHER)
         central = Z.central_entry(data, SPARE)
         data = Z.bend(data, central + 46, OTHER.encode("ascii"))
         return Z.bend(data, central + 42, Z.le(other, 4))
+    report = runner.check(patched(tmp_path, change))
+    assert s10(report) == [], [(f.violation.subject, f.violation.detail) for f in s10(report)]
+    said = [f for f in report.findings if f.rule.id == "S15"]
+    assert [f.violation.subject for f in said] == [OTHER], \
+        [f.violation.subject for f in said]
+    assert "2 records" in said[0].violation.detail, said[0].violation.detail
+
+
+def test_a_record_pointed_at_another_entrys_header_is_said_so(tmp_path):
+    """The bent offset on its own, with the record's name left as it was.
+
+    This is the shape the removed check was reaching for and never saw: one
+    record describing an entry that is not where it says it is. The local
+    header at the new offset declares a different name, so the two records of
+    that entry disagree, which is exactly what this rule is about.
+    """
+    def change(data):
+        other = Z.local_header(data, OTHER)
+        return Z.bend(data, Z.central_entry(data, SPARE) + 42, Z.le(other, 4))
     findings = s10(runner.check(patched(tmp_path, change)))
-    assert [f.violation.message for f in findings] == [
-        "the central directory gives two entries the same local file header"]
-    assert findings[0].violation.subject == OTHER
+    assert [f.violation.subject for f in findings] == [SPARE]
+    assert findings[0].violation.detail == (
+        "file name: directory %s, local header %s" % (SPARE, OTHER))
 
 
 def test_an_offset_the_directory_cannot_express_yields_no_header(tmp_path):

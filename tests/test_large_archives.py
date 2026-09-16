@@ -137,7 +137,7 @@ def test_neither_rule_is_claimed_against_a_directory(tmp_path):
 
 #: The requirements whose subject is the ZIP archive itself. An unpacked
 #: container cannot answer them, and the runner has always said so in a note.
-ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10")
+ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10", "S14", "S15")
 
 
 def _unpacked(tmp_path):
@@ -156,7 +156,7 @@ def _unpacked(tmp_path):
 def test_the_archive_rules_are_reported_as_not_assessed_and_not_as_checked(tmp_path):
     """"Reported as not assessed, never as passed" was a note and nothing else.
 
-    The runner counts a rule as checked before running it, and these seven return
+    The runner counts a rule as checked before running it, and these nine return
     at their first line when the container is not an archive -- so an unpacked
     directory came back `PASS, 175 rules checked` with "the archive must not be
     encrypted" and "large archives must use ZIP64" among the hundred and
@@ -189,7 +189,7 @@ def test_the_note_and_the_report_name_the_same_rules(tmp_path):
 
 def test_a_packed_container_still_checks_them(tmp_path):
     """The control: these rules are not disabled, they are inapplicable to a
-    directory. A real archive answers all seven."""
+    directory. A real archive answers all nine."""
     package = build_package(tmp_path, "packed.iirds")
     report = runner.check(package)
     assert report.not_applicable["unpacked"] == [], report.not_applicable

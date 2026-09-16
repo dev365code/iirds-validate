@@ -129,6 +129,62 @@ class IirdsError(Exception):
     """The file is not something this library can read as an iiRDS package."""
 
 
+class UnreadableMethod(IirdsError):
+    """An entry compressed with a method this library will not decompress."""
+
+    def __init__(self, name: str, method: int):
+        self.name = name
+        self.method = method
+        super().__init__("%s is compressed with %s, which is not read here"
+                         % (name, describe_method(method)))
+
+
+#: The two methods a read here can be bounded for.
+#:
+#: Every limit in this project -- bytes per file, bytes per run, the slice the
+#: damage check asks for -- bounds what a read hands back. CPython's
+#: `zipfile.ZipExtFile._read1` passes a length to the decompressor for DEFLATE
+#: and for nothing else; every other method is decompressed whole and the
+#: result sliced afterwards, so the slicing happens after the allocation.
+#: Measured on 3.9.6, one entry declaring 64 MiB, one `read(65536)`: stored
+#: 79,898 bytes allocated, deflate 238,399, bzip2 71,530,984 from an archive of
+#: 189 bytes, lzma 79,972,634 from 9,657. It is the same on 3.12 and 3.13, and
+#: larger there.
+#:
+#: Driving the decompressors directly, with the length limit they do support,
+#: means reimplementing zip's framing around them -- a larger risk than the one
+#: it removes, in the layer that opens files from strangers. So the entries are
+#: refused, which is the only bound that can be shown to hold, and the refusal
+#: is reported rather than silent.
+READ_METHODS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
+
+#: What the format calls the methods it assigns, so a report can name the one
+#: an entry used. A number with no name here is reported as the number: the
+#: list is for the reader, and being out of date must not change the verdict.
+_METHOD_NAMES = {0: "stored", 1: "shrunk", 6: "imploded", 8: "deflate",
+                 9: "deflate64", 12: "bzip2", 14: "lzma", 93: "zstd",
+                 95: "xz", 96: "jpeg", 97: "wavpack", 98: "ppmd", 99: "aes"}
+
+
+def describe_method(method: int) -> str:
+    """The compression method, named where the format names it."""
+    known = _METHOD_NAMES.get(method)
+    return "%s (method %d)" % (known, method) if known else "method %d" % method
+
+
+def unreadable_method(info) -> Optional[str]:
+    """Why this entry will not be decompressed, or None when it will be.
+
+    Read from the central directory, because that is the record `zipfile`
+    decompresses by. A local header naming a different method is a disagreement
+    between the archive's two accounts of one entry, which is a different fault
+    and has its own rule.
+    """
+    if info.compress_type in READ_METHODS:
+        return None
+    return describe_method(info.compress_type)
+
+
 class Package:
     """An opened iiRDS container. Use as a context manager, like ZipFile.
 
@@ -156,7 +212,14 @@ class Package:
         """Every entry in the container, in archive order."""
         return self._zip.namelist()
 
+    def _readable(self, name: str) -> None:
+        """Raise unless this entry is one a bounded read can be made of."""
+        why = unreadable_method(self._zip.getinfo(name))
+        if why is not None:
+            raise UnreadableMethod(name, self._zip.getinfo(name).compress_type)
+
     def read(self, name: str) -> bytes:
+        self._readable(name)
         return self._zip.read(name)
 
     #: How much is pulled out of the decompressor at a time.
@@ -171,6 +234,7 @@ class Package:
         makes the stream raise at the end of the data, and that is a broken
         archive, not an oversized document.
         """
+        self._readable(name)
         out = bytearray()
         with self._zip.open(name) as handle:
             while len(out) <= limit:
@@ -306,6 +370,9 @@ class Package:
         if name not in self._zip.namelist():
             raise IirdsError("%s names %s, and the package has no such entry"
                              % (node, name))
+        # Before the handle is handed out, not after: the caller reads from it
+        # and no limit it passes would bound the read.
+        self._readable(name)
         return self._zip.open(name)
 
     @property

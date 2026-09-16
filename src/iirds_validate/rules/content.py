@@ -21,6 +21,8 @@ import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
 
+from iirds import UnreadableMethod
+
 from .. import terms as T
 from ..model import Violation
 from ..package import ContentBudgetExceeded, entry_named
@@ -198,6 +200,11 @@ def _bytes_of(ctx, name):
             ctx.package.charge(len(raw))
             memo[name] = (raw, "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
                                if oversize else None)
+        except UnreadableMethod as exc:
+            # S14 reports the entry and says why. B1 says the same thing in
+            # its own place, because a reader looking at a rendition wants to
+            # know there why it was not parsed.
+            memo[name] = (b"", "not read: %s" % exc)
         except ContentBudgetExceeded as exc:
             # The one read allowed to cross the ceiling, and it cannot be
             # avoided: what a file costs is not knowable without reading it,

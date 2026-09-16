@@ -34,16 +34,20 @@ from ._package import (
     PACKAGE_BASE,
     IirdsError,
     Package,
+    UnreadableMethod,
+    describe_method,
     instances_of,
     label_of,
     source_of,
     subclasses_of,
+    unreadable_method,
 )
 from ._package import open_package as open  # noqa: A001 - deliberate, like gzip.open
 
 __version__ = "0.6.0"
 __all__ = ["IIRDS", "IirdsError", "MAX_METADATA_BYTES", "METADATA_JSONLD",
            "METADATA_RDF", "NOT_RDFXML", "PACKAGE_BASE", "PackError", "Package",
-           "__version__", "instances_of", "is_absolute_name",
+           "UnreadableMethod", "__version__", "describe_method", "instances_of", "is_absolute_name",
            "is_rdfxml_document_element", "label_of", "merge_sources", "open", "pack",
-           "parse_metadata", "source_of", "subclasses_of", "write_metadata"]
+           "parse_metadata", "source_of", "subclasses_of", "unreadable_method",
+           "write_metadata"]

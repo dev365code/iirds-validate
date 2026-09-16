@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=3ce970ee" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 191 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=846ed250" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 193 rules checked" width="100%">
 
 ```console
 $ pip install iirds
@@ -70,7 +70,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  205 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+  207 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
 $ echo $?
 1
 ```
@@ -85,7 +85,7 @@ $ echo $?
 | metadata with no `iirds:Package` root | `ERROR M3` — zero leaves the package unidentified, two leave it ambiguous |
 | a Package that identifies no product variant while every Document looks fine | `ERROR R13` — the Package itself must say what it documents |
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
-| a zip bomb, or XML with external entities | refused safely — bounded reads, no entity expansion |
+| a zip bomb, or XML with external entities | refused safely — every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded |
 
 Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
 
@@ -154,7 +154,7 @@ flowchart LR
 
 ## Honest coverage
 
-> **At a glance** — 233 rules across five editions and three profiles · 169 SHACL shapes
+> **At a glance** — 235 rules across five editions and three profiles · 169 SHACL shapes
 > carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
 > the single-file `.pyz` · every number in this section is read by a test that fails the
 > build when it goes stale.
@@ -163,18 +163,18 @@ flowchart LR
 $ iirds rules
 container  19/19    the ZIP and its layout  +4 of its own
 schema     135/135  the metadata graph  +35 of its own
-system     3/3      the run itself  +10 of its own
+system     3/3      the run itself  +12 of its own
 content    -        iiRDS XHTML5 (Appendix B)  +11 of its own
 lint       -        will a consumer be able to use it  +16 of its own
 ```
 
-157 of 157 catalogued rules, plus 76 of this project's own.
+157 of 157 catalogued rules, plus 78 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 4 |
 | schema (M\*) | 135 / 135 | 35 |
-| system (S\*) | 3 / 3 | 10 |
+| system (S\*) | 3 / 3 | 12 |
 | content (B\*) | — | 11 |
 | interoperability (L\*) | — | 16 |
 
@@ -188,12 +188,12 @@ re-measured on every release.
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
-- **Every finding says what to do about it.** All 233 rules carry one imperative
+- **Every finding says what to do about it.** All 235 rules carry one imperative
   sentence naming the change, and a test refuses a rule that does not.
 - **Every rule has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 232 of the 233 have — the remaining one is a `MAY` with
+  produce a finding, and 234 of the 235 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 76 rules this project invented have no second
+- **What is not established.** The 78 rules this project invented have no second
   implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
   records where this project reads the specification differently, with reasons.
 
@@ -266,7 +266,7 @@ typed into prose goes stale on the day the thing it counts moves:
 | `iirds check` exits `0` when the package drew no error (with `-W`, a warning is one) | `iirds check fixtures/good.iirds; echo $?` | `0` |
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
-| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 191 run and 42 excused, no overlap, together the whole registry of 233; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
+| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 193 run and 42 excused, no overlap, together the whole registry of 235; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
 | The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
 | The ids that fire are the recorded ones | `make check` — the gate is `tools/rule_coverage.py --check`, which reads what a run observed, so a fresh checkout has nothing for it to read yet | a rule that stops firing stops the build |

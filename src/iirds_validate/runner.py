@@ -30,7 +30,7 @@ ALL_KINDS = ("container", "schema", "content", "lint", "system")
 #: about the archive's own layout, and was left out when the other six moved
 #: here -- so an unpacked container went on reporting it among the rules it had
 #: checked. The unreached-line count is what found it.
-ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10")
+ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10", "S14", "S15")
 
 
 def load(path, version: Optional[str] = None) -> Context:

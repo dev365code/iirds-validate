@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import posixpath
 
+from iirds import unreadable_method
+
 from ..model import VARIANTS, VERSIONS, Violation
 from ..package import MAX_LINK_HOPS, descriptor_readings
 from ..registry import rule
@@ -271,6 +273,44 @@ def _disagreements(info, header, descriptor):
                 yield ("%s: directory " + form + ", local header " + form) % (label, ours, theirs)
 
 
+@rule("S14", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="cause",
+      title="every entry must be compressed with a method a bounded read can be made of",
+      fix="Rebuild the archive with deflate, or store the entry uncompressed; `iirds pack` "
+          "writes deflate. Nothing is wrong with the file itself -- it was not opened, so "
+          "nothing here has an opinion about its contents -- and nothing about it is refused "
+          "by the specification either. What cannot be done is read it within a stated limit: "
+          "the decompressors for these methods are not given the length the caller asked for, "
+          "so the entry comes out whole or not at all, and a container from a stranger is the "
+          "wrong place to find out how large whole is. Every consumer that applies the same "
+          "guard will pass this entry over as well, so a delivery that relies on it is a "
+          "delivery that arrives incomplete.")
+def s14_entries_use_a_method_that_can_be_read(ctx):
+    """Refused before opening, on the central directory's own record.
+
+    This is this project's own decision and not a reading of the
+    specification, which names a method only for `mimetype` (stored) and is
+    silent about the rest; `docs/divergences.md` carries the argument. What
+    forces it is measurable: every limit here bounds what a read returns, and
+    for these methods the return is sliced out of a whole decompressed entry.
+    A 189-byte archive declaring 64 MiB cost 71,530,984 bytes in one
+    `read(65536)`, and lowering a ceiling does not touch that.
+
+    Reported per entry rather than for the container: the rest of the package
+    is judged normally, and naming the entry is what lets a sender fix it.
+    """
+    package = ctx.package
+    for info in package.infos:
+        why = unreadable_method(info)
+        if why is not None:
+            yield Violation("this entry was not read: its compression method cannot be "
+                            "read within a stated limit",
+                            subject=info.filename,
+                            detail="compressed with %s; not decompressed, not parsed, and "
+                                   "not checked for damage either -- answering that would "
+                                   "mean decompressing it" % why)
+
+
 @rule("S10", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
       diagnosis="cause",
       title="every local file header must describe the entry the central directory describes",
@@ -297,9 +337,15 @@ def s10_local_headers_agree_with_the_directory(ctx):
     between writers and between the two records legitimately and are not
     compared. Then the entries' extents: data that runs into the next
     entry's header is handed out by a trusting reader as this entry's.
+
+    One extent per entry a reader receives, which is one per name. A directory
+    that lists a name twice is not this rule's business -- both records can
+    describe the local header they point at perfectly, and S15 reports the
+    duplication -- but it was reaching this rule as a flood of collisions
+    between an entry and its own copy.
     """
     package = ctx.package
-    extents = []
+    resolved = {}
     for info, header, descriptor in package.local_headers():
         if header is None:
             yield Violation("no local file header at the offset the central directory gives",
@@ -310,14 +356,31 @@ def s10_local_headers_agree_with_the_directory(ctx):
             yield Violation("local file header disagrees with the central directory",
                             subject=info.filename, detail="; ".join(found))
             continue
-        extents.append((info.header_offset, header.data_start + info.compress_size, info.filename))
-    extents.sort()
-    for (start, end, name), (following, _end, other) in zip(extents, extents[1:]):
-        if following == start:
-            yield Violation("the central directory gives two entries the same local file header",
-                            subject=other, detail="offset %d, also the header of %s"
-                                                  % (start, name))
-        elif end > following:
+        # One extent per entry a reader receives, which is one per *name* and
+        # not one per record: the directory may list a name many times, and
+        # `zipfile` assigns into its name table as it walks, so the last
+        # record carrying a name is the entry every read here resolves to.
+        # Appending each record instead put fifty identical extents in the
+        # list below, where the pairing compared each with its own copy and
+        # reported forty-nine times that the directory "gives two entries the
+        # same local file header" -- subject and detail naming one file, which
+        # collides with nothing. S15 states that duplication once, as the fact
+        # about the directory that it is.
+        resolved[info.filename] = (info.header_offset,
+                                   header.data_start + info.compress_size, info.filename)
+    extents = sorted(resolved.values())
+    # Nothing here for two extents at one offset, and there can be nothing: an
+    # extent is only reached by a record that agreed with the local header it
+    # points at, and that agreement includes the name -- so two records at one
+    # offset both carry the one name that header declares, which is one entry
+    # after the keying above. The branch that used to stand here said "the
+    # central directory gives two entries the same local file header" and named
+    # the same file as its subject and in its detail, on every archive that
+    # could reach it, because the two entries were always one name. Bending a
+    # record's offset without its name reports the name disagreement above
+    # instead, three lines earlier. S15 reports the shape itself, once.
+    for (_start, end, name), (following, _end, _other) in zip(extents, extents[1:]):
+        if end > following:
             yield Violation("entry data, as the central directory describes it, runs into the "
                             "next entry", subject=name,
                             detail="data ends at %d, the next local header starts at %d"
@@ -327,6 +390,70 @@ def s10_local_headers_agree_with_the_directory(ctx):
                         "central directory", subject=extents[-1][2],
                         detail="data ends at %d, the central directory starts at %d"
                                % (extents[-1][1], package.directory_offset))
+
+
+@rule("S15", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="cause",
+      title="the central directory must carry one record per entry name",
+      fix="Rebuild the archive from the files you meant to ship; `iirds pack` writes one "
+          "record per name. A ZIP's central directory is a list rather than a map, and "
+          "nothing in the format stops two of its records from carrying one name -- so "
+          "which bytes that name means is decided by whichever record the reader kept, "
+          "and readers do not agree. This run kept the last, as Python's zipfile does. "
+          "Editing the directory by hand is not the repair: the records a reader stops "
+          "resolving to still have their data sitting in the archive, and the next tool "
+          "to rewrite the index can find it again.")
+def s15_one_record_per_name(ctx):
+    """A name the directory carries twice is a name with two meanings.
+
+    C15 reports the same archive and claims something else: that two entries
+    may not share a name inside a directory, which is the specification's
+    sentence and is about the package's namespace. This is about the archive.
+    `zipfile` resolves a name by walking the central directory and assigning
+    into its name table as it goes, so the last record carrying a name is the
+    entry every read here reaches, and the records before it describe bytes
+    nothing here opens. Where those records give different offsets they
+    describe different bytes -- two whole entries, each with its own local file
+    header and its own data, each consistent, and one name over both. Nothing
+    is damaged and nothing disagrees with anything: S10 passes such an archive,
+    because every record does describe the entry its own local header
+    describes.
+
+    Reported separately from C15 rather than folded into it because the two
+    remedies differ. C15's is to rename or drop an entry; this one's is to
+    distrust the index, which is a different thing to tell a sender and the
+    only one that covers the case where the duplicate records point somewhere
+    else.
+
+    It is also what such an archive costs a pass that walks records instead of
+    names. C1 opens every entry and reads it to the end to ask whether it comes
+    back out again, and a name carried fifty times was read fifty times: from
+    11,890 bytes on disk, one whole run decompressed 419,431,868 bytes in
+    0.23 s, of which 419,430,400 was that one 8 MiB entry over and over.
+    `Package.testzip` walks the name table now and the same run decompresses
+    8,390,076, so the fifty records are reported here rather than read.
+    """
+    records = {}
+    for info in ctx.package.infos:
+        records.setdefault(info.filename, []).append(info.header_offset)
+    for name, offsets in records.items():
+        if len(offsets) < 2:
+            continue
+        # The last, because that is the one `zipfile` leaves in its name table
+        # and therefore the one this whole run judged. Saying which record won
+        # is the part a sender cannot work out from "duplicate".
+        distinct = set(offsets)
+        if len(distinct) == 1:
+            detail = ("%d records, all at offset %d; a reader resolves the name to the last "
+                      "of them, and every record before it describes an entry nothing will open"
+                      % (len(offsets), offsets[-1]))
+        else:
+            detail = ("%d records, at %d different offsets; a reader resolves the name to the "
+                      "last of them, at offset %d, so the records describe different bytes -- a "
+                      "reader that kept another of them receives a different file under this name"
+                      % (len(offsets), len(distinct), offsets[-1]))
+        yield Violation("the central directory carries more than one record for this entry name",
+                        subject=name, detail=detail)
 
 
 @rule("S9", kind="system", prio="MUST", versions=(), variants=(),

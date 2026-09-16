@@ -700,8 +700,9 @@ for _rid in ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11")
     NOT_EXPRESSIBLE[_rid] = "content: the subject is XHTML files inside the archive"
 for _rid in ("S1", "S2", "S3", "S9", "S11", "S12", "S13"):
     NOT_EXPRESSIBLE[_rid] = "system: the subject is the run itself, not the graph"
-for _rid in ("S6", "S7", "S8", "S10"):
-    NOT_EXPRESSIBLE[_rid] = "archive: entry names, encryption bits, ZIP64 records, local headers"
+for _rid in ("S6", "S7", "S8", "S10", "S14", "S15"):
+    NOT_EXPRESSIBLE[_rid] = ("archive: entry names, encryption bits, ZIP64 records, local "
+                             "headers, compression methods, central-directory records")
 NOT_EXPRESSIBLE["R37"] = ("graph\u00d7ZIP join: asks which container entries no iirds:source "
                           "names, and a shapes file has no entry list")
 for _rid in ("L2", "L11", "L12", "R8", "R9"):

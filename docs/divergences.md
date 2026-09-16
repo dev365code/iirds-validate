@@ -206,6 +206,63 @@ sentence, there is no defence.
 | M22.1 | counts roles on the party in the graph | the reference counts child elements, so a party written as several repeated `<iirds:Party rdf:about="…"/>` declarations is counted many times; both find the sample's role-less party, but only one of them says so once |
 | M30 | only flags redeclared **iiRDS** terms | the reference rejects any `subClassOf`/`domain`/`range` element at all, which would forbid the proprietary subclasses section 7 explicitly permits |
 
+## What this tool refuses to read, and why that is its own decision
+
+**S14 — an entry compressed with anything but stored or deflate is not opened.**
+
+This is the one refusal here that no reading of the specification produces. The
+specification names a compression method for exactly one entry, `mimetype`,
+which is stored so that a consumer can identify the container without
+decompressing anything. About every other entry it is silent, and the archive
+format permits bzip2, lzma and several more. A package that uses them is not
+non-conformant by the specification's own words, and this tool refuses to read
+it anyway. The reason is not a reading of the standard; it is a property of
+reading itself, and it is stated here because a reader who meets `ERROR S14`
+deserves to find the argument rather than infer one.
+
+Every limit in this project is a limit on what a read hands back: 64 MiB per
+file, a total per run, a slice at a time for the damage check. Python's zip
+reader passes the caller's length down to the decompressor for deflate, and for
+no other method — `zipfile.ZipExtFile._read1` calls `decompress(data, n)` in the
+deflate branch and `decompress(data)` in the branch beside it, then slices the
+result to the length that was asked for. The slicing happens after the
+allocation. So for those methods the number a caller passes bounds what it
+receives and says nothing about what the call costs.
+
+Measured on the interpreter this project supports, one entry declaring 64 MiB,
+one `read(65536)`:
+
+| method | archive on disk | allocated by one 64 KiB read |
+|---|---|---|
+| stored | 67,108,970 | 79,898 |
+| deflate | 65,339 | 238,399 |
+| bzip2 | **189** | **71,530,984** |
+| lzma | **9,657** | **79,972,634** |
+
+Through the whole tool at its default ceiling, a 1,292-byte container declaring
+two 64 MiB bzip2 renditions cost a run 269,480,527 bytes traced and 724,271,104
+resident. Lowering the ceiling does not help, because the overshoot happens
+inside a single read; there is no ceiling to put it under.
+
+The alternative was to drive the decompressors directly. `bz2` and `lzma` both
+accept a maximum length, so the bound exists at that layer — but reaching it
+means reimplementing the archive format's framing around them: which bytes
+belong to the entry, where the stream ends, what a data descriptor defers. That
+is new code, in the layer that opens files handed over by strangers, written to
+remove a risk that refusing removes completely. The refusal is the only bound
+here that can be shown to hold, so it is the one taken.
+
+What the refusal costs is stated rather than hidden. The entry is not
+decompressed, not parsed, and not reported as damaged or undamaged either —
+that last one because answering it would mean decompressing the entry, which is
+the thing being refused. A delivery that depends on such an entry arrives
+incomplete here, and S14's remedy says so and says to rebuild with deflate.
+
+Deliberately not claimed: what other implementations do with these methods. No
+second reader is vendored here to measure, and a sentence about somebody else's
+tool that this repository cannot demonstrate is the kind of sentence this
+document exists to avoid.
+
 ## Rules where this project is more lenient, deliberately
 
 Each of these was stricter until the reference's own fixtures showed the cost —

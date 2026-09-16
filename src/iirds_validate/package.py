@@ -14,12 +14,15 @@ and the report says so too, rather than quietly passing them.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
 import posixpath
 import stat
 import zipfile
 from pathlib import Path
 from typing import Iterator, List, NamedTuple, Optional, Tuple
+
+from iirds import UnreadableMethod, unreadable_method
 
 from .model import METADATA_RDF, MIMETYPE_FILE, MIMETYPE_VALUE
 
@@ -43,6 +46,24 @@ MAX_CONTENT_TOTAL_BYTES = int(os.environ.get("IIRDS_CONTENT_BUDGET") or 512 * 10
 #: Read once at import, and named in S9's remedy: a delivery larger than the
 #: default is not wrong, it is large, and the person checking it decides
 #: what their machine can hold rather than this module deciding for them.
+
+#: The ceiling on what a run reads from META-INF looking for a package's own
+#: ontology. A second budget, deliberately: `charge` below is the ceiling on
+#: *content* and only content pays into it, because a first version counted
+#: metadata too and a run died reading metadata.rdf with the death surfacing
+#: as a parse error rather than as the budget it was. A reader asking what a
+#: run will read in total needs both numbers, which is why each says so.
+#:
+#: Eight mebibytes is fifty times `iirds-core.rdf`, the ontology the standard
+#: itself publishes, and twenty-five times the whole bundled set. A package's
+#: own extension is smaller than the standard's; past this it is not an
+#: ontology, it is something else in the same directory.
+MAX_SIDE_BYTES = 8 * 1024 * 1024
+
+#: Read size while checking that every entry decompresses. The check reads the
+#: whole archive by construction -- that is what it is -- so the only thing to
+#: choose is whether an entry arrives in memory whole. It does not.
+_INTEGRITY_CHUNK = 1 << 16
 
 
 class ContentBudgetExceeded(Exception):
@@ -119,6 +140,37 @@ def entry_or_reason(source: str):
     if name == ".." or name.startswith("../"):
         return None, ESCAPES
     return name, None
+
+
+def file_digest(path):
+    """(sha256 of the file, its size, or None and why not).
+
+    Streamed, because a container may be a quarter of a gigabyte and this runs
+    on every check. What it answers is one question and only that one: the
+    same bytes, or different bytes. It is **not** the identity of a package --
+    recompressing the same content changes it while the verdict does not -- so
+    nothing may read it as "a different package".
+
+    A directory has no single file to hash, and an unreadable path has no
+    bytes at all. Both come back as None with the reason said, rather than as
+    a digest of nothing.
+    """
+    path = Path(path)
+    if path.is_dir():
+        return None, None, "an unpacked container is not one file, so it has no digest"
+    running = hashlib.sha256()
+    size = 0
+    try:
+        with open(path, "rb") as handle:
+            while True:
+                chunk = handle.read(_INTEGRITY_CHUNK)
+                if not chunk:
+                    break
+                running.update(chunk)
+                size += len(chunk)
+    except OSError as exc:                        # noqa: BLE001 -- reported, not raised
+        return None, None, "the bytes could not be read (%s)" % type(exc).__name__
+    return "sha256:" + running.hexdigest(), size, None
 
 
 class PackageError(Exception):
@@ -255,6 +307,12 @@ class Package:
         archive rather than a bound on a read: S10 compares the two records
         for every entry, through `local_headers` below.
         """
+        info = self.info(name)
+        if info is not None and unreadable_method(info) is not None:
+            # The limit below bounds what comes back and not what the read
+            # allocates, and for these methods those are different numbers.
+            # S14 reports the entry; nothing here reads it.
+            raise UnreadableMethod(name, info.compress_type)
         out = bytearray()
         with self._zip.open(name) as handle:
             while len(out) <= limit:
@@ -274,6 +332,10 @@ class Package:
         the death surfaced as a parse error on the metadata rather than as
         the budget it was. Metadata and mimetype have their own gates; the
         ceiling is on content, and only content pays into it.
+
+        The search for a package's own ontology under META-INF has its own,
+        `MAX_SIDE_BYTES`, for that reason and not by oversight. Two ceilings,
+        and what a run will read in total is their sum.
         """
         self.content_read = getattr(self, "content_read", 0) + count
         if self.content_read > MAX_CONTENT_TOTAL_BYTES:
@@ -295,11 +357,40 @@ class Package:
         return [i.filename for i in self.infos if not i.is_dir()]
 
     def testzip(self) -> Optional[str]:
-        """Name of the first corrupt entry, or None."""
-        try:
-            return self._zip.testzip()
-        except Exception as exc:                       # pragma: no cover - defensive
-            return str(exc)
+        """Name of the first entry that will not come back out, or None.
+
+        Not `ZipFile.testzip`, which returns that name for one kind of damage
+        and raises for the other: a CRC that does not match is returned, a
+        deflate stream that will not decode is raised, and the two are the
+        same fact about the same file. The raise used to be caught here and
+        returned in the name's place, so C1 reported
+
+            ZIP archive is corrupt: Error -3 while decompressing data
+
+        naming no file, on an archive of any size. A flipped byte inside
+        compressed data is the ordinary way an archive is damaged, so that
+        was the ordinary reading -- the branch that produced it was marked
+        as defensive.
+        """
+        # One entry per name, not one per central-directory record. The
+        # directory may carry the same name many times, and `zipfile` resolves
+        # a name to the last of them -- so the others describe nothing any
+        # reader here will open, and checking them charges this pass once per
+        # record for one local header. Measured: 10,714 bytes on disk, fifty
+        # records over one header declaring 8 MiB, 419,430,400 bytes
+        # decompressed. S10 reports the duplicate records themselves.
+        for info in self._zip.NameToInfo.values():
+            if unreadable_method(info) is not None:
+                # Not read, so not judged either way. S14 says so; answering
+                # it here would mean decompressing the entry.
+                continue
+            try:
+                with self._zip.open(info) as handle:
+                    while handle.read(_INTEGRITY_CHUNK):
+                        pass
+            except Exception:
+                return info.filename
+        return None
 
 
 class _FileInfo:

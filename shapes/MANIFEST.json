@@ -1,6 +1,6 @@
 {
  "_generated_by": "tools/emit_shacl.py",
- "_shapes_version": "0.6.1",
+ "_shapes_version": "0.6.2",
  "_edition": "1.3",
  "_catalogue_commit": "0bcf19ddaec369289f128f3016c5a3c3f0c95f4d",
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",
@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 28,
   "deferred_v1.1": 9,
-  "not_expressible": 47,
+  "not_expressible": 49,
   "noop": 1
  },
  "core_emitted": [
@@ -225,10 +225,12 @@
   "S2": "system: the subject is the run itself, not the graph",
   "S3": "system: the subject is the run itself, not the graph",
   "S9": "system: the subject is the run itself, not the graph",
-  "S6": "archive: entry names, encryption bits, ZIP64 records, local headers",
-  "S7": "archive: entry names, encryption bits, ZIP64 records, local headers",
-  "S8": "archive: entry names, encryption bits, ZIP64 records, local headers",
-  "S10": "archive: entry names, encryption bits, ZIP64 records, local headers",
+  "S6": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
+  "S7": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
+  "S8": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
+  "S10": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
+  "S14": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
+  "S15": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
   "L2": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L11": "graph×ZIP join: the verdict depends on which files the archive carries",
   "L12": "graph×ZIP join: the verdict depends on which files the archive carries",

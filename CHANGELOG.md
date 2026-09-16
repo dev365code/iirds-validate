@@ -4,6 +4,67 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.6.2 — 2026-09-17
+
+**Who should take this release:** anyone who checks `.iirds` files they did not
+build themselves. Every release up to 0.6.1 can be made to spend far more time
+and memory on a container than its size suggests, by a container that says so
+in its own records.
+
+**Two kinds of package that passed on 0.6.1 fail on 0.6.2**, and that is the
+repair rather than a side effect of it. An entry compressed with bzip2 or lzma
+now draws `ERROR S14`: those entries cannot be read within a stated limit, so
+this release does not open them at all, and an entry nothing will read is worth
+saying rather than passing over. An archive whose central directory carries one
+name in more than one record now draws `ERROR S15`: which of those records a
+reader acts on is not settled by the format, so which file was checked is not
+something a run can honestly report.
+
+Two new rules, then, and no rule's reading of the specification changed: these
+two carry no specification reference at all. The exit codes mean what they
+meant.
+
+**Security. A container of no size could make a run decompress without bound.**
+The ceiling on how much content one run reads existed and did not hold: each
+rendition was read in full and charged for afterwards, and the refusal that
+followed was remembered against that one file rather than stopping the run, so
+every rendition past the ceiling was read as well. A 49,510-byte archive
+declaring forty one-megabyte renditions drew 41,945,847 bytes of decompression
+against a two-megabyte ceiling. Past the ceiling a rendition is now refused
+without being read. S9 has always said the renditions past the ceiling "were
+not examined"; now they have not been.
+
+**Security. An entry a few hundred bytes long could make a run allocate
+hundreds of megabytes.** Every limit here bounds what a read hands back. Python
+passes the caller's length to the decompressor for deflate and for no other
+method; the rest are decompressed whole and the result sliced afterwards, so
+the slice obeys the limit and the allocation behind it does not. One 64 KiB
+read of an entry declaring 64 MiB allocated 79,898 bytes when stored, 238,399
+when deflated, 71,530,984 from a 189-byte bzip2 entry and 79,972,634 from a
+9,657-byte lzma one. Lowering `IIRDS_CONTENT_BUDGET` does not reach it, because
+the overshoot happens inside one read. Those entries are no longer opened, and
+`docs/divergences.md` carries the argument for refusing what the specification
+permits, including the alternative that was rejected.
+
+**Security. One entry could be decompressed once per directory record.** A ZIP
+central directory is a list of records, not a set of names, and the check that
+asks whether the archive is damaged walked the records. An 11,890-byte archive
+with fifty records naming one 8 MiB entry made a run decompress 419,431,868
+bytes; each repetition costs the sender a 46-byte record. The check walks the
+name table now and the same archive costs 8,390,076.
+
+`SECURITY.md` no longer implies that the ceiling bounds what a whole run
+decompresses. It cannot: asking whether an archive is damaged means opening
+every entry, so a run reads the whole declared size once however small the
+ceiling is. That pass asks for a bounded slice at a time and keeps none of it.
+The front page said a zip bomb was "refused safely — bounded reads"; that was
+true of the two methods it read and not of the two it did not, and it now says
+which.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: the two rules it adds carry no specification
+reference, because neither is a reading of the standard.
+
 ## 0.6.1 — 2026-09-11
 
 **Who should take this release:** anyone on 0.6.0 or earlier who checks an

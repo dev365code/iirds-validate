@@ -593,21 +593,21 @@ def test_a_command_that_reads_no_content_does_not_claim_to_have_asked(tmp_path):
     so the report listed it among the rules the run had checked. A question
     nobody asked, counted as answered, is what `ARCHIVE_ONLY` exists for one
     layer out.
-    """
-    import zipfile
 
-    package = _one_rendition(tmp_path, "lint.iirds")
-    unpacked = tmp_path / "unpacked"
-    with zipfile.ZipFile(package) as archive:
-        archive.extractall(unpacked)
-    (unpacked / "content" / "r.xhtml").chmod(0o000)
-    try:
-        assert "S16" in runner.run(unpacked, runner.ALL_KINDS).ran
-        lint = runner.lint(unpacked)
-        assert "S16" not in lint.ran, "lint says it checked a rule it cannot run"
-        assert "S16" in lint.not_applicable["unasked"]
-    finally:
-        (unpacked / "content" / "r.xhtml").chmod(0o644)
+    Built from a damaged stream rather than a mode bit. Which container form
+    this is does not matter to the question, and a mode bit is not a fault on
+    every platform this suite runs on: with one, this test passed on Windows
+    against a rendition that read perfectly, which is a pass for the wrong
+    reason even though the assertions below hold either way.
+    """
+    package = _renditions_with_one_damaged(tmp_path, count=1, damaged=0,
+                                           name="lint.iirds")
+    assert [f for f in runner.run(package, runner.ALL_KINDS).findings
+            if f.rule.id == "S16"], "the rule does not fire where content is read"
+    assert "S16" in runner.run(package, runner.ALL_KINDS).ran
+    lint = runner.lint(package)
+    assert "S16" not in lint.ran, "lint says it checked a rule it cannot run"
+    assert "S16" in lint.not_applicable["unasked"]
 
 
 def test_a_rendition_larger_than_the_per_file_ceiling_is_not_this_rules_business(tmp_path):

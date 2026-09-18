@@ -88,3 +88,13 @@ this repository, naming the versions it reaches and the release that fixes it.
   checking a directory could read files outside it and put parts of them in
   the report. `iirds-validate` 0.1.0 through 0.6.0, `iirds` and `iirds-sdk`
   0.5.0 through 0.6.0; fixed in 0.6.1.
+- [GHSA-37j7-4w33-fr3w](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-37j7-4w33-fr3w):
+  the content budget did not stop decompression. Renditions past the budget were
+  still read in full before being refused, so a small archive could make one run
+  decompress many times its budget. `iirds-validate` up to and including 0.6.1,
+  `iirds` and `iirds-sdk` 0.5.0 through 0.6.1; fixed in 0.6.2.
+- [GHSA-2p8x-2h66-4j7j](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-2p8x-2h66-4j7j):
+  a bzip2- or lzma-compressed entry defeated every read limit. One bounded read
+  decompressed the whole entry in memory, so a package of a few hundred bytes
+  could exhaust the memory of the machine checking it. Same versions; fixed in
+  0.6.2, which refuses such entries without opening them (S14).

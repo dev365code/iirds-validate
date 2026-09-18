@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.6.2 — 2026-09-17
+## 0.6.2 — 2026-09-18
 
 **Who should take this release:** anyone who checks `.iirds` files they did not
 build themselves. Every release up to 0.6.1 can be made to spend far more time

@@ -255,3 +255,37 @@ def test_an_unrestricted_package_with_an_empty_json_ld_is_not_this_rules_busines
     report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=EMPTY_JSONLD))
     assert "C16.2" not in {f.rule.id for f in report.findings}, \
         sorted({f.rule.id for f in report.findings})
+
+
+def test_a_rule_that_raises_is_reported_rather_than_passed_over(make_package, monkeypatch):
+    """S3 exists so that a broken rule's silence is not read as a pass, and
+    until this test the only thing that fired it was a read failure.
+
+    Those failures are refusals now -- a rendition nobody can decompress is
+    reported by B1 and by S16 rather than killing the rule that asked -- which
+    is the repair, and it left S3 exercised by nothing. A rule that no test
+    makes fire is not known to work, and this one is the guard the whole
+    suite's "one broken rule must not hide the other 210" rests on. So the
+    crash is made here on purpose, in the one place it can be: a rule's
+    function, replaced.
+    """
+    from iirds_validate import registry
+
+    victim = {r.id: r for r in registry.all_rules()}["M1"]
+
+    def boom(_ctx):
+        raise RuntimeError("deliberate, to see what the report says")
+
+    # `Rule` is a frozen dataclass, so the swap goes round the freeze -- and
+    # the restore has to be exact, because the registry is process-wide and a
+    # rule left broken here is a rule broken for every test after it.
+    original = victim.fn
+    object.__setattr__(victim, "fn", boom)
+    try:
+        report = runner.run(make_package(name="raises.iirds"), runner.ALL_KINDS)
+    finally:
+        object.__setattr__(victim, "fn", original)
+    assert victim.fn is original, "the registry was left holding the broken rule"
+    crashes = [f for f in report.findings if f.rule.id == "S3"]
+    assert crashes, "a rule raised and the report said nothing"
+    assert "M1" in crashes[0].violation.message, crashes[0].violation.message

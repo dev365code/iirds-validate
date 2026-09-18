@@ -79,9 +79,16 @@ def _declares_entities(raw: bytes) -> bool:
         parser.Parse(raw, True)
     except _Declared:
         return True
-    except (_RootReached, expat.ExpatError):
-        # Not well formed is not this guard's finding: B1 parses the document
-        # itself and reports what the parser said about it.
+    except _RootReached:
+        return False
+    except Exception:
+        # Whatever else the parser refuses the prolog with is not this guard's
+        # finding: B1 parses the document itself and reports what the parser
+        # said about it. Named `ExpatError` alone until a document declaring
+        # an encoding Python does not know raised `LookupError` from here --
+        # outside every handler in `_walk`, so the rule that asked died and
+        # the cache it was filling was left truncated for all the others. The
+        # ways a prolog can fail are the parser's list, not ours.
         return False
     return False
 
@@ -162,6 +169,16 @@ def _xhtml_renditions(ctx):
                 yield name
 
 
+#: The shapes a defect in this project takes. A read that fails because the
+#: archive is wrong is the package's business and is reported per file; a read
+#: that fails because this code is wrong has to reach the runner, which reports
+#: it as a rule that raised. Measured: with these swallowed, injecting one typo
+#: into `Package.charge` turned two errors into two warnings and an answered
+#: rule, and the suite's "no rule crashes" guard had nothing left to see.
+_OUR_FAULT = (NameError, AttributeError, TypeError, IndexError, KeyError,
+              ImportError, RecursionError)
+
+
 def _bytes_of(ctx, name):
     """The rendition's bytes, and why they were not read if they were not.
 
@@ -209,13 +226,40 @@ def _bytes_of(ctx, name):
             # avoided: what a file costs is not knowable without reading it,
             # and that read is bounded by the per-file limit above. So what
             # the content rules read is the budget plus one per-file limit,
-            # once. That is a statement about reading and not about memory,
-            # and not about the run: the damage check in C1 opens every entry
-            # and pays no budget. Recorded on the context, where S9 reads it
-            # and where the branch above sees it.
+            # once -- a statement about reading, not about memory, and not
+            # about the run: C1's damage check opens every entry and pays no
+            # budget. Recorded where S9 reads it and where the branch above
+            # sees it.
             ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
             memo[name] = (b"", "reading this took the run past its %d byte "
                                "content budget" % exc.limit)
+        except _OUR_FAULT:
+            # A name that is not defined, an attribute that is not there, an
+            # argument of the wrong type: not ways an archive can be wrong,
+            # ways this code can be. Turning one into "the rendition could not
+            # be read" hides it twice -- the rule is recorded as answered, and
+            # outside iiRDS/A the finding is demoted to a warning, so a run
+            # that should have failed with `S3 rule B1 raised` comes back
+            # clean. What a package can do to a read is not our list to keep;
+            # what our own defects look like is.
+            raise
+        except Exception as exc:
+            # Anything else, and that list is not ours: `zlib.error` for a
+            # stream that will not decode, whatever a future `zipfile` raises
+            # for an entry it cannot hand over. Before this, such a failure
+            # left `_bytes_of`, killed the rule that asked, and left `_walk`'s
+            # cache half filled, so every later content rule walked a
+            # truncated file set and was recorded as having answered.
+            reason = "not read: %s" % (exc if str(exc) else type(exc).__name__)
+            memo[name] = (b"", reason)
+            # Kept apart from the four refusals above, because this is the one
+            # with no rule of its own. A ceiling is S9's and the scan's is
+            # S12's; a method a bounded read cannot be made of is S14's; the
+            # per-file limit is this project's own number and a file that
+            # crosses it is legal. What is left here is the container failing
+            # to hand over a file it lists, and S16 is what says so -- in the
+            # unpacked form, where C1 does not run, nothing else does.
+            ctx.__dict__.setdefault("content_unread", {})[name] = reason
     return memo[name]
 
 
@@ -243,14 +287,28 @@ def _walk(ctx):
     """
     cache = ctx.__dict__.get("_content_trees")
     if cache is None:
-        cache = ctx.__dict__["_content_trees"] = {}
+        # Built in a local and installed when it is complete. Installing it
+        # first and filling it afterwards meant that anything escaping the loop
+        # left a half-filled cache on the context: the rule that asked died,
+        # and every rule after it found a non-empty cache, walked a truncated
+        # file set, and was recorded as having answered for the package.
+        # Repairing one escape route is not repairing that -- a rendition
+        # declaring an encoding Python does not know raises `LookupError` out
+        # of `fromstring`, no monkeypatching required, and the population was
+        # truncated again.
+        built = {}
         for name in sorted(_xhtml_renditions(ctx)):
             if _refusal(ctx, name):
                 continue
             try:
-                cache[name] = ElementTree.fromstring(_bytes_of(ctx, name)[0])
-            except ElementTree.ParseError:
+                built[name] = ElementTree.fromstring(_bytes_of(ctx, name)[0])
+            except Exception:
+                # A document that will not parse is one this rule has nothing
+                # to say about; B1 is where "it did not parse" is reported, and
+                # it reads the same bytes. The exception type is not the point
+                # and enumerating it is how this went wrong twice.
                 continue
+        cache = ctx.__dict__["_content_trees"] = built
     yield from cache.items()
 
 
@@ -274,26 +332,56 @@ def b1_well_formed(ctx):
             # to an XML parser would find the file perfectly well-formed.
             yield Violation("content declared as iiRDS XHTML5 was refused rather than parsed",
                             subject=name, detail=refused,
-                            fix="Read the reason reported alongside this. A file turned away "
-                                "for what it declares -- XML entities -- is fixed by removing "
-                                "them. The other three are not about this file being malformed "
-                                "at all: one says the file is larger on its own than a run will "
-                                "read, which is a fixed limit and asks for a smaller rendition; "
-                                "one says the run had already spent what it will decompress in "
-                                "total, and `IIRDS_CONTENT_BUDGET` raises that; the last says "
-                                "the entry is compressed with a method this tool does not read "
-                                "at all, which S14 reports beside this and which is fixed by "
-                                "rebuilding the entry with deflate. "
-                                "Either way the file was turned away "
-                                "before it was parsed, so there is no syntax error in it to "
-                                "find; an XML parser would open it and a consumer applying the "
-                                "same guard will not.")
+                            fix="The reason is printed as this finding's detail, and it is "
+                                "what to act on -- not the file's syntax, which nothing here "
+                                "has looked at. A file turned away for what it declares -- XML "
+                                "entities -- is fixed by removing them. One turned away for "
+                                "its own size asks for a smaller rendition; one turned away "
+                                "because the run had already spent what it will decompress in "
+                                "total is answered by `IIRDS_CONTENT_BUDGET`, which sets that "
+                                "total. One whose entry this tool cannot decompress at all is "
+                                "reported beside this by S14 and is fixed by rebuilding the "
+                                "entry with deflate. One the container will not give back at "
+                                "all is named beside this by S16, and what repairs it depends "
+                                "on which container: a damaged entry in an archive is what C1 "
+                                "reports and a rebuild repairs, while an unpacked container "
+                                "has no C1 and the usual cause is a mode bit on the file. "
+                                "Those are the reasons seen so far rather than all there can be, which is "
+                                "why the detail is the thing to read. Whichever it is, the "
+                                "file was turned away before it was parsed, so there is no "
+                                "syntax error in it to find: an XML parser would open it and a "
+                                "consumer applying the same guard will not.")
             continue
         try:
             ElementTree.fromstring(_bytes_of(ctx, name)[0])
-        except ElementTree.ParseError as exc:
-            yield Violation("content declared as iiRDS XHTML5 is not well-formed XML",
-                            subject=name, detail=str(exc))
+        except Exception as exc:
+            # Every way the parser can decline the document, not the one this
+            # named: a declaration naming an encoding Python does not know
+            # raises `LookupError` here, which left B1 recorded as raised and
+            # said nothing about the file. The message carries the type where
+            # it is not a syntax error, because "not well-formed" would be a
+            # claim about markup nobody parsed.
+            # And the message says which, because the comment above is only
+            # true if it does: a document whose declaration names a codec
+            # nobody has is refused before a character of its markup is read,
+            # and "not well-formed" sent the reader hunting a syntax error
+            # that is not there. The rule's own remedy is about syntax, so
+            # that case carries one of its own.
+            if isinstance(exc, ElementTree.ParseError):
+                yield Violation("content declared as iiRDS XHTML5 is not well-formed XML",
+                                subject=name, detail=str(exc))
+            else:
+                yield Violation("content declared as iiRDS XHTML5 could not be parsed, "
+                                "and not because of its markup",
+                                subject=name,
+                                detail="%s: %s" % (type(exc).__name__, exc),
+                                fix="Read the error beside this; the markup was never "
+                                    "reached. An encoding the declaration names and this "
+                                    "reader does not have is the common one -- write the "
+                                    "file as UTF-8 and say so in the declaration, which "
+                                    "is what XML assumes when nothing is declared. There "
+                                    "is no syntax error to look for: a parser given the "
+                                    "same file stops in the same place.")
 
 
 @rule("B2", covers=("b-3-conformance-criteria#4", "b-5-10-forms#1", "b-5-11-svg-mathml-and-iframes#1", "b-5-7-scripting#1",), kind="content", prio="MUST NOT", versions=(), variants=(),

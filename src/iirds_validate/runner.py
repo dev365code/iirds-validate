@@ -20,6 +20,14 @@ LINT_KINDS = ("lint", "system")
 ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
+#: Rules whose subject is what the content rules read. `iirds lint` selects
+#: ("lint", "system") and so opens no rendition; S16 then iterates an empty
+#: record and reports nothing, while `kind="system"` puts it in every kind set
+#: and the run counts it among the rules it checked. A question the command
+#: never asked, counted as answered.
+CONTENT_DEPENDENT = ("S16",)
+
+
 def load(path, version: Optional[str] = None) -> Context:
     """Open a container — archive or directory — and parse its metadata."""
     return load_context(open_package(path), version=version)
@@ -194,6 +202,9 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             report.skipped += 1
             reason = "version" if rule.versions and ctx.version not in rule.versions else "variant"
             report.not_applicable[reason].append(rule.id)
+            continue
+        if rule.id in CONTENT_DEPENDENT and "content" not in kinds:
+            report.not_applicable.setdefault("unasked", []).append(rule.id)
             continue
         report.checked += 1
         try:

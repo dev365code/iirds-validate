@@ -381,3 +381,247 @@ def test_the_damage_check_asks_for_bounded_reads(tmp_path, monkeypatch):
         "the damage check asked for %r; a request for a whole entry -- "
         "`read()` with no argument -- is one archive in memory at once"
         % sorted({n for n in asked if n is None or n <= 0 or n > SLICE}))
+
+
+def _renditions_with_one_damaged(tmp_path, count=3, damaged=1):
+    """A container whose renditions are sound but for one corrupt stream.
+
+    Each document violates several appendix B rules, so a rule that examines
+    it has something to say and a rule that never sees it stays silent -- the
+    difference this test is about.
+    """
+    import struct
+    import zipfile
+
+    topics = "".join("""  <iirds:Topic rdf:about="urn:t:%d"><iirds:title>t%d</iirds:title>
+    <iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/topic%03d.xhtml</iirds:source>
+    </iirds:Rendition></iirds:has-rendition></iirds:Topic>\n""" % (i, i, i)
+        for i in range(count))
+    body = ("<html xmlns='%s'><body><script>x</script><form></form>"
+            "<p data-role='nonsense'>t</p></body></html>" % XHTML).encode()
+    package = build_package(
+        tmp_path,
+        metadata=MINIMAL_RDF.replace("</rdf:RDF>", topics + "</rdf:RDF>"),
+        extra=[("content/topic%03d.xhtml" % i, body) for i in range(count)])
+
+    raw = bytearray(package.read_bytes())
+    with zipfile.ZipFile(package) as archive:
+        info = archive.getinfo("content/topic%03d.xhtml" % damaged)
+    name_len, extra_len = struct.unpack("<HH", raw[info.header_offset + 26:info.header_offset + 30])
+    start = info.header_offset + 30 + name_len + extra_len
+    for at in range(start + 4, start + 12):      # inside the deflate stream
+        raw[at] ^= 0xFF
+    package.write_bytes(bytes(raw))
+    return package
+
+
+def test_one_unreadable_stream_does_not_decide_what_the_other_rules_examine(tmp_path):
+    """A rendition nobody can decompress must cost that rendition, not the rest.
+
+    `_bytes_of` caught two kinds of refusal -- an unreadable compression
+    method and the run's ceiling -- and a corrupt deflate stream is neither.
+    It came out of `read_bounded` as `zlib.error`, killed the rule that asked,
+    and left `_walk`'s cache installed and half filled, because the dict was
+    put on the context before the loop that filled it -- it is built into a
+    local and installed complete now. Every later content rule
+    then iterated a truncated file set and was recorded as having answered.
+
+    Measured on this package before the repair: B1 and B2 raised, and B3
+    reported only `content/topic000.xhtml` -- `topic002` is intact, breaks the
+    same rules, and nobody opened it. The report said B3 ran.
+    """
+    package = _renditions_with_one_damaged(tmp_path)
+    report = runner.run(package, runner.ALL_KINDS)
+    seen = {}
+    for finding in report.findings:
+        if finding.rule.id.startswith("B"):
+            seen.setdefault(finding.rule.id, set()).add(finding.violation.subject)
+
+    assert not report.not_applicable.get("raised"), (
+        "a rule raised rather than reporting the file it could not read: %s"
+        % report.not_applicable.get("raised"))
+    assert seen.get("B2") == {"content/topic000.xhtml", "content/topic002.xhtml"}, (
+        "the rules that examine content saw %r; the sound renditions are "
+        "topic000 and topic002" % (sorted(seen.get("B2", ())),))
+    refused = [f for f in report.findings
+               if f.rule.id == "B1" and f.violation.subject == "content/topic001.xhtml"]
+    assert refused, "the damaged rendition is not reported as refused"
+    # And the package fails on that account alone. B1 is a content rule and
+    # demotes to a warning outside iiRDS/A, so the finding above does not
+    # decide anything; S16 is what says a file nobody read is not a file that
+    # passed. Asserting only the first left the verdict untested.
+    assert {f.rule.id for f in report.findings
+            if f.violation.subject == "content/topic001.xhtml"} >= {"B1", "S16"}
+    assert not report.ok
+
+
+def test_a_sound_package_is_unchanged_by_that_handling(tmp_path):
+    """The control. Nothing about an archive that reads must move."""
+    package = _renditions_with_one_damaged(tmp_path, count=3, damaged=None) \
+        if False else build_package(
+            tmp_path, name="sound.iirds",
+            metadata=MINIMAL_RDF.replace("</rdf:RDF>", """  <iirds:Topic rdf:about="urn:t:0">
+    <iirds:title>t0</iirds:title><iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/topic000.xhtml</iirds:source>
+    </iirds:Rendition></iirds:has-rendition></iirds:Topic>\n</rdf:RDF>"""),
+            extra=[("content/topic000.xhtml",
+                    ("<html xmlns='%s'><body><script>x</script></body></html>" % XHTML).encode())])
+    report = runner.run(package, runner.ALL_KINDS)
+    assert not report.not_applicable.get("raised"), report.not_applicable.get("raised")
+    assert any(f.rule.id == "B2" and f.violation.subject == "content/topic000.xhtml"
+               for f in report.findings)
+
+
+def _one_rendition(tmp_path, name, count=1):
+    """A package whose single rendition is sound, so any finding about it is
+    about the reading and not about the markup."""
+    import zipfile  # noqa: F401  (imported by the callers for extraction)
+
+    sources = ["content/r.xhtml"] if count == 1 else \
+        ["content/r%d.xhtml" % i for i in range(count)]
+    topics = "".join("""  <iirds:Topic rdf:about="urn:t:r%d">
+    <iirds:title>r%d</iirds:title>
+    <iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>%s</iirds:source>
+    </iirds:Rendition></iirds:has-rendition></iirds:Topic>\n""" % (i, i, source)
+        for i, source in enumerate(sources))
+    metadata = MINIMAL_RDF.replace("</rdf:RDF>", topics + "</rdf:RDF>")
+    body = ("<html xmlns='%s'><body><p>r</p></body></html>" % XHTML).encode()
+    return build_package(tmp_path, name, metadata=metadata,
+                         extra=[(source, body) for source in sources])
+
+
+def test_a_rendition_nobody_can_read_still_fails_the_package(tmp_path):
+    """Reporting the file instead of raising must not turn a fail into a pass.
+
+    Before, an unreadable rendition killed the rule and the run recorded
+    `S3 rule B1 raised` -- a system finding, an error in every profile. Now
+    the file is reported by B1, which is a content rule, and content rules
+    demote to warnings outside iiRDS/A because whether a file is "iiRDS XHTML5
+    content" is this project's reading (runner.severity_override). Whether the
+    container will hand the file over is not a reading of anything, so the
+    demotion must not carry it: measured on the unpacked form, where no C1
+    holds the verdict, the package came back `ok` with exit 0.
+
+    The unpacked form is where it shows, and it is the shape a build checks.
+    The archive form of the same fault -- a stream that will not decompress --
+    fails too, but only because C1 opens every entry and reports the damage;
+    that is the rule the unpacked form suspends, which is why the verdict
+    there rested on nothing. `test_one_unreadable_stream_...` above holds the
+    zipped side, S16 included.
+    """
+    import zipfile
+
+    package = _one_rendition(tmp_path, "unreadable.iirds")
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    (unpacked / "content" / "r.xhtml").chmod(0o000)
+    try:
+        report = runner.run(unpacked, runner.ALL_KINDS)
+        ids = sorted({f.rule.id for f in report.findings})
+        assert not report.ok, (
+            "a package holding a file nothing could read came back clean: %s" % ids)
+    finally:
+        (unpacked / "content" / "r.xhtml").chmod(0o644)
+
+
+def test_the_same_package_read_whole_is_clean(tmp_path):
+    """The control: the permission is the only fault, so with it back nothing
+    is said about the file at all.
+
+    Written as `assert report.ok` first, which is not a control: outside
+    iiRDS/A every content error is a warning and `ok` reads errors only, so it
+    stayed true when the fixture was replaced with markup that is not
+    well-formed, with an empty file, and with a PNG. What has to be asserted
+    is silence about this file, which is also what makes the test above a
+    measurement -- the same fixture, read, draws nothing.
+    """
+    import zipfile
+
+    package = _one_rendition(tmp_path, "readable.iirds")
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    report = runner.run(unpacked, runner.ALL_KINDS)
+    about_it = [(f.rule.id, f.violation.detail) for f in report.findings
+                if f.violation.subject == "content/r.xhtml"]
+    assert not about_it, about_it
+    assert report.ok
+
+
+def test_every_file_that_could_not_be_read_is_named(tmp_path):
+    """One finding per file, not one per run.
+
+    Every fixture in this suite has exactly one unreadable file, so a version
+    of S16 that stopped after the first name passed all of them -- and "which
+    files went unexamined" is the whole of what the rule adds over the rules
+    that say what the run did.
+    """
+    import zipfile
+
+    package = _one_rendition(tmp_path, "two.iirds", count=2)
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    names = ["content/r0.xhtml", "content/r1.xhtml"]
+    for name in names:
+        (unpacked / name).chmod(0o000)
+    try:
+        report = runner.run(unpacked, runner.ALL_KINDS)
+        assert sorted(f.violation.subject for f in report.findings
+                      if f.rule.id == "S16") == names
+    finally:
+        for name in names:
+            (unpacked / name).chmod(0o644)
+
+
+def test_a_command_that_reads_no_content_does_not_claim_to_have_asked(tmp_path):
+    """`iirds lint` selects ("lint", "system") and opens no rendition, so S16
+    has nothing to look at -- and `kind="system"` puts it in every kind set,
+    so the report listed it among the rules the run had checked. A question
+    nobody asked, counted as answered, is what `ARCHIVE_ONLY` exists for one
+    layer out.
+    """
+    import zipfile
+
+    package = _one_rendition(tmp_path, "lint.iirds")
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    (unpacked / "content" / "r.xhtml").chmod(0o000)
+    try:
+        assert [f.rule.id for f in runner.run(unpacked, runner.ALL_KINDS).findings
+                if f.rule.id == "S16"], "the rule does not fire where content is read"
+        lint = runner.lint(unpacked)
+        assert "S16" in lint.not_applicable.get("unasked", []), (
+            "lint counted a rule it cannot run among the rules it checked")
+    finally:
+        (unpacked / "content" / "r.xhtml").chmod(0o644)
+
+
+def test_a_rendition_larger_than_the_per_file_ceiling_is_not_this_rules_business(tmp_path):
+    """The line S16 draws, held here because it is a line and not an omission.
+
+    `MAX_CONTENT_BYTES` is a number this project chose; a rendition past it is
+    a legal file the container hands over perfectly well, and this tool
+    declines to read it. B1 says so as a warning, and outside iiRDS/A the
+    package passes -- which is a hole, and closing it turns a legal package's
+    pass into a failure. That is a release of its own, not something a repair
+    to the reporting may do on the way past.
+    """
+    from iirds_validate.rules import content as content_module
+
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr(content_module, "MAX_CONTENT_BYTES", 32)
+    try:
+        package = _one_rendition(tmp_path, "big.iirds")
+        report = runner.run(package, runner.ALL_KINDS)
+        assert {f.rule.id for f in report.findings if f.violation.subject == "content/r.xhtml"} \
+            == {"B1"}, sorted((f.rule.id, f.severity) for f in report.findings)
+    finally:
+        monkey.undo()

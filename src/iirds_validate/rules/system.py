@@ -506,3 +506,56 @@ def s9_content_budget(ctx):
                     "from this one on were not examined",
                     subject=first,
                     detail="%d bytes decompressed against a budget of %d" % (read_so_far, limit))
+
+
+@rule("S16", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="consequence",
+      title="a file the container lists as content must be one the container will hand over",
+      fix="Read the reason beside each name -- B1 prints the same one against the same file. A "
+          "damaged stream is rebuilt from the sources; a file the filesystem will not open is a "
+          "permission on the unpacked copy. Until then nothing has read the file, so its rules "
+          "are neither passed nor failed, and a consumer opening the package meets whatever this "
+          "run met.")
+def s16_content_not_read(ctx):
+    """A file the container would not hand over is not a file that passed.
+
+    The refusal is reported by B1 against the same file with the same reason
+    -- for a rendition; `index.html` under iiRDS/H is read by the content
+    rules and is not a rendition, so there B1 is silent and this is the only
+    finding that names it. Either way B1 is a content rule, and content
+    findings demote to warnings outside iiRDS/A: `runner.severity_override`
+    gives the reason, that whether a given file is "iiRDS XHTML5 content" is
+    this project's reading of the entry condition and an unrestricted package
+    may carry what it likes. Whether the container will hand a file over is
+    not a reading of anything, so that demotion must not carry it, and until
+    this rule existed it did -- an unpacked package whose only fault was a
+    rendition the filesystem would not open came back `ok`, exit 0. The
+    archive form of the same package failed, and only by accident: C1's
+    damage check opens every entry and holds the verdict there, and C1 is one
+    of the rules an unpacked container suspends.
+
+    Deliberately narrow. Three other things stop a rendition being parsed, and
+    two already have a rule that says so at the same severity: the run's
+    content budget is S9's, and a compression method no bounded read can be
+    made of is S14's. The third -- a file larger on its own than
+    `MAX_CONTENT_BYTES` -- has no rule, and is left alone on purpose: that
+    ceiling is a number this project chose, the file is legal, and turning a
+    legal package's pass into a failure is not something a repair may do on
+    the way past. It is a hole, recorded rather than closed, because closing
+    it moves a verdict and that is a release of its own.
+    `tests/test_content_hostile.py` pins the line where it is.
+
+    A fifth refusal is not a read failure at all and is not this rule's: a
+    document that declares XML entities is read whole and then not parsed, on
+    what it says rather than on what the container did. B1 reports it, a
+    warning outside iiRDS/A like every other content judgement, and that is
+    the demotion working as documented -- whereas the cases here are the
+    container failing to produce a file it lists, which is nobody's reading.
+    That one passes outside iiRDS/A, and it is worth knowing it does.
+
+    So this fires for what is left. Nothing else reports it in the unpacked
+    form, where C1 does not run.
+    """
+    for name, reason in sorted(ctx.__dict__.get("content_unread", {}).items()):
+        yield Violation("this file was not read, so no content rule speaks for it",
+                        subject=name, detail=reason)

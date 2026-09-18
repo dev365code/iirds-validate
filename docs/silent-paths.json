@@ -1,13 +1,15 @@
 {
  "counts": {
   "branch": 1,
-  "finding": 1,
-  "other": 0,
+  "finding": 2,
+  "other": 1,
   "silent": 11
  },
  "unreached": {
   "content.py": {
-   "_declares_entities :: return False [2]": "silent",
+   "_bytes_of :: raise": "other",
+   "_declares_entities :: return False [3]": "silent",
+   "b1_well_formed :: yield Violation(\"content declared as iiRDS XHTML5 could not be parsed, \"": "finding",
    "b3_only_listed_elements :: continue": "silent"
   },
   "lint.py": {

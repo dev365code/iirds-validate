@@ -33,7 +33,7 @@ def test_no_rule_id_is_missing_from_the_catalogue():
     #: enumerated no identifier for at all.
     ours = ({r.id for r in rules_of_kind("lint")}
             | {r.id for r in rules_of_kind("content")}
-            | {"S4", "S5", "S6", "S7", "S8", "S9", "S10", "S14", "S15"}
+            | {"S4", "S5", "S6", "S7", "S8", "S9", "S10", "S14", "S15", "S16"}
             | {r.id for r in all_rules() if r.id.startswith("R")})
     assert uncatalogued == ours, \
         "uncatalogued ids are a typo unless they are ours: %s" % sorted(uncatalogued - ours)

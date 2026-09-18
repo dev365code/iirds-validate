@@ -112,6 +112,32 @@ def test_a_directory_with_nothing_in_it_is_an_operator_error(tmp_path, capsys):
     assert "no iiRDS package found" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("limit", [-5, -2, -1, 0, 1, 8])
+def test_both_forms_bound_a_read_the_same_way(unpacked, limit):
+    """`read_bounded` is where every ceiling in this project is spent, and the
+    two forms compute it differently: the archive fills a buffer while it is
+    under the limit, the directory asked the file for `limit + 1` bytes.
+
+    A limit of zero is reachable now -- the side scan spends what is left of
+    its ceiling, and what is left can be nothing -- and a negative one is a
+    caller's arithmetic away. `read(-1)` is not a small read: it is the whole
+    file, which is the single thing this function exists to never do, and one
+    lower than that raises instead. The archive form returns nothing for
+    either call. The docstring on the
+    directory form says why that matters more than the size of any one file:
+    a gate on in one form and off in the other is how both size gates came to
+    be silently disabled for the unpacked form once before.
+    """
+    archive, directory = unpacked
+    name = "META-INF/metadata.rdf"
+    with open_package(archive) as packed:
+        from_archive = packed.read_bounded(name, limit)
+    from_directory = DirectoryPackage(directory).read_bounded(name, limit)
+    assert (len(from_directory[0]), from_directory[1]) == (len(from_archive[0]),
+                                                           from_archive[1])
+    assert len(from_directory[0]) <= max(limit, 0) + 1
+
+
 def test_directory_package_reports_its_files(unpacked):
     _archive, directory = unpacked
     package = DirectoryPackage(directory)

@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
 from typing import Optional, Tuple
 
-from rdflib import BNode, Graph
+from rdflib import BNode, Graph, Literal
 from rdflib.compare import isomorphic
 
 #: Two cheap guards, applied before the parser sees anything.
@@ -454,6 +454,39 @@ def _blank_forest(graph: Graph) -> bool:
     return all(acyclic(node, 0) for node in blanks)
 
 
+def _term(term) -> str:
+    """A term rendered by what distinguishes it from another term.
+
+    `str()` keeps the lexical form and nothing else, so `"1"^^xsd:integer` and
+    `"1"^^xsd:decimal` rendered alike, and so did `<http://example.org/o>` and
+    the string that spells it. The fingerprint built on that was a coarsening
+    of isomorphism rather than an equivalent of it, which is not what the
+    caller below promises. What separates two terms is the pair they are made
+    of -- what kind of term, and its lexical form -- plus the datatype and the
+    language tag a literal carries; `repr` renders each of those without two
+    of them ever colliding.
+
+    The kind is the RDF one -- resource, literal, blank -- and not the Python
+    class. Written as `type(term).__name__` first, which splits a `Genid` from
+    the `URIRef` it subclasses: two terms `isomorphic` calls equal and this
+    called different, a false split in the direction that matters, since the
+    caller below promises the two agree by construction.
+
+    `n3()` says the same things and was used here first, and it is a writer:
+    asked for a term it cannot write as N3 -- an IRI holding a space, a brace,
+    a bar, any of the characters RFC 3987 leaves out -- it raises. Nothing on
+    the way in refuses those, so a supplier's metadata.rdf can carry one, and
+    comparing is not writing: a comparison that refuses its input has decided
+    nothing. It refused as a bare `Exception` from inside a round-trip check,
+    which is neither the `ValueError` `write_metadata` documents nor anything
+    a caller can catch by kind, on graphs rdflib still writes.
+    """
+    kind = "L" if isinstance(term, Literal) else "B" if isinstance(term, BNode) else "U"
+    return "%s %r %r %r" % (kind, str(term),
+                            getattr(term, "datatype", None),
+                            getattr(term, "language", None))
+
+
 def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
     """A blank node named by what hangs off it, not by its label."""
     if node in memo:
@@ -463,8 +496,8 @@ def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
     parts = []
     for predicate, obj in graph.predicate_objects(node):
         rendered = ("_:" + _blank_key(graph, obj, memo, depth + 1)
-                    if isinstance(obj, BNode) else str(obj))
-        parts.append("%s %s" % (predicate, rendered))
+                    if isinstance(obj, BNode) else _term(obj))
+        parts.append("%s %s" % (_term(predicate), rendered))
     parts.sort()
     memo[node] = hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
     return memo[node]
@@ -475,16 +508,24 @@ def _fingerprint(graph: Graph):
     rows = []
     for subject, predicate, obj in graph:
         left = ("_:" + _blank_key(graph, subject, memo)
-                if isinstance(subject, BNode) else str(subject))
+                if isinstance(subject, BNode) else _term(subject))
         right = ("_:" + _blank_key(graph, obj, memo)
-                 if isinstance(obj, BNode) else str(obj))
-        rows.append("%s %s %s" % (left, predicate, right))
+                 if isinstance(obj, BNode) else _term(obj))
+        rows.append("%s %s %s" % (left, _term(predicate), right))
     rows.sort()
     return rows
 
 
+#: Failures of the interpreter rather than answers about a graph.
+_OUR_FAULT = (RecursionError, MemoryError, KeyboardInterrupt, SystemExit)
+
+
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:
     """Did the round trip preserve the graph?
+
+    Raises `ValueError` where neither check can answer -- the comment on the
+    fallback below says when. `write_metadata` passes that on, and it is the
+    one exception either of them documents.
 
     rdflib's isomorphism check answers this for any two graphs, and prices
     itself for the general case: it canonicalises, and on a graph whose blank
@@ -509,7 +550,27 @@ def _reads_back_the_same(written: Graph, original: Graph) -> bool:
             return _fingerprint(written) == _fingerprint(original)
         except _TooDeep:
             pass
-    return isomorphic(written, original)
+    try:
+        return isomorphic(written, original)
+    except _OUR_FAULT:
+        # A failure of this process rather than an answer about this graph.
+        # Reported below as "that test refuses a term this graph holds" it
+        # would be a sentence about the caller's data that is not about it.
+        raise
+    except Exception as exc:
+        # The general check canonicalises through N3, so it refuses a graph
+        # holding an IRI N3 cannot write -- a space, a brace, a bar, any of
+        # the characters RFC 3987 leaves out -- and RDF/XML writes those
+        # happily. The refusal is a bare `Exception`, and reaching the caller
+        # as one it is neither the `ValueError` `write_metadata` documents nor
+        # anything catchable by kind. The forest path above answers for these
+        # graphs; this is what is left when the blank nodes are not a forest,
+        # and the honest answer there is that the round trip was not checked,
+        # not that it failed.
+        raise ValueError("this graph cannot be checked after writing: its "
+                         "blank nodes are not a forest, so the general "
+                         "isomorphism test decides, and that test refuses a "
+                         "term this graph holds: %s" % exc) from exc
 
 
 def write_metadata(graph: Graph, destination=None) -> bytes:
@@ -527,6 +588,11 @@ def write_metadata(graph: Graph, destination=None) -> bytes:
 
     `destination`, when given, is written (parents created) and the same
     bytes are still returned.
+
+    Raises `ValueError`, and nothing else, for a graph this cannot write or
+    cannot check: RDF/XML declining to serialise it, the reparse not matching,
+    or -- where the blank nodes are not a forest, so rdflib's isomorphism is
+    what would decide -- a term that check refuses to render.
     """
     # Serialise a base-less copy. graph.serialize inherits graph.base, and
     # for an opaque urn base (iirds.PACKAGE_BASE, which callers naturally

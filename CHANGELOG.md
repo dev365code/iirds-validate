@@ -4,6 +4,85 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.6.3 — 2026-09-19
+
+**Who should take this release:** anyone running 0.6.2 against packages they
+did not build. One rendition this checker could not decompress decided what
+every other content rule examined, and a package could come back clean because
+of it.
+
+**A legal package that passed on 0.6.2 passes on 0.6.3.** The one verdict this
+release moves belongs to a container that will not hand over a file it lists as
+content. No rule's reading of the specification changed, and the new rule
+carries no specification reference.
+
+**One rendition nobody could decompress decided what every other content rule
+examined.** The reader named two reasons a rendition might not be read -- a
+compression method it will not decode, and the run's content ceiling -- and a
+corrupt deflate stream is neither. It escaped as itself, killed the rule that
+had asked, and left a half-filled cache that every later content rule then
+walked, each recorded as having answered for the package. Measured on three
+renditions with the middle one's compressed data scrambled: two rules recorded
+as having raised, a third reporting one file, and an intact rendition breaking
+the same rules that nobody opened.
+
+The read failure is a refusal now, like the two with names, so the damaged file
+is reported and the sound ones are examined. The list of what a read can fail
+with is not this project's to enumerate: the reasons that have a rule of their
+own are caught by name, everything else is caught as itself, and the exception
+types that mean this code is broken rather than the package are re-raised, so a
+defect here cannot be reported as a defect in somebody's delivery.
+
+**What now fails: a package holding a file the container lists as content and
+will not hand over.** `ERROR S16` names each one, with the reason beside it.
+0.6.2 failed such a package too -- but only when the container was an archive,
+because the damage check that holds the verdict there is one of the rules an
+unpacked container stands down. The same fault in a build directory was
+reported and then demoted to a warning, and the package came back `PASS`,
+exit 0. S16 is a system rule: whether a given file is "iiRDS XHTML5 content" is
+this project's reading of the entry condition, and content findings are
+warnings outside iiRDS/A for that reason, but whether the container will
+produce a file it lists is not a reading of anything.
+
+It is deliberately narrow. Where a ceiling stopped the reading, the rule for
+that ceiling already says so -- `S9` for the run's content budget -- and an
+entry compressed with a method no bounded read can be made of is `S14`, from
+0.6.2. A rendition larger on its own than the per-file ceiling is left alone on
+purpose: that ceiling is a number this project chose, such a file is legal, and
+this release does not turn a legal package's pass into a failure.
+
+**A refusal named the wrong cause, and told the reader to do something that
+would not work.** `metadata.rdf` this reader will not decode is refused, and
+that is still right -- XML 1.0 requires a processor to support UTF-8 and UTF-16
+and nothing else. What was wrong was the sentence beside the refusal: one
+explanation for every decode failure, that the bytes were damaged in transit
+and the file has to be sent again. It arrives identical. The finding names the
+declaration now -- including `utf-8`, where that is what the document says and
+the bytes are not, which is the commonest of these in the field -- and the
+remedy answers each declaration separately, including one naming a codec this
+reader will not use at all. Transcoding such a package to UTF-8 and changing
+nothing else turns the verdict into a pass with no findings, which is the
+measurement that says the markup was never the problem.
+
+**The check the SDK runs before writing metadata could not tell a language tag
+from another.** `write_metadata` writes the graph, reads it back and compares,
+and under the condition it tests for it compares by its own fingerprint rather
+than by rdflib's isomorphism. That fingerprint rendered every term by lexical
+form alone, so `"Getriebe"@en` and `"Getriebe"@de` read back as the same graph,
+and so did `<http://example.org/o>` and the string that spells it. Terms are
+rendered by what tells them apart now. The round trip preserves all three, so
+the guard was weaker than it claimed rather than wrong about any package.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: it adds one rule and that rule carries no
+specification reference, because what it reports is this run's own business.
+
+**Also:** `read_bounded` performed an unbounded read in the unpacked form when
+its budget arrived spent. No shipped caller reaches that arithmetic; the two
+container forms disagreeing about a bound is how both size gates were once
+silently off for the unpacked one, which is why it is repaired rather than
+noted.
+
 ## 0.6.2 — 2026-09-18
 
 **Who should take this release:** anyone who checks `.iirds` files they did not

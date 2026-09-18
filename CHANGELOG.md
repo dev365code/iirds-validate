@@ -6,6 +6,23 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A refusal now names the declared encoding and says what to do about it.**
+`metadata.rdf` that declares an encoding this reader does not decode -- anything
+but UTF-8 -- is still refused, and refusing is still right: XML 1.0 requires a
+processor to support UTF-8 and UTF-16 and nothing else, and a consumer applying
+the same rule receives nothing from such a package either. What was wrong was
+what the report said next. It offered one explanation for every decode failure
+-- that the bytes "were damaged or cut short in transit and the file has to be
+sent again" -- so a reader asked their supplier to resend a file that was
+intact, and got back the same bytes.
+
+The finding names the encoding the document declares, and the remedy separates
+the two causes: a declared encoding is fixed by writing the file as UTF-8, and
+only a failure with no declaration is damage in transit. Measured on a real
+package: transcoding it to UTF-8 and changing nothing else turns the verdict
+into a pass with no findings, which is what says the markup was never the
+problem. `docs/divergences.md` carries the reading.
+
 **One rendition nobody could decompress decided what every other content rule
 examined.** `_bytes_of` named two reasons a rendition might not be read -- a
 compression method this tool will not decode, and the run's content ceiling --

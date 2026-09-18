@@ -260,6 +260,36 @@ settle this one: not that the material is absent, but that the one file carrying
 it fails under either reading.
 
 
+## Metadata in an encoding this reader does not decode
+
+**C16.1 — `metadata.rdf` declaring anything but UTF-8 is refused, and the bytes
+are not the problem.**
+
+A real third-party package declares `encoding="windows-1252"`. This tool
+reports `ERROR C16.1` and says nothing about the graph. `xml.etree`, in the
+same interpreter, parses the same bytes and finds its elements; rdflib, which
+is what this tool parses with, decodes as UTF-8 whatever the declaration says,
+and fails on the first byte above 0x7F.
+
+Refusing is defensible and is kept. XML 1.0 requires a processor to support
+UTF-8 and UTF-16 and nothing else, so a document in another encoding is one an
+XML processor may decline, and iiRDS says nothing that overrides that. What a
+consumer does with such a package is not settled by the specification, and a
+validator that read it here while a consumer's reader refused it there would be
+blessing a delivery that does not arrive.
+
+What was wrong was the sentence beside the refusal. It said an encoding error
+means "the bytes were damaged or cut short in transit and the file has to be
+sent again" -- so a reader asks their supplier to resend a file that is
+intact, and receives it again unchanged. The finding now names the encoding the
+document declares, and the remedy separates the two causes: a declared encoding
+is fixed by writing the file as UTF-8, and only an undeclared failure is damage
+in transit.
+
+Transcoding the same package to UTF-8 and nothing else turns the verdict into a
+pass with no findings, which is the measurement that says the markup was never
+the problem.
+
 ## What this tool refuses to read, and why that is its own decision
 
 **S14 — an entry compressed with anything but stored or deflate is not opened.**

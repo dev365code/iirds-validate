@@ -22,6 +22,7 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
@@ -504,6 +505,7 @@ def build_graph(package: Package):
         # this and cost the hundred megabytes, and one claiming a gigabyte
         # over nothing was refused unread. `read_bounded` stops at the limit
         # whatever the entry claims, and the verdict is about what came back.
+        raw = None
         try:
             raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
             if oversize:
@@ -526,15 +528,52 @@ def build_graph(package: Package):
             # its own, and a wrong CRC or an unimplemented compression method
             # walked straight back out. Whatever fails between opening the
             # entry and having a graph is a finding.
-            errors.append("%s: %s: %s" % (name, type(exc).__name__, exc))
+            # `raw` is None when the read itself failed -- a bad CRC raises
+            # before there are bytes to look at -- and reaching for it there
+            # turned a reported finding back into the traceback this handler
+            # exists to prevent.
+            errors.append("%s: %s: %s%s"
+                          % (name, type(exc).__name__, exc, _declared_encoding(raw)))
             continue
         if error is not None:
-            errors.append(error)
+            # The reader reports a decode failure here rather than raising, so
+            # the note about the declaration belongs on both paths or on
+            # neither -- it was on the raising one alone, which is the path a
+            # real package does not take.
+            errors.append(error + _declared_encoding(raw))
             continue
         per_source[name] = single
         sources.append(name)
 
     return merge_sources(per_source), errors, sources, per_source
+
+
+#: The encoding an XML declaration names, if it names one that is not UTF-8.
+#: Matched on the bytes, because reaching this at all means they would not
+#: decode; the declaration itself is ASCII by definition (XML 1.0 section 4.3.3).
+_DECLARED = re.compile(rb"""<\?xml[^>]*?encoding\s*=\s*["']([\w.:-]+)["']""")
+
+
+def _declared_encoding(raw) -> str:
+    """" (the document declares ...)", or nothing to add.
+
+    A decode failure reads as damage, and a reader told that the bytes were
+    "damaged or cut short in transit" asks a supplier to send the file again.
+    The file arrives identical: it is intact, and `xml.etree` in this same
+    interpreter parses it. What it is not is UTF-8, which is what rdflib
+    decodes as whatever the declaration says. Saying which encoding the
+    document declares turns an accusation about the sender into the one
+    sentence a reader can act on.
+    """
+    if not isinstance(raw, (bytes, bytearray)):
+        return ""
+    found = _DECLARED.search(bytes(raw[:200]))
+    if found is None:
+        return ""
+    declared = found.group(1).decode("ascii", "replace")
+    if declared.lower().replace("_", "-") in ("utf-8", "utf8"):
+        return ""
+    return " (the document declares encoding=%r)" % declared
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:

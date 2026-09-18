@@ -783,11 +783,14 @@ def _side_ontologies(ctx):
         # report. Read past the ceiling and the scan stops; S12 says it did,
         # because a scan that gave up and a scan that finished and found
         # nothing produce the same silence.
+        #
+        # The scan stops in one place: below, where the read that crossed the
+        # ceiling comes back. A second test at the head of this loop -- the
+        # first version's only one -- cannot be reached once that one returns,
+        # and unreachable code that reads as a guard is worse than none. With
+        # it here, deleting the `return` below changed nothing a test could
+        # see, so the stop was untested however many tests named the ceiling.
         read_so_far = ctx.__dict__.get("side_bytes_read", 0)
-        if read_so_far > MAX_SIDE_BYTES:
-            ctx.__dict__.setdefault(
-                "side_scan_cut", (read_so_far, MAX_SIDE_BYTES, name))
-            return
         try:
             # Bounded by what is left of the ceiling, not by the per-entry
             # limit. Checking before the read and then reading up to 64 MiB

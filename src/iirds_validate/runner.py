@@ -32,6 +32,15 @@ ALL_KINDS = ("container", "schema", "content", "lint", "system")
 #: checked. The unreached-line count is what found it.
 ARCHIVE_ONLY = ("C1", "C3", "C6", "R3", "S7", "S8", "S10", "S14", "S15")
 
+#: Rules whose subject is what the content rules read. `iirds lint` selects
+#: ("lint", "system") and so opens no rendition; S16 then iterates an empty
+#: record and reports nothing, while `kind="system"` puts it in every kind set
+#: and the envelope lists it among the rules the run checked. That is the
+#: shape ARCHIVE_ONLY exists for, one layer in: a question the command never
+#: asked, counted as answered. "unasked" is the reason, because it is exactly
+#: the reason -- this command did not ask for content.
+CONTENT_DEPENDENT = ("S16",)
+
 
 def load(path, version: Optional[str] = None) -> Context:
     """Open a container — archive or directory — and parse its metadata."""
@@ -278,6 +287,10 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
         # a consumer of the report could read.
         if rule.id in ARCHIVE_ONLY and not package.is_archive:
             report.not_applicable["unpacked"].append(rule.id)
+            continue
+        if rule.id in CONTENT_DEPENDENT and "content" not in kinds:
+            if rule.id not in report.ran:
+                report.not_applicable["unasked"].append(rule.id)
             continue
         try:
             for violation in rule.fn(ctx) or ():

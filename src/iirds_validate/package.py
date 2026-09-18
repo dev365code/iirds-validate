@@ -734,7 +734,15 @@ class DirectoryPackage:
             raise KeyError("There is no item named %r in the container" % name)
         where = self._entry(name)
         with open(where, "rb") as handle:
-            data = handle.read(limit + 1)
+            # `max(..., 0)` because a budget can arrive spent, or overspent by
+            # a caller's arithmetic, and `read` reads two ways: `read(-1)` is
+            # the whole file and anything below that raises. Either answer is
+            # wrong here -- the archive form, which fills a buffer while it is
+            # under the limit, returns nothing and says there was more, and
+            # that is what every file longer than a negative number of bytes
+            # is. A gate on in one form and off in the other is how both size
+            # gates came to be silently disabled for the unpacked form once.
+            data = handle.read(max(limit + 1, 0))
         return data, len(data) > limit
 
     def text(self, name: str, encoding: str = "utf-8") -> str:

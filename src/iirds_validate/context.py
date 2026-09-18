@@ -533,14 +533,15 @@ def build_graph(package: Package):
             # turned a reported finding back into the traceback this handler
             # exists to prevent.
             errors.append("%s: %s: %s%s"
-                          % (name, type(exc).__name__, exc, _declared_encoding(raw)))
+                          % (name, type(exc).__name__, exc,
+                             _declared_encoding(raw, exc)))
             continue
         if error is not None:
             # The reader reports a decode failure here rather than raising, so
             # the note about the declaration belongs on both paths or on
             # neither -- it was on the raising one alone, which is the path a
             # real package does not take.
-            errors.append(error + _declared_encoding(raw))
+            errors.append(error + _declared_encoding(raw, error))
             continue
         per_source[name] = single
         sources.append(name)
@@ -548,13 +549,45 @@ def build_graph(package: Package):
     return merge_sources(per_source), errors, sources, per_source
 
 
-#: The encoding an XML declaration names, if it names one that is not UTF-8.
-#: Matched on the bytes, because reaching this at all means they would not
-#: decode; the declaration itself is ASCII by definition (XML 1.0 section 4.3.3).
+#: The encoding an XML declaration names. Matched on the bytes, because
+#: reaching this at all means they would not decode; the declaration itself is
+#: ASCII by definition (XML 1.0 section 4.3.3).
 _DECLARED = re.compile(rb"""<\?xml[^>]*?encoding\s*=\s*["']([\w.:-]+)["']""")
 
 
-def _declared_encoding(raw) -> str:
+def _is_decode_failure(raw, reported) -> bool:
+    """Was this failure about turning bytes into characters?
+
+    Asked because the note below interprets a decode failure and means
+    nothing beside a syntax error, where it would be a true fact about a file
+    whose problem is elsewhere -- on the commonest declaration of all, every
+    malformed document would carry it.
+
+    The bytes answer it outright in one direction: bytes that are not UTF-8
+    never reached a parser, so nothing else can be what failed. Where they do
+    decode, the failure can still be about the encoding -- a declaration
+    naming a codec Python does not have raises `LookupError`, and one naming a
+    multi-byte codec raises `ValueError` -- and those are asked of the
+    exception by type. The reader returns its third case, the bytes that will
+    not decode, as text rather than raising, and the test on the bytes covers
+    that one without knowing it.
+
+    Written first as a search of the exception's text for "UnicodeDecodeError"
+    or "codec can". It missed both raising cases -- a supplier declaring
+    `shift_jis` got no note, and with no note the remedy sent them to its "no
+    declaration" branch, which asks for the file to be sent again -- and it
+    matched a vocabulary error that happened to carry "codec can" inside a bad
+    NCName.
+    """
+    if isinstance(raw, (bytes, bytearray)):
+        try:
+            bytes(raw).decode("utf-8")
+        except UnicodeDecodeError:
+            return True
+    return isinstance(reported, (LookupError, ValueError))
+
+
+def _declared_encoding(raw, reported) -> str:
     """" (the document declares ...)", or nothing to add.
 
     A decode failure reads as damage, and a reader told that the bytes were
@@ -564,15 +597,24 @@ def _declared_encoding(raw) -> str:
     decodes as whatever the declaration says. Saying which encoding the
     document declares turns an accusation about the sender into the one
     sentence a reader can act on.
+
+    A declaration of UTF-8 was suppressed here at first, on the reasoning that
+    naming it corrects nothing: this reader decodes as UTF-8 regardless. That
+    reasoning left out who reads the remedy. A file that says UTF-8 and is not
+    is the commonest of these in the field -- an editor saves in the
+    platform's encoding and the declaration stays where it was -- and with the
+    note suppressed that file falls into the remedy's other branch, the one
+    that names no declaration and asks for the file to be sent again. So it is
+    said, and said as the contradiction it is.
     """
-    if not isinstance(raw, (bytes, bytearray)):
+    if not isinstance(raw, (bytes, bytearray)) or not _is_decode_failure(raw, reported):
         return ""
     found = _DECLARED.search(bytes(raw[:200]))
     if found is None:
         return ""
     declared = found.group(1).decode("ascii", "replace")
     if declared.lower().replace("_", "-") in ("utf-8", "utf8"):
-        return ""
+        return " (the document declares encoding=%r, which these bytes are not)" % declared
     return " (the document declares encoding=%r)" % declared
 
 

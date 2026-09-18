@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import zipfile
 
+import pytest
+
 from conftest import MIMETYPE
 from iirds_validate import runner
 
@@ -72,3 +74,75 @@ def test_utf8_metadata_is_unaffected(tmp_path):
         'encoding="windows-1252"', 'encoding="utf-8"').encode("utf-8")), runner.ALL_KINDS)
     assert not [f for f in report.findings if f.rule.id == "C16.1"], sorted(
         {f.rule.id for f in report.findings})
+
+
+def test_a_file_that_says_utf8_and_is_not_is_told_so_rather_than_accused(tmp_path):
+    """The commonest one in the field, and the one the first fix stepped over.
+
+    An editor saves in the platform's encoding and leaves the declaration
+    alone, so the document says `utf-8` and its bytes are windows-1252. The
+    note about the declaration was suppressed for exactly that value -- there
+    was nothing to correct, the reasoning went, since the reader decodes as
+    UTF-8 anyway -- and suppressing it puts the reader in the other branch of
+    the remedy: no encoding named, so the bytes were damaged in transit, so
+    send the file again. It arrives identical. What the reader needs is the
+    contradiction: the file says UTF-8 and is not, and re-saving it as UTF-8
+    is the whole repair.
+    """
+    body = DECLARED.replace('encoding="windows-1252"', 'encoding="utf-8"')
+    package = _package(tmp_path, body.encode("windows-1252"), "lying.iirds")
+    report = runner.run(package, runner.ALL_KINDS)
+    said = [f for f in report.findings if f.rule.id == "C16.1"]
+    assert said, sorted({f.rule.id for f in report.findings})
+    detail = said[0].violation.detail or ""
+    # Not `"utf-8" in detail`: the codec puts its own name in every decode
+    # error it raises, so that assertion passed against the defect. The note
+    # is what is being asked for, and the note says "declares".
+    assert "declares" in detail, (
+        "the reader is not told the file declares the encoding it fails to be: %r" % detail)
+
+
+#: Declarations this reader refuses before any parser sees the document, and
+#: the exception each raises. Neither is a `UnicodeDecodeError`, and the first
+#: version of the note looked for that word: a supplier in Japan or China got
+#: no note, and with no note the remedy sent them to the branch that asks for
+#: the file to be sent again.
+RAISING = {"shift_jis": "multi-byte", "euc-jp": "multi-byte", "bogus-9": "unknown encoding"}
+
+
+@pytest.mark.parametrize("declared", sorted(RAISING))
+def test_a_declaration_this_reader_cannot_use_is_named(tmp_path, declared):
+    body = DECLARED.replace('encoding="windows-1252"', 'encoding="%s"' % declared)
+    package = _package(tmp_path, body.encode("ascii", "replace"), "raises.iirds")
+    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
+    assert said, "the document was refused and nothing reported it"
+    detail = said[0].violation.detail or ""
+    assert RAISING[declared] in detail, detail
+    assert "declares" in detail, (
+        "the reader is not told which declaration was refused: %r" % detail)
+
+
+def test_an_error_that_merely_mentions_a_codec_gains_no_note(tmp_path):
+    """The converse, and the reason the test is not a search for words.
+
+    `rdf:ID="codec can"` is a vocabulary error in a document that decoded
+    perfectly. The first version of this check searched the error text for
+    "codec can", so the package's own bad name put a sentence about encodings
+    into a finding that has nothing to do with them.
+    """
+    body = ('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+            'xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
+            '  <iirds:Package rdf:ID="codec can"/>\n</rdf:RDF>\n')
+    package = _package(tmp_path, body.encode("utf-8"), "ncname.iirds")
+    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
+    assert said, "the document was refused and nothing reported it"
+    assert "declares" not in (said[0].violation.detail or ""), said[0].violation.detail
+
+
+def test_a_syntax_error_in_a_utf8_document_gains_no_note(tmp_path):
+    """The other control: a declaration is not what is wrong here."""
+    body = '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF'
+    package = _package(tmp_path, body.encode("utf-8"), "syntax.iirds")
+    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
+    assert said and "declares" not in (said[0].violation.detail or ""), said

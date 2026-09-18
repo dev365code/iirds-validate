@@ -72,24 +72,47 @@ def test_the_finding_says_where_it_stopped(tmp_path):
     assert "not examined" in text or "stopped" in text, text
 
 
-def test_the_work_is_bounded_rather_than_merely_reported(tmp_path):
-    """The counter has to stop the loop, not annotate it.
+def test_the_work_is_bounded_rather_than_merely_reported(tmp_path, monkeypatch):
+    """The counter has to stop the loop, not annotate it, and the finding
+    cannot show that.
 
-    A version that recorded the overrun and went on reading would satisfy a
-    test that only looks for the finding, and would leave the cost exactly
-    where it was. The finding states how much the scan read, which is its own
-    account of the work it did; one file is the most it may exceed the ceiling
-    by, because the decision is taken after a read rather than before.
+    A version that recorded the overrun and went on reading produces the same
+    report: past the cut each read is bounded by what is left of the ceiling,
+    which is nothing, so it comes back empty, fails to parse, and is skipped
+    -- for as many entries as the archive lists. This test was written the
+    other way first, against the byte count in the finding, and that number is
+    the ceiling plus one whatever the package holds: the read is bounded by
+    what is left, so the total at the cut is arithmetic and not a measurement.
+    A mutant with the `return` deleted passed it, and passed every other test
+    in this file.
+
+    So the reading is counted where it happens. `_side_ontologies` is named
+    rather than the entries filtered, because the archive's other readers ask
+    for the same names and a filter would have to guess which call was whose.
     """
-    enough = MAX_SIDE_BYTES // len(FILLER.encode("utf-8")) + 40
-    hit = [f for f in report(tmp_path, enough, "many.iirds").findings
+    import sys
+
+    from iirds_validate.package import Package
+
+    seen = []
+    real = Package.read_bounded
+
+    def counting(self, name, limit):
+        if sys._getframe(1).f_code.co_name == "_side_ontologies":
+            seen.append(name)
+        return real(self, name, limit)
+
+    monkeypatch.setattr(Package, "read_bounded", counting)
+    count = MAX_SIDE_BYTES // len(FILLER.encode("utf-8")) + 40
+    hit = [f for f in report(tmp_path, count, "many.iirds").findings
            if f.rule.id == "S12"]
     assert hit, "no cut reported on a package far past the ceiling"
-    import re
-    numbers = [int(n) for n in re.findall(r"\d+", hit[0].violation.detail or "")]
-    assert numbers, hit[0].violation.detail
-    read = numbers[0]
-    assert read <= MAX_SIDE_BYTES + len(FILLER.encode("utf-8")), (read, MAX_SIDE_BYTES)
+    assert seen, "nothing was read through _side_ontologies; this counts nothing"
+    stopped_on = hit[0].violation.subject
+    assert seen[-1] == stopped_on, (seen[-1], stopped_on)
+    later = [name for name, _ in side_files(count) if name > stopped_on]
+    assert later, "the cut fell on the last entry; nothing would follow it either way"
+    assert not set(seen) & set(later), sorted(set(seen) & set(later))[:5]
 
 
 def test_a_real_side_ontology_is_still_found(tmp_path):

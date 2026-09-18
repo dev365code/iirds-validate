@@ -282,9 +282,13 @@ What was wrong was the sentence beside the refusal. It said an encoding error
 means "the bytes were damaged or cut short in transit and the file has to be
 sent again" -- so a reader asks their supplier to resend a file that is
 intact, and receives it again unchanged. The finding now names the encoding the
-document declares, and the remedy separates the two causes: a declared encoding
-is fixed by writing the file as UTF-8, and only an undeclared failure is damage
-in transit.
+document declares -- including UTF-8, when that is what it says and the bytes
+are not, which is the commonest of these in the field -- and the remedy answers
+each declaration separately. Written as some other encoding, or as one this
+reader will not use at all, the file is written as UTF-8. Written as UTF-8 and
+not being it, the file was saved in another encoding and the declaration left
+where it was. Written not at all, UTF-8 is what XML assumes, and the file is
+worth looking at before it is asked for again.
 
 Transcoding the same package to UTF-8 and nothing else turns the verdict into a
 pass with no findings, which is the measurement that says the markup was never
@@ -348,6 +352,30 @@ Deliberately not claimed: what other implementations do with these methods. No
 second reader is vendored here to measure, and a sentence about somebody else's
 tool that this repository cannot demonstrate is the kind of sentence this
 document exists to avoid.
+
+**S12, and the MUST a ceiling leaves unanswered.**
+
+Section 7.1 lets a package carry its own ontology beside the metadata, and R18
+finds one by reading every entry under `META-INF/` the standard does not name,
+parsing it as RDF and keeping it only if it attaches to iiRDS. Whether a file is
+this rule's business is therefore decided *after* it has been read, so what a
+package can ask a run to read is whatever its entry count and entry sizes say.
+The scan has a ceiling for that reason, and a ceiling has a cost: the file the
+scan stops on is not parsed, and R18 cannot answer for it.
+
+The cost is reported rather than absorbed. S12 names that file, says the rest of
+`META-INF/` was not examined either, and says in so many words that whether the
+file attaches anything to iiRDS is unanswered — because R18's silence about a
+file nobody read would otherwise be indistinguishable from R18 finding nothing
+there. Both rules are MUST, so a package in this state fails either way; what
+would have been lost without the sentence is *which* question is open.
+
+A sender can therefore keep one extension from being named, by making the file
+that holds it larger than the ceiling. What that buys is a different MUST, not a
+pass. The alternative — read the crossing file to the per-entry limit so R18 can
+still classify it — puts the ceiling back where it was for any sender willing to
+pay one file for it, and the whole point of the ceiling is that the deciding is
+what costs.
 
 ## Rules where this project is more lenient, deliberately
 

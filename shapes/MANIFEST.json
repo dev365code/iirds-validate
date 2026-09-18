@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 36,
   "deferred_v1.1": 9,
-  "not_expressible": 54,
+  "not_expressible": 55,
   "noop": 1
  },
  "core_emitted": [
@@ -248,6 +248,7 @@
   "S11": "system: the subject is the run itself, not the graph",
   "S12": "system: the subject is the run itself, not the graph",
   "S13": "system: the subject is the run itself, not the graph",
+  "S16": "system: the subject is the run itself, not the graph",
   "S6": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
   "S7": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",
   "S8": "archive: entry names, encryption bits, ZIP64 records, local headers, compression methods, central-directory records",

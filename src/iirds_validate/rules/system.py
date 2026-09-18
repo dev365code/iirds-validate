@@ -584,17 +584,20 @@ def s12_side_scan_stopped(ctx):
     if not cut:
         return
     _at_the_cut, limit, stopped_at = cut
-    # The live total rather than the figure recorded when the ceiling was
-    # passed. They are the same number when the scan stops there, and that is
-    # the point: a version that recorded the overrun and went on reading
-    # reports a larger one, and the test that reads this finding is what says
-    # the ceiling stops the loop rather than annotating it. Written the other
-    # way first, and a mutation that kept reading passed every test here.
-    read = ctx.__dict__.get("side_bytes_read", _at_the_cut)
+    # What the reader needs is the ceiling and the file the scan stopped on,
+    # not a byte count. Since the read is bounded by what is left of the
+    # ceiling, the total at the cut is always the ceiling plus one, and
+    # printing it read as a measurement of this package when it was a property
+    # of the arithmetic. The file named here was not examined at all: it is
+    # the one the ceiling ran out on, and R18 -- which decides whether a
+    # META-INF file attaches anything to iiRDS -- cannot answer for a file
+    # nobody parsed. That is what a ceiling costs, and saying so is the point
+    # of this rule.
     yield Violation("the search for the package's own ontology stopped at its ceiling, "
-                    "so the rest of META-INF was not examined",
+                    "so this file and the rest of META-INF were not examined",
                     subject=stopped_at,
-                    detail="%d bytes read of a %d byte ceiling" % (read, limit))
+                    detail="the scan reads at most %d bytes and this file crossed it; "
+                           "whether it attaches anything to iiRDS is unanswered" % limit)
 
 
 @rule("S13", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS,
@@ -624,3 +627,56 @@ def s13_container_would_not_open(ctx):
     was asked: clean when the container opened, firing when it did not.
     """
     return ()
+
+
+@rule("S16", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
+      diagnosis="consequence",
+      title="a file the container lists as content must be one the container will hand over",
+      fix="Read the reason beside each name -- B1 prints the same one against the same file. A "
+          "damaged stream is rebuilt from the sources; a file the filesystem will not open is a "
+          "permission on the unpacked copy. Until then nothing has read the file, so its rules "
+          "are neither passed nor failed, and a consumer opening the package meets whatever this "
+          "run met.")
+def s16_content_not_read(ctx):
+    """A file the container would not hand over is not a file that passed.
+
+    The refusal is reported by B1 against the same file with the same reason
+    -- for a rendition; `index.html` under iiRDS/H is read by the content
+    rules and is not a rendition, so there B1 is silent and this is the only
+    finding that names it. Either way B1 is a content rule, and content
+    findings demote to warnings outside iiRDS/A: `runner.severity_override`
+    gives the reason, that whether a given file is "iiRDS XHTML5 content" is
+    this project's reading of the entry condition and an unrestricted package
+    may carry what it likes. Whether the container will hand a file over is
+    not a reading of anything, so that demotion must not carry it, and until
+    this rule existed it did -- an unpacked package whose only fault was a
+    rendition the filesystem would not open came back `ok`, exit 0. The
+    archive form of the same package failed, and only by accident: C1's
+    damage check opens every entry and holds the verdict there, and C1 is one
+    of the rules an unpacked container suspends.
+
+    Deliberately narrow. Four other things stop a rendition being parsed, and
+    three already have a rule that says so at the same severity: the run's
+    content budget is S9's, the search under META-INF is S12's, a compression
+    method no bounded read can be made of is S14's. The fourth -- a file
+    larger on its own than `MAX_CONTENT_BYTES` -- has no rule, and is left
+    alone on purpose: that ceiling is a number this project chose, the file is
+    legal, and turning a legal package's pass into a failure is not something
+    a repair may do on the way past. It is a hole, recorded rather than
+    closed, because closing it moves a verdict and that is a release of its
+    own. `tests/test_content_hostile.py` pins the line where it is.
+
+    A fifth refusal is not a read failure at all and is not this rule's: a
+    document that declares XML entities is read whole and then not parsed, on
+    what it says rather than on what the container did. B1 reports it, a
+    warning outside iiRDS/A like every other content judgement, and that is
+    the demotion working as documented -- whereas the cases here are the
+    container failing to produce a file it lists, which is nobody's reading.
+    That one passes outside iiRDS/A, and it is worth knowing it does.
+
+    So this fires for what is left. Nothing else reports it in the unpacked
+    form, where C1 does not run.
+    """
+    for name, reason in sorted(ctx.__dict__.get("content_unread", {}).items()):
+        yield Violation("this file was not read, so no content rule speaks for it",
+                        subject=name, detail=reason)

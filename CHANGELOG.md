@@ -16,9 +16,12 @@ what the report said next. It offered one explanation for every decode failure
 sent again" -- so a reader asked their supplier to resend a file that was
 intact, and got back the same bytes.
 
-The finding names the encoding the document declares, and the remedy separates
-the two causes: a declared encoding is fixed by writing the file as UTF-8, and
-only a failure with no declaration is damage in transit. Measured on a real
+The finding names the encoding the document declares -- including UTF-8, when
+that is what it says and the bytes are not, which is the commonest of these in
+the field -- and the remedy answers each declaration separately: written as
+something else, or as a codec this reader will not use, write the file as
+UTF-8; written as UTF-8 and not being it, re-save it; not written at all, look
+at the file before asking for it again. Measured on a real
 package: transcoding it to UTF-8 and changing nothing else turns the verdict
 into a pass with no findings, which is what says the markup was never the
 problem. `docs/divergences.md` carries the reading.
@@ -28,8 +31,8 @@ examined.** `_bytes_of` named two reasons a rendition might not be read -- a
 compression method this tool will not decode, and the run's content ceiling --
 and a corrupt deflate stream is neither. It came out of the read as a
 `zlib.error`, killed the rule that had asked, and left the tree cache installed
-and half filled, because that dict goes on the context before the loop that
-fills it. Every later content rule then walked a truncated file set and was
+and half filled, because that dict went on the context before the loop that
+filled it. Every later content rule then walked a truncated file set and was
 recorded as having answered for the package.
 
 Measured on three renditions, each breaking several appendix B rules, with the
@@ -41,8 +44,11 @@ B3 ran.
 The read failure is a refusal now, like the other three, so the damaged
 rendition is named by B1 and the sound ones are examined by everything that
 follows. The list of what a read can fail with is not this project's to
-enumerate -- that is what the first version got wrong -- so the two reasons
-with names are caught by name and everything else is caught as itself.
+enumerate -- that is what the first version got wrong -- so the reasons that
+have a rule of their own are caught by name, everything else is caught as
+itself, and the handful of exception types that mean this code is broken
+rather than the package are re-raised so that a defect here cannot be reported
+as a defect in somebody's delivery.
 
 **The search for a package's own ontology read past its ceiling, and then said
 nothing about it.** The budget was tested at the head of an iteration and the
@@ -60,6 +66,13 @@ draw S12 before and draws it now**, and S12 is a MUST, so such a package's
 verdict moves from pass to fail. That is the repair rather than a side effect
 of it: a scan that stopped early and said so is the only honest answer.
 
+What the ceiling costs is stated where it falls. The file the scan stops on is
+not read, so R18 -- which decides whether a file under `META-INF/` attaches
+anything to iiRDS -- cannot answer for it, and a file that would have drawn
+R18 before draws S12 instead. Both are MUST, so the verdict does not move; the
+finding says which file went unexamined and that the question about it is open,
+rather than leaving R18's silence to be read as an answer.
+
 **The round-trip guard could not see a language tag change.** `write_metadata`
 writes the metadata, reads it back and compares, and under the condition it
 tests for it compares by fingerprint rather than by rdflib's isomorphism. The
@@ -67,12 +80,86 @@ fingerprint rendered every term with `str()`, which keeps the lexical form and
 drops the datatype, the language tag, and whether the term was a URI or a
 literal -- so `"Getriebe"@en` and `"Getriebe"@de` read back as the same graph,
 and so did `<http://example.org/o>` and the string that spells it. Terms are
-rendered by `n3()` now, which carries all three. The guard's own docstring has
-always said the two agree by construction under that condition; they do now.
+rendered by what tells them apart now -- what kind of term it is, its lexical
+form, and the datatype and language tag a literal carries -- and all three
+differences survive. The guard's own docstring has always said the two agree by
+construction under that condition; they do now.
 
 Measured before the repair: the round trip preserves every one of those shapes,
 so nothing was being lost -- the guard was weaker than it claimed rather than
 wrong about a package anybody has.
+
+`n3()` was what rendered them first, and `n3()` is a writer. Asked for an IRI
+holding a character RFC 3987 leaves out -- a space, a brace, a bar -- it
+raises, and RDF/XML writes such IRIs without complaint, so graphs
+`write_metadata` had always written came back refused, as a bare `Exception`
+rather than the `ValueError` the function documents. Comparing is not writing,
+and a comparison that refuses its input has decided nothing. Where a graph's
+blank nodes are not a forest there is no fingerprint to use and rdflib's
+isomorphism decides instead; it canonicalises through the same syntax and
+refuses the same terms, and that refusal is reported as `ValueError` now --
+saying the round trip could not be checked, which is not the same as saying it
+failed.
+
+**A file nobody could read is no longer a file that passed: `ERROR S16`.**
+Reporting a rendition that cannot be read, rather than letting the rule that
+asked for it die, is the repair above -- and it moved a verdict the wrong way.
+The report that a file was refused is B1's, B1 is a content rule, and content
+findings are warnings outside iiRDS/A, because whether a given file is "iiRDS
+XHTML5 content" is this project's reading of the entry condition and an
+unrestricted package may carry what it likes. Whether the container will hand a
+file over is not a reading of anything. Measured on an unpacked container whose
+only fault was one rendition the filesystem would not open: `false`/exit 1
+before, `true`/exit 0 after. The archive form of the same fault still failed,
+and only because the damage check opens every entry -- a rule the unpacked form
+suspends, so nothing there held the verdict at all.
+
+S16 is a system rule -- the statement is about the container, not about the
+profile -- and it is narrow on purpose. Four other things stop a rendition
+being parsed and three of them already draw an error of their own: the run's
+content budget is S9, the search under `META-INF/` is S12, a compression method
+no bounded read can be made of is S14. The fourth, a file larger on its own
+than the per-file ceiling, is left alone: that ceiling is a number this project
+chose, such a file is legal, and turning a legal package's pass into a failure
+is not something a repair does on the way past. A fifth refusal -- a document
+that declares XML entities -- is read whole and then not parsed on what it says
+rather than on what the container did; B1 reports it, as a warning outside
+iiRDS/A like every other content judgement. Both of those pass outside iiRDS/A
+today, and this release does not change that.
+
+**What fails: a package holding a file the container lists as content and will
+not hand over** -- a damaged stream, a file the filesystem will not open. In the
+unpacked form nothing reported that at all, because the damage check that holds
+the verdict for an archive is one of the rules an unpacked container suspends.
+`iirds lint` reads no content, so it neither runs this rule nor claims to have.
+
+**Two remedies told a reader to do something that would not work.** `C16.1`
+split its advice on whether the document declares an encoding, and suppressed
+the note for a document declaring UTF-8 -- on the reasoning that naming it
+corrects nothing, since this reader decodes as UTF-8 regardless. That is the
+commonest of these in the field: an editor saves in the platform's encoding and
+leaves the declaration alone. With the note suppressed such a file fell into the
+other branch, the one that names no declaration and asks for the file to be sent
+again; it arrives identical. The note is made whenever the bytes fail to decode,
+and a declaration of UTF-8 is reported as the contradiction it is. It is no
+longer added to findings that are not decode failures at all, where it was a
+true fact about a file whose problem was elsewhere.
+
+`B1`'s remedy for a rendition that was refused rather than parsed enumerated the
+reasons, and the enumeration was already one short of the code's. It points at
+the reason printed beside the finding, and offers the causes seen so far as
+examples rather than as a list that closes.
+
+**A bounded read was not bounded in the unpacked form.** `read_bounded(name,
+limit)` fills a buffer while it is under the limit for an archive, and asked the
+file for `limit + 1` bytes for a directory. A budget can arrive spent -- the
+search under `META-INF/` spends what is left of its ceiling -- and one byte
+further is a negative number, where `read(-1)` is the whole file and anything
+below that raises. The archive form returns nothing and says there was more,
+which is what every file longer than a negative number of bytes is; the
+directory form answers the same way now. Nothing reached that arithmetic in a
+shipped path, and the two forms disagreeing about a bound is how both size gates
+were once silently off for the unpacked form.
 
 **Announced, for the release after this one: a command-line usage error will
 exit `64` rather than `2`.** Measured today, every one of them exits `2` --
@@ -563,10 +650,12 @@ examination of the package and nothing said so.
 
 Those reads are now counted against a ceiling of eight mebibytes, fifty times
 the ontology the standard itself publishes, and past it the scan stops. S12
-says that it stopped, and states how much it read, which is its own account of
-the work it did: a version that recorded the overrun and went on reading
-satisfies a test that only looks for the finding, and leaves the cost exactly
-where it was.
+says that it stopped, names the file it stopped on, and says that whether that
+file attaches anything to iiRDS is therefore unanswered. It states no byte
+count: the read is bounded by what is left of the ceiling, so the total at the
+cut is the ceiling plus one whatever the package holds -- arithmetic rather
+than a measurement of anything. What has to be held instead is that the scan
+stops, and the test for that counts the reads.
 
 **Two obligations in the requirement index were half a sentence.** That file is
 the denominator of the coverage figure and the text every `covers=` claim is

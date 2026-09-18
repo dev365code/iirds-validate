@@ -92,3 +92,69 @@ def test_a_scan_that_fits_says_nothing(tmp_path, monkeypatch):
     limit = 1024 * 1024
     report = _read(tmp_path, [("vendor.rdf", 1024)], limit, monkeypatch)
     assert not any(f.rule.id == "S12" for f in report.findings)
+
+
+#: An extension that attaches to iiRDS -- one class of the package's own said
+#: to be a kind of `iirds:Topic` -- padded to whatever length is asked for.
+#: This is the shape R18 exists to report, and the shape a sender who wants it
+#: unreported has an interest in making large.
+def _attaching(pad):
+    return ('<?xml version="1.0"?><rdf:RDF '
+            'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+            'xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">'
+            '<rdfs:Class rdf:about="urn:mine:Special">'
+            '<rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>'
+            '</rdfs:Class>'
+            '<rdf:Description rdf:about="urn:mine:pad"><rdfs:comment>%s'
+            '</rdfs:comment></rdf:Description></rdf:RDF>' % ("a" * pad)).encode()
+
+
+def _with_bodies(tmp_path, entries, name):
+    path = tmp_path / name
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        first = zipfile.ZipInfo("mimetype")
+        first.compress_type = zipfile.ZIP_STORED
+        archive.writestr(first, MIMETYPE)
+        archive.writestr("META-INF/metadata.rdf", MINIMAL_RDF)
+        archive.writestr("content/topic1.xhtml", b"<html/>")
+        for entry, body in entries:
+            archive.writestr("META-INF/" + entry, body)
+    return path
+
+
+def _run(tmp_path, entries, limit, monkeypatch, name="attach.iirds"):
+    monkeypatch.setattr(requirements_module, "MAX_SIDE_BYTES", limit)
+    return runner.run(_with_bodies(tmp_path, entries, name), runner.ALL_KINDS)
+
+
+def test_a_side_file_that_attaches_is_reported_when_it_fits(tmp_path, monkeypatch):
+    """The control, and the reason the next test is not theatre.
+
+    If this fixture did not actually attach to iiRDS, "R18 is silent" below
+    would be true of any file at all and would be measuring nothing.
+    """
+    report = _run(tmp_path, [("vendor.rdf", _attaching(16))], 64 * 1024, monkeypatch,
+                  "fits.iirds")
+    assert "META-INF/vendor.rdf" in {f.violation.subject for f in report.findings
+                                     if f.rule.id == "R18"}
+
+
+def test_a_side_file_too_large_to_read_is_reported_as_unexamined(tmp_path, monkeypatch):
+    """Past the ceiling R18 cannot answer, and the report has to say so.
+
+    The file is never parsed, so the question R18 asks of it -- does this
+    attach anything to iiRDS -- has no answer, and the honest report is that
+    nobody looked. What must not happen is the two silences being the same
+    one: a package whose extension is merely large would otherwise read
+    exactly like a package that has none.
+    """
+    limit = 64 * 1024
+    report = _run(tmp_path, [("vendor.rdf", _attaching(8 * limit))], limit, monkeypatch,
+                  "toobig.iirds")
+    ids = {f.rule.id for f in report.findings}
+    assert "R18" not in ids, "the file was not read, so R18 cannot have an opinion"
+    cut = [f for f in report.findings if f.rule.id == "S12"]
+    assert cut, "the file that stopped the scan was passed over in silence: %s" % sorted(ids)
+    assert cut[0].violation.subject == "META-INF/vendor.rdf", cut[0].violation.subject
+    text = "%s %s" % (cut[0].violation.message, cut[0].violation.detail or "")
+    assert "unanswered" in text, text

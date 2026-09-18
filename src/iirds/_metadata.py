@@ -454,6 +454,19 @@ def _blank_forest(graph: Graph) -> bool:
     return all(acyclic(node, 0) for node in blanks)
 
 
+def _term(term) -> str:
+    """A term rendered by what distinguishes it from another term.
+
+    `str()` keeps the lexical form and nothing else, so `"1"^^xsd:integer` and
+    `"1"^^xsd:decimal` rendered alike, and so did `<http://example.org/o>` and
+    the string that spells it. The fingerprint built on that was a coarsening
+    of isomorphism rather than an equivalent of it, which is not what the
+    caller below promises. `n3()` carries the quoting, the datatype and the
+    language tag, and distinguishes a URI from a literal by the angle brackets.
+    """
+    return term.n3()
+
+
 def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
     """A blank node named by what hangs off it, not by its label."""
     if node in memo:
@@ -463,8 +476,8 @@ def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
     parts = []
     for predicate, obj in graph.predicate_objects(node):
         rendered = ("_:" + _blank_key(graph, obj, memo, depth + 1)
-                    if isinstance(obj, BNode) else str(obj))
-        parts.append("%s %s" % (predicate, rendered))
+                    if isinstance(obj, BNode) else _term(obj))
+        parts.append("%s %s" % (_term(predicate), rendered))
     parts.sort()
     memo[node] = hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
     return memo[node]
@@ -475,10 +488,10 @@ def _fingerprint(graph: Graph):
     rows = []
     for subject, predicate, obj in graph:
         left = ("_:" + _blank_key(graph, subject, memo)
-                if isinstance(subject, BNode) else str(subject))
+                if isinstance(subject, BNode) else _term(subject))
         right = ("_:" + _blank_key(graph, obj, memo)
-                 if isinstance(obj, BNode) else str(obj))
-        rows.append("%s %s %s" % (left, predicate, right))
+                 if isinstance(obj, BNode) else _term(obj))
+        rows.append("%s %s %s" % (left, _term(predicate), right))
     rows.sort()
     return rows
 

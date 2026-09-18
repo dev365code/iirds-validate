@@ -217,6 +217,19 @@ def _bytes_of(ctx, name):
             ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
             memo[name] = (b"", "reading this took the run past its %d byte "
                                "content budget" % exc.limit)
+        except Exception as exc:
+            # Anything else the read can fail with, and the list is not ours to
+            # enumerate: `zlib.error` for a deflate stream that will not decode,
+            # whatever a future `zipfile` raises for an entry it cannot hand
+            # over. Caught here because the alternative is what it was: the
+            # exception left `_bytes_of`, killed the rule that asked, and left
+            # `_walk`'s cache installed and half filled -- the dict goes on the
+            # context before the loop that fills it -- so every later content
+            # rule iterated a truncated file set and was recorded as having
+            # answered for the whole package. Measured on three renditions with
+            # the middle one's stream corrupted: B1 and B2 raised, B3 reported
+            # one file, and the intact third was opened by nobody.
+            memo[name] = (b"", "not read: %s" % (exc or type(exc).__name__))
     return memo[name]
 
 
@@ -303,14 +316,16 @@ def b1_well_formed(ctx):
                             subject=name, detail=refused,
                             fix="Read the reason reported alongside this. A file turned away "
                                 "for what it declares -- XML entities -- is fixed by removing "
-                                "them. The other three are not about this file being malformed "
-                                "at all: one says the file is larger on its own than a run will "
+                                "them. The others are not about this file being malformed at "
+                                "all: one says the file is larger on its own than a run will "
                                 "read, which is a fixed limit and asks for a smaller rendition; "
                                 "one says the run had already spent what it will decompress in "
                                 "total, and `IIRDS_CONTENT_BUDGET` raises that; the last says "
                                 "the entry is compressed with a method this tool does not read "
                                 "at all, which S14 reports beside this and which is fixed by "
-                                "rebuilding the entry with deflate. "
+                                "rebuilding the entry with deflate; and the last says the "
+                                "entry would not come back out of the archive, which is "
+                                "damage C1 reports and a rebuild repairs. "
                                 "Either way the file was turned away "
                                 "before it was parsed, so there is no syntax error in it to "
                                 "find; an XML parser would open it and a consumer applying the "

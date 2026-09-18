@@ -6,6 +6,57 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**One rendition nobody could decompress decided what every other content rule
+examined.** `_bytes_of` named two reasons a rendition might not be read -- a
+compression method this tool will not decode, and the run's content ceiling --
+and a corrupt deflate stream is neither. It came out of the read as a
+`zlib.error`, killed the rule that had asked, and left the tree cache installed
+and half filled, because that dict goes on the context before the loop that
+fills it. Every later content rule then walked a truncated file set and was
+recorded as having answered for the package.
+
+Measured on three renditions, each breaking several appendix B rules, with the
+middle one's compressed data scrambled: B1 and B2 were recorded as having
+raised, B3 reported `content/topic000.xhtml` alone, and `content/topic002.xhtml`
+-- intact, and breaking the same rules -- was opened by nobody. The report said
+B3 ran.
+
+The read failure is a refusal now, like the other three, so the damaged
+rendition is named by B1 and the sound ones are examined by everything that
+follows. The list of what a read can fail with is not this project's to
+enumerate -- that is what the first version got wrong -- so the two reasons
+with names are caught by name and everything else is caught as itself.
+
+**The search for a package's own ontology read past its ceiling, and then said
+nothing about it.** The budget was tested at the head of an iteration and the
+read that followed was bounded by the per-entry limit rather than by what was
+left, so one file could take the scan up to 64 MiB past an 8 MiB ceiling: a
+13,198-byte archive carrying a single 12,583,089-byte entry drew a peak of
+41,774,599 bytes. And the cut was recorded only when the next iteration began,
+so a scan whose last file is the large one ended with nothing said -- which is
+exactly what S12 exists to prevent, since a scan that gave up and a scan that
+found nothing otherwise look alike.
+
+The read is bounded by what is left of the ceiling now, and the cut is recorded
+where it happens. **A package carrying side files past the ceiling failed to
+draw S12 before and draws it now**, and S12 is a MUST, so such a package's
+verdict moves from pass to fail. That is the repair rather than a side effect
+of it: a scan that stopped early and said so is the only honest answer.
+
+**The round-trip guard could not see a language tag change.** `write_metadata`
+writes the metadata, reads it back and compares, and under the condition it
+tests for it compares by fingerprint rather than by rdflib's isomorphism. The
+fingerprint rendered every term with `str()`, which keeps the lexical form and
+drops the datatype, the language tag, and whether the term was a URI or a
+literal -- so `"Getriebe"@en` and `"Getriebe"@de` read back as the same graph,
+and so did `<http://example.org/o>` and the string that spells it. Terms are
+rendered by `n3()` now, which carries all three. The guard's own docstring has
+always said the two agree by construction under that condition; they do now.
+
+Measured before the repair: the round trip preserves every one of those shapes,
+so nothing was being lost -- the guard was weaker than it claimed rather than
+wrong about a package anybody has.
+
 **Announced, for the release after this one: a command-line usage error will
 exit `64` rather than `2`.** Measured today, every one of them exits `2` --
 `iirds --bogus`, `iirds check` with no package, an unknown value for `-f` --

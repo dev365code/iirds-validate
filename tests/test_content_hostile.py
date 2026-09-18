@@ -381,3 +381,87 @@ def test_the_damage_check_asks_for_bounded_reads(tmp_path, monkeypatch):
         "the damage check asked for %r; a request for a whole entry -- "
         "`read()` with no argument -- is one archive in memory at once"
         % sorted({n for n in asked if n is None or n <= 0 or n > SLICE}))
+
+
+def _renditions_with_one_damaged(tmp_path, count=3, damaged=1):
+    """A container whose renditions are sound but for one corrupt stream.
+
+    Each document violates several appendix B rules, so a rule that examines
+    it has something to say and a rule that never sees it stays silent -- the
+    difference this test is about.
+    """
+    import struct
+    import zipfile
+
+    topics = "".join("""  <iirds:Topic rdf:about="urn:t:%d"><iirds:title>t%d</iirds:title>
+    <iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/topic%03d.xhtml</iirds:source>
+    </iirds:Rendition></iirds:has-rendition></iirds:Topic>\n""" % (i, i, i)
+        for i in range(count))
+    body = ("<html xmlns='%s'><body><script>x</script><form></form>"
+            "<p data-role='nonsense'>t</p></body></html>" % XHTML).encode()
+    package = build_package(
+        tmp_path,
+        metadata=MINIMAL_RDF.replace("</rdf:RDF>", topics + "</rdf:RDF>"),
+        extra=[("content/topic%03d.xhtml" % i, body) for i in range(count)])
+
+    raw = bytearray(package.read_bytes())
+    with zipfile.ZipFile(package) as archive:
+        info = archive.getinfo("content/topic%03d.xhtml" % damaged)
+    name_len, extra_len = struct.unpack("<HH", raw[info.header_offset + 26:info.header_offset + 30])
+    start = info.header_offset + 30 + name_len + extra_len
+    for at in range(start + 4, start + 12):      # inside the deflate stream
+        raw[at] ^= 0xFF
+    package.write_bytes(bytes(raw))
+    return package
+
+
+def test_one_unreadable_stream_does_not_decide_what_the_other_rules_examine(tmp_path):
+    """A rendition nobody can decompress must cost that rendition, not the rest.
+
+    `_bytes_of` caught two kinds of refusal -- an unreadable compression
+    method and the run's ceiling -- and a corrupt deflate stream is neither.
+    It came out of `read_bounded` as `zlib.error`, killed the rule that asked,
+    and left `_walk`'s cache installed and half filled, because the dict is
+    put on the context before the loop that fills it. Every later content rule
+    then iterated a truncated file set and was recorded as having answered.
+
+    Measured on this package before the repair: B1 and B2 raised, and B3
+    reported only `content/topic000.xhtml` -- `topic002` is intact, breaks the
+    same rules, and nobody opened it. The report said B3 ran.
+    """
+    package = _renditions_with_one_damaged(tmp_path)
+    report = runner.run(package, runner.ALL_KINDS)
+    seen = {}
+    for finding in report.findings:
+        if finding.rule.id.startswith("B"):
+            seen.setdefault(finding.rule.id, set()).add(finding.violation.subject)
+
+    assert not report.not_applicable.get("raised"), (
+        "a rule raised rather than reporting the file it could not read: %s"
+        % report.not_applicable.get("raised"))
+    assert seen.get("B2") == {"content/topic000.xhtml", "content/topic002.xhtml"}, (
+        "the rules that examine content saw %r; the sound renditions are "
+        "topic000 and topic002" % (sorted(seen.get("B2", ())),))
+    refused = [f for f in report.findings
+               if f.rule.id == "B1" and f.violation.subject == "content/topic001.xhtml"]
+    assert refused, "the damaged rendition is not reported as refused"
+
+
+def test_a_sound_package_is_unchanged_by_that_handling(tmp_path):
+    """The control. Nothing about an archive that reads must move."""
+    package = _renditions_with_one_damaged(tmp_path, count=3, damaged=None) \
+        if False else build_package(
+            tmp_path, name="sound.iirds",
+            metadata=MINIMAL_RDF.replace("</rdf:RDF>", """  <iirds:Topic rdf:about="urn:t:0">
+    <iirds:title>t0</iirds:title><iirds:has-rendition><iirds:Rendition>
+      <iirds:format>application/xhtml+xml</iirds:format>
+      <iirds:source>content/topic000.xhtml</iirds:source>
+    </iirds:Rendition></iirds:has-rendition></iirds:Topic>\n</rdf:RDF>"""),
+            extra=[("content/topic000.xhtml",
+                    ("<html xmlns='%s'><body><script>x</script></body></html>" % XHTML).encode())])
+    report = runner.run(package, runner.ALL_KINDS)
+    assert not report.not_applicable.get("raised"), report.not_applicable.get("raised")
+    assert any(f.rule.id == "B2" and f.violation.subject == "content/topic000.xhtml"
+               for f in report.findings)

@@ -783,16 +783,33 @@ def _side_ontologies(ctx):
         # report. Read past the ceiling and the scan stops; S12 says it did,
         # because a scan that gave up and a scan that finished and found
         # nothing produce the same silence.
-        if ctx.__dict__.get("side_bytes_read", 0) > MAX_SIDE_BYTES:
+        read_so_far = ctx.__dict__.get("side_bytes_read", 0)
+        if read_so_far > MAX_SIDE_BYTES:
+            ctx.__dict__.setdefault(
+                "side_scan_cut", (read_so_far, MAX_SIDE_BYTES, name))
+            return
+        try:
+            # Bounded by what is left of the ceiling, not by the per-entry
+            # limit. Checking before the read and then reading up to 64 MiB
+            # let one file take the scan that far past the ceiling: measured,
+            # a 13,198-byte archive carrying a single 12,583,089-byte entry
+            # against an 8 MiB ceiling. One byte past is enough to know there
+            # was more, which is the same contract `read_bounded` has.
+            data, over = ctx.package.read_bounded(
+                name, MAX_SIDE_BYTES - read_so_far)
+        except Exception:
+            continue        # unreadable: not a statement about iiRDS
+        ctx.__dict__["side_bytes_read"] = read_so_far + len(data)
+        if over:
+            # Recorded here rather than at the head of the next iteration:
+            # when the file that crosses the ceiling is the last one, there is
+            # no next iteration, and S12 -- which exists so that a scan that
+            # gave up and a scan that found nothing do not look alike -- said
+            # nothing at all.
             ctx.__dict__.setdefault(
                 "side_scan_cut",
                 (ctx.__dict__["side_bytes_read"], MAX_SIDE_BYTES, name))
             return
-        try:
-            data = ctx.package.read(name)
-        except Exception:
-            continue        # unreadable: not a statement about iiRDS
-        ctx.__dict__["side_bytes_read"] = ctx.__dict__.get("side_bytes_read", 0) + len(data)
         try:
             graph = Graph()
             graph.parse(data=data, format="xml", publicID=PACKAGE_BASE)

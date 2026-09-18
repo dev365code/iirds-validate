@@ -6,6 +6,7 @@ its own entry gate: the rule can be right and still never see the document.
 """
 from __future__ import annotations
 
+import os
 import time
 
 import pytest
@@ -383,12 +384,17 @@ def test_the_damage_check_asks_for_bounded_reads(tmp_path, monkeypatch):
         % sorted({n for n in asked if n is None or n <= 0 or n > SLICE}))
 
 
-def _renditions_with_one_damaged(tmp_path, count=3, damaged=1):
-    """A container whose renditions are sound but for one corrupt stream.
+def _renditions_with_one_damaged(tmp_path, count=3, damaged=1, name="test.iirds"):
+    """A container whose renditions are sound but for corrupt streams.
 
     Each document violates several appendix B rules, so a rule that examines
     it has something to say and a rule that never sees it stays silent -- the
     difference this test is about.
+
+    `damaged` is one index or several. A damaged deflate stream is the one
+    fault that reads the same on every platform this runs on, which is why the
+    tests about more than one unreadable file are built here rather than out
+    of file permissions: `chmod(0o000)` leaves a file readable on Windows.
     """
     import struct
     import zipfile
@@ -402,17 +408,20 @@ def _renditions_with_one_damaged(tmp_path, count=3, damaged=1):
     body = ("<html xmlns='%s'><body><script>x</script><form></form>"
             "<p data-role='nonsense'>t</p></body></html>" % XHTML).encode()
     package = build_package(
-        tmp_path,
+        tmp_path, name,
         metadata=MINIMAL_RDF.replace("</rdf:RDF>", topics + "</rdf:RDF>"),
         extra=[("content/topic%03d.xhtml" % i, body) for i in range(count)])
 
     raw = bytearray(package.read_bytes())
+    wanted = (damaged,) if isinstance(damaged, int) else tuple(damaged)
     with zipfile.ZipFile(package) as archive:
-        info = archive.getinfo("content/topic%03d.xhtml" % damaged)
-    name_len, extra_len = struct.unpack("<HH", raw[info.header_offset + 26:info.header_offset + 30])
-    start = info.header_offset + 30 + name_len + extra_len
-    for at in range(start + 4, start + 12):      # inside the deflate stream
-        raw[at] ^= 0xFF
+        offsets = [archive.getinfo("content/topic%03d.xhtml" % i).header_offset
+                   for i in wanted]
+    for offset in offsets:
+        name_len, extra_len = struct.unpack("<HH", raw[offset + 26:offset + 30])
+        start = offset + 30 + name_len + extra_len
+        for at in range(start + 4, start + 12):      # inside the deflate stream
+            raw[at] ^= 0xFF
     package.write_bytes(bytes(raw))
     return package
 
@@ -495,6 +504,10 @@ def _one_rendition(tmp_path, name, count=1):
                          extra=[(source, body) for source in sources])
 
 
+@pytest.mark.skipif(os.name == "nt", reason="chmod(0o000) leaves a file readable on "
+                                            "Windows, so the fault this builds is not one "
+                                            "there; the zipped case above covers S16 on "
+                                            "every platform")
 def test_a_rendition_nobody_can_read_still_fails_the_package(tmp_path):
     """Reporting the file instead of raising must not turn a fail into a pass.
 
@@ -557,27 +570,21 @@ def test_the_same_package_read_whole_is_clean(tmp_path):
 def test_every_file_that_could_not_be_read_is_named(tmp_path):
     """One finding per file, not one per run.
 
-    Every fixture in this suite has exactly one unreadable file, so a version
-    of S16 that stopped after the first name passed all of them -- and "which
-    files went unexamined" is the whole of what the rule adds over the rules
-    that say what the run did.
-    """
-    import zipfile
+    Every other fixture in this suite has exactly one unreadable file, so a
+    version of S16 that stopped after the first name passed all of them -- and
+    "which files went unexamined" is the whole of what the rule adds over the
+    rules that say what the run did.
 
-    package = _one_rendition(tmp_path, "two.iirds", count=2)
-    unpacked = tmp_path / "unpacked"
-    with zipfile.ZipFile(package) as archive:
-        archive.extractall(unpacked)
-    names = ["content/r0.xhtml", "content/r1.xhtml"]
-    for name in names:
-        (unpacked / name).chmod(0o000)
-    try:
-        report = runner.run(unpacked, runner.ALL_KINDS)
-        assert sorted(f.violation.subject for f in report.findings
-                      if f.rule.id == "S16") == names
-    finally:
-        for name in names:
-            (unpacked / name).chmod(0o644)
+    Two damaged streams rather than two unreadable files on disk: a mode bit
+    is not a fault on every platform this suite runs on, and the property
+    being checked here has nothing to do with which platform it is.
+    """
+    package = _renditions_with_one_damaged(tmp_path, count=3, damaged=(0, 2),
+                                           name="two-damaged.iirds")
+    report = runner.run(package, runner.ALL_KINDS)
+    assert sorted(f.violation.subject for f in report.findings
+                  if f.rule.id == "S16") == ["content/topic000.xhtml",
+                                             "content/topic002.xhtml"]
 
 
 def test_a_command_that_reads_no_content_does_not_claim_to_have_asked(tmp_path):

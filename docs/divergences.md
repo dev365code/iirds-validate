@@ -482,7 +482,7 @@ sentence says, the claim goes with it.
 **Which claims stand is not stated in this document.** It was, in a paragraph
 here that named two rules and described the state of their citations; both had
 moved by the time anyone read it again. The paragraph further down about
-section 6.9.1 went the same way, in this file, three days apart. A sentence of
+section 6.9.1 went the same way, in this file. A sentence of
 prose about what the code claims is a copy of the code, and copies drift.
 
 So the record lives in two places a test reads. A withdrawal is a
@@ -604,7 +604,7 @@ exactly on the line those rules draw, which is unplanned and reassuring.
 skips unless `IIRDS_SAMPLE_CONTENT` points at the directory, because the
 packages are registration-gated and are not redistributed here.
 
-One caveat this exercise surfaced was settled the same day, by fetching the
+One caveat this exercise surfaced is settled here, by fetching the
 Consortium's own published 1.0 schema: the 1.0 *prose* names the Event
 properties `iirds:eventCode` and `iirds:eventType`, but the 1.0 *ontology*
 already says `has-event-code` and `has-event-type` — so M16.1/M16.2 check the

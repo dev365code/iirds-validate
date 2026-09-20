@@ -298,6 +298,37 @@ surfaces whose changes are announced as breaking. What is held still for
 another program to depend on is the command, its exit codes, and a report that
 says which `schemaVersion` it is.
 
+### Releases and version numbers
+
+**This is 0.x, and a release goes out when something is ready rather than on a
+calendar.** While something is being built that can mean a release a night, and
+it can equally mean nothing for a fortnight. The number says what changed, not
+how long it has been since the last one.
+
+**A patch repairs, and names any verdict it moves.** Mostly a package that
+passed goes on passing, and where a repair moves a verdict the changelog says
+whose and why: 0.6.2 stopped opening a bzip2 entry, which the standard permits
+and this tool will not read within a bound; 0.6.3 failed a container that will
+not produce a file it lists. If you gate a build on the exit code, the
+changelog is the file to read before upgrading, whichever number moved.
+
+**A minor release may add a verdict or move one, and the changelog names every
+package shape whose verdict moved**, with the reading behind it.
+
+**A security fix goes out ahead of anything else in flight**, and carries an
+advisory on this repository's Security tab naming the versions it reaches and
+the release that fixes it. `SECURITY.md` lists them.
+
+**Pin what you validated against, and pin `iirds`.** `iirds-validate` and
+`iirds-sdk` are aliases that ship no engine of their own, and their dependency
+on `iirds` is a floor rather than an exact pin -- so pinning either fixes the
+name you install and leaves the rules free to move under it. `iirds==<version>`
+is the pin that holds them still.
+
+**1.0 will mean the report schema stops moving.** Until then it may gain
+fields, and the coverage figure above is re-measured on every release rather
+than promised.
+
 ## Reading and writing packages from Python
 
 ```python

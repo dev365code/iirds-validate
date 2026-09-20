@@ -98,6 +98,15 @@ this repository, naming the versions it reaches and the release that fixes it.
   decompressed the whole entry in memory, so a package of a few hundred bytes
   could exhaust the memory of the machine checking it. Same versions; fixed in
   0.6.2, which refuses such entries without opening them (S14).
+- [GHSA-rf68-3wrj-h8jp](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-rf68-3wrj-h8jp):
+  one entry was decompressed once per central-directory record that named it. A
+  ZIP directory is a list of records rather than a set of names, and the check
+  that asks whether an archive is damaged walked the records: an 11,890-byte
+  archive with fifty records naming one 8 MiB entry made a run decompress
+  419,431,868 bytes, and each repetition costs the sender a 46-byte record.
+  `iirds-validate` up to and including 0.6.1, `iirds` and `iirds-sdk` 0.5.0
+  through 0.6.1; fixed in 0.6.2, which walks the name table and reports the
+  repetition (S15).
 - [GHSA-ggjq-93h3-wfwj](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-ggjq-93h3-wfwj):
   one rendition nobody could decompress ended the content rules early. The rule
   that met it died, the cache it was filling was left truncated, and every

@@ -120,6 +120,15 @@ this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
 line existed.
 
+**The front page says how releases are numbered and what to pin.** What a
+patch does and what it owes a reader when it moves a verdict, what a minor
+release may do, that a security fix carries an advisory, and what 1.0 will
+mean -- said on the page rather than inferred from the history. One of those
+sentences is worth its own line: pin `iirds`. `iirds-validate` and `iirds-sdk`
+are aliases that ship no engine, and their dependency on `iirds` is a floor,
+so pinning either fixes the name installed and not the rules a package is
+judged by.
+
 **Breaking, and said here because the exit codes are a stable surface: a
 command-line usage error exits `64` rather than `2`.** `iirds --bogus`, `iirds
 check` with no package, an unknown value for `-f` or for `--iirds-version`:

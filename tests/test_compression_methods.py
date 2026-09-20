@@ -150,6 +150,21 @@ def test_an_entry_in_a_method_this_tool_will_not_read_is_reported(tmp_path, meth
         "the finding names %s, not the entry" % [f.violation.subject for f in said])
 
 
+@pytest.mark.parametrize("method", ["bzip2", "lzma"])
+def test_a_refusal_that_has_a_rule_of_its_own_is_not_named_twice(tmp_path, method):
+    """S16 names a file the run listed as content and never parsed, and stops
+    where another rule already says why at the same severity: the run's total
+    is S9's, and a method no bounded read can be made of is this one. Two
+    errors for one file would make the report read as two faults, and the
+    second would carry no remedy the first does not."""
+    report = runner.run(_package(tmp_path, method), runner.ALL_KINDS)
+    assert [f.rule.id for f in report.findings if f.rule.id == "S14"], \
+        "the cause rule did not fire, so this proves nothing"
+    twice = [f for f in report.findings
+             if f.rule.id == "S16" and f.violation.subject == "content/r.xhtml"]
+    assert not twice, "S14 names this entry already: %s" % [f.violation.detail for f in twice]
+
+
 @pytest.mark.parametrize("method", sorted(METHODS))
 def test_the_two_methods_this_tool_reads_are_read(tmp_path, method):
     """The refusal is two methods wide and no wider.

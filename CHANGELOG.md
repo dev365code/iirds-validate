@@ -6,6 +6,12 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.0 — unreleased
 
+**A legal package that passed on 0.6.3 can fail on 0.7.0**, and that is the
+change rather than a side effect of it: two refusals of this tool's own
+were named by B1 alone, which is a warning outside iiRDS/A, and the package
+exited 0 with a file in it that nothing had parsed. `ERROR S16` names them
+now. What that costs is under `ERROR S16` below.
+
 **A refusal now names the declared encoding and says what to do about it.**
 `metadata.rdf` that declares an encoding this reader does not decode -- anything
 but UTF-8 -- is still refused, and refusing is still right: XML 1.0 requires a
@@ -41,14 +47,14 @@ raised, B3 reported `content/topic000.xhtml` alone, and `content/topic002.xhtml`
 -- intact, and breaking the same rules -- was opened by nobody. The report said
 B3 ran.
 
-The read failure is a refusal now, like the other three, so the damaged
-rendition is named by B1 and the sound ones are examined by everything that
-follows. The list of what a read can fail with is not this project's to
-enumerate -- that is what the first version got wrong -- so the reasons that
-have a rule of their own are caught by name, everything else is caught as
-itself, and the handful of exception types that mean this code is broken
-rather than the package are re-raised so that a defect here cannot be reported
-as a defect in somebody's delivery.
+The read failure is a refusal now, like the reasons that already had names, so
+the damaged rendition is named by B1 and the sound ones are examined by
+everything that follows. The list of what a read can fail with is not this
+project's to enumerate -- that is what the first version got wrong -- so the
+reasons that have a rule of their own are caught by name, everything else is
+caught as itself, and the handful of exception types that mean this code is
+broken rather than the package are re-raised so that a defect here cannot be
+reported as a defect in somebody's delivery.
 
 **The search for a package's own ontology read past its ceiling, and then said
 nothing about it.** The budget was tested at the head of an iteration and the
@@ -114,24 +120,49 @@ before, `true`/exit 0 after. The archive form of the same fault still failed,
 and only because the damage check opens every entry -- a rule the unpacked form
 suspends, so nothing there held the verdict at all.
 
-S16 is a system rule -- the statement is about the container, not about the
-profile -- and it is narrow on purpose. Four other things stop a rendition
-being parsed and three of them already draw an error of their own: the run's
-content budget is S9, the search under `META-INF/` is S12, a compression method
-no bounded read can be made of is S14. The fourth, a file larger on its own
-than the per-file ceiling, is left alone: that ceiling is a number this project
-chose, such a file is legal, and turning a legal package's pass into a failure
-is not something a repair does on the way past. A fifth refusal -- a document
-that declares XML entities -- is read whole and then not parsed on what it says
-rather than on what the container did; B1 reports it, as a warning outside
-iiRDS/A like every other content judgement. Both of those pass outside iiRDS/A
-today, and this release does not change that.
+S16 is a system rule -- the statement is about the run, not about the profile
+-- and it stops where another rule already speaks at the same severity. Six
+things stop a content rule getting a parsed document. One is the parser
+rejecting the document, which stays B1's and is discussed below. Of the other
+five, two draw an error of their own -- the run's content budget as `S9` and a
+compression method no bounded read can be made of as `S14` -- and naming those
+files here as well would print two errors for one fault with one remedy
+between them. The remaining three are this rule's, and two of the three are
+new here.
 
-**What fails: a package holding a file the container lists as content and will
-not hand over** -- a damaged stream, a file the filesystem will not open. In the
-unpacked form nothing reported that at all, because the damage check that holds
-the verdict for an archive is one of the rules an unpacked container suspends.
-`iirds lint` reads no content, so it neither runs this rule nor claims to have.
+**What now fails, and did not on 0.6.3: a rendition larger on its own than the
+64 MiB this tool reads in one piece, and a document that declares XML
+entities.** Both files are legal -- a package may carry a 200 MiB rendition
+and a topic with an internal subset and breach nothing the specification says
+-- and both refusals are this project's own: the ceiling is a number chosen
+here rather than a setting a run can be given, and the entity guard exists
+because the billion-laughs shape has nothing invalid about it and a parser has
+to not meet it at all. 0.6.3 left both alone deliberately and said so, because
+closing them moves a legal package's verdict and that release was a patch.
+
+What they cost a reader is the same as the case 0.6.3 did close. B1 named the
+file, the demotion made that a warning outside iiRDS/A, and the package came
+back `PASS`, exit 0 -- with B2 through B11 counted among the rules the run
+checked and none of them having seen the file. `-W` was the answer on offer
+and it is not one: it promotes every warning at once, and this project reports
+warnings that are not failures on purpose, eleven of them from B10 across the
+Consortium's own samples. A gate that wants "fail if a content file went
+unparsed" could not ask for that without also failing those.
+
+A document that does reach a parser and is rejected by it -- malformed, or
+declaring an encoding no codec has -- is not this rule's: that is the
+document's own defect, B1 reports it, and what severity it carries is the
+profile's business. The line is whose decision left the file unparsed.
+
+**What fails, unchanged from the rule 0.6.3 shipped: a package holding a file
+the container lists as content and will not hand over** -- a damaged stream, a
+file the filesystem will not open. In the unpacked form nothing reported that
+at all, because the damage check that holds the verdict for an archive is one
+of the rules an unpacked container suspends. `iirds lint` reads no content, so
+it neither runs this rule nor claims to have. The remedies are in the rule's
+own text; the entity one names both halves, because deleting the declarations
+and keeping the references clears the error and leaves a document that still
+does not parse. `docs/divergences.md` carries the argument.
 
 **Two remedies told a reader to do something that would not work.** `C16.1`
 split its advice on whether the document declares an encoding, and suppressed

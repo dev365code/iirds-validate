@@ -140,9 +140,10 @@ gone wrong.
    fails.** Nine of the 172 are appendix B's rules about iiRDS XHTML5 content,
    and outside profile iiRDS/A the runner demotes content findings to
    warnings — so a package breaching one of those nine is reported, prints
-   `PASS` and exits 0 -- except where the breach is that the container would
-   not hand the file over at all, which `ERROR S16` reports as the run's own
-   business rather than the profile's. With `-W` it prints `FAIL` and exits 1: that gate is the
+   `PASS` and exits 0 -- except where no content rule got a parsed
+   document for the file at all, the container having refused to hand it over
+   or this tool having refused to parse it, which `ERROR S16` reports as the
+   run's own business rather than the profile's. With `-W` it prints `FAIL` and exits 1: that gate is the
    caller's policy rather than the standard's, and the report records which one
    it was judged by. The demotion is deliberate and
    argued under "Content rules" in `docs/divergences.md`. It is repeated here

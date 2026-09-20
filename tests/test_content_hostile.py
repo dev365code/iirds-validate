@@ -100,13 +100,25 @@ def test_entity_expansion_is_refused_rather_than_expanded(tmp_path):
     assert elapsed < 5, "took %.1fs; the expansion was attempted" % elapsed
     b1 = next(f for f in report.findings if f.rule.id == "B1")
 
-    # Calibrated, not absolute. An unrestricted package may carry any content,
-    # so a file this validator refuses to read is a warning there — the
-    # refusal itself is this tool's safety guard, not a conformance fact — and
-    # `-W` exists for gates that want it fatal. Under iiRDS/A the profile
-    # restricts content to iiRDS XHTML5, so the same finding is an error.
+    # The content finding still demotes, and that policy is untouched: an
+    # unrestricted package may carry any content, so B1 saying a file is not
+    # iiRDS XHTML5 this tool can read is a warning outside iiRDS/A. What is
+    # not a reading of anything is that this run never put a file the package
+    # lists as content to a parser, and S16 reports that as the run's own fact.
+    #
+    # This used to end `assert report.ok`, on the argument that `-W` was there
+    # for gates that wanted a refusal fatal. It is not an answer: `-W`
+    # promotes every warning at once, and this project reports warnings that
+    # are not failures on purpose -- B10 draws eleven across the Consortium's
+    # own sample packages, by the reasoning in docs/divergences.md. A gate
+    # that wants "fail if a content file went unparsed" cannot ask for it
+    # without also failing those.
     assert str(b1.severity) == "warning"
-    assert report.ok
+    unexamined = [f for f in report.findings if f.rule.id == "S16"]
+    assert [f.violation.subject for f in unexamined] == ["content/topic1.xhtml"], \
+        sorted((f.rule.id, f.violation.subject) for f in report.findings)
+    assert str(unexamined[0].severity) == "error"
+    assert not report.ok, "a content file nothing parsed, and the package passes"
 
     restricted = MINIMAL_RDF.replace(
         "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>",
@@ -610,15 +622,20 @@ def test_a_command_that_reads_no_content_does_not_claim_to_have_asked(tmp_path):
     assert "S16" in lint.not_applicable["unasked"]
 
 
-def test_a_rendition_larger_than_the_per_file_ceiling_is_not_this_rules_business(tmp_path):
-    """The line S16 draws, held here because it is a line and not an omission.
+def test_a_rendition_larger_than_the_per_file_ceiling_fails_the_package(tmp_path):
+    """The hole 0.6.3 named and left open, closed here.
 
-    `MAX_CONTENT_BYTES` is a number this project chose; a rendition past it is
-    a legal file the container hands over perfectly well, and this tool
-    declines to read it. B1 says so as a warning, and outside iiRDS/A the
-    package passes -- which is a hole, and closing it turns a legal package's
-    pass into a failure. That is a release of its own, not something a repair
-    to the reporting may do on the way past.
+    `MAX_CONTENT_BYTES` is a number this project chose, and a rendition past
+    it is a legal file the container hands over perfectly well -- so this
+    turns a legal package's pass into a failure, which is why it waited for a
+    release that may do that and was not done on the way past a repair.
+
+    What it buys is the report. B1 says the file was refused, the demotion
+    makes that a warning outside iiRDS/A, and the package came back PASS with
+    a rendition that nothing had parsed while B2 through B11 were listed as
+    rules the run checked. Whether a file is "iiRDS XHTML5 content" is this
+    project's reading and demotes; whether this run ever put the file to a
+    parser is not a reading of anything.
     """
     from iirds_validate.rules import content as content_module
 
@@ -628,6 +645,63 @@ def test_a_rendition_larger_than_the_per_file_ceiling_is_not_this_rules_business
         package = _one_rendition(tmp_path, "big.iirds")
         report = runner.run(package, runner.ALL_KINDS)
         assert {f.rule.id for f in report.findings if f.violation.subject == "content/r.xhtml"} \
-            == {"B1"}, sorted((f.rule.id, f.severity) for f in report.findings)
+            == {"B1", "S16"}, sorted((f.rule.id, f.severity) for f in report.findings)
+        assert not report.ok, "a rendition nothing parsed, and the package passes"
     finally:
         monkey.undo()
+
+
+def test_a_document_the_parser_rejects_is_not_this_rules_business(tmp_path):
+    """The line S16 draws now, held here because it is a line and not an
+    omission.
+
+    A document that reaches a parser and is rejected by it is a file B2 through
+    B11 never examined either, and it still passes outside iiRDS/A. The
+    difference is whose defect it is: the container produced the file and this
+    tool was willing to parse it, so what is wrong is the document, B1 reports
+    that as the conformance finding it is, and what severity a content finding
+    carries outside iiRDS/A is `runner.severity_override`'s documented
+    demotion. S16 reports the other thing -- the file never reached a parser at
+    all -- and widening it to cover these would be overturning that policy
+    rather than adding a rule.
+
+    The `<script>` is what makes the loss visible: B2 reports it in the control
+    and nothing reports it in the two that carry markup and do not parse. The
+    empty file carries nothing to lose and pins only that the verdict does not
+    move.
+    """
+    scripted = "<script>x</script>"
+    page = "<html xmlns='%s'><head><title>t</title></head><body>%%s</body></html>" % XHTML
+    cases = {
+        "sound": page % scripted,
+        "malformed": page % (scripted + "<p>unclosed"),
+        "badenc": '<?xml version="1.0" encoding="x-nonesuch-42"?>' + page % scripted,
+        "empty": "",
+    }
+    verdicts = {}
+    for label, body in cases.items():
+        report = runner.run(
+            build_package(tmp_path, "line-%s.iirds" % label, content=(),
+                          extra=(("content/topic1.xhtml", body.encode()),)),
+            runner.ALL_KINDS)
+        verdicts[label] = (report.ok, {f.rule.id for f in report.findings})
+
+    assert "B2" in verdicts["sound"][1], "the control does not reach the rule it needs"
+    for label in ("malformed", "badenc", "empty"):
+        ok, ids = verdicts[label]
+        assert "S16" not in ids, "%s: %s" % (label, sorted(ids))
+        assert ids == {"B1"}, "%s: %s" % (label, sorted(ids))
+        assert ok, "%s failed the package; the demotion is what this pins" % label
+
+
+def test_the_same_package_under_the_ceiling_says_none_of_it(tmp_path):
+    """The control `test_a_rendition_larger_than_the_per_file_ceiling_fails_the_package`
+    needs: the fixture is a sound package, so every finding there belongs to
+    the ceiling and not to the markup. Without this, raising the ceiling back
+    would leave that assertion passing on a package that was failing for its
+    own reasons."""
+    package = _one_rendition(tmp_path, "small.iirds")
+    report = runner.run(package, runner.ALL_KINDS)
+    assert "S16" not in {f.rule.id for f in report.findings}, \
+        sorted((f.rule.id, f.violation.subject) for f in report.findings)
+    assert report.ok

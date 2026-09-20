@@ -95,6 +95,49 @@ def test_b1_does_not_tell_a_reader_of_a_refused_file_to_fix_its_syntax(tmp_path)
     assert "entit" in refused.fix.lower()
 
 
+def test_s16s_remedy_for_a_declared_entity_does_not_stop_half_way(tmp_path):
+    """A remedy that stops at "the declarations go" walks the reader into a pass.
+
+    Doing exactly that clears S16 -- the guard fires on a declaration and there
+    is none left -- and leaves a document referring to an entity nobody
+    defined, which no parser accepts. So B1 reports it, B1 is a warning outside
+    iiRDS/A, and the package passes with the file still unparsed: the remedy
+    walked the reader from an error that named the problem to a pass that
+    hides it. Measured here rather than argued, because a remedy that is false
+    for a branch is the defect this file exists to catch.
+    """
+    scripted = "<script>x</script>"          # B.5.7 MUST NOT, so an examining rule speaks
+    page = ('<html xmlns="http://www.w3.org/1999/xhtml"><body>%s<p>%s</p></body></html>')
+
+    declared = '<!DOCTYPE html [<!ENTITY co "ACME">]>' + page % (scripted, "&co;")
+    half = page % (scripted, "&co;")         # declarations gone, reference kept
+    whole = page % (scripted, "ACME")        # what the entity stood for, written in place
+
+    def verdict(label, body):
+        report = runner.run(
+            build_package(tmp_path, "s16_%s.iirds" % label, content=(),
+                          extra=(("content/topic1.xhtml", body),)), runner.ALL_KINDS)
+        return report, {f.rule.id for f in report.findings}
+
+    before, ids = verdict("declared", declared)
+    assert {"B1", "S16"} <= ids, sorted(ids)
+    assert not before.ok
+
+    stuck, ids = verdict("half", half)
+    assert "S16" not in ids, "the half remedy clears the error"
+    assert "B1" in ids and stuck.ok, sorted(ids)
+    assert "B2" not in ids, "nothing examined the file, and the package passed"
+
+    done, ids = verdict("whole", whole)
+    assert not ({"B1", "S16"} & ids), sorted(ids)
+    assert "B2" in ids, "the file is examined now, and the script is reported"
+
+    # And the remedy has to name the half that is missing, or the measurement
+    # above is a fact about this test rather than about what a reader is told.
+    fix = next(f for f in before.findings if f.rule.id == "S16").fix.lower()
+    assert "every reference to them" in fix, fix
+
+
 def test_m15_7a_does_not_tell_a_reader_who_has_the_relation_to_add_it(tmp_path):
     """One branch is a Document relating to no product variant; the other is
     a Document whose variant carries no instance identity. "Add

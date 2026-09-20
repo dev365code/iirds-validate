@@ -81,6 +81,20 @@ def test_a_run_states_a_ceiling_on_what_it_will_decompress(tmp_path, monkeypatch
     assert said[0].violation.subject.startswith("content/r"), said[0].violation.subject
 
 
+def test_the_ceiling_is_not_reported_twice(tmp_path, monkeypatch):
+    """S9 names the rendition the run stopped at and says the rest were not
+    examined. S16 names files no other rule reports at error severity, so it
+    has to stay out of this one: a reader told twice that one file went unread
+    counts two faults and looks for two remedies, and there is one."""
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 8 * len(BLOB))
+    package = _package_with_renditions(tmp_path, 12)
+    _, report = _reads_by_name(monkeypatch, package)
+    assert [f for f in report.findings if f.rule.id == "S9"], \
+        "the ceiling was not reached, so this proves nothing"
+    assert not [f for f in report.findings if f.rule.id == "S16"], \
+        sorted((f.rule.id, f.violation.subject) for f in report.findings)
+
+
 def test_the_ceiling_is_the_one_the_environment_names(monkeypatch):
     """S9's remedy tells the reader to raise IIRDS_CONTENT_BUDGET, so the
     variable has to exist and to be the number that is used -- a remedy that

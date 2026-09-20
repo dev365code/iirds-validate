@@ -180,6 +180,28 @@ _OUR_FAULT = (NameError, AttributeError, TypeError, IndexError, KeyError,
               ImportError, RecursionError)
 
 
+def _unexamined(ctx, name, reason):
+    """Record a file the package lists as content that no content rule parsed.
+
+    S16 reports what is in here. Two refusals stay out because a rule of their
+    own already names the fault at error severity: the run's total is S9's and
+    a compression method no bounded read can be made of is S14's. That is the
+    rule, and it is narrower than "whatever no other rule names" -- S9 names
+    the one rendition the run stopped at and says the rest were not examined
+    without naming them, and this stays silent about those too, because one
+    ceiling reached is one fault with one remedy.
+
+    B1 names these files too, where they are renditions, and is not one of
+    those two: outside iiRDS/A it is a warning, which is the whole reason this
+    record exists, and under iiRDS/A it is an error that this repeats.
+
+    Not here: a document handed to a parser as a document and rejected by it.
+    That is the document's own defect, B1 reports it, and what severity it
+    carries is the profile's business.
+    """
+    ctx.__dict__.setdefault("content_unexamined", {})[name] = reason
+
+
 def _bytes_of(ctx, name):
     """The rendition's bytes, and why they were not read if they were not.
 
@@ -215,8 +237,17 @@ def _bytes_of(ctx, name):
         try:
             raw, oversize = ctx.package.read_bounded(name, MAX_CONTENT_BYTES)
             ctx.package.charge(len(raw))
-            memo[name] = (raw, "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
-                               if oversize else None)
+            if oversize:
+                reason = "over the %d byte limit uncompressed" % MAX_CONTENT_BYTES
+                memo[name] = (raw, reason)
+                # This ceiling is a number this project chose and the file
+                # is legal, so nothing but B1 said anything and the package
+                # passed outside iiRDS/A with a rendition nobody had parsed.
+                # The number is still ours; that the file never reached a
+                # parser is not a reading of anything.
+                _unexamined(ctx, name, reason)
+            else:
+                memo[name] = (raw, None)
         except UnreadableMethod as exc:
             # S14 reports the entry and says why. B1 says the same thing in
             # its own place, because a reader looking at a rendition wants to
@@ -253,14 +284,13 @@ def _bytes_of(ctx, name):
             # truncated file set and was recorded as having answered.
             reason = "not read: %s" % (exc if str(exc) else type(exc).__name__)
             memo[name] = (b"", reason)
-            # Kept apart from the four refusals above, because this is the one
-            # with no rule of its own. A ceiling is S9's and the scan's is
-            # S12's; a method a bounded read cannot be made of is S14's; the
-            # per-file limit is this project's own number and a file that
-            # crosses it is legal. What is left here is the container failing
-            # to hand over a file it lists, and S16 is what says so -- in the
-            # unpacked form, where C1 does not run, nothing else does.
-            ctx.__dict__.setdefault("content_unread", {})[name] = reason
+            # Kept apart from the refusals above that a rule of their own
+            # already names at error severity: the run's total is S9's, a
+            # method no bounded read can be made of is S14's. What is left
+            # here is the container failing to hand over a file it lists, and
+            # in the unpacked form, where C1 does not run, nothing else
+            # reports it at all.
+            _unexamined(ctx, name, reason)
     return memo[name]
 
 
@@ -273,7 +303,13 @@ def _refusal(ctx, name):
     if refused:
         return refused
     if _declares_entities(raw):
-        return "the document declares XML entities"
+        # Read whole and then not parsed, on what the document says rather
+        # than on anything the container did -- so it is the one refusal here
+        # that is not a read failure, and it lands in the same place for the
+        # same reason: no rule that needs a parsed document gets one here.
+        reason = "the document declares XML entities"
+        _unexamined(ctx, name, reason)
+        return reason
     return None
 
 
@@ -362,7 +398,10 @@ def b1_well_formed(ctx):
                             fix="The reason is printed as this finding's detail, and it is "
                                 "what to act on -- not the file's syntax, which nothing here "
                                 "has looked at. A file turned away for what it declares -- XML "
-                                "entities -- is fixed by removing them. One turned away for "
+                                "entities -- is fixed by removing the declarations and every "
+                                "reference to them together: remove the declarations alone and "
+                                "the references are left defined by nothing, which is a document "
+                                "that still does not parse. One turned away for "
                                 "its own size asks for a smaller rendition; one turned away "
                                 "because the run had already spent what it will decompress in "
                                 "total is answered by `IIRDS_CONTENT_BUDGET`, which sets that "

@@ -377,6 +377,72 @@ still classify it — puts the ceiling back where it was for any sender willing 
 pay one file for it, and the whole point of the ceiling is that the deciding is
 what costs.
 
+**S16 — a refusal of this project's own is still a file nothing parsed.**
+
+Six things stop a content rule getting a parsed document. One is the parser
+rejecting the document, which is B1's finding and demotes outside iiRDS/A like
+every other content judgement — the line drawn below. Of the other five, two
+are reported by a rule of their own at the same severity: the total a run will
+decompress is S9's subject, and a compression method no bounded read can be
+made of is S14's, above. The remaining three are S16's, and until 0.7.0 only
+one of them was:
+
+- the container will not hand the file over — a damaged stream, a file the
+  filesystem will not open — which 0.6.3 closed;
+- a rendition larger on its own than the 64 MiB this tool will read in one
+  piece, which is a number chosen here rather than a setting a run can be
+  given: `IIRDS_CONTENT_BUDGET` is the one ceiling a caller sets, and it is
+  the run's total; and
+- a document that declares XML entities, which is read whole and then not
+  parsed, on what it says rather than on anything the container did.
+
+The last two are legal files. A package may carry a 200 MiB rendition and a
+topic with an internal subset and breach nothing the specification says, and
+this tool declines to read either. B1 reported the refusal, B1 is a content
+rule, and content findings demote to warnings outside iiRDS/A — so the package
+printed `PASS` and exited 0 with a file in it that no content rule had parsed,
+while B2 through B11 were counted among the rules the run checked. That last
+clause is the whole of it: a reader who fixes everything the report names has
+not fixed what it did not name, and a build that keeps reports as a record of
+what was examined has a record that is wrong about that.
+
+`ERROR S16` names those two files now. Whose decision it was changes nothing a
+reader has to do, and the sentence the report owes is the same either way; the
+reason itself is printed beside each name, so a reader can still tell a
+ceiling of ours from a container that failed. What moves is a verdict, which
+is why this waited for a release that may move one: 0.6.3 shipped S16 narrowed
+to the container's own failures on the same argument in reverse, that a patch
+does not turn a legal package's pass into a failure.
+
+`-W` was the previous answer and this document owes an account of why it is
+not enough. It promotes every warning at once, and this project reports
+warnings that are not failures by design — B10 alone draws eleven across the
+Consortium's own sample packages, for the reasons given below. A gate that
+wants "fail if a content file went unparsed" cannot ask for it without also
+failing those, so what was on offer was a flag that fails too much or a report
+that says too little.
+
+**Where the line is drawn, and why it is not further out.** A document that
+does reach a parser and is rejected by it — malformed, in an encoding no codec
+has, empty — is *also* a file B2 through B11 never examined, and it still
+passes outside iiRDS/A. That is not an oversight here: the defect is the
+document's own, B1 reports it as the conformance finding it is, and what
+severity a content finding carries outside iiRDS/A is the demotion argued
+under "Content rules" below. What S16 reports is narrower and is not a reading
+of anything: the container would not produce the file, or this project refused
+it. The wider statement — that a report should never count a rule as having
+answered for a file it never saw — is true, and is a change to how a run
+records what it did rather than to any rule's severity. It is not made here.
+
+What this costs, stated rather than hidden: a package whose renditions are
+larger than this tool reads, or whose topics declare entities, now fails here,
+on a refusal of this project's own rather than on anything the specification
+says. Both remedies are in S16's own text, and neither is a setting — the file
+is split, or the declarations go *and* the references to them are replaced by
+what they stood for. Deleting the declarations alone leaves the references
+undefined, which clears this error and leaves a document that still does not
+parse; the remedy says so in those words.
+
 ## Rules where this project is more lenient, deliberately
 
 Each of these was stricter until the reference's own fixtures showed the cost —
@@ -1039,6 +1105,17 @@ checkable rather than aspirational:
   *runner* assigns the severity, because only it knows the profile. So the
   list above is one item long: L4.
 
+A third case sits beside these and is not one of them. `ERROR S16` fires where no content rule
+got a parsed document for a file the package lists as content — including two
+refusals of this project's own, a rendition past a ceiling chosen here and a
+document refused in its prolog for declaring XML entities — and it is an error
+in every profile. It is not a reading of the specification
+outrunning its warrant, because it makes no claim about the package against the
+standard: it says this run never parsed a file the package lists as content,
+which is a fact about the run and true whoever chose the ceiling. The
+distinction is worth keeping in sight, since the consequence — exit 1 — is the
+same one a reading would produce.
+
 ## `iirds:source` — a URL or a path? The standard says both, normatively
 
 
@@ -1268,6 +1345,14 @@ would be reaching outside the package, which is a different promise with its
 own rule. Refusing it would report a document for something that cannot
 happen here. If a reader is ever met that resolves external DTDs, this is the
 row to revisit.
+
+**And the refusal fails the package now.** It used to be a warning outside
+iiRDS/A and nothing else, on the argument that an unrestricted package may
+carry any content and `-W` was there for gates that wanted the refusal fatal.
+B1 still reports at warning there, and that policy is untouched; what is added
+beside it is `ERROR S16`, which says the file was never parsed.
+The reasoning is under "What this tool refuses to read" above, with what the
+flag could not do.
 
 ### B10 — a missing *tag* is reported, and it is not an error
 

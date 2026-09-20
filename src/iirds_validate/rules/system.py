@@ -631,14 +631,35 @@ def s13_container_would_not_open(ctx):
 
 @rule("S16", kind="system", prio="MUST", versions=ALWAYS, variants=ALWAYS, covers=(),
       diagnosis="consequence",
-      title="a file the container lists as content must be one the container will hand over",
-      fix="Read the reason beside each name -- B1 prints the same one against the same file. A "
-          "damaged stream is rebuilt from the sources; a file the filesystem will not open is a "
-          "permission on the unpacked copy. Until then nothing has read the file, so its rules "
-          "are neither passed nor failed, and a consumer opening the package meets whatever this "
-          "run met.")
-def s16_content_not_read(ctx):
-    """A file the container would not hand over is not a file that passed.
+      title="a file the package lists as content must be one the container hands over and "
+            "this run will parse",
+      fix="Read the reason beside each name -- where the file is a rendition, B1 prints the same "
+          "one against the same file. A damaged stream is rebuilt from the sources; a file the "
+          "filesystem will not open is a permission on the unpacked copy; a rendition larger than "
+          "this tool will read in one piece has to be split, because that ceiling is not a setting "
+          "a run can be given; a document that declares XML entities is read once the declarations "
+          "and every reference to them are gone -- a numeric character reference replaces one that "
+          "stood for a single character, and otherwise what the entity stood for is written where "
+          "the reference was. Deleting the declarations and keeping the references is not that "
+          "remedy: it clears this error and leaves a document that still does not parse. Until the "
+          "file parses nothing has examined it, so its rules are neither passed nor failed, and a "
+          "consumer opening the package meets whatever this run met.")
+def s16_content_not_examined(ctx):
+    """A file the content rules never got a tree for is not a file that passed.
+
+    Three things bring a name here, and what they have in common is that no
+    content rule ever got a parsed document for the file: the container would
+    not hand it over, it is larger on its own than `MAX_CONTENT_BYTES`, or it
+    declares XML entities and is refused in its prolog. That last one is
+    decided by a parser -- `_declares_entities` runs expat over the prolog and
+    raises from the declaration handler -- so "not read" is the wrong word for
+    it and "not parsed" is the right one.
+
+    A document that is handed to a parser as a document and rejected by it --
+    malformed, or declaring an encoding no codec has -- is B1's finding and
+    the profile's business rather than this rule's. The difference is whose
+    decision left it unparsed: the container's or this project's, against the
+    document's own defect.
 
     The refusal is reported by B1 against the same file with the same reason
     -- for a rendition; `index.html` under iiRDS/H is read by the content
@@ -647,36 +668,48 @@ def s16_content_not_read(ctx):
     findings demote to warnings outside iiRDS/A: `runner.severity_override`
     gives the reason, that whether a given file is "iiRDS XHTML5 content" is
     this project's reading of the entry condition and an unrestricted package
-    may carry what it likes. Whether the container will hand a file over is
-    not a reading of anything, so that demotion must not carry it, and until
+    may carry what it likes. That this run never put the file to a parser is
+    not a reading of anything, so the demotion must not carry it, and until
     this rule existed it did -- an unpacked package whose only fault was a
     rendition the filesystem would not open came back `ok`, exit 0. The
-    archive form of the same package failed, and only by accident: C1's
-    damage check opens every entry and holds the verdict there, and C1 is one
-    of the rules an unpacked container suspends.
+    archive form of the same package failed, and only by accident: C1's damage
+    check opens every entry and holds the verdict there, and C1 is one of the
+    rules an unpacked container suspends.
 
-    Deliberately narrow. Four other things stop a rendition being parsed, and
-    three already have a rule that says so at the same severity: the run's
-    content budget is S9's, the search under META-INF is S12's, a compression
-    method no bounded read can be made of is S14's. The fourth -- a file
-    larger on its own than `MAX_CONTENT_BYTES` -- has no rule, and is left
-    alone on purpose: that ceiling is a number this project chose, the file is
-    legal, and turning a legal package's pass into a failure is not something
-    a repair may do on the way past. It is a hole, recorded rather than
-    closed, because closing it moves a verdict and that is a release of its
-    own. `tests/test_content_hostile.py` pins the line where it is.
+    Under iiRDS/A B1 already carries the same file at error, so there this
+    repeats it, on purpose: the subject here is the run rather than the
+    profile, and the one fact a profile cannot change should not appear and
+    disappear with the profile.
 
-    A fifth refusal is not a read failure at all and is not this rule's: a
-    document that declares XML entities is read whole and then not parsed, on
-    what it says rather than on what the container did. B1 reports it, a
-    warning outside iiRDS/A like every other content judgement, and that is
-    the demotion working as documented -- whereas the cases here are the
-    container failing to produce a file it lists, which is nobody's reading.
-    That one passes outside iiRDS/A, and it is worth knowing it does.
+    Six things stop a content rule getting a parsed document. One is the
+    parser rejecting the document, which is B1's and demotes outside iiRDS/A
+    as every content finding does. Of the other five, two have a rule of their
+    own at the same severity and so stop short of here: the total a run will
+    decompress is S9's subject, and a compression method no bounded read can
+    be made of is S14's. Naming those files here as well would print two
+    errors for one fault with one remedy between them. S12 is not among them
+    at all: its ceiling bounds R18's own scan of `META-INF/`, which is a
+    different reader and stops no content rule.
 
-    So this fires for what is left. Nothing else reports it in the unpacked
-    form, where C1 does not run.
+    Two of this rule's three arrived in 0.7.0 and did not before. 0.6.3 shipped
+    this rule narrowed to what the container will not hand over, because
+    widening it turns a legal package's pass into a failure and that release
+    was a patch. Both are this project's own refusal rather than the
+    container's:
+
+    * a rendition larger on its own than `MAX_CONTENT_BYTES`, which is a
+      number chosen here and not a setting a run can be given; and
+    * a document that declares XML entities, which is read whole and then not
+      parsed, on what it says rather than on anything the container did.
+
+    Whose decision it was changes nothing a reader has to do, and the report
+    said the same either way: B2 through B11 counted among the rules the run
+    checked, and a file none of them had seen. `-W` is not the answer to that
+    -- it promotes every warning at once, and this project reports warnings
+    that are not failures on purpose, eleven of them from B10 across the
+    Consortium's own samples.
     """
-    for name, reason in sorted(ctx.__dict__.get("content_unread", {}).items()):
-        yield Violation("this file was not read, so no content rule speaks for it",
+    for name, reason in sorted(ctx.__dict__.get("content_unexamined", {}).items()):
+        yield Violation("this file was not parsed, so the rules that judge content "
+                        "answered for the package without it",
                         subject=name, detail=reason)

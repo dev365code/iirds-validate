@@ -1,26 +1,25 @@
 {
  "counts": {
   "branch": 1,
-  "finding": 2,
+  "finding": 1,
   "other": 1,
   "silent": 11
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
   "container.py": "219959b671a8829a8eaba34de20528b42100b8d23a9d1a7641527d27b6a7fd7c",
-  "content.py": "c61a1c385b9bcfb08c322999d693b0198c7b177864492a187b9d51cbe1ea8d20",
+  "content.py": "f352a1cb19509d6ef98bc9d33e92cdd4e5a0e17d089d3e54763c9e2ca72b05f0",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
   "lint.py": "0dbe29fea7522e2957156b32f4013eb62f280f28b55bccf9ba4b1d92f9e5d216",
   "requirements.py": "8e62c431f97e6f6041e43f70ca8ebee10c572bb5971c1c279a3ac2e829451bb3",
   "schema.py": "50086c6e749309405ad3006b7633e91cae465940429ec588c20042730f1a6ffe",
   "schema_tables.py": "8a13d6e9362f3f7f4d85bc60a2f5dd42076b0fb8a2d7179c58ff1f951b301cb4",
-  "system.py": "cab088812113b54a300e9b7ffc5c632e59da86a798041215dee8ef7fce46ce26"
+  "system.py": "d7fbe6c00749ed55281636aeacf6be96dcfd47840b4c9366e7e3b26436cf7450"
  },
  "unreached": {
   "content.py": {
    "_bytes_of :: raise": "other",
    "_declares_entities :: return False [3]": "silent",
-   "b1_well_formed :: yield Violation(\"content declared as iiRDS XHTML5 could not be parsed, \"": "finding",
    "b3_only_listed_elements :: continue": "silent"
   },
   "lint.py": {

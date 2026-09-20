@@ -270,8 +270,16 @@ def test_the_version_is_one_number_everywhere_it_is_declared():
 
 
 def test_the_changelog_records_this_release():
+    published = published_releases()
     problems = problems_with((ROOT / "CHANGELOG.md").read_text("utf-8"), __version__,
-                             published=published_releases())
+                             published=published)
+    if not published:
+        # No tags visible: every dated entry above this release is refused for
+        # that one reason, and saying so here as well would blame the file for
+        # the checkout. `test_the_tags_are_visible_here` is the failure that
+        # names the cause; this one keeps only what it can still judge, so a
+        # real fault in the changelog is not hidden behind a missing tag.
+        problems = [line for line in problems if "no v* tag is visible" not in line]
     assert problems == [], "CHANGELOG.md, against %s:\n  %s" % (
         __version__, "\n  ".join(problems))
 

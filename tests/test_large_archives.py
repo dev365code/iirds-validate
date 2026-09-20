@@ -272,7 +272,14 @@ def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
     root = Path(runner.__file__).resolve().parents[2]
     sections = (root / "CHANGELOG.md").read_text("utf-8").split("\n## ")
     unreleased = [s for s in sections if s.splitlines()[0].endswith("unreleased")]
-    assert len(unreleased) == 1, [s.splitlines()[0] for s in sections[1:]]
+    # Zero of them between cutting a release and opening the next entry: this
+    # gate polices the unreleased notes, and having none is not a fault. Two
+    # is, because then "the unreleased notes" names two different things. The
+    # release that first carried this test found the `== 1` here by failing
+    # `make check` on the day it was cut.
+    assert len(unreleased) <= 1, [s.splitlines()[0] for s in sections[1:]]
+    if not unreleased:
+        return
     entry = next(p for p in unreleased[0].split("\n\n") if "`notApplicable`" in p)
 
     assert re.search(r"\b%s\b" % IN_WORDS[moved], entry), (

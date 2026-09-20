@@ -71,6 +71,97 @@ def lines():
 ALL = lines()
 
 
+#: A job's block, by the two-space indent under `jobs:`. Read with a pattern
+#: rather than a YAML parser because pyyaml is not a declared dependency here,
+#: and a gate that only runs where somebody happens to have a package is the
+#: defect `tests/test_declared_dependencies.py` exists to refuse.
+JOB = re.compile(r"^  ([A-Za-z0-9_-]+):$", re.M)
+
+
+def jobs_of(path):
+    """{job name: its block} for one workflow file, comments removed.
+
+    Full-line comments are dropped because a block runs between one job header
+    and the next, so a comment written above a job is attributed to the one
+    before it. Without this, a gate reading a block for what the job *runs*
+    answers about prose sitting between two jobs.
+    """
+    text = path.read_text("utf-8")
+    start = text.index("\njobs:\n")
+    found = list(JOB.finditer(text, start))
+    out = {}
+    for i, m in enumerate(found):
+        end = found[i + 1].start() if i + 1 < len(found) else len(text)
+        block = text[m.end():end]
+        out[m.group(1)] = "\n".join(line for line in block.split("\n")
+                                    if not line.lstrip().startswith("#"))
+    return out
+
+
+#: Any spelling of a permission that lets a job write to the repository.
+#: `contents: write` is one; quoting it, spacing it differently, folding the
+#: block onto one line and `write-all` are the same grant, and a gate that
+#: reads one literal line says nothing about the rest.
+WRITES = re.compile(r"contents:\s*['\"]?write|permissions:\s*['\"]?write-all"
+                    r"|\{[^}]*contents:\s*['\"]?write")
+
+
+def test_only_the_job_that_publishes_may_write_to_the_repository():
+    """A job that runs build tooling must not be able to move a release.
+
+    The build job makes the distributions and runs the suite, and it held
+    `contents: write` so that it could make the release at the end. Anything
+    reaching that job -- a dependency, a script, a fixture -- could have
+    rewritten a release under this project's name. The permission belongs to a
+    job that does one thing and nothing else.
+    """
+    writers = {}
+    for path in WORKFLOWS:
+        for name, block in jobs_of(path).items():
+            if WRITES.search(block):
+                writers["%s:%s" % (path.name, name)] = block
+    assert sorted(writers) == ["release.yml:publish-release"], sorted(writers)
+
+    block = writers["release.yml:publish-release"]
+    assert "gh release create" in block, "the writer does not make the release"
+    # `pip install` on its own is not a signal here: the notes this job
+    # publishes tell a reader how to upgrade, and say it three times. What
+    # would mean the job builds rather than publishes is installing *this*
+    # project.
+    for forbidden in ("make check", "pytest", "python -m build", "pip install -e"):
+        assert forbidden not in block, (
+            "the job holding `contents: write` also runs %r; it must do one "
+            "thing" % forbidden)
+
+
+def test_the_release_carries_what_was_built_rather_than_a_second_build():
+    """The publishers upload the artifact the build job made. So must this:
+    a second build is a second set of bytes, and the checksum file beside them
+    would be describing the first."""
+    blocks = jobs_of(WORKFLOWS_DIR / "release.yml")
+    assert "gh release create" not in blocks["build"], "the build job still makes it"
+    writer = blocks["publish-release"]
+    assert "actions/download-artifact" in writer, \
+        "the publishing job does not take the built bytes"
+    assert re.search(r"^    needs: build$", writer, re.M), \
+        "the publishing job does not follow the build"
+
+
+def test_no_workflow_grants_write_from_above_the_jobs():
+    """A job with no `permissions:` inherits the file's default, which is
+    outside every job block and so invisible to the sweep above. A default of
+    `contents: write` would hand the permission to every job in the file
+    without any of them asking for it."""
+    for path in WORKFLOWS:
+        text = path.read_text("utf-8")
+        head = text[:text.index("\njobs:\n")]
+        assert not WRITES.search(head), (
+            "%s grants write above its jobs: every job inherits it" % path.name)
+        # A job with no `permissions:` block inherits the default asserted
+        # above, which is why that assertion is the one that matters: five
+        # jobs in ci.yml declare nothing and are right not to.
+
+
 def test_the_workflows_swept_are_the_ones_this_repository_has():
     """The sweep sees every file GitHub would run, by name.
 

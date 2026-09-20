@@ -116,3 +116,13 @@ this repository, naming the versions it reaches and the release that fixes it.
   `iirds-validate` up to and including 0.6.2, `iirds` and `iirds-sdk` 0.5.0
   through 0.6.2; fixed in 0.6.3, which reports the read failure as a refusal
   (S16) and examines the rest.
+- [GHSA-qwv2-9vgj-vc2w](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-qwv2-9vgj-vc2w):
+  the search for a package's own ontology had no ceiling on what it read in
+  total. Every entry under `META-INF/` that the standard does not name is read
+  and parsed as RDF, each read was bounded per entry and nothing bounded their
+  sum, and the constant meant to hold that sum was used by nothing. Measured: a
+  524,395-byte archive carrying twenty 8 MiB entries made a run read back
+  167,771,253 bytes and parse all of it, and the entry count is the sender's to
+  choose. `iirds-validate` up to and including 0.6.3, `iirds` and `iirds-sdk`
+  0.5.0 through 0.6.3; fixed in 0.7.0, where the scan stops at eight mebibytes
+  and `S12` names the file it stopped on.

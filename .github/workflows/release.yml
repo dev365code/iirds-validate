@@ -19,7 +19,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      # This job runs this project's build scripts and its suite. It makes the
+      # bytes; it does not get to publish them, so it cannot move a release if
+      # something reaches it. `publish-release` below holds that permission and
+      # does nothing else. tests/test_workflow_supply_chain.py holds the line.
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
@@ -101,9 +105,30 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-      - name: create the release
+  # The permission that can move a release lives here, in a job that takes the
+  # bytes the build job made and does one thing with them. Nothing is rebuilt:
+  # a second build is a second set of bytes, and the checksum file beside them
+  # would be describing the first.
+  publish-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131   # v7.0.0
+        with:
+          name: dist
+          path: dist
+      - name: publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          # `gh` finds the repository from `--repo`, then `GH_REPO`, then the
+          # git remotes of the working directory. This job has no checkout, on
+          # purpose -- putting this repository's own code back beside the one
+          # permission that can move a release is what the split removed -- so
+          # the name is given here. Measured outside a checkout: without it,
+          # `failed to run git: fatal: not a git repository`.
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
@@ -128,7 +153,7 @@ jobs:
   # repository for a project, that project's job fails visibly, on purpose,
   # without touching the GitHub Release above.
   publish-iirds:
-    needs: build
+    needs: publish-release
     runs-on: ubuntu-latest
     environment: pypi-iirds
     permissions:

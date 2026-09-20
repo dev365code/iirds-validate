@@ -12,15 +12,21 @@ were named by B1 alone, which is a warning outside iiRDS/A, and the package
 exited 0 with a file in it that nothing had parsed. `ERROR S16` names them
 now. What that costs is under **What now fails** below.
 
-**The search for a package's own ontology read past its ceiling, and then said
-nothing about it.** The budget was tested at the head of an iteration and the
-read that followed was bounded by the per-entry limit rather than by what was
-left, so one file could take the scan up to 64 MiB past an 8 MiB ceiling: a
-13,198-byte archive carrying a single 12,583,089-byte entry drew a peak of
-41,774,599 bytes. And the cut was recorded only when the next iteration began,
-so a scan whose last file is the large one ended with nothing said -- which is
-exactly what S12 exists to prevent, since a scan that gave up and a scan that
-found nothing otherwise look alike.
+**The search for a package's own ontology had no ceiling on what it read in
+total.** R18 finds one by reading every entry under `META-INF/` the standard
+does not name and parsing each as RDF, so what a package can ask a run to read
+is whatever its entry count and entry sizes say. Each read was bounded per
+entry and nothing bounded their sum: measured, a 524,395-byte archive carrying
+twenty 8 MiB entries made a run read back 167,771,253 bytes and parse all of
+it, which is three hundred and twenty times the archive, and the entry count
+is the sender's to choose. A constant for the ceiling was there and was used
+by nothing.
+
+It is used now: the scan stops at eight mebibytes across all of those files,
+and the same package reads back 8,388,902 bytes. Stopping quietly would be the
+other half of the defect, since a scan that gave up and a scan that found
+nothing otherwise look alike, so `S12` names the file it stopped on and says
+the rest of `META-INF/` went unexamined.
 
 The read is bounded by what is left of the ceiling now, and the cut is recorded
 where it happens. **A package carrying side files past the ceiling failed to
@@ -119,6 +125,17 @@ The gate that holds this file reads the repository's tags now: an entry above
 this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
 line existed.
+
+**The job that builds a release no longer holds the permission that publishes
+it.** It ran this project's build scripts and the whole suite, and it carried
+`contents: write` for one step at the end -- so anything that reached it, a
+dependency or a script or a fixture, could have rewritten a release under this
+project's name. That step is a job of its own now: it takes the artifact the
+build made, publishes it, and does nothing else. Nothing is rebuilt on the
+way, because a second build is a second set of bytes and the checksum file
+beside them would describe the first. The ordering the publishers relied on is
+unchanged -- the release exists before any of them runs -- and a test refuses
+any other job that asks for the same permission.
 
 **The front page says how releases are numbered and what to pin.** What a
 patch does and what it owes a reader when it moves a verdict, what a minor

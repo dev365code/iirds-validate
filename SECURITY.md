@@ -98,3 +98,12 @@ this repository, naming the versions it reaches and the release that fixes it.
   decompressed the whole entry in memory, so a package of a few hundred bytes
   could exhaust the memory of the machine checking it. Same versions; fixed in
   0.6.2, which refuses such entries without opening them (S14).
+- [GHSA-ggjq-93h3-wfwj](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-ggjq-93h3-wfwj):
+  one rendition nobody could decompress ended the content rules early. The rule
+  that met it died, the cache it was filling was left truncated, and every
+  content rule after it answered for a package it had seen part of -- while the
+  report listed those rules among the ones it had checked. The verdict did not
+  move; what was lost was the report's account of the other files.
+  `iirds-validate` up to and including 0.6.2, `iirds` and `iirds-sdk` 0.5.0
+  through 0.6.2; fixed in 0.6.3, which reports the read failure as a refusal
+  (S16) and examines the rest.

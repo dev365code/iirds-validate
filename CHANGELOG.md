@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.6.3 — 2026-09-19
+## 0.6.3 — 2026-09-20
 
 **Who should take this release:** anyone running 0.6.2 against packages they
 did not build. One rendition this checker could not decompress decided what
@@ -16,15 +16,15 @@ release moves belongs to a container that will not hand over a file it lists as
 content. No rule's reading of the specification changed, and the new rule
 carries no specification reference.
 
-**One rendition nobody could decompress decided what every other content rule
-examined.** The reader named two reasons a rendition might not be read -- a
-compression method it will not decode, and the run's content ceiling -- and a
-corrupt deflate stream is neither. It escaped as itself, killed the rule that
-had asked, and left a half-filled cache that every later content rule then
-walked, each recorded as having answered for the package. Measured on three
-renditions with the middle one's compressed data scrambled: two rules recorded
-as having raised, a third reporting one file, and an intact rendition breaking
-the same rules that nobody opened.
+**Security. One rendition nobody could decompress decided what every other
+content rule examined.** The reader named two reasons a rendition might not be
+read -- a compression method it will not decode, and the run's content
+ceiling -- and a corrupt deflate stream is neither. It escaped as itself,
+killed the rule that had asked, and left a half-filled cache that every later
+content rule then walked, each recorded as having answered for the package.
+Measured on three renditions with the middle one's compressed data scrambled:
+two rules recorded as having raised, a third reporting one file, and an intact
+rendition breaking the same rules that nobody opened.
 
 The read failure is a refusal now, like the two with names, so the damaged file
 is reported and the sound ones are examined. The list of what a read can fail

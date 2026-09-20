@@ -83,6 +83,12 @@ generated:
 # of those commands answers offline, and a command that fails is a failure here
 # rather than a value written into the page.
 	$(PYTHON) tools/gen_stable_section.py --check
+# The whole report for one package, as a file. The shape is held in
+# tests/test_report_contract.py; this holds the values, so a severity
+# respelled or a rule dropping out of `rulesRun` is a line in a diff rather
+# than something a consumer finds. Volatile-by-design fields are markers --
+# the tool says which and why.
+	$(PYTHON) tools/golden_report.py --check
 
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.

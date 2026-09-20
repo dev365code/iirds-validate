@@ -19,6 +19,7 @@ this file; the rest it already refused, and they are pinned so that they
 stay refused.
 """
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -130,8 +131,41 @@ def entries(changelog: str):
     return out
 
 
-def problems_with(changelog: str, release: str):
-    """Every way this changelog fails to record `release` as shipped."""
+def published_releases() -> frozenset:
+    """The releases this repository has published, read from its tags.
+
+    This repository has two release lines. 0.6.1, 0.6.2 and 0.6.3 were cut
+    from `release/0.6.x` and their version bumps never came back here, so
+    `__version__` on the main line is behind them and three dated entries sit
+    above it. "It has not shipped, so it is headed 'unreleased'" was this
+    gate's sentence for that shape, and it stopped being true the day the
+    second line existed. A tag is the record of what shipped, so a tag is what
+    settles it.
+
+    No tags at all does not switch this check off -- it refuses every dated
+    entry above this release, which is noisy and points at the wrong thing.
+    (Its converse, which wants a tag's entry to carry a date, does go quiet
+    then: there is no tag for it to ask about.)
+    `test_the_tags_are_visible_here` exists to say which thing: the checkout,
+    not the file. `actions/checkout` fetches no tags unless it is asked.
+    """
+    try:
+        done = subprocess.run(["git", "tag", "--list", "v*"],
+                              cwd=str(ROOT), capture_output=True, text=True)
+    except OSError:
+        return frozenset()               # no git here: the test below says so
+    if done.returncode != 0:
+        return frozenset()
+    keys = (release_key(line.strip()[1:]) for line in done.stdout.splitlines() if line.strip())
+    return frozenset(k for k in keys if k is not None)
+
+
+def problems_with(changelog: str, release: str, published=frozenset()):
+    """Every way this changelog fails to record `release` as shipped.
+
+    `published` is the set of release keys that have a tag. An entry above
+    this release may carry a date only if it is one of them.
+    """
     said = entries(changelog)
     if not said:
         return ["the changelog carries no `## ` heading"]
@@ -181,9 +215,20 @@ def problems_with(changelog: str, release: str):
         if release_key(name) <= mine and not DATE.match(rest):
             found.append("%s is at or below this release and is headed %r; it has "
                          "shipped, so it carries a date" % (name, rest))
-        elif release_key(name) > mine and DATE.match(rest):
-            found.append("%s is above this release and carries a date; it has not "
-                         "shipped, so it is headed 'unreleased'" % name)
+        elif release_key(name) > mine and DATE.match(rest) \
+                and release_key(name) not in published:
+            found.append("%s is above this release, carries a date, and has no "
+                         "v%s tag; it has not shipped, so it is headed "
+                         "'unreleased'%s"
+                         % (name, name,
+                            "" if published else
+                            " (and no v* tag is visible here at all, so this "
+                            "may be the checkout rather than the file)"))
+        elif release_key(name) > mine and not DATE.match(rest) \
+                and release_key(name) in published:
+            found.append("%s is above this release and is headed %r, and v%s is "
+                         "tagged; it has shipped, so it carries a date"
+                         % (name, rest, name))
     return found
 
 
@@ -225,7 +270,8 @@ def test_the_version_is_one_number_everywhere_it_is_declared():
 
 
 def test_the_changelog_records_this_release():
-    problems = problems_with((ROOT / "CHANGELOG.md").read_text("utf-8"), __version__)
+    problems = problems_with((ROOT / "CHANGELOG.md").read_text("utf-8"), __version__,
+                             published=published_releases())
     assert problems == [], "CHANGELOG.md, against %s:\n  %s" % (
         __version__, "\n  ".join(problems))
 
@@ -292,9 +338,10 @@ BAD = {
         (GOOD.replace("## 0.5.0 — unreleased", "## Unreleased — unreleased"),
          "can order"),
     # The tree keeps the last shipped number until the release commit, so an
-    # entry above it is by definition unshipped: dating it claims a release
-    # that has not happened, and the version bump would then find its notes
-    # already "shipped".
+    # entry above it is unshipped unless a tag says otherwise: dating one
+    # without a tag claims a release that has not happened, and the version
+    # bump would then find its notes already "shipped". The cases in this
+    # table pass no `published` set, so no tag says otherwise here.
     "an entry above this release carries a date":
         (GOOD.replace("## 0.5.0 — unreleased", "## 0.5.0 — 2026-08-28"),
          "has not shipped"),
@@ -320,6 +367,35 @@ def test_the_gate_refuses_a_changelog_that_is_wrong(state):
     assert problems, "accepted a changelog where %s" % state
     assert any(expected in problem for problem in problems), (
         "refused %r for the wrong reason: %s" % (state, problems))
+
+
+def test_the_tags_are_visible_here():
+    """The gate above reads tags, so a checkout with none turns it off.
+
+    `actions/checkout` fetches no tags unless asked, so this says plainly what
+    a green run would otherwise hide. If this fails in CI, the checkout needs
+    `fetch-tags: true` rather than this test needing a skip.
+    """
+    found = published_releases()
+    assert found, ("no v* tags are visible, so every dated entry above this "
+                   "release is refused as unshipped and the failures below "
+                   "blame the file. A checkout fetches none unless asked: "
+                   "ask for fetch-tags.")
+    assert release_key("0.6.0") in found, sorted(found)
+
+
+def test_a_dated_entry_above_this_release_with_no_tag_is_still_refused():
+    """The line the repair must not cross. A second release line explains
+    0.6.1 through 0.6.3; it explains nothing about a version nobody cut."""
+    changelog = ("# Changelog\n\n## 0.6.9 — 2026-09-20\n\nSomething.\n\n"
+                 "## 0.4.2 — 2026-08-26\n\nSomething else.\n")
+    published = frozenset({release_key("0.4.2")})
+    problems = problems_with(changelog, "0.4.2", published=published)
+    assert any("0.6.9" in p and "no v0.6.9 tag" in p for p in problems), problems
+
+    # and with the tag, the same changelog is accepted
+    assert problems_with(changelog, "0.4.2",
+                         published=published | {release_key("0.6.9")}) == []
 
 
 def test_the_gate_accepts_the_shape_this_project_actually_uses():

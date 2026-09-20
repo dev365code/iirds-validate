@@ -22,6 +22,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          # `make check` below runs the suite, and the suite reads this
+          # repository's tags to tell a release that shipped from another line
+          # from an entry nobody cut. On a tag push a checkout fetches the
+          # triggering ref alone, so without this the job that publishes is the
+          # one place the check cannot pass.
+          fetch-tags: true
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: "3.12"

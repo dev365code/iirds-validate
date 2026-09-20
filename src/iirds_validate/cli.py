@@ -7,10 +7,10 @@
     iirds rules --kind lint    what this tool knows how to check
     iirds diff  was.json pkg.iirds   what changed since a report you kept
 
-Exit codes: 0 clean, 1 errors found, 2 could not run. Under `-W` a warning is
-one of those errors -- the run is judged by the gate it was given, and the
-report records which one. For `diff`, "errors
-found" means errors this run has and the stored report does not.
+Exit codes: 0 clean, 1 errors found, 2 could not run, 64 could not parse the
+command line. Under `-W` a warning is one of those errors -- the run is judged
+by the gate it was given, and the report records which one. For `diff`,
+"errors found" means errors this run has and the stored report does not.
 """
 from __future__ import annotations
 
@@ -29,7 +29,36 @@ from .package import search
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
-EXIT_OK, EXIT_FINDINGS, EXIT_ERROR = 0, 1, 2
+#: `2` is "there was nothing to judge here" -- a container that would not
+#: open, a path naming nothing. An option that is not one, a missing argument
+#: and a value outside a choice list all exited the same way, so a build
+#: gating on `2` caught its own broken command line and reported it as a
+#: package problem. `64` is `EX_USAGE` from `sysexits`, which is where the
+#: convention comes from.
+#:
+#: Not every mistake reaches here. `iirds <path>` is shorthand for `iirds all
+#: <path>`, so a first word that is not a subcommand is read as a path, and a
+#: mistyped *verb* is a path that is not there: `2`, with the name in the
+#: message. That is what the shorthand costs, and `tests/test_cli.py` pins it
+#: rather than leaving it to be discovered.
+EXIT_OK, EXIT_FINDINGS, EXIT_ERROR, EXIT_USAGE = 0, 1, 2, 64
+
+
+class _Parser(argparse.ArgumentParser):
+    """An argument parser whose usage errors exit 64 rather than 2.
+
+    `ArgumentParser.error` ends the process itself -- it does not return a
+    code to `main` -- so the value has to be changed here rather than at the
+    call site. Every subcommand's parser is one of these too without being
+    asked: `add_subparsers` builds them from `type(self)` unless it is told
+    otherwise, so `iirds pack` with no directory answers like `iirds --bogus`.
+    `tests/test_cli.py` holds that, subcommands included, because inheriting
+    behaviour from a default is behaviour nobody wrote down.
+    """
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(EXIT_USAGE, "%s: error: %s\n" % (self.prog, message))
 
 
 def _add_target(parser: argparse.ArgumentParser) -> None:
@@ -240,7 +269,7 @@ def build_parser():
     subcommand arrived silently broken, with its arguments validated as
     packages.
     """
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog=PROGRAM,
         description="Offline validator and interoperability linter for iiRDS packages.")
     parser.add_argument("--version", action="version", version="%s %s" % (PROGRAM, __version__))

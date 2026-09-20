@@ -124,6 +124,9 @@ def rows():
     clean, _ = _run(["-m", "iirds_validate", "check", GOOD])
     findings, _ = _run(["-m", "iirds_validate", "check", BAD])
     absent, _ = _run(["-m", "iirds_validate", "check", "no-such-file.iirds"])
+    # A command line that cannot be parsed is not a package that cannot be
+    # judged, and a build gating on `2` was told they were the same thing.
+    misused, _ = _run(["-m", "iirds_validate", "check", "--iirds-version", "9.9", GOOD])
 
     pin = _must(["tools/extract_catalog.py", "--pin"])
     ontologies = _must(["-m", "iirds_validate.ontology", "--verify"])
@@ -139,6 +142,9 @@ def rows():
          "`iirds check %s; echo $?`" % BAD, "`%d`" % findings),
         ("`2` when nothing was judged: a path that is not there, or an input it refused",
          "`iirds check no-such-file.iirds; echo $?`", "`%d`" % absent),
+        ("`64` when the command line was the problem: an option that is not one, a missing "
+         "argument, a value outside the choices",
+         "`iirds check --iirds-version 9.9 %s; echo $?`" % GOOD, "`%d`" % misused),
         ("Every registered rule is answered for: run, or excused with a reason",
          "the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable`",
          "%d run and %d excused, no overlap, together the whole registry of %d; %s holds it. "

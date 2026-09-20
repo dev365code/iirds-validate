@@ -251,12 +251,15 @@ on a package that sits on that line. Those changes are in
 that moves an exit code says so in those words. If you gate a build on the exit
 code, read that file before upgrading. That much is discipline, not a gate.
 
-**Announced for 0.7.0: a command-line usage error will exit `64`, not `2`.**
-Today a mistyped option and an input the run could not read both exit `2`, so a
-build that treats `2` as "this package could not be judged" also catches its
-own broken command line and reports it as a package problem. `64` is the
-conventional value for a usage error (`EX_USAGE`); `2` keeps its present
-meaning and nothing else moves.
+**A command-line usage error exits `64`, not `2`** — breaking, and said here
+because the exit codes are a stable surface. A mistyped option and an input the
+run could not read both exited `2`, so a build that treats `2` as "this package
+could not be judged" was catching its own broken command line and reporting it
+as a package problem. `64` is the conventional value for a usage error
+(`EX_USAGE`); `2` keeps its present meaning and nothing else moves. A mistyped
+*verb* is not one of these: `iirds <path>` is shorthand for `iirds all <path>`,
+so the first word is read as a path and a misspelt one exits `2`. `iirds chekc pkg.iirds` exits `2`,
+naming `chekc` as the file it could not find.
 What a gate holds is narrower and worth more: a rule id is a citation somebody
 else made, so what fired is compared against a committed record on every build,
 and a rule that quietly stops firing stops the build.
@@ -273,6 +276,7 @@ typed into prose goes stale on the day the thing it counts moves:
 | `iirds check` exits `0` when the package drew no error (with `-W`, a warning is one) | `iirds check fixtures/good.iirds; echo $?` | `0` |
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
+| `64` when the command line was the problem: an option that is not one, a missing argument, a value outside the choices | `iirds check --iirds-version 9.9 fixtures/good.iirds; echo $?` | `64` |
 | Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 194 run and 42 excused, no overlap, together the whole registry of 236; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
 | The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |

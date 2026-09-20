@@ -113,6 +113,13 @@ jobs:
           - { os: macos-latest, python: "3.11" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          # The suite reads this repository's tags: two release lines exist,
+          # and whether an entry above this line's version actually shipped is
+          # answered by whether its tag is there. A checkout fetches none by
+          # default, and tests/test_release_metadata.py fails rather than
+          # passing quietly when it cannot see them.
+          fetch-tags: true
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: ${{ matrix.python }}
@@ -246,7 +253,13 @@ jobs:
           /tmp/v/bin/iirds check fixtures/good.iirds -q; test $? -eq 0 || exit 1
           /tmp/v/bin/iirds check fixtures/bad.iirds  -q; test $? -eq 1 || exit 1
           /tmp/v/bin/iirds check /no/such/file.iirds -q 2>/dev/null; test $? -eq 2 || exit 1
-          echo "0 clean / 1 findings / 2 could not run"
+          # Through the console script, not through main() in-process. 0, 1
+          # and 2 leave by `sys.exit(main())`; 64 never reaches that return,
+          # because argparse ends the process from inside parse_args. Two
+          # ways out, and only the second can produce this one.
+          /tmp/v/bin/iirds check --iirds-version 9.9 fixtures/good.iirds 2>/dev/null; test $? -eq 64 || exit 1
+          /tmp/v/bin/iirds --bogus 2>/dev/null; test $? -eq 64 || exit 1
+          echo "0 clean / 1 findings / 2 could not run / 64 could not parse the command"
 
       - name: agreement with the reference tool's own corpus
         # Offline now, because the corpus is vendored at the catalogue's own

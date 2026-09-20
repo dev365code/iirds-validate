@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, main
+from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, EXIT_USAGE, main
 
 
 def test_a_bare_invocation_greets_instead_of_erroring(capsys):
@@ -56,9 +56,11 @@ def test_warnings_as_errors(make_package, capsys):
 
 
 def test_an_unpublished_version_is_rejected_by_the_parser(make_package):
+    """The number moved with the breaking change: an edition nobody published
+    is a mistyped command line, not a package that could not be judged."""
     with pytest.raises(SystemExit) as exc:
         main(["check", str(make_package()), "--iirds-version", "9.9"])
-    assert exc.value.code == 2
+    assert exc.value.code == EXIT_USAGE
 
 
 FRAGMENT = """<?xml version="1.0" encoding="utf-8"?>
@@ -177,3 +179,57 @@ def test_a_run_gated_on_warnings_does_not_call_it_a_pass(make_package, capsys):
     said = capsys.readouterr().out
     assert "FAIL" in said, said
     assert "PASS" not in said, said
+
+
+USAGE_ERRORS = [
+    ["--bogus"],
+    ["check"],                                       # the package is required
+    ["check", "x.iirds", "-f", "nonesuch"],
+    ["check", "x.iirds", "--iirds-version", "9.9"],
+    ["pack"],                                        # a subcommand of its own
+    ["diff", "only-one-argument.json"],
+]
+
+
+@pytest.mark.parametrize("argv", USAGE_ERRORS, ids=lambda a: " ".join(a))
+def test_a_usage_error_exits_64(argv):
+    """Breaking, and the exit codes are a stable surface.
+
+    `2` means "there was nothing to judge here", so a build that gates on it
+    was catching its own broken command line and reporting it as a package
+    problem. `64` is `EX_USAGE` from `sysexits`. Every subcommand's parser
+    answers the same way, which is why the list above is not just the top
+    level -- argparse builds a subparser from the type of its parent, so one
+    class covers all of them, and this is the test that says so.
+    """
+    with pytest.raises(SystemExit) as exit:
+        main(argv)
+    assert exit.value.code == EXIT_USAGE, argv
+
+
+def test_a_mistyped_verb_is_read_as_a_path_and_exits_2(capsys):
+    """What the shorthand costs, written down rather than discovered.
+
+    `iirds <path>` means `iirds all <path>`, so a first word that is not a
+    subcommand is a path -- and a misspelt verb is a path that is not there,
+    which is `2` with the word in the message rather than `64`. The shorthand
+    is worth that: it is what somebody pointing at a package types. Anything
+    that reaches the parser answers `64`; this one does not reach it.
+    """
+    assert main(["chekc", "x.iirds"]) == EXIT_ERROR
+    # and the word is in the message, which is the half that makes the exit
+    # code readable: without it a reader sees 2 and looks at their package.
+    assert "chekc" in capsys.readouterr().err
+
+
+def test_an_input_that_cannot_be_read_still_exits_2():
+    """The other half of the contract, and the reason the first half matters:
+    `2` keeps the meaning it had, so the two are now distinguishable."""
+    assert main(["check", "/no/such/file.iirds", "-q"]) == EXIT_ERROR
+
+
+def test_the_exit_codes_are_four_distinct_numbers():
+    """A contract somebody's build depends on. If two of these ever collide,
+    every gate reading them starts answering a different question."""
+    assert len({EXIT_OK, EXIT_FINDINGS, EXIT_ERROR, EXIT_USAGE}) == 4
+    assert (EXIT_OK, EXIT_FINDINGS, EXIT_ERROR, EXIT_USAGE) == (0, 1, 2, 64)

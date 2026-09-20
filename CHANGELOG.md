@@ -10,51 +10,7 @@ changes in the library is recorded beside what changes in the checker.
 change rather than a side effect of it: two refusals of this tool's own
 were named by B1 alone, which is a warning outside iiRDS/A, and the package
 exited 0 with a file in it that nothing had parsed. `ERROR S16` names them
-now. What that costs is under `ERROR S16` below.
-
-**A refusal now names the declared encoding and says what to do about it.**
-`metadata.rdf` that declares an encoding this reader does not decode -- anything
-but UTF-8 -- is still refused, and refusing is still right: XML 1.0 requires a
-processor to support UTF-8 and UTF-16 and nothing else, and a consumer applying
-the same rule receives nothing from such a package either. What was wrong was
-what the report said next. It offered one explanation for every decode failure
--- that the bytes "were damaged or cut short in transit and the file has to be
-sent again" -- so a reader asked their supplier to resend a file that was
-intact, and got back the same bytes.
-
-The finding names the encoding the document declares -- including UTF-8, when
-that is what it says and the bytes are not, which is the commonest of these in
-the field -- and the remedy answers each declaration separately: written as
-something else, or as a codec this reader will not use, write the file as
-UTF-8; written as UTF-8 and not being it, re-save it; not written at all, look
-at the file before asking for it again. Measured on a real
-package: transcoding it to UTF-8 and changing nothing else turns the verdict
-into a pass with no findings, which is what says the markup was never the
-problem. `docs/divergences.md` carries the reading.
-
-**One rendition nobody could decompress decided what every other content rule
-examined.** `_bytes_of` named two reasons a rendition might not be read -- a
-compression method this tool will not decode, and the run's content ceiling --
-and a corrupt deflate stream is neither. It came out of the read as a
-`zlib.error`, killed the rule that had asked, and left the tree cache installed
-and half filled, because that dict went on the context before the loop that
-filled it. Every later content rule then walked a truncated file set and was
-recorded as having answered for the package.
-
-Measured on three renditions, each breaking several appendix B rules, with the
-middle one's compressed data scrambled: B1 and B2 were recorded as having
-raised, B3 reported `content/topic000.xhtml` alone, and `content/topic002.xhtml`
--- intact, and breaking the same rules -- was opened by nobody. The report said
-B3 ran.
-
-The read failure is a refusal now, like the reasons that already had names, so
-the damaged rendition is named by B1 and the sound ones are examined by
-everything that follows. The list of what a read can fail with is not this
-project's to enumerate -- that is what the first version got wrong -- so the
-reasons that have a rule of their own are caught by name, everything else is
-caught as itself, and the handful of exception types that mean this code is
-broken rather than the package are re-raised so that a defect here cannot be
-reported as a defect in somebody's delivery.
+now. What that costs is under **What now fails** below.
 
 **The search for a package's own ontology read past its ceiling, and then said
 nothing about it.** The budget was tested at the head of an iteration and the
@@ -79,57 +35,6 @@ R18 before draws S12 instead. Both are MUST, so the verdict does not move; the
 finding says which file went unexamined and that the question about it is open,
 rather than leaving R18's silence to be read as an answer.
 
-**The round-trip guard could not see a language tag change.** `write_metadata`
-writes the metadata, reads it back and compares, and under the condition it
-tests for it compares by fingerprint rather than by rdflib's isomorphism. The
-fingerprint rendered every term with `str()`, which keeps the lexical form and
-drops the datatype, the language tag, and whether the term was a URI or a
-literal -- so `"Getriebe"@en` and `"Getriebe"@de` read back as the same graph,
-and so did `<http://example.org/o>` and the string that spells it. Terms are
-rendered by what tells them apart now -- what kind of term it is, its lexical
-form, and the datatype and language tag a literal carries -- and all three
-differences survive. The guard's own docstring has always said the two agree by
-construction under that condition; they do now.
-
-Measured before the repair: the round trip preserves every one of those shapes,
-so nothing was being lost -- the guard was weaker than it claimed rather than
-wrong about a package anybody has.
-
-`n3()` was what rendered them first, and `n3()` is a writer. Asked for an IRI
-holding a character RFC 3987 leaves out -- a space, a brace, a bar -- it
-raises, and RDF/XML writes such IRIs without complaint, so graphs
-`write_metadata` had always written came back refused, as a bare `Exception`
-rather than the `ValueError` the function documents. Comparing is not writing,
-and a comparison that refuses its input has decided nothing. Where a graph's
-blank nodes are not a forest there is no fingerprint to use and rdflib's
-isomorphism decides instead; it canonicalises through the same syntax and
-refuses the same terms, and that refusal is reported as `ValueError` now --
-saying the round trip could not be checked, which is not the same as saying it
-failed.
-
-**A file nobody could read is no longer a file that passed: `ERROR S16`.**
-Reporting a rendition that cannot be read, rather than letting the rule that
-asked for it die, is the repair above -- and it moved a verdict the wrong way.
-The report that a file was refused is B1's, B1 is a content rule, and content
-findings are warnings outside iiRDS/A, because whether a given file is "iiRDS
-XHTML5 content" is this project's reading of the entry condition and an
-unrestricted package may carry what it likes. Whether the container will hand a
-file over is not a reading of anything. Measured on an unpacked container whose
-only fault was one rendition the filesystem would not open: `false`/exit 1
-before, `true`/exit 0 after. The archive form of the same fault still failed,
-and only because the damage check opens every entry -- a rule the unpacked form
-suspends, so nothing there held the verdict at all.
-
-S16 is a system rule -- the statement is about the run, not about the profile
--- and it stops where another rule already speaks at the same severity. Six
-things stop a content rule getting a parsed document. One is the parser
-rejecting the document, which stays B1's and is discussed below. Of the other
-five, two draw an error of their own -- the run's content budget as `S9` and a
-compression method no bounded read can be made of as `S14` -- and naming those
-files here as well would print two errors for one fault with one remedy
-between them. The remaining three are this rule's, and two of the three are
-new here.
-
 **What now fails, and did not on 0.6.3: a rendition larger on its own than the
 64 MiB this tool reads in one piece, and a document that declares XML
 entities.** Both files are legal -- a package may carry a 200 MiB rendition
@@ -137,8 +42,19 @@ and a topic with an internal subset and breach nothing the specification says
 -- and both refusals are this project's own: the ceiling is a number chosen
 here rather than a setting a run can be given, and the entity guard exists
 because the billion-laughs shape has nothing invalid about it and a parser has
-to not meet it at all. 0.6.3 left both alone deliberately and said so, because
-closing them moves a legal package's verdict and that release was a patch.
+to not meet it at all. 0.6.3 left both alone deliberately, and said so about
+the ceiling, because closing them moves a legal package's verdict and that
+release was a patch.
+
+S16 is a system rule -- the statement is about the run, not about the profile
+-- and it stops where another rule already speaks at the same severity. Six
+things stop a content rule getting a parsed document. One is the parser
+rejecting the document, which stays B1's and is below. Of the other five, two
+draw an error of their own -- the run's content budget as `S9` and a
+compression method no bounded read can be made of as `S14` -- and naming those
+files here as well would print two errors for one fault with one remedy
+between them. The remaining three are this rule's, and two of the three are
+new here.
 
 What they cost a reader is the same as the case 0.6.3 did close. B1 named the
 file, the demotion made that a warning outside iiRDS/A, and the package came
@@ -154,160 +70,79 @@ declaring an encoding no codec has -- is not this rule's: that is the
 document's own defect, B1 reports it, and what severity it carries is the
 profile's business. The line is whose decision left the file unparsed.
 
-**What fails, unchanged from the rule 0.6.3 shipped: a package holding a file
-the container lists as content and will not hand over** -- a damaged stream, a
-file the filesystem will not open. In the unpacked form nothing reported that
-at all, because the damage check that holds the verdict for an archive is one
-of the rules an unpacked container suspends. `iirds lint` reads no content, so
-it neither runs this rule nor claims to have. The remedies are in the rule's
-own text; the entity one names both halves, because deleting the declarations
-and keeping the references clears the error and leaves a document that still
-does not parse. `docs/divergences.md` carries the argument.
+What the rule already reported is unchanged and is described under 0.6.3
+below. One thing there is not: the remedy for a document that declares
+entities now names both halves, because deleting the declarations and keeping
+the references clears the error and leaves a document that still does not
+parse -- a package that passes with a file nothing read. B1's remedy for the
+same file says it too. `docs/divergences.md` carries the argument, including
+what the change costs.
 
-**Two remedies told a reader to do something that would not work.** `C16.1`
-split its advice on whether the document declares an encoding, and suppressed
-the note for a document declaring UTF-8 -- on the reasoning that naming it
-corrects nothing, since this reader decodes as UTF-8 regardless. That is the
-commonest of these in the field: an editor saves in the platform's encoding and
-leaves the declaration alone. With the note suppressed such a file fell into the
-other branch, the one that names no declaration and asks for the file to be sent
-again; it arrives identical. The note is made whenever the bytes fail to decode,
-and a declaration of UTF-8 is reported as the contradiction it is. It is no
-longer added to findings that are not decode failures at all, where it was a
-true fact about a file whose problem was elsewhere.
+**Three repairs that shipped in 0.6.2 and 0.6.3 and that neither release's
+notes describe, kept here so the record exists somewhere.** All three are
+changes a reader could meet. The notes that went out are reproduced below
+unchanged rather than edited after the fact, so the account of these lives
+here.
 
-`B1`'s remedy for a rendition that was refused rather than parsed enumerated the
-reasons, and the enumeration was already one short of the code's. It points at
-the reason printed beside the finding, and offers the causes seen so far as
-examples rather than as a list that closes.
+**A refused rendition stopped being reported as one that was too big**
+(0.6.2). The reader returned a flag meaning "over the per-file limit", and
+both refusals it could make were printed with that one sentence -- so a
+rendition refused because the run had already spent what it will decompress in
+total was reported to B1's reader as a file to shrink. It may be a few hundred
+bytes. The second value is a reason now, and each refusal carries its own.
 
-**A bounded read was not bounded in the unpacked form.** `read_bounded(name,
-limit)` fills a buffer while it is under the limit for an archive, and asked the
-file for `limit + 1` bytes for a directory. A budget can arrive spent -- the
-search under `META-INF/` spends what is left of its ceiling -- and one byte
-further is a negative number, where `read(-1)` is the whole file and anything
-below that raises. The archive form returns nothing and says there was more,
-which is what every file longer than a negative number of bytes is; the
-directory form answers the same way now. Nothing reached that arithmetic in a
-shipped path, and the two forms disagreeing about a bound is how both size gates
-were once silently off for the unpacked form.
+**B1's remedy stopped naming a list that was already short** (0.6.3). The
+finding for a rendition refused rather than parsed enumerated the reasons, and
+the enumeration was one short of what the reader could return. It points at
+the reason printed beside the finding now, and offers the causes seen so far
+as examples rather than as a list that closes.
 
-**Announced, for the release after this one: a command-line usage error will
-exit `64` rather than `2`.** Measured today, every one of them exits `2` --
-`iirds --bogus`, `iirds check` with no package, an unknown value for `-f` --
-which is the value that also means "there was nothing to judge here", so a
-build gating on `2` cannot tell a package it could not read from a command it
-could not parse. `64` is `EX_USAGE` from `sysexits`, and `2` keeps the meaning
-it has. Nothing changes in this release; this paragraph is the notice that
-precedes the change, because an exit code is a contract somebody's build
-depends on.
+**A graph the library had always written could come back refused** (0.6.3).
+Where a graph's blank nodes are not a forest there is no fingerprint to use,
+so `write_metadata` compares what it read back with rdflib's isomorphism
+instead -- and that canonicalises through N3, which refuses an IRI holding a
+character RFC 3987 leaves out: a space, a brace, a bar. RDF/XML writes such
+IRIs without complaint. The refusal reached the caller as a bare `Exception`
+rather than the `ValueError` the function now documents, and a comparison that
+refuses its input has decided nothing -- which is not the same as deciding the
+round trip failed. It is a `ValueError` now, and says so.
 
-**An entry compressed with bzip2 or lzma is no longer opened.** Every limit
-here is on what a read hands back -- 64 MiB per file, a total per run, a slice
-at a time for the damage check. Python's zip reader passes the caller's length
-down to the decompressor for deflate and for no other method; the rest are
-decompressed whole and the result is sliced afterwards, so the slice obeys the
-limit and the allocation behind it does not. One 64 KiB read of an entry
-declaring 64 MiB: stored allocated 79,898 bytes, deflate 238,399, bzip2
-71,530,984 from an archive of 189 bytes, lzma 79,972,634 from 9,657. Through
-the whole tool at its default ceiling, a 1,292-byte container declaring two
-64 MiB bzip2 renditions cost a run 269,480,527 bytes traced and 724,271,104
-resident. Lowering a ceiling does not reach it: the overshoot is inside one
-read.
+**These notes now carry 0.6.1, 0.6.2 and 0.6.3, which were released from the
+0.6.x line.** Their version bumps never came back here, so a reader of this
+file could not see what three shipped releases changed, and the entries
+describing that work sat under `unreleased` above them. The sections below are
+the notes those releases published, unchanged; the paragraphs here that
+described the same work are gone, except the three above. What those notes do
+carry they sometimes carry by its effect rather than by rule id -- 0.6.2
+describes the forty-nine findings one duplicated name drew without naming S10.
+The gate that holds this file reads the repository's tags now: an entry above
+this line's version may carry a date when it has a tag, and is refused without
+one. "It has not shipped" was the sentence that became false the day a second
+line existed.
 
-`ERROR S14` now names each such entry, and says what the refusal costs -- the
-entry was not decompressed, not parsed, and not checked for damage either,
-because answering that last one would mean decompressing it. **A package
-carrying such an entry passed before and fails now**, which is the repair
-rather than a side effect of it: an entry nothing will read, passed over in
-silence, is the defect. Stored and deflate
-are unaffected, which is what `iirds pack` writes and what the containers in
-the wild use. The specification names a method for `mimetype` alone and is
-silent about the rest, so this is a refusal this project decides on its own;
-`docs/divergences.md` carries the argument, including the alternative that was
-rejected and why.
+**Breaking, and said here because the exit codes are a stable surface: a
+command-line usage error exits `64` rather than `2`.** `iirds --bogus`, `iirds
+check` with no package, an unknown value for `-f` or for `--iirds-version`:
+each of those exited `2`, which is also the value for "there was nothing to
+judge here", so a build gating on `2` could not tell a package it could not
+read from a command it could not parse. `64` is `EX_USAGE` from `sysexits`.
+`2` keeps the meaning it has, and nothing else moves.
 
-The front page said a zip bomb was "refused safely -- bounded reads". That was
-true of the two methods it read and not of the two it did not. It now says
-which.
+Every subcommand answers the same way, not only the top level -- `iirds pack`
+with no directory, `iirds diff` with one argument -- because argparse builds a
+subcommand's parser from the type of its parent, and a test says so rather
+than leaving it to a default nobody wrote down. One mistake does not reach it:
+`iirds <path>` is shorthand for `iirds all <path>`, so a mistyped *verb* is
+read as a path that is not there and exits `2` with the name in the message.
+That is what the shorthand costs, and it is pinned rather than left to be
+found.
 
-**One name, fifty records in the central directory, and the damage check read
-the entry fifty times.** A ZIP's central directory is a list rather than a map,
-and nothing in the format stops two of its records from carrying one entry
-name. `zipfile` assigns into its name table as it walks that list, so the last
-record carrying a name is the one every read here resolves to and the records
-before it describe bytes nothing opens — but C1, which asks whether every entry
-comes back out again, walked the records. Measured: an 11,890-byte archive with
-fifty records naming one 8 MiB entry made the run decompress 419,431,868 bytes
-in 0.23 s, and each repetition is bought with a 46-byte record plus the name.
-The pass walks the name table now and the same archive costs 8,390,076.
-
-**The duplication is a finding of its own, S15.** C15 already reports such an
-archive for the reason the specification gives — two entries may not share a
-name inside a directory — which is a claim about the package's namespace. S15
-says what the archive does to a reader: how many records carry the name, that
-this run resolved it to the last of them, and, where the records give different
-offsets, that they describe different bytes. That last case is two whole
-entries, each consistent with its own local file header, delivered under one
-name to whichever reader picks differently, and nothing said which: the archive
-passes S10, because every record there does describe the entry its own local
-header describes. Such an archive failed before and fails now -- C15 has always
-reported a duplicated name -- and what changes is what the report says about
-it. Fifty records used to draw forty-nine findings claiming one file collided
-with itself; they draw one now that says how many records carry the name, which
-of them this run resolved it to, and, where they point at different offsets,
-that the records describe different bytes.
-
-**S10's extents are one per entry a reader receives, not one per record.** Its
-last section sorts the entries by offset and compares each with the next, to
-catch data running into the following header. Fifty records for one name put
-fifty identical extents in that list, and every neighbouring pair then looked
-like two entries at one offset — forty-nine findings saying that the directory
-"gives two entries the same local file header", subject and detail naming one
-file, which collides with nothing.
-
-**The ceiling on how much content one run decompresses did not bound it.**
-`_bytes_of` read each rendition in full and charged for it afterwards, and the
-refusal that followed was memoised against that one file rather than stopping
-the run -- so every rendition past the ceiling was read as well, each crossing
-it again on its own. Measured: a 49,510-byte archive declaring forty
-one-megabyte renditions drew 41,945,847 bytes of decompression against a
-two-megabyte ceiling, twenty times over, from a file that fits in an email.
-
-Past the ceiling a rendition is now refused without being read. One read may
-still cross it and cannot be avoided -- what a rendition costs is not knowable
-without reading it, and that read is bounded by the per-file limit -- so what
-the content rules decompress is the ceiling plus one per-file limit, once. The
-same package now draws 2,097,292 bytes.
-
-This is not a claim about what a run *holds*. The read that crosses the
-ceiling is discarded, so the repair moves peak memory by a fraction of a
-percent, and a gate written against peak memory passes against the defect
-and says nothing. What was unbounded was reading, which is what the ceiling
-is written about.
-
-**The ceiling is not a bound on what a whole run decompresses, and cannot be.**
-Asking whether an archive is damaged means opening every entry, and no size the
-archive declares can answer it, so one run reads the whole declared size once
-however small the ceiling is: 83,916,368 bytes for the package above before the
-repair, 44,067,813 after, of which about forty-two megabytes is that pass. It
-asks for a bounded slice at a time and keeps none of it. `SECURITY.md` now says
-this rather than implying the ceiling covers it, and a test holds the pass to
-bounded requests, identified by where they come from: a damage check gutted to
-read nothing, and one whose slice is raised to a gigabyte, both passed the
-first version of that test.
-
-B1 reported all forty files as "over the 64 MiB limit uncompressed", which is a
-claim about a file nobody looked at, and sent the reader to shrink something
-that may be a few hundred bytes. The second value of `_bytes_of` is a reason
-rather than a flag now, and the cases read differently: the document declares
-XML entities, the file is itself over the limit, the run had reached its total
--- that one naming `IIRDS_CONTENT_BUDGET` as the remedy -- or, with the
-refusal above, the entry is in a method this tool will not read at all.
-
-The sentence in S9 saying the renditions past the ceiling "are named as not
-examined rather than silently passed" was not true when it was written. It is
-now.
+A paragraph in these notes had announced it for a release later than this one,
+and the front page announced it for this one; the two never agreed, and
+neither went out, because 0.6.1 through 0.6.3 were cut from another line. No
+reader was given the notice before now. Stating a breaking change in the
+release that makes it is what this file did for the last one, and is what it
+does here.
 
 **`-W` decided the verdict and left no mark, so the command printed `PASS` and
 exited 1 on the same run.** A package with one warning and no errors, checked
@@ -384,56 +219,6 @@ are why a figure on that page is no longer typed. `tools/extract_catalog.py`
 grew `--pin`, which answers offline which commit the committed catalogue came
 from and fails when that is not the commit the script pins -- two records of
 one fact that nothing had compared.
-
-**Checking a directory could have the checker read files outside it, and
-quote them.** A directory was listed with a file test that answers for the far
-end of a link, so a link to any file the user running the check could read was
-listed, read and judged as part of the package. Linked as `mimetype`, any such
-file had its first 80 bytes quoted in a finding -- a private key reads back out
-of the report. Linked as `META-INF/metadata.rdf`, somebody else's metadata was
-judged in place of the package's own, which passed with nothing to say, and
-what that file declared went into the report in the field that names it, in a
-note and in a finding. The same happened one layer up: a directory of packages
-was searched by the same means, so `x.iirds` as a link to any file put that
-file's SHA-256 and its size in the report, and a link to somebody else's
-package had that package's metadata quoted. S6, which reports any entry that
-leaves the container, said nothing about any of it, and `SECURITY.md` has said
-since the first release that it does. Every release up to 0.6.0 does this.
-
-What it is not: anything the checker does with an archive. A `.iirds` file
-holds bytes -- an entry whose mode marks it as a link is read as the link's
-text, and nothing is followed. It takes a directory: one somebody else
-prepared, or one an extractor that restores links made out of their archive,
-which Info-ZIP `unzip` does. Nothing is written and nothing is extracted, and
-the checker could read only what the user running it can read; what could
-leave the machine is what a report carries. Until you are on this release,
-check the `.iirds` file rather than a directory you did not unpack yourself.
-
-A name is now resolved the way the kernel resolves one: from the container's
-root downwards, one component at a time, each link replaced by its own text
-where it stands, and never a step outside. Nothing out there is consulted to
-decide, so the answer cannot depend on what happens to be there. S6 reports
-four things by name, and none of them is read: a link that leads out of the
-container, a link written as an absolute path -- which is not how a package
-names its own files -- a chain of more links than a system will follow, and a
-link that points at nothing. Neither what any of them leads to nor where it is
-goes into the report. A link that stays inside reads as before. A directory the
-check cannot list is refused by name rather than skipped, because a container
-read in part would otherwise be reported as a container with nothing wrong.
-Searching a directory of packages refuses a `.iirds` name that leads out of it,
-says which, and exits 2. And whether a file somewhere else exists no longer
-decides whether a directory is a container at all.
-
-**Breaking, for one shape of input, and said here because the exit codes are a
-stable surface.** A directory holding a `.iirds` name that is a link out of it
-used to be searched with that link followed, so the run checked the package at
-the far end and exited 0 or 1. It now refuses the name, says which, and exits
-2. A build that points at a directory of links to packages elsewhere should
-name those files instead.
-
-The table in `SECURITY.md` cited, as the proof for S6, a test file that has
-never mentioned it; it now cites the two that test it, and a test holds every
-row of that table that names a rule to every test file it cites.
 
 **A dropped file could be written outside the directory made for it, on
 Windows.** `iirds serve` gives the copy the name the sender chose, minus
@@ -779,8 +564,6 @@ something else.** The check was narrowed and the sentence it prints was not, so
 each of the sixty-one told a reader that absoluteness had been tested. A user
 acts on the finding, not on the divergence table.
 
-Coverage of the standard is 170 of 280, held by a package for 135 of them.
-
 **A relation carrying text where a reference belongs (L16).** In RDF/XML the
 two forms differ by one attribute: `<iirds:relates-to-party
 rdf:resource="urn:x:party1"/>` points at a party, and
@@ -939,6 +722,212 @@ did move is the audit: two cardinality sentences, "MUST point to exactly one
 domain by the property", are now held by the package that has two domains.
 They were briefly held by a package pointing at one domain of the wrong class,
 which has exactly one and breaks the sentence after it rather than that one.
+
+## 0.6.3 — 2026-09-20
+
+**Who should take this release:** anyone running 0.6.2 against packages they
+did not build. One rendition this checker could not decompress decided what
+every other content rule examined, and a package could come back clean because
+of it.
+
+**A legal package that passed on 0.6.2 passes on 0.6.3.** The one verdict this
+release moves belongs to a container that will not hand over a file it lists as
+content. No rule's reading of the specification changed, and the new rule
+carries no specification reference.
+
+**Security. One rendition nobody could decompress decided what every other
+content rule examined.** The reader named two reasons a rendition might not be
+read -- a compression method it will not decode, and the run's content
+ceiling -- and a corrupt deflate stream is neither. It escaped as itself,
+killed the rule that had asked, and left a half-filled cache that every later
+content rule then walked, each recorded as having answered for the package.
+Measured on three renditions with the middle one's compressed data scrambled:
+two rules recorded as having raised, a third reporting one file, and an intact
+rendition breaking the same rules that nobody opened.
+
+The read failure is a refusal now, like the two with names, so the damaged file
+is reported and the sound ones are examined. The list of what a read can fail
+with is not this project's to enumerate: the reasons that have a rule of their
+own are caught by name, everything else is caught as itself, and the exception
+types that mean this code is broken rather than the package are re-raised, so a
+defect here cannot be reported as a defect in somebody's delivery.
+
+**What now fails: a package holding a file the container lists as content and
+will not hand over.** `ERROR S16` names each one, with the reason beside it.
+0.6.2 failed such a package too -- but only when the container was an archive,
+because the damage check that holds the verdict there is one of the rules an
+unpacked container stands down. The same fault in a build directory was
+reported and then demoted to a warning, and the package came back `PASS`,
+exit 0. S16 is a system rule: whether a given file is "iiRDS XHTML5 content" is
+this project's reading of the entry condition, and content findings are
+warnings outside iiRDS/A for that reason, but whether the container will
+produce a file it lists is not a reading of anything.
+
+It is deliberately narrow. Where a ceiling stopped the reading, the rule for
+that ceiling already says so -- `S9` for the run's content budget -- and an
+entry compressed with a method no bounded read can be made of is `S14`, from
+0.6.2. A rendition larger on its own than the per-file ceiling is left alone on
+purpose: that ceiling is a number this project chose, such a file is legal, and
+this release does not turn a legal package's pass into a failure.
+
+**A refusal named the wrong cause, and told the reader to do something that
+would not work.** `metadata.rdf` this reader will not decode is refused, and
+that is still right -- XML 1.0 requires a processor to support UTF-8 and UTF-16
+and nothing else. What was wrong was the sentence beside the refusal: one
+explanation for every decode failure, that the bytes were damaged in transit
+and the file has to be sent again. It arrives identical. The finding names the
+declaration now -- including `utf-8`, where that is what the document says and
+the bytes are not, which is the commonest of these in the field -- and the
+remedy answers each declaration separately, including one naming a codec this
+reader will not use at all. Transcoding such a package to UTF-8 and changing
+nothing else turns the verdict into a pass with no findings, which is the
+measurement that says the markup was never the problem.
+
+**The check the SDK runs before writing metadata could not tell a language tag
+from another.** `write_metadata` writes the graph, reads it back and compares,
+and under the condition it tests for it compares by its own fingerprint rather
+than by rdflib's isomorphism. That fingerprint rendered every term by lexical
+form alone, so `"Getriebe"@en` and `"Getriebe"@de` read back as the same graph,
+and so did `<http://example.org/o>` and the string that spells it. Terms are
+rendered by what tells them apart now. The round trip preserves all three, so
+the guard was weaker than it claimed rather than wrong about any package.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: it adds one rule and that rule carries no
+specification reference, because what it reports is this run's own business.
+
+**Also:** `read_bounded` performed an unbounded read in the unpacked form when
+its budget arrived spent. No shipped caller reaches that arithmetic; the two
+container forms disagreeing about a bound is how both size gates were once
+silently off for the unpacked one, which is why it is repaired rather than
+noted.
+
+## 0.6.2 — 2026-09-18
+
+**Who should take this release:** anyone who checks `.iirds` files they did not
+build themselves. Every release up to 0.6.1 can be made to spend far more time
+and memory on a container than its size suggests, by a container that says so
+in its own records.
+
+**A package that passed on 0.6.1 can fail on 0.6.2**, and that is the repair
+rather than a side effect of it. An entry compressed with bzip2 or lzma now
+draws `ERROR S14`: those entries cannot be read within a stated limit, so this
+release does not open them at all, and an entry nothing will read is worth
+saying rather than passing over. If you check packages built by a tool that
+uses either method, this release will start refusing them and `iirds pack`
+shows what to rebuild them with.
+
+The second new rule changes no verdict. An archive whose central directory
+carries one name in more than one record already failed, on C15; `ERROR S15`
+now says what the archive does to a reader -- how many records carry the name,
+which of them this run resolved it to, and, where they point at different
+offsets, that the records describe different bytes. Before, fifty such records
+drew forty-nine findings claiming one file collided with itself.
+
+Two new rules, then, and no rule's reading of the specification changed: these
+two carry no specification reference at all. The exit codes mean what they
+meant.
+
+**Security. A container of no size could make a run decompress without bound.**
+The ceiling on how much content one run reads existed and did not hold: each
+rendition was read in full and charged for afterwards, and the refusal that
+followed was remembered against that one file rather than stopping the run, so
+every rendition past the ceiling was read as well. A 49,510-byte archive
+declaring forty one-megabyte renditions drew 41,945,847 bytes of decompression
+against a two-megabyte ceiling. Past the ceiling a rendition is now refused
+without being read. S9 has always said the renditions past the ceiling "were
+not examined"; now they have not been.
+
+**Security. An entry a few hundred bytes long could make a run allocate
+hundreds of megabytes.** Every limit here bounds what a read hands back. Python
+passes the caller's length to the decompressor for deflate and for no other
+method; the rest are decompressed whole and the result sliced afterwards, so
+the slice obeys the limit and the allocation behind it does not. One 64 KiB
+read of an entry declaring 64 MiB allocated 79,898 bytes when stored, 238,399
+when deflated, 71,530,984 from a 189-byte bzip2 entry and 79,972,634 from a
+9,657-byte lzma one. Lowering `IIRDS_CONTENT_BUDGET` does not reach it, because
+the overshoot happens inside one read. Those entries are no longer opened, and
+`docs/divergences.md` carries the argument for refusing what the specification
+permits, including the alternative that was rejected.
+
+**Security. One entry could be decompressed once per directory record.** A ZIP
+central directory is a list of records, not a set of names, and the check that
+asks whether the archive is damaged walked the records. An 11,890-byte archive
+with fifty records naming one 8 MiB entry made a run decompress 419,431,868
+bytes; each repetition costs the sender a 46-byte record. The check walks the
+name table now and the same archive costs 8,390,076.
+
+`SECURITY.md` no longer implies that the ceiling bounds what a whole run
+decompresses. It cannot: asking whether an archive is damaged means opening
+every entry, so a run reads the whole declared size once however small the
+ceiling is. That pass asks for a bounded slice at a time and keeps none of it.
+The front page said a zip bomb was "refused safely — bounded reads"; that was
+true of the two methods it read and not of the two it did not, and it now says
+which.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: the two rules it adds carry no specification
+reference, because neither is a reading of the standard.
+
+## 0.6.1 — 2026-09-11
+
+**Who should take this release:** anyone on 0.6.0 or earlier who checks an
+unpacked directory, or points the checker at a directory of packages. Checking
+`.iirds` files and nothing else is not affected.
+
+**Security. Checking a directory could have the checker read files outside
+it, and quote them.** A directory was listed with a file test that answers for the far
+end of a link, so a link to any file the user running the check could read was
+listed, read and judged as part of the package. Linked as `mimetype`, any such
+file had its first 80 bytes quoted in a finding -- a private key reads back out
+of the report. Linked as `META-INF/metadata.rdf`, somebody else's metadata was
+judged in place of the package's own, which passed with nothing to say, and
+what that file declared went into the report in the field that names it, in a
+note and in a finding. The same happened one layer up: a directory of packages
+was searched by the same means, so `x.iirds` as a link to any file put that
+file's SHA-256 and its size in the report, and a link to somebody else's
+package had that package's metadata quoted. S6, which reports any entry that
+leaves the container, said nothing about any of it, and `SECURITY.md` has said
+since the first release that it does. Every release up to 0.6.0 does this.
+
+What it is not: anything the checker does with an archive. A `.iirds` file
+holds bytes -- an entry whose mode marks it as a link is read as the link's
+text, and nothing is followed. It takes a directory: one somebody else
+prepared, or one an extractor that restores links made out of their archive,
+which Info-ZIP `unzip` does. Nothing is written and nothing is extracted, and
+the checker could read only what the user running it can read; what could
+leave the machine is what a report carries. Until you are on this release,
+check the `.iirds` file rather than a directory you did not unpack yourself.
+
+A name is now resolved the way the kernel resolves one: from the container's
+root downwards, one component at a time, each link replaced by its own text
+where it stands, and never a step outside. Nothing out there is consulted to
+decide, so the answer cannot depend on what happens to be there. S6 reports
+four things by name, and none of them is read: a link that leads out of the
+container, a link written as an absolute path -- which is not how a package
+names its own files -- a chain of more links than a system will follow, and a
+link that points at nothing. Neither what any of them leads to nor where it is
+goes into the report. A link that stays inside reads as before. A directory the
+check cannot list is refused by name rather than skipped, because a container
+read in part would otherwise be reported as a container with nothing wrong.
+Searching a directory of packages refuses a `.iirds` name that leads out of it,
+says which, and exits 2. And whether a file somewhere else exists no longer
+decides whether a directory is a container at all.
+
+**Breaking, for one shape of input, and said here because the exit codes are a
+stable surface.** A directory holding a `.iirds` name that is a link out of it
+used to be searched with that link followed, so the run checked the package at
+the far end and exited 0 or 1. It now refuses the name, says which, and exits
+2. A build that points at a directory of links to packages elsewhere should
+name those files instead.
+
+The table in `SECURITY.md` cited, as the proof for S6, a test file that has
+never mentioned it; it now cites the two that test it, and a test holds every
+row of that table that names a rule to every test file it cites.
+
+**Coverage of the standard is 131 of 280, of which 94 are held by a package.**
+Unchanged by this release: it moves no rule and adds none. What it changes is
+what a directory may make the checker read.
 
 ## 0.6.0 — 2026-09-05
 

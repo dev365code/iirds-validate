@@ -289,7 +289,7 @@
  "package": "fixtures/bad.iirds",
  "packageDigest": {
   "bytes": 663,
-  "digest": "sha256:515f218499fdfffb3be0133f524aebd8415a0fb2c6e3ac293adc6d1c5dd33160",
+  "digest": "sha256:b30eeb47912800f4d7dc8da65a349d0b81732c4aadb8ef729251cdd15d145445",
   "reason": null
  },
  "schemaVersion": 2,

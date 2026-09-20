@@ -62,6 +62,40 @@ def _lines(report):
                   for f in report.findings)
 
 
+def test_a_fixture_built_twice_is_the_same_bytes(tmp_path):
+    """A package this repository builds must not carry the clock.
+
+    `zipfile.writestr` given a name stamps the current time, so every entry
+    but `mimetype` -- immune by accident, because a bare `ZipInfo` dates to
+    1980 -- moved with the build. Two builds differed, and any digest taken
+    over one was a fact about the machine that made it: `docs/golden-report.json`
+    pinned `packageDigest` here and CI disagreed with this machine on the
+    first run.
+
+    Asserted as the dates rather than by building twice and sleeping: the
+    difference only shows across the two-second granularity a DOS timestamp
+    has, and a test that sleeps for it is a test nobody keeps.
+    """
+    import zipfile
+
+    from conftest import build_package
+
+    package = build_package(tmp_path, "twice.iirds", extra=(("x/y.txt", "data"),))
+    dates = {info.filename: info.date_time
+             for info in zipfile.ZipFile(package).infolist()}
+    assert dates, "the fixture has no entries"
+    moving = {name: when for name, when in dates.items() if when != (1980, 1, 1, 0, 0, 0)}
+    assert not moving, "these entries carry the build time: %s" % sorted(moving)
+
+    # and the compression is still what the fixture is a fixture of: a
+    # `ZipInfo` carries its own `compress_type`, defaulting to stored.
+    kinds = {info.filename: info.compress_type
+             for info in zipfile.ZipFile(package).infolist()}
+    assert kinds["mimetype"] == zipfile.ZIP_STORED, kinds
+    assert all(kind == zipfile.ZIP_DEFLATED
+               for name, kind in kinds.items() if name != "mimetype"), kinds
+
+
 def test_three_runs_of_one_package_give_three_identical_reports(tmp_path):
     package = build_package(tmp_path, "repeat.iirds", metadata=BROKEN_RDF)
     reports = [_lines(runner.check(package)) for _ in range(3)]

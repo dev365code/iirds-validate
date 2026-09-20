@@ -125,23 +125,38 @@ def build_package(directory, name="test.iirds", *, metadata=MINIMAL_RDF, jsonld=
     path = Path(directory) / name
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        def put(name, data, compress=zipfile.ZIP_DEFLATED):
+            """One entry, with the clock left out of it.
+
+            `writestr` given a name stamps the current time, so two builds of
+            the same fixture differ and every digest taken over one is a fact
+            about the machine that built it. `mimetype` was already immune by
+            accident -- a bare `ZipInfo` dates to 1980 -- and this gives every
+            entry the same. The compression has to be said here too: a
+            `ZipInfo` carries its own `compress_type` and defaults to stored,
+            so passing one without setting it would quietly un-deflate the
+            archive and change what the fixture is a fixture *of*.
+            """
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = compress
+            zf.writestr(info, data)
+
         def write_mimetype():
             if mimetype is None:
                 return
-            info = zipfile.ZipInfo("mimetype")
-            info.compress_type = zipfile.ZIP_STORED if mimetype_stored else zipfile.ZIP_DEFLATED
-            zf.writestr(info, mimetype)
+            put("mimetype", mimetype,
+                zipfile.ZIP_STORED if mimetype_stored else zipfile.ZIP_DEFLATED)
 
         if mimetype_first:
             write_mimetype()
         if metadata is not None:
-            zf.writestr("META-INF/metadata.rdf", metadata)  # str or bytes
+            put("META-INF/metadata.rdf", metadata)  # str or bytes
         if jsonld is not None:
-            zf.writestr("META-INF/metadata.jsonld", jsonld)
+            put("META-INF/metadata.jsonld", jsonld)
         for rel in content:
-            zf.writestr(rel, "<html/>")
+            put(rel, "<html/>")
         for rel, data in extra:
-            zf.writestr(rel, data)
+            put(rel, data)
         if not mimetype_first:
             write_mimetype()
 

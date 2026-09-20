@@ -381,3 +381,41 @@ def test_no_title_claims_a_subject_class_the_rule_does_not_check():
         assert " on an " not in title, (rule_id, title)
         for path in paths:
             assert path in title, (rule_id, path, title)
+
+
+def test_the_namespace_exemption_covers_every_term_an_edition_defines():
+    """The premise under a disjunct neither encoding writes any more.
+
+    The rules that ask whether a value is an instance of a class used to exempt
+    it twice: by naming every term the bundled ontology defines, and by the
+    namespace it sits in. The second subsumes the first, so the list did no
+    work -- and it was the most expensive thing in the shapes, because a
+    membership test over hundreds of IRIs runs for every candidate value.
+
+    What makes the removal safe is a property of the vocabularies rather than
+    an argument, so it is checked rather than asserted: every term an edition
+    defines sits in one of the namespaces `tools/emit_shacl.py` writes into the
+    surviving disjunct. Those four, not the five `names_a_defined_term` tests
+    -- it adds vCard, which the shapes do not, so a defined term there would be
+    exempt in the Python and reported by the shapes. None exists; this is what
+    says so.
+
+    Read from `version-terms.json`, which carries a vocabulary per edition.
+    Asking the loaded ontology instead would ask the same bundled file five
+    times over, because only 1.3 ships and the loader substitutes it.
+    """
+    import json
+
+    from iirds_validate import resources
+    from iirds_validate.context import IIRDS_NAMESPACES
+    from iirds_validate.model import VERSIONS
+
+    published = json.loads(resources.read_text("version-terms.json"))["terms"]
+    assert sorted(published) == sorted(VERSIONS), sorted(published)
+    for version, terms in sorted(published.items()):
+        outside = sorted(term for term in terms
+                         if not term.startswith(IIRDS_NAMESPACES))
+        assert not outside, (
+            "iiRDS %s defines %d term(s) outside the namespaces the shapes "
+            "exempt by prefix, so the disjunct that named them by hand has to "
+            "come back: %s" % (version, len(outside), outside[:5]))

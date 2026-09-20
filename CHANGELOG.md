@@ -126,6 +126,36 @@ this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
 line existed.
 
+**Seven rules asked the same question twice, and the second copy was most of
+what a check cost.** The rules that ask whether a value is an instance of a
+class exempt a value they should not report on, and the exemption was written
+twice over: once by naming every term the bundled ontology defines, once by
+the namespace the value sits in. Every term every edition defines -- 281 of
+them in 1.0, 327 in 1.3 -- is in one of those namespaces, so the first was
+subsumed by the second and could not change an answer.
+
+It could change the bill. A membership test over 327 IRIs runs for every
+candidate value, and the list went into the query text eight times, because
+R19 writes two queries and carried it in both:
+`shapes/iirds-1.3/iirds-sparql.ttl` was 173,186 characters and is 42,154.
+Measured over the eight largest documents the corpus carries, the shapes took
+79.47s and now take 15.35s. The reading is unchanged, and the differential
+gate -- which compares what the shapes fire against what the Python fires,
+rule by rule and graph by graph -- says so.
+
+The suite felt it too, because that gate runs inside the ordinary one: every
+validation in every test was paying for the same dead test. `make check`'s
+test step took about thirteen minutes earlier in this release's work and takes
+about five.
+
+The Python said it twice as well, and now says it once, so the two stay the
+mirror images they are meant to be. What makes the removal safe is a property
+of the published vocabularies rather than an argument, so a test holds it --
+against the namespaces the *shapes* exempt, which are four; the Python's own
+prefix test adds vCard, and a term defined there would be exempt in one
+encoding and reported by the other. None exists. If an edition ever defines
+one, the build says so rather than a verdict going quietly missing.
+
 **The job that builds a release no longer holds the permission that publishes
 it.** It ran this project's build scripts and the whole suite, and it carried
 `contents: write` for one step at the end -- so anything that reached it, a

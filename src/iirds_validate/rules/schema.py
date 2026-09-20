@@ -861,7 +861,14 @@ def _points_at_an_instance_of(ctx, prop, cls, message):
         if ctx.is_instance(value, cls) or value in ctx.ontology.instances_of(cls):
             continue
         if (not isinstance(value, Literal)
-                and not ctx.ontology.is_defined(value)
+                # Not `ctx.ontology.is_defined(value)` as well. It is exact
+                # membership and the test below is a prefix, so they are not
+                # the same question -- but every term an edition defines sits
+                # under one of those prefixes, so the first implies the second
+                # and a disjunction needs no more than that. In the shapes the
+                # same disjunct was a list of hundreds of IRIs tested once per
+                # value, and the most expensive thing in the query. The
+                # premise is held in tests/test_relation_targets.py.
                 and (value, None, None) not in ctx.graph
                 # An IRI nothing describes is a pointer at nothing and L1's
                 # business -- unless it is in the standard's own namespace,

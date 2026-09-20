@@ -337,9 +337,12 @@ def _points_at_an_instance_of(prop, cls, instances):
     triples, so `EXISTS { ?value ?p ?o }` used to drop them silently.
 
     Read as: report unless the data graph types it right, or the ontology does;
-    and among what is left, report a literal, a term the standard defines, a
-    node this package describes, a blank node, or any name in an iiRDS
-    namespace -- an undescribed IRI *elsewhere* is L1's business.
+    and among what is left, report a literal, a node this package describes, a
+    blank node, or any name in an iiRDS namespace -- an undescribed IRI
+    *elsewhere* is L1's business. A term the standard defines was named here
+    too, until the namespace disjunct below was found to cover every one of
+    them; a list of hundreds of IRIs, tested per value, was the most expensive
+    thing these shapes did. `tests/test_relation_targets.py` holds the premise.
 
     The last two arrived together with their Python. A blank node with no
     statements read as undescribed and went to L1, which looks at IRIs only,
@@ -353,7 +356,6 @@ def _points_at_an_instance_of(prop, cls, instances):
   FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)s""" + cls + """> }
   FILTER (?value NOT IN (%(""" + instances + """)s))
   FILTER (isLiteral(?value)
-          || ?value IN (%(defined_terms)s)
           || EXISTS { ?value ?p2 ?o2 }
           || isBlank(?value)
           || %(ns_v)s) }""")
@@ -1177,8 +1179,7 @@ def build() -> dict:
                  "ns_s": _ns_test("?s"), "ns_o": _ns_test("?o"),
                  "ns_v": _ns_test("?value"), "ns_t": _ns_test("?t"),
                  "vc": "http://www.w3.org/2006/vcard/ns#",
-                 "defined_terms": _term_list(_ONTOLOGY.defined_terms()),
-                 # The ontology's own instances of the two classes the
+                              # The ontology's own instances of the two classes the
                  # "points at an instance of" rules ask about. Generated from
                  # the same ontology Python reads, and a much shorter list
                  # than defined_terms: eight party roles, seven status values.

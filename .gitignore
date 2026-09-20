@@ -12,7 +12,12 @@ dist/
 fixtures/
 .crossvalidate-cache/
 .rule-coverage.json
-.spec-cache/
+# Without the trailing slash. A pattern ending in one matches a directory
+# and nothing else, and on the machines that build this cache the path is
+# a symbolic link -- so the name went on being offered for commit there,
+# twice. The specification is not redistributable; what sits here never
+# belongs in the history, whichever shape the path takes.
+.spec-cache
 docs/consortium/
 docs/private/
 

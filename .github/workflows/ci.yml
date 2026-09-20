@@ -71,6 +71,13 @@ jobs:
       - name: the emitted SHACL shapes still match their generator
         run: python tools/emit_shacl.py --check
 
+      - name: the mutation table still describes this code
+        # Each row names a file and the text it replaces; a row whose text has
+        # moved is a claim nobody is testing any more. Milliseconds, so it
+        # rides with the other drift checks. Applying the rows and watching
+        # the gates die is `mutations.yml`, which is minutes.
+        run: python tools/mutation_table.py --check
+
       - name: the shapes agree with the Python rules, rule for rule
         # pySHACL rides only on this row; the matrix rows skip via
         # importorskip. Full differential parity: per-rule mutants, the
@@ -145,6 +152,29 @@ jobs:
 
       - name: Every claim called held by a package names a test that passed
         run: python tools/held_claims.py --check
+
+  mutations:
+    # Every claim this repository makes about a gate is written as a mutation
+    # somebody can apply. `--check` rides in the lint job because it costs
+    # milliseconds; this is the other half -- apply each row in a copy of the
+    # tree and watch the checks it names fail. Measured at about a minute for
+    # nineteen rows, which is cheap enough to ask on every push rather than to
+    # leave behind a button nobody presses: a gate whose trigger never fires
+    # is a comment, and this repository has been caught by that once already.
+    #
+    # One row is a canary -- a comment nobody reads -- and is expected to
+    # survive. The runner fails if anything else does, and fails too if the
+    # canary dies, because that would mean the checks are killing everything.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: python tools/mutation_table.py --run
 
   wheel:
     # The failure this job exists for: a wheel that builds and installs but is

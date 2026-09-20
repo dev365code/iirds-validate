@@ -29,7 +29,7 @@ export IIRDS_REQUIRE_SHACL := 1
 # that index passed the whole suite until the checks it turns on existed.
 export IIRDS_REQUIRE_SPEC_CACHE := 1
 
-.PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools dev clean silent-paths
+.PHONY: help check test lint fix generated corpus exercised versions requirements shapes tools mutations dev clean silent-paths
 
 # `exercised` reads records the test run writes, and `check` lists both as
 # prerequisites — which make is free to run in either order, or at once under
@@ -51,7 +51,7 @@ help:
 	@echo "make tools   the checks that need a built container"
 	@echo "make dev     install ruff and pytest for the above"
 
-check: lint generated corpus versions requirements shapes test exercised tools
+check: lint generated corpus versions requirements shapes test exercised tools mutations
 
 test:
 	$(PYTHON) -m pytest -q
@@ -128,6 +128,17 @@ corpus:
 # classification became a file: the front of docs/divergences.md states it a
 # figure at a time, and a figure with no source is one nobody can be held to.
 	$(PYTHON) tools/explain_silence.py --check
+
+# The table of mutations every claim about a gate is written as. `--check`
+# asks only whether the table still describes this code: each row names a file
+# and the text it replaces, and a row whose text has moved is a claim nobody is
+# testing any more. It costs milliseconds, so it rides here.
+#
+# `--run` is the other half -- apply each row and watch the checks it names
+# die -- and it is minutes rather than milliseconds, so it has a workflow of
+# its own rather than a place in every `make check`.
+mutations:
+	$(PYTHON) tools/mutation_table.py --check
 
 tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify

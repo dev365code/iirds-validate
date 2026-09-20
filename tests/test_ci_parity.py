@@ -145,7 +145,7 @@ CHECKS = [(target, _normalise(command))
 #: `exercised`, which is the generated-file comparison, the edition check, the
 #: obligation index and both claim gates. A count is not a list.
 CHECK_TARGETS = ("lint", "generated", "corpus", "versions", "requirements",
-                 "shapes", "test", "exercised", "tools")
+                 "shapes", "test", "exercised", "tools", "mutations")
 
 #: And the commands, by name for the same reason. A count of fifteen is
 #: satisfied by fifteen copies of one gate: replacing `ruff check .` with a
@@ -169,6 +169,7 @@ CHECK_COMMANDS = (
     "-m iirds_validate.ontology --verify",
     "tools/serialisation_equivalence.py fixtures/bad.iirds",
     "tools/serialisation_equivalence.py fixtures/good.iirds --allow-clean",
+    "tools/mutation_table.py --check",
 )
 
 

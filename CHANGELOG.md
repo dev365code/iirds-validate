@@ -353,9 +353,9 @@ needed and nothing is lost.
 The report also says why every rule it did not answer went unanswered,
 whatever command was asked of it. `iirds check` used to leave fourteen lint
 rules unmentioned -- the interoperability rules less the two that are marked
-conformance and so are asked on a conformance run -- and `iirds lint` the
-rest of them, and a
-container that would not open named one rule and was silent about the rest.
+conformance and so are asked on a conformance run -- and `iirds lint` every
+rule it does not ask for, and a container that would not open named one rule
+and was silent about the rest.
 Two reasons are new: a kind this command never put, and a rule never put
 because the container would not open. The printed line is unchanged — rules
 nobody asked for are not counted among the rules that did not apply.

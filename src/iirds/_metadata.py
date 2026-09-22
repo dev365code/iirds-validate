@@ -135,6 +135,14 @@ def _declares_entities(raw: bytes) -> bool:
 #: document, not the document being damaged.
 NOT_RDFXML = "not an RDF/XML document"
 
+#: A document naming an encoding no codec answers to. Refused, not read: XML
+#: requires the declaration to name a charset the processor can handle, and a
+#: processor that cannot must say so rather than guess. It has its own
+#: category because the alternative was the exception escaping this function
+#: -- `LookupError` out of the reader below, past a contract that promises
+#: `(graph, None)` or `(None, error)`, into a caller told otherwise.
+UNREADABLE_ENCODING = "declares an encoding no codec answers to"
+
 #: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
 #: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
 #: else that is an absolute IRI names a node element -- the class of a typed
@@ -175,6 +183,38 @@ def _split(tag: str) -> Tuple[str, str]:
         namespace, _, local = tag[1:].partition("}")
         return namespace, local
     return "", tag
+
+
+#: The `encoding=` of an XML declaration, which may sit only at the front.
+_DECLARED = re.compile(br'^<\?xml[^>]*?\sencoding\s*=\s*(["\'])([^"\']*)\1')
+
+
+def _declared_encoding_name(raw: bytes) -> Optional[str]:
+    """The name the document declares, or None where it declares none."""
+    found = _DECLARED.match(raw.lstrip(b"\xef\xbb\xbf"))
+    return found.group(2).decode("ascii", "replace") if found else None
+
+
+def _codec_exists(name: str) -> bool:
+    """Whether anything here can answer to that name.
+
+    Asked by decoding a byte rather than through `codecs.lookup`, which would
+    be a new import in a library whose import list is itself a gate. A byte
+    and not the empty bytes: decoding nothing succeeds for every name at all,
+    because there is nothing to look a codec up for -- measured, `x-nonesuch`
+    included.
+
+    Only `LookupError` answers this question. `b"a"` is not valid UTF-16 and
+    raises while being decoded, which says the codec exists and these bytes
+    are not in it -- the opposite of what is being asked.
+    """
+    try:
+        b"a".decode(name)
+    except LookupError:
+        return False
+    except Exception:                     # a real codec, an invalid byte
+        return True
+    return True
 
 
 def _document_element(raw: bytes) -> Optional[str]:
@@ -358,6 +398,9 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # document, so nothing was read, and the reader says so rather than
     # handing on a graph nobody wrote.
     if fmt == "xml":
+        declared = _declared_encoding_name(raw)
+        if declared is not None and not _codec_exists(declared):
+            return None, "%s: %s: %s" % (name, UNREADABLE_ENCODING, declared)
         element = _document_element(raw)
         if element is not None and not is_rdfxml_document_element(element):
             return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))

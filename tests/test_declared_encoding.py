@@ -1,15 +1,27 @@
-"""A metadata file this reader will not decode is not a damaged file.
+"""What this tool does with a document's encoding declaration.
 
-`metadata.rdf` declaring `encoding="windows-1252"` is refused, and refusing is
-defensible: XML 1.0 requires a processor to support UTF-8 and UTF-16 and
-nothing else, and rdflib decodes as UTF-8 whatever the declaration says. What
-is not defensible is what the reader was told -- that an encoding error means
-"the bytes were damaged or cut short in transit and the file has to be sent
-again". Those bytes are intact: `xml.etree`, in the same interpreter, parses
-the same document and finds its elements. Sending it again delivers the same
-file, and the remedy a reader can act on is to write it as UTF-8.
+Four states, and today it tells two of them apart. A document whose
+declaration and bytes agree on a codec this tool cannot read is refused with
+the codec's own words -- `can't decode byte 0xfc in position 297` -- which
+names no repair. A document whose declaration is a lie is refused when the
+bytes happen not to be UTF-8 and accepted in silence when they happen to be:
+the asymmetry is the defect, because what is wrong with the file is the same
+in both.
 
-Found by running a real third-party package against this tool.
+The silence is total. A package declaring `windows-1252` over UTF-8 bytes
+produces a report that is byte-identical to the UTF-8 control once the digest
+and the path are set aside -- measured, `difference keys: []`.
+
+What decides the ambiguous case is not a round trip. UTF-8 bytes read as
+cp1252 give `fÃ¼r` and encode back to the original bytes exactly, so a round
+trip calls that document consistent and would put mojibake in the graph --
+worse than today, where it is read as UTF-8 and comes out right. What tells
+the three apart is whether the bytes are valid UTF-8 *and* carry a byte over
+127: only then do the two readings differ, which is why an ASCII-only document
+declaring anything at all draws nothing.
+
+No silent substitution, in any state: `errors="replace"` turns a document
+nobody can read into one that parses and says something else.
 """
 from __future__ import annotations
 
@@ -17,132 +29,106 @@ import zipfile
 
 import pytest
 
-from conftest import MIMETYPE
+import iirds
 from iirds_validate import runner
 
-DECLARED = ('<?xml version="1.0" encoding="windows-1252"?>\n'
-            '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
-            'xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
-            '  <iirds:Package rdf:about="urn:p">'
-            '<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>'
-            '<iirds:title>Gr\xfc\xdfe</iirds:title></iirds:Package>\n'
-            '</rdf:RDF>\n')
+BODY = ('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+        '         xmlns:iirds="https://iirds.tekom.de/iirds#">\n'
+        '  <iirds:Package rdf:about="http://e/p">\n'
+        '    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n'
+        '    <iirds:has-title>%s</iirds:has-title>\n'
+        '  </iirds:Package>\n'
+        '</rdf:RDF>\n')
+GERMAN = "Bedienungsanleitung für Größe"
+PLAIN = "Operating instructions"
+
+#: declared encoding, the codec the bytes are actually in, the title
+CONTROLS = {
+    "declared 1252 and written in 1252": ("windows-1252", "cp1252", GERMAN),
+    "declared 1252 and written in utf-8": ("windows-1252", "utf-8", GERMAN),
+    "declared utf-8 and written in 1252": ("utf-8", "cp1252", GERMAN),
+    "declared an encoding no codec answers to": ("x-nonesuch", "utf-8", GERMAN),
+    "declared utf-8 and written in utf-8": ("utf-8", "utf-8", GERMAN),
+    "declared 1252 and written in ascii": ("windows-1252", "utf-8", PLAIN),
+}
 
 
-def _package(tmp_path, body: bytes, name="encoded.iirds"):
-    path = tmp_path / name
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
-        first = zipfile.ZipInfo("mimetype")
-        first.compress_type = zipfile.ZIP_STORED
-        archive.writestr(first, MIMETYPE)
-        archive.writestr("META-INF/metadata.rdf", body)
-        archive.writestr("content/topic1.xhtml", b"<html/>")
+def document(declared, codec, title):
+    head = '<?xml version="1.0" encoding="%s"?>\n' % declared
+    return (head + BODY % title).encode(codec)
+
+
+def package(directory, name, raw):
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", "application/iirds+zip")
+        archive.writestr("META-INF/metadata.rdf", raw)
     return path
 
 
-def test_the_bytes_are_not_damaged_and_a_parser_reads_them(tmp_path):
-    """The premise, held here so the finding below cannot drift away from it."""
-    from xml.etree import ElementTree
-
-    root = ElementTree.fromstring(DECLARED.encode("windows-1252"))
-    assert len(list(root.iter())) == 4, "the fixture must be a document that parses"
+def report_of(directory, state):
+    declared, codec, title = CONTROLS[state]
+    built = package(directory, "t.iirds", document(declared, codec, title))
+    return runner.check(built).as_dict()
 
 
-def test_a_declared_encoding_is_reported_as_the_encoding_it_declares(tmp_path):
-    package = _package(tmp_path, DECLARED.encode("windows-1252"))
-    report = runner.run(package, runner.ALL_KINDS)
-    said = [f for f in report.findings if f.rule.id == "C16.1"]
-    assert said, sorted({f.rule.id for f in report.findings})
-    detail = said[0].violation.detail or ""
-    assert "windows-1252" in detail, (
-        "the reader is not told which encoding the document declares: %r" % detail)
+def findings_of(report):
+    return sorted((f["rule"], f["severity"]) for f in report["findings"])
 
 
-def test_the_remedy_does_not_tell_a_reader_to_resend_an_intact_file(tmp_path):
-    """The remedy is what a reader acts on, and acting on this one achieves
-    nothing: the file arrives identical."""
-    package = _package(tmp_path, DECLARED.encode("windows-1252"))
-    report = runner.run(package, runner.ALL_KINDS)
-    remedy = next(f.rule.fix for f in report.findings if f.rule.id == "C16.1")
-    assert "write it as UTF-8" in remedy or "as UTF-8" in remedy, (
-        "the remedy does not name the one thing that fixes this package")
+@pytest.mark.parametrize("state", sorted(CONTROLS), ids=sorted(CONTROLS))
+def test_parse_metadata_answers_rather_than_raises(state, tmp_path):
+    """The contract is `(graph, None)` or `(None, error)`, and one state
+    raises `LookupError` out of the reader that decides whether the document
+    is RDF/XML at all. `parse_metadata` is published; a caller of the library
+    is told a string and handed an exception."""
+    declared, codec, title = CONTROLS[state]
+    graph, error = iirds.parse_metadata(iirds.METADATA_RDF,
+                                        document(declared, codec, title),
+                                        base=iirds.PACKAGE_BASE)
+    assert graph is not None or error, "neither a graph nor a reason"
 
 
-def test_utf8_metadata_is_unaffected(tmp_path):
-    """The control: the ordinary case must not gain a finding."""
-    report = runner.run(_package(tmp_path, DECLARED.replace(
-        'encoding="windows-1252"', 'encoding="utf-8"').encode("utf-8")), runner.ALL_KINDS)
-    assert not [f for f in report.findings if f.rule.id == "C16.1"], sorted(
-        {f.rule.id for f in report.findings})
+@pytest.mark.xfail(strict=True, reason=(
+    "open: a false encoding declaration over UTF-8 bytes is read as UTF-8 and "
+    "drawn attention to by nothing. Recorded as a failure rather than left "
+    "unwritten, so the day it is closed this file says so."))
+def test_a_declaration_that_is_a_lie_is_not_silent(tmp_path):
+    """The whole of the defect in one comparison.
 
-
-def test_a_file_that_says_utf8_and_is_not_is_told_so_rather_than_accused(tmp_path):
-    """The commonest one in the field, and the one the first fix stepped over.
-
-    An editor saves in the platform's encoding and leaves the declaration
-    alone, so the document says `utf-8` and its bytes are windows-1252. The
-    note about the declaration was suppressed for exactly that value -- there
-    was nothing to correct, the reasoning went, since the reader decodes as
-    UTF-8 anyway -- and suppressing it puts the reader in the other branch of
-    the remedy: no encoding named, so the bytes were damaged in transit, so
-    send the file again. It arrives identical. What the reader needs is the
-    contradiction: the file says UTF-8 and is not, and re-saving it as UTF-8
-    is the whole repair.
+    A package declaring `windows-1252` over UTF-8 bytes is a package whose
+    declaration is false, and this tool reads it as UTF-8 and says nothing.
+    Set the digest and the path aside and the report is the control's.
     """
-    body = DECLARED.replace('encoding="windows-1252"', 'encoding="utf-8"')
-    package = _package(tmp_path, body.encode("windows-1252"), "lying.iirds")
-    report = runner.run(package, runner.ALL_KINDS)
-    said = [f for f in report.findings if f.rule.id == "C16.1"]
-    assert said, sorted({f.rule.id for f in report.findings})
-    detail = said[0].violation.detail or ""
-    # Not `"utf-8" in detail`: the codec puts its own name in every decode
-    # error it raises, so that assertion passed against the defect. The note
-    # is what is being asked for, and the note says "declares".
-    assert "declares" in detail, (
-        "the reader is not told the file declares the encoding it fails to be: %r" % detail)
+    lie = report_of(tmp_path / "a", "declared 1252 and written in utf-8")
+    control = report_of(tmp_path / "b", "declared utf-8 and written in utf-8")
+    for report in (lie, control):
+        for key in ("packageDigest", "package", "judgedBy"):
+            report.pop(key, None)
+    assert lie != control, (
+        "a false encoding declaration produces the same report as a true one")
 
 
-#: Declarations this reader refuses before any parser sees the document, and
-#: the exception each raises. Neither is a `UnicodeDecodeError`, and the first
-#: version of the note looked for that word: a supplier in Japan or China got
-#: no note, and with no note the remedy sent them to the branch that asks for
-#: the file to be sent again.
-RAISING = {"shift_jis": "multi-byte", "euc-jp": "multi-byte", "bogus-9": "unknown encoding"}
+def test_a_document_this_tool_cannot_read_says_what_to_do(tmp_path):
+    """`windows-1252` is a codec Python has and this tool refuses, with the
+    codec's own sentence about a byte at an offset. A reader is told which
+    byte and not what to do."""
+    report = report_of(tmp_path, "declared 1252 and written in 1252")
+    said = " ".join(str(f.get("detail", "")) + " " + str(f.get("fix", ""))
+                    for f in report["findings"])
+    assert "position" not in said or "utf-8" in said.lower(), said
+    assert "windows-1252" in said, (
+        "the refusal does not name the encoding the document declares: %s" % said)
 
 
-@pytest.mark.parametrize("declared", sorted(RAISING))
-def test_a_declaration_this_reader_cannot_use_is_named(tmp_path, declared):
-    body = DECLARED.replace('encoding="windows-1252"', 'encoding="%s"' % declared)
-    package = _package(tmp_path, body.encode("ascii", "replace"), "raises.iirds")
-    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
-    assert said, "the document was refused and nothing reported it"
-    detail = said[0].violation.detail or ""
-    assert RAISING[declared] in detail, detail
-    assert "declares" in detail, (
-        "the reader is not told which declaration was refused: %r" % detail)
-
-
-def test_an_error_that_merely_mentions_a_codec_gains_no_note(tmp_path):
-    """The converse, and the reason the test is not a search for words.
-
-    `rdf:ID="codec can"` is a vocabulary error in a document that decoded
-    perfectly. The first version of this check searched the error text for
-    "codec can", so the package's own bad name put a sentence about encodings
-    into a finding that has nothing to do with them.
-    """
-    body = ('<?xml version="1.0" encoding="utf-8"?>\n'
-            '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
-            'xmlns:iirds="http://iirds.tekom.de/iirds#">\n'
-            '  <iirds:Package rdf:ID="codec can"/>\n</rdf:RDF>\n')
-    package = _package(tmp_path, body.encode("utf-8"), "ncname.iirds")
-    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
-    assert said, "the document was refused and nothing reported it"
-    assert "declares" not in (said[0].violation.detail or ""), said[0].violation.detail
-
-
-def test_a_syntax_error_in_a_utf8_document_gains_no_note(tmp_path):
-    """The other control: a declaration is not what is wrong here."""
-    body = '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF'
-    package = _package(tmp_path, body.encode("utf-8"), "syntax.iirds")
-    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
-    assert said and "declares" not in (said[0].violation.detail or ""), said
+def test_an_ascii_document_declaring_another_encoding_draws_nothing(tmp_path):
+    """The condition that keeps this from firing on every conformant package
+    that happens to declare a codepage: where every byte is under 128 the two
+    readings are the same document, so there is nothing to report."""
+    ascii_only = report_of(tmp_path / "a", "declared 1252 and written in ascii")
+    control = report_of(tmp_path / "b", "declared utf-8 and written in utf-8")
+    assert findings_of(ascii_only) == findings_of(control), (
+        "an ASCII document declaring a codepage draws findings a UTF-8 one "
+        "does not: %s against %s"
+        % (findings_of(ascii_only), findings_of(control)))

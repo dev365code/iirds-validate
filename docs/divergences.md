@@ -43,7 +43,11 @@ follows the implementation and records the wording.
 
 The last row was the largest single error in this project's history. Sixteen
 rules were implemented from the catalogue's category label, which produced
-findings on tekom's own sample packages that no other tool reports. The
+findings on files the catalogue itself lists as passing them: all sixteen of
+M78 through M93 carry `metadata_iirds_sample_pass.rdf` under `testFiles.true`,
+and not one of them names a failing fixture at all. Whether any other tool
+reports these cannot be settled from here — the middle column above is what
+the reference *checks*, and this project cannot read the reference's source. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
 
@@ -1220,8 +1224,11 @@ exhaustive.
 
 So attribute checking is limited to event-handler attributes, where the
 prohibition is not ambiguous. The cost is real: a genuinely stray attribute
-goes unreported. The alternative cost was failing conformant packages on a
-reading nobody else holds, which is worse.
+goes unreported. The alternative cost was failing the standard's own sample
+packages on a reading those samples contradict, which is worse. Who else holds
+the strict reading is not known here, and this section opens by saying why:
+appendix B has no counterpart in the reference tool, so there is nothing to
+compare a reading of it against.
 
 ### R18 — a name referred to and typed by nobody is not an extension
 

@@ -313,8 +313,10 @@ comparison itself moved underneath: if the two runs were judged by different
 builds, different rules, a different command, a different profile or a
 different edition, it names each of those with what to do about it and drops
 the word "regression" — the change is real and the cause is not attributable.
-And it takes no `-W`: the gate is about errors, warnings never set it, and a
-stored report does not record whether the run that made it was gated that way.
+And it does not let the two sides be judged differently without saying so:
+`-W` is taken here as well, because a baseline stored by a run that counts
+warnings as failures and a fresh run that does not were never asked the same
+question, and every report this release writes records which gate made it.
 
 It reads reports this release writes. An older one is refused with the reason,
 and re-validating the package produces a current one.
@@ -329,10 +331,10 @@ not one file and an unreadable path has no bytes, so both come back null with
 the reason said beside them rather than as a digest of nothing.
 
 Beside it, a digest of the rule sources. The rule-set digest is over registered
-identities and cannot see a rule's implementation, and `toolVersion` moves only
-at a release — measured over this project's history, a hundred and twelve
-commits changed a rule file and not one of them moved it. This is the field
-that can say the bodies differ. It is hashed with line endings normalised, so a
+identities and cannot see a rule's implementation, and `toolVersion` moves
+only at a release — over this project's whole history, no commit that changed
+a rule file has ever moved it. This is the field that can say the bodies
+differ. It is hashed with line endings normalised, so a
 Windows checkout and a Linux one of the same release agree, and it is null with
 a reason where there are no source files to read, as in the zipapp.
 
@@ -346,7 +348,7 @@ clean state for anything to compare against. `S13` is a system rule, and the
 system rules are put whichever question was asked: it is answered on every run,
 clean when the container opened and firing when it did not. `C1` keeps its own
 meaning. Both claim the same obligation, so the coverage figures do not move;
-the rule count goes to 233.
+the rule count goes to 236.
 
 **The machine-readable report is version 2, and a report from an earlier
 release cannot be read against a run of this one.** Not one key changed shape.
@@ -402,12 +404,12 @@ run.
 
 **The front page's picture is now drawn from the checker's own output, and the
 generator that draws it is checked.** The caption said "real output"; the file
-that produced it held a hand-written transcript, and the transcript had said
-"175 rules checked, 24 not applicable" for five releases while the committed
-picture said what a run said. Two tests hold the picture to a real run and
-nothing held the generator, so every figure that moved was edited into the
-picture to satisfy those tests — the gate and the rule that a generated file
-has one author were pulling in opposite directions, and the gate won each time.
+that produced it held a hand-written transcript, so every figure in the
+picture was maintained by hand. Two tests hold the picture to a real run and
+nothing held the generator, so each figure that moved was edited into the
+transcript to satisfy those tests — the gate and the rule that a generated
+file has one author were pulling in opposite directions, and the gate won
+every time.
 
 The text now comes from `report.render_text`, so the picture cannot say
 something the tool does not. Two lines of that output are longer than the
@@ -742,7 +744,7 @@ applications", and "hard to check" belongs in none of them.
 
 **An unpacked container no longer reports nine rules it did not run
 (`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
-193 rules checked`, and nine of those were the requirements about the ZIP
+194 rules checked`, and nine of those were the requirements about the ZIP
 archive itself — that it is not encrypted, that a large one uses ZIP64, that the
 first entry is an uncompressed `mimetype`, that the container sits at the root
 of the archive rather than inside a folder, that every entry is compressed with
@@ -755,22 +757,22 @@ The runner said so in a note all along, in prose no test read and no consumer of
 the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
-container the count moves from 193 to 184 and the nine appear where a reader
+container the count moves from 194 to 185 and the nine appear where a reader
 and a machine both look.
 
-**Six of the seven there were then were repaired first, and the seventh was found by counting
+**Six of the seven were repaired first, and the seventh was found by counting
 lines no package can reach.** Moving the decision into the runner left each of
-those rules opening on a guard nothing could satisfy, and the record of
-unreached decision lines went from eleven to seventeen in one measurement. Six
-of the new six were the dead guards. The seventh was R3, which carries the same
+those rules opening on a guard nothing could satisfy, and every unreached
+decision line the record gained was one of those guards --
+`docs/silent-paths.json` is that record. The seventh was R3, which carries the same
 guard, is about the archive's own layout, and had not been moved — so an
 unpacked container went on counting it among the rules it had checked. It is a
 single list now rather than a list and seven guards saying the same thing, and
 a rule that reintroduces its own guard is refused, because a guard added
 instead of a list entry is how the seventh came to exist.
 
-****
-Unchanged and up from 94: these rules claim nothing. Each was drafted claiming
+**The rules that claim no obligation are the same rules, and the audit behind
+two claims moved.** 66 rules claim nothing. Each was drafted claiming
 the sentence it seemed to answer, and every one of those claims turned out
 unearned — the reasons are recorded beside the rules, because each is a
 distinct way of misreading a sentence that names a class and a property. What

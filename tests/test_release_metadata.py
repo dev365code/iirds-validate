@@ -739,9 +739,6 @@ def test_no_commit_that_changed_a_rule_moved_the_version():
                          r"moved it", notes), \
             "the notes no longer make the claim this gate holds"
 
-    # `^__version__ = ` was the pattern and it is evaded by annotating the
-    # line: one commit writes `__version__: str = "..."`, and every later
-    # bump stops matching. The name is the anchor, not the spacing.
     # A shallow checkout grafts its tip as a root commit, so `sha^` fails for
     # it and the "the first commit is excused" branch below swallows exactly
     # the commit this refuses. `actions/checkout` fetches depth 1 unless told
@@ -753,21 +750,32 @@ def test_no_commit_that_changed_a_rule_moved_the_version():
         "this checkout is shallow, so the history this reads is one commit "
         "deep and the question cannot be answered here; fetch the history")
 
-    moved = subprocess.run(["git", "log", "-G", "^__version__", "--format=%H",
-                            "--", "src/iirds_validate/__init__.py"],
-                           cwd=ROOT, capture_output=True, text=True, timeout=120)
-    if moved.returncode != 0:                               # pragma: no cover
+    # Not a pattern over the diff. `^__version__ = ` was the first anchor and
+    # one commit writing `__version__: str = "..."` retires it for ever;
+    # `^__version__` is the same shape one step out, and `_RELEASE = "0.7.0"`
+    # with `__version__ = _RELEASE` retires that. The claim is about the
+    # value, so the value is read -- at both ends of every commit that touched
+    # the file at all. Twelve commits have; this is cheap.
+    touched_it = subprocess.run(["git", "log", "--format=%H", "--",
+                                 "src/iirds_validate/__init__.py"],
+                                cwd=ROOT, capture_output=True, text=True, timeout=120)
+    if touched_it.returncode != 0:                          # pragma: no cover
         pytest.skip("no git history visible here")
-    releases = moved.stdout.split()
-    assert releases, "no commit here ever moved the version, so this read nothing"
+    candidates = touched_it.stdout.split()
+    assert candidates, "no commit here ever touched the version file"
 
-    both = []
-    for sha in releases:
-        names = subprocess.run(["git", "show", "--format=", "--name-only", sha],
+    def version_at(ref):
+        shown = subprocess.run(["git", "show",
+                                "%s:src/iirds_validate/__init__.py" % ref],
                                cwd=ROOT, capture_output=True, text=True, timeout=60)
-        touched = names.stdout.split()
-        if not any(name.startswith("src/iirds_validate/rules/") for name in touched):
-            continue
+        if shown.returncode != 0:
+            return None
+        found = re.search(r"""__version__[^=\n]*=\s*["']([^"']+)["']""",
+                          shown.stdout)
+        return found.group(1) if found else None
+
+    releases = []
+    for sha in candidates:
         # The first commit created every file there is, so it moved the
         # version and wrote the rules in one breath without being an
         # instance of the thing this refuses.
@@ -775,7 +783,17 @@ def test_no_commit_that_changed_a_rule_moved_the_version():
                                  sha + "^"], cwd=ROOT, capture_output=True)
         if parent.returncode != 0:
             continue
-        both.append(sha)
+        if version_at(sha) != version_at(sha + "^"):
+            releases.append(sha)
+    assert releases, "no commit here ever moved the version, so this read nothing"
+
+    both = []
+    for sha in releases:
+        names = subprocess.run(["git", "show", "--format=", "--name-only", sha],
+                               cwd=ROOT, capture_output=True, text=True, timeout=60)
+        if any(name.startswith("src/iirds_validate/rules/")
+               for name in names.stdout.split()):
+            both.append(sha)
     assert both == [], ("these commits moved the version and changed a rule "
                         "file together, so the notes' claim is no longer "
                         "true: %s" % ", ".join(sha[:8] for sha in both))

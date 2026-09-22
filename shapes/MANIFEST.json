@@ -1,6 +1,6 @@
 {
  "_generated_by": "tools/emit_shacl.py",
- "_shapes_version": "0.6.0",
+ "_shapes_version": "0.7.0",
  "_edition": "1.3",
  "_catalogue_commit": "f1119bea7b64fd826ded9e06d9abae287cbad9c1",
  "_shape_namespace": "https://w3id.org/iirds-validate/shapes#",

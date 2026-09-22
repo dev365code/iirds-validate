@@ -125,7 +125,8 @@ describing that work sat under `unreleased` above them. The sections below are
 the notes those releases published, unchanged; the paragraphs here that
 described the same work are gone, except the three above. What those notes do
 carry they sometimes carry by its effect rather than by rule id -- 0.6.2
-describes the forty-nine findings one duplicated name drew without naming S10.
+describes what forty-nine findings from one duplicated name did to a reader
+before it names the rule that makes them.
 The gate that holds this file reads the repository's tags now: an entry above
 this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
@@ -139,8 +140,8 @@ ontology defines, once by the namespace the value sits in. Every term every
 edition defines is in one of those namespaces, so the first was subsumed by
 the second and could not change an answer -- it could only be paid for, once
 per candidate value, in a membership test the published shapes carried eight
-times over. The shapes are a quarter of the size they were and a large
-document is checked in a fraction of the time. **No verdict moves**: the
+times over. The largest of the published shape files is a quarter of the
+size it was, and a large document is checked in a fraction of the time. **No verdict moves**: the
 reading is the same in both encodings, and what makes the removal safe is a
 property of the published vocabularies rather than an argument -- if an
 edition ever defines a term that would be exempt in one encoding and reported
@@ -353,8 +354,8 @@ needed and nothing is lost.
 The report also says why every rule it did not answer went unanswered,
 whatever command was asked of it. `iirds check` used to leave fourteen lint
 rules unmentioned -- the interoperability rules less the two that are marked
-conformance and so are asked on a conformance run -- and `iirds lint` two
-hundred and four of the rest, and a
+conformance and so are asked on a conformance run -- and `iirds lint` the
+rest of them, and a
 container that would not open named one rule and was silent about the rest.
 Two reasons are new: a kind this command never put, and a rule never put
 because the container would not open. The printed line is unchanged — rules
@@ -527,7 +528,7 @@ The sixty-one generated "must have an IRI" rules were right to stop asking for
 absoluteness; `docs/divergences.md` records why, and appendix A's `IRI:
 REQUIRED` is about having an identifier rather than about its form. What that
 entry gave as its reason — "absoluteness is M5's question, and M5 is
-RECOMMENDED" — was true of the sixty classes it was measured against and not of
+RECOMMENDED" — was true of the classes it was measured against and not of
 these three. The narrowing stays. The three sentences it was not measured
 against are rules now, and the remedy on M5 no longer tells a reader the
 standard does not require what it requires.
@@ -546,7 +547,7 @@ rules asking whether it is there are satisfied, and the rules asking about its
 target find a literal and step over it.
 
 Twelve rules already say this about thirteen of the forty-six relations —
-R10, R12, M17, M18, M22.2, M26, M94 and the five below — each as a MUST,
+R10, R12, M17, M18, M19.4, M22.2, M26, M94 and R19 to R21 and R23 — each as a MUST,
 because for those the standard states the range obligation in a sentence of its
 own. L16 is the same observation about the other thirty-three, where it states
 none. Seven of the thirteen were there when L16 was written; the number is
@@ -651,7 +652,9 @@ the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
 container the count moves from 194 to 185 and the nine appear where a reader
-and a machine both look.## 0.6.3 — 2026-09-20
+and a machine both look.
+
+## 0.6.3 — 2026-09-20
 
 **Who should take this release:** anyone running 0.6.2 against packages they
 did not build. One rendition this checker could not decompress decided what

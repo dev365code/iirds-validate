@@ -131,35 +131,20 @@ this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
 line existed.
 
-**Seven rules asked the same question twice, and the second copy was most of
-what a check cost.** The rules that ask whether a value is an instance of a
-class exempt a value they should not report on, and the exemption was written
-twice over: once by naming every term the bundled ontology defines, once by
-the namespace the value sits in. Every term every edition defines -- 281 of
-them in 1.0, 327 in 1.3 -- is in one of those namespaces, so the first was
-subsumed by the second and could not change an answer.
-
-It could change the bill. A membership test over 327 IRIs runs for every
-candidate value, and the list went into the query text eight times, because
-R19 writes two queries and carried it in both:
-`shapes/iirds-1.3/iirds-sparql.ttl` was 173,186 characters and is 42,154.
-Measured over the eight largest documents the corpus carries, the shapes took
-79.47s and now take 15.35s. The reading is unchanged, and the differential
-gate -- which compares what the shapes fire against what the Python fires,
-rule by rule and graph by graph -- says so.
-
-The suite felt it too, because that gate runs inside the ordinary one: every
-validation in every test was paying for the same dead test. `make check`'s
-test step took about thirteen minutes earlier in this release's work and takes
-about five.
-
-The Python said it twice as well, and now says it once, so the two stay the
-mirror images they are meant to be. What makes the removal safe is a property
-of the published vocabularies rather than an argument, so a test holds it --
-against the namespaces the *shapes* exempt, which are four; the Python's own
-prefix test adds vCard, and a term defined there would be exempt in one
-encoding and reported by the other. None exists. If an edition ever defines
-one, the build says so rather than a verdict going quietly missing.
+**Seven rules asked the same question twice, and checking a large document
+got faster when the second copy went.** The rules that ask whether a value is
+an instance of a class exempt a value they should not report on, and the
+exemption was written twice over: once by naming every term the bundled
+ontology defines, once by the namespace the value sits in. Every term every
+edition defines is in one of those namespaces, so the first was subsumed by
+the second and could not change an answer -- it could only be paid for, once
+per candidate value, in a membership test the published shapes carried eight
+times over. The shapes are a quarter of the size they were and a large
+document is checked in a fraction of the time. **No verdict moves**: the
+reading is the same in both encodings, and what makes the removal safe is a
+property of the published vocabularies rather than an argument -- if an
+edition ever defines a term that would be exempt in one encoding and reported
+by the other, the build says so rather than a verdict going quietly missing.
 
 **The job that builds a release no longer holds the permission that publishes
 it.** It ran this project's build scripts and the whole suite, and it carried
@@ -393,56 +378,6 @@ lives in a directory made for the request and removed before the answer is
 sent, so by the time the page shows a verdict it is already gone. SECURITY.md
 says what is written, where, why, and when it goes.
 
-**The lint gate could answer from a cache, and the import gate now reports
-every place rather than the first.** `ruff` keeps a verdict per file and gives
-it back rather than looking again; after a move of nineteen files in a sibling
-project it answered about the tree that used to be there, green locally and
-eighty-four findings in CI, which starts with no cache. Both `make lint` and
-the CI row pass `--no-cache` now, and a test asserts it on both sides — the
-comparison between them passes when they are wrong together.
-
-The check that every third-party import is a declared one is one function of
-one path now, so the order of its questions is in one place, which is where
-its two mistakes were. It names every file that imports an undeclared module
-rather than the first one found. Three axes are pinned by cases built rather
-than looked up, and the file says the list is not known to be complete: two of
-the three were found by a Windows row that this project's own machine cannot
-run.
-
-**The front page's picture is now drawn from the checker's own output, and the
-generator that draws it is checked.** The caption said "real output"; the file
-that produced it held a hand-written transcript, so every figure in the
-picture was maintained by hand. Two tests hold the picture to a real run and
-nothing held the generator, so each figure that moved was edited into the
-transcript to satisfy those tests — the gate and the rule that a generated
-file has one author were pulling in opposite directions, and the gate won
-every time.
-
-The text now comes from `report.render_text`, so the picture cannot say
-something the tool does not. Output longer than the picture is wide is cut at
-a word, marked, and the caption says so, because a picture that quietly
-shortens what it calls real output is telling a small lie about the tool. The
-caption states no number, because how many lines run long is a property of
-what the checker prints that day. `tools/gen_door.py --check` regenerates into memory
-and byte-compares, and `make check` runs it.
-
-**Rows the requirement index could not tell apart, and the two facts that tell
-them apart.** Nine sets of obligations were identical in every field the index
-recorded — same sentence, same section, same context — and they are not the
-same obligation. A sentence carrying two keywords becomes two rows and the
-whole sentence is written into both: "The file MUST be the first entry in the
-ZIP file and it MUST be stored uncompressed" is one sentence and two things to
-check, and C6 checks both. Section 8.3.2 states one sentence for the package's
-product variant and states it again for the document's, and again inside each
-of two identity branches — four rows, four different rules checking the four
-positions.
-
-The index now records where in its block a keyword sits and which block of the
-document it is. Both are positions rather than readings, and the sentence is
-kept whole beside them, so nothing about what an obligation *says* has been
-interpreted here. No id moves, no count moves: 439 statements, 314 absolute,
-280 distinct, before and after.
-
 **Appendix B's rules had never looked at the content list, and the reason was
 another rule.** Their population is the files the metadata declares as XHTML
 renditions. Section 8.3.1.1 says the content list MUST NOT be referenced in the
@@ -491,18 +426,6 @@ the document's. It forbids the one arrangement nothing recorded can account
 for, which is a rule claiming one row while the row beside it, identical in
 every field, is counted as uncovered.
 
-**An import that worked because the machine happened to have the package.**
-A test imported pyparsing to name its version in a skip message. Nothing here
-depends on pyparsing; rdflib does, and it was present because rdflib had
-brought it — so the test worked on every machine that happened to have it and
-would fail, with an ImportError in a file about SHACL shapes, on one that did
-not. The version now comes from the installed distribution's metadata.
-
-Every import in `tests/` and `tools/` is now held to the same question: does
-this name load from the standard library, from this repository, or from a
-distribution `pyproject.toml` names? Asked of the interpreter, because a list
-of names is a second place to forget.
-
 **A corrupt archive said which error, not which file (C1).** The finding read
 `ZIP archive is corrupt: Error -3 while decompressing data` and named no entry,
 on an archive of any size. `Package.testzip` is documented as returning the
@@ -538,25 +461,6 @@ count: the read is bounded by what is left of the ceiling, so the total at the
 cut is the ceiling plus one whatever the package holds -- arithmetic rather
 than a measurement of anything. What has to be held instead is that the scan
 stops, and the test for that counts the reads.
-
-**Two obligations in the requirement index were half a sentence.** That file is
-the denominator of the coverage figure and the text every `covers=` claim is
-judged against, and the criterion is one question — does every package
-violating this sentence get reported — which has no answer for "CSS, graphics,
-fonts) MUST be included in the iiRDS/A package."
-
-The specification says "All linked resources (e.g. CSS, graphics, fonts) MUST
-be included in the iiRDS/A package." Sentences are split on terminal
-punctuation followed by a capital, which is what a full stop, a space and a `C`
-look like; the half carrying the keyword survived and the half carrying the
-subject was dropped for having none. A second row arrived the same way and left
-no bracket behind to notice: "A cryptographic hash function, e.g. SHA-256, MAY
-be used." became "SHA-256, MAY be used."
-
-Joining the halves adds no obligation and removes none — the half without a
-keyword was never a row — so the denominator is 280 before and after, and a
-test says so, because a change to this file that moves the denominator is not
-this change.
 
 **A stray `iirds:Package` could decide what profile the container was judged
 as, and the answer depended on how its IRI sorted (S11).** Which edition and
@@ -700,17 +604,6 @@ of what the sentence says. The other three are not verdict flips — a neighbour
 reports those packages for another reason — but the finding a reader saw named
 a sentence they had not broken and offered the repair for it.
 
-**A fifth was drafted and withdrawn: `iirds:has-identity-domain` already had
-its second rule.** M19.4 has been asking what that property points at all
-along. The measurement that found this family probed with a literal, and M19.4
-exempted any node the package does not describe — a literal carries no
-statements, so a rule doing the job read as a rule that was missing, and a
-second one was written beside it that fired on the same triple. What the probe
-found was not a missing rule but two branches M19.4 was letting past: a
-literal, and a term the ontology defines that is not a domain. Those belong to
-M19.4, which now uses the family's shared helper instead of being a fourth
-hand-written copy of it.
-
 **Two exemptions were letting real defects through, in both encodings.** A name
 in the standard's own namespace that the standard does not define — nobody
 mints one by accident — was treated as a pointer at nothing and left to L1.
@@ -739,20 +632,6 @@ dropping them would be this project deciding the standard is wrong about its
 own markup. What changes is that the coverage report names them instead of
 leaving them in the unmapped remainder, where they had been sitting silently.
 
-**The criterion is the sentence's subject, and it is a list rather than a
-pattern.** The first draft used the cell's label — "Definition:" in,
-"Description:" out — which put `OperatingSupply`'s "Physical items REQUIRED for
-the running of a manufacturing production" on one side and
-`GenericOperatingSupply`'s verbatim restatement of it on the other, and split
-`GenericWorkingTime`'s two adjacent rows in the same table. A category drawn by
-a `<strong>` tag is not a category. So both sides are listed by name: the three
-rows that stay in the gaps are the range-selector sentence, stated once per
-property, and §6.8.4's classification-domain sentence restated in the appendix.
-
-A third list rather than a wider second one, because merging them would let
-"the word means something else here" hide inside "addressed to reading
-applications", and "hard to check" belongs in none of them.
-
 **An unpacked container no longer reports nine rules it did not run
 (`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
 194 rules checked`, and nine of those were the requirements about the ZIP
@@ -772,30 +651,7 @@ the JSON report could act on. They are out of the checked count now and named
 under a third `notApplicable` reason, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
 container the count moves from 194 to 185 and the nine appear where a reader
-and a machine both look.
-
-**Six of the seven were repaired first, and the seventh was found by counting
-lines no package can reach.** Moving the decision into the runner left each of
-those rules opening on a guard nothing could satisfy, and every unreached
-decision line the record gained was one of those guards --
-`docs/silent-paths.json` is that record. The seventh was R3, which carries the same
-guard, is about the archive's own layout, and had not been moved — so an
-unpacked container went on counting it among the rules it had checked. It is a
-single list now rather than a list and seven guards saying the same thing, and
-a rule that reintroduces its own guard is refused, because a guard added
-instead of a list entry is how the seventh came to exist.
-
-**The rules that claim no obligation are the same rules, and the audit behind
-two claims moved.** 66 rules claim nothing. Each was drafted claiming
-the sentence it seemed to answer, and every one of those claims turned out
-unearned — the reasons are recorded beside the rules, because each is a
-distinct way of misreading a sentence that names a class and a property. What
-did move is the audit: two cardinality sentences, "MUST point to exactly one
-domain by the property", are now held by the package that has two domains.
-They were briefly held by a package pointing at one domain of the wrong class,
-which has exactly one and breaks the sentence after it rather than that one.
-
-## 0.6.3 — 2026-09-20
+and a machine both look.## 0.6.3 — 2026-09-20
 
 **Who should take this release:** anyone running 0.6.2 against packages they
 did not build. One rendition this checker could not decompress decided what

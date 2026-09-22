@@ -665,9 +665,6 @@ def figures_the_notes_state(package):
 
     stated("the size of the registry",
            r"the rule count goes to (\d+)", len(rules))
-    stated("the rules that claim no obligation",
-           r"(\d+) rules claim nothing",
-           sum(1 for rule in rules if not rule.covers))
     stated("rules checked on a packed container",
            r"`iirds check` on a directory said `PASS,\s+(\d+)\s+rules checked`",
            _rules_checked(package))

@@ -18,6 +18,7 @@ run. Most of the states in it were accepted by some earlier version of
 this file; the rest it already refused, and they are pinned so that they
 stay refused.
 """
+import datetime
 import re
 import subprocess
 from pathlib import Path
@@ -186,7 +187,30 @@ def problems_with(changelog: str, release: str, published=frozenset()):
             found.append("the entries are not in descending order: %s is not "
                          "older than %s" % (_name(said, older), _name(said, newer)))
 
-    dates = [rest for name, rest, _ in said if DATE.match(rest)]
+    # `DATE` is a shape and only a shape, which was the whole check for as
+    # long as this gate has existed: `2026-13-45` has four digits, a dash,
+    # two digits, a dash and two digits, and is not a date. Asked of the
+    # calendar here, before the ordering below reads them as comparable
+    # strings -- an unreadable one is dropped from that comparison rather
+    # than dragged through it, because "sits below" about a date nobody can
+    # place is a second complaint with no second cause.
+    dates = []
+    for name, rest, _ in said:
+        if not DATE.match(rest):
+            continue
+        try:
+            when = datetime.date.fromisoformat(rest)
+        except ValueError:
+            found.append("%s is headed %s, which is not a date on any "
+                         "calendar" % (name, rest))
+            continue
+        # A day of slack, deliberately: a release cut late in one timezone is
+        # dated there, and this runs wherever CI runs. More than a day ahead
+        # is not a timezone, and no release ships before it is cut.
+        if when > datetime.date.today() + datetime.timedelta(days=1):
+            found.append("%s is dated %s, which has not happened yet"
+                         % (name, rest))
+        dates.append(rest)
     for older, newer in zip(dates[1:], dates[:-1]):
         if older > newer:
             found.append("entry dated %s sits below one dated %s" % (older, newer))
@@ -339,6 +363,19 @@ BAD = {
     "the dates run backwards":
         (GOOD.replace("## 0.4.2 — 2026-08-26", "## 0.4.2 — 1999-01-01"),
          "sits below one dated"),
+    # The shape was the whole check, so a heading could carry a month and a
+    # day that do not exist and ship green. Month 13 and day 45 read as a
+    # date to a regex and to nothing else.
+    "a date no calendar has":
+        (GOOD.replace("## 0.4.2 — 2026-08-26", "## 0.4.2 — 2026-13-45"),
+         "is not a date"),
+    # A date the shape accepts and the calendar accepts and the world has not
+    # reached. Computed rather than written down, so the case cannot expire.
+    "a date that has not happened yet":
+        (GOOD.replace("## 0.4.2 — 2026-08-26",
+                      "## 0.4.2 — %s" % (datetime.date.today()
+                                         + datetime.timedelta(days=400))),
+         "has not happened"),
     "a heading this gate cannot read":
         (GOOD.replace("## 0.4.1 — 2026-08-25", "## 0.4.1 (2026-08-25)"),
          "cannot read"),
@@ -574,3 +611,66 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
     assert len(now - before) == said, (
         "the notes say %d new rules and the tree adds %d since %s: %s"
         % (said, len(now - before), tag, sorted(now - before)))
+
+
+#: The files that write this release's number, and the one that is written
+#: for them. Counted from the tree rather than listed as a total, so a third
+#: compatibility package moves the count without anybody remembering to.
+def places_that_declare_the_version():
+    """`{"by hand": n, "generated": m}` -- how many times the tree writes it.
+
+    Counted, not asserted: each of these has a test of its own that says the
+    number is *right*. This one only says how many there are, because that
+    count is quoted in prose a contributor follows.
+    """
+    number = re.escape(__version__)
+    writes = re.compile(r'(?:version\s*=\s*"%s"'
+                        r'|__version__\s*=\s*"%s"'
+                        r'|iirds>=%s'
+                        r'|"_shapes_version":\s*"%s")' % ((number,) * 4))
+    by_hand = [ROOT / "pyproject.toml",
+               ROOT / "src" / "iirds_validate" / "__init__.py",
+               ROOT / "src" / "iirds" / "__init__.py"]
+    by_hand += sorted((ROOT / "shims").glob("*/pyproject.toml"))
+    generated = [ROOT / "shapes" / "MANIFEST.json"]
+
+    def count(paths):
+        return sum(len(writes.findall(p.read_text("utf-8"))) for p in paths)
+
+    return {"by hand": count(by_hand), "generated": count(generated)}
+
+
+#: Prose writes small numbers as words here.
+WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+         "twelve": 12}
+
+
+def test_the_release_checklist_counts_the_places_there_are():
+    """`CONTRIBUTING.md` is the page somebody follows while cutting a
+    release, and it said "six places" while listing seven -- the two shims
+    carry the number twice each, and counting the files rather than the
+    places drops one. Nothing read it, so it had been wrong for as long as
+    the shims have had floors.
+
+    A count in prose with nothing behind it is the defect this repository
+    keeps finding in itself; this is the same shape, on the one page whose
+    whole purpose is to stop a release going out half-done.
+    """
+    places = places_that_declare_the_version()
+    total, by_hand = places["by hand"] + places["generated"], places["by hand"]
+    text = (ROOT / "CONTRIBUTING.md").read_text("utf-8")
+
+    # Whitespace-flexible throughout: this prose is hard-wrapped, and the
+    # wrap falls wherever the sentence happens to reach the margin.
+    said = re.search(r"The\s+release\s+is\s+one\s+number\s+in\s+(\w+)\s+places\."
+                     r"\s+(\w+)\s+of\s+them\s+are\s+yours\s+to\s+change", text)
+    assert said, ("CONTRIBUTING.md no longer states the count this gate "
+                  "reads; it is quoted as `one number in <word> places. "
+                  "<Word> of them are yours to change`")
+    assert WORDS.get(said.group(1).lower()) == total, \
+        "the checklist says %s places and the tree writes it in %d" \
+        % (said.group(1), total)
+    assert WORDS.get(said.group(2).lower()) == by_hand, \
+        "the checklist says %s are yours to change and %d are" \
+        % (said.group(2), by_hand)

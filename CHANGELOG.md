@@ -124,9 +124,7 @@ file could not see what three shipped releases changed, and the entries
 describing that work sat under `unreleased` above them. The sections below are
 the notes those releases published, unchanged; the paragraphs here that
 described the same work are gone, except the three above. What those notes do
-carry they sometimes carry by its effect rather than by rule id -- 0.6.2
-describes what forty-nine findings from one duplicated name did to a reader
-before it names the rule that makes them.
+carry, they carry in their own words, which are not always this file's.
 The gate that holds this file reads the repository's tags now: an entry above
 this line's version may carry a date when it has a tag, and is refused without
 one. "It has not shipped" was the sentence that became false the day a second
@@ -140,8 +138,9 @@ ontology defines, once by the namespace the value sits in. Every term every
 edition defines is in one of those namespaces, so the first was subsumed by
 the second and could not change an answer -- it could only be paid for, once
 per candidate value, in a membership test the published shapes carried eight
-times over. The largest of the published shape files is a quarter of the
-size it was, and a large document is checked in a fraction of the time. **No verdict moves**: the
+times over. `shapes/iirds-1.3/iirds-sparql.ttl` is a quarter of the size it
+was, the shapes as a whole are two thirds, and a large document is checked in
+a fraction of the time. **No verdict moves**: the
 reading is the same in both encodings, and what makes the removal safe is a
 property of the published vocabularies rather than an argument -- if an
 edition ever defines a term that would be exempt in one encoding and reported
@@ -415,8 +414,9 @@ Coverage of the standard is 172 of 280, of which 137 are held by a package.
 Appendix B.6 says of the safety alert symbol: "The img element MUST be a child
 of the signal word panel. Only one safety alert symbol MUST be included." Two
 obligations in one sentence, and the requirement index makes a row of each with
-the whole sentence written into both — so the two rows are identical in every
-field it records. B8 enforces both, with a case for each, and claimed one of
+the whole sentence written into both — so the two rows said the same thing in
+every field the index recorded, until this release gave it the two that tell
+them apart. B8 enforces both, with a case for each, and claimed one of
 them.
 
 Beside it, a gate for the state that made this invisible: rows the index
@@ -551,7 +551,8 @@ R10, R12, M17, M18, M19.4, M22.2, M26, M94 and R19 to R21 and R23 — each as a 
 because for those the standard states the range obligation in a sentence of its
 own. L16 is the same observation about the other thirty-three, where it states
 none. Seven of the thirteen were there when L16 was written; the number is
-measured rather than listed, so adding those five moved it by itself. It is a
+measured rather than listed, so adding M19.4 and R19 to R21 and R23 moved it
+by itself. It is a
 warning and claims no obligation: `rdfs:range` in RDF is an inference and not a
 constraint, and the one general-looking range MUST, section 7.3.3's, is about a
 proprietary property complying with the iiRDS property it refines. Coverage is

@@ -15,10 +15,12 @@ section 7.3.3's, about proprietary properties complying with the iiRDS one.
 What is true here is the interoperability sentence this family exists for: the
 package is valid and the data is unusable.
 
-Over the hundred and thirty vendor metadata files this repository holds, this
-finds eight — four `iirds:relates-to-party` written as the string `party1` or
-`party2`, and four empty strings on `iirds:is-version-of` and
-`iirds:is-replacement-of`. Nothing reported any of them.
+Over the vendor metadata files this repository holds, this finds relation
+properties carrying literals in several of them, and nothing reported any of
+them. The figures are not repeated here: they are asserted below, against the
+corpus, by the test that measures them -- and a count in a docstring beside a
+count in an assertion is two numbers where there is one fact, which is how
+this docstring came to say eight while the gate said ten.
 """
 from __future__ import annotations
 
@@ -338,9 +340,10 @@ def test_the_corpus_figure_the_changelog_publishes():
     not tell "this corpus file is broken" from "I failed to read it".
 
     Both denominators are asserted, because they are different facts and the
-    manifest's word for the first invites being read as the second: a hundred
-    and seventeen of the hundred and thirty are well-formed XML, and a hundred
-    and fourteen of those are a graph rdflib will build.
+    manifest's word for the first invites being read as the second: some of
+    the corpus is well-formed XML, and fewer of those are a graph rdflib will
+    build. The numbers are in the assertions rather than here, so there is one
+    place to correct when the corpus moves.
 
     Counted over the metadata files rather than by running packages, because
     the corpus ships loose `.rdf` files and the point of the number is how

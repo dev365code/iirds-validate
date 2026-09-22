@@ -101,10 +101,12 @@ TERMSHOT_PACKAGE = {
     "content/topic1.xhtml": "<html/>",
 }
 
-#: Characters that fit across the picture at this font size. A run of the
-#: checker prints two lines longer than this; they are cut at a word and
-#: marked, and the caption says so, because a picture that quietly shortens
-#: what it calls real output is telling a small lie about the tool.
+#: Characters that fit across the picture at this font size. Whatever the
+#: checker prints longer than this is cut at a word and marked, and the
+#: caption says so, because a picture that quietly shortens what it calls real
+#: output is telling a small lie about the tool. Neither the comment nor the
+#: caption counts the long lines: that count is a property of what the checker
+#: prints on the day, and it was published as "two" until it was one.
 COLUMNS = 118
 
 
@@ -210,7 +212,7 @@ def _draw():
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 {height}" role="img" aria-label="Real output of iirds check on a broken package: two errors, each with evidence and a fix">
 <rect x="1" y="1" width="938" height="{height-2}" rx="10" fill="#12161a" stroke="#252b30" stroke-width="1.5"/>
 <circle cx="24" cy="19" r="5" fill="#e0604d"/><circle cx="42" cy="19" r="5" fill="#e8c268"/><circle cx="60" cy="19" r="5" fill="#5cb87f"/>
-<text x="80" y="23" font-family="{MONO}" font-size="11" fill="#7d8a99">iirds check — the checker\u2019s own output, coloured; two long lines cut at a word</text>
+<text x="80" y="23" font-family="{MONO}" font-size="11" fill="#7d8a99">iirds check — the checker\u2019s own output, coloured; long lines cut at a word</text>
 {"".join(L)}
 </svg>'''
 

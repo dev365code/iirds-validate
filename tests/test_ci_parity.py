@@ -385,12 +385,41 @@ def test_a_push_to_main_is_never_cancelled_to_make_room():
     red is downstream of that and is the cheaper half of the reason.
 
     Pull requests are different: there, only the newest push is the thing
-    being judged, so cancelling the older one costs nothing.
+    being judged, so cancelling the older one costs nothing. A work branch is
+    the same case and was not always covered by this: the rule names the
+    branches that must keep their verdict rather than the events that may
+    lose one, because the list of branches is the thing that has to hold.
     """
     stated = re.search(r"cancel-in-progress:\s*(.+)", WORKFLOW)
     assert stated, "the workflow no longer says whether it cancels runs"
     setting = stated.group(1).strip()
     assert setting != "true", \
         "every push cancels the run before it, so a commit can go unjudged"
-    assert "pull_request" in setting, \
-        "cancelling should be the pull-request case and nothing else: %s" % setting
+    assert "refs/heads/main" in setting, \
+        "cancellation no longer spares main, whose commits each carry their " \
+        "own verdict: %s" % setting
+    assert "refs/heads/release/" in setting, \
+        "cancellation no longer spares the release branches: %s" % setting
+
+
+#: Branch patterns every push has to be judged on. A branch outside this list
+#: is a branch whose Windows and macOS runs happen for the first time when it
+#: reaches `main` -- which is where this repository has met that kind of
+#: failure: a registry extension and a path separator, both green on Linux.
+JUDGED_BRANCHES = ("main", "release/**", "wip/**", "fix/**", "docs/**")
+
+
+def test_every_branch_this_project_works_on_is_judged_before_it_lands():
+    """A trigger list is easy to narrow and nothing notices until a merge.
+
+    The cost of narrowing it is not a red build: it is a *green* one on the
+    only platform a contributor runs, followed by a red `main`. Pinned as a
+    list so removing an entry is a failure here rather than a discovery later.
+    """
+    on = WORKFLOW.split("\njobs:", 1)[0]
+    branches = re.search(r"push:.*?branches:\s*\[([^\]]*)\]", on, re.S)
+    assert branches, "ci.yml no longer lists the branches it judges on push"
+    listed = tuple(name.strip().strip('"\'')
+                   for name in branches.group(1).split(",") if name.strip())
+    missing = [name for name in JUDGED_BRANCHES if name not in listed]
+    assert missing == [], "ci.yml no longer judges pushes to %s" % ", ".join(missing)

@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     # A patch release is prepared on a branch and tagged from its tip, so the
-    # commit that gets tagged has to be one this has judged.
-    branches: [main, "release/**"]
+    # commit that gets tagged has to be one this has judged. The work branches
+    # are here for the other half of that: Windows and macOS are where this
+    # project's platform failures live -- a registry file extension, a path
+    # separator -- and a branch that is not judged here meets those runners
+    # for the first time when it reaches main. `tests/test_ci_parity.py` pins
+    # the list, because narrowing it costs nothing visible until a merge.
+    branches: [main, "release/**", "wip/**", "fix/**", "docs/**"]
   pull_request:
   schedule:
     # Monday morning: check whether plusmeta has changed the rule catalogue.
@@ -17,12 +22,13 @@ permissions:
 # A run cancelled to make room for a newer one leaves its commit with no
 # verdict at all: this project holds every commit to being green on its own,
 # and the CI half of that evidence is simply missing for a cancelled run --
-# the badge rendering it red is the consequence, not the problem. So pushes to
-# main are never cancelled; a pull request, where only the latest push is
-# being judged, still is.
+# the badge rendering it red is the consequence, not the problem. So main and
+# the release branches are never cancelled. Everything else is: a pull request
+# and a work branch are both cases where only the tip is being judged, and an
+# outdated run of one is queue nobody is waiting on.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
 
 jobs:
   lint:

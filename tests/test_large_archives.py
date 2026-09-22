@@ -243,31 +243,18 @@ IN_WORDS = {6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
 def _the_notes_still_being_written(root, sections):
     """The section for this tree's version while no tag carries it, else None.
 
-    A shipped release's notes are the record of what the tool said then, and
-    a gate that rewrites them to today's measurement destroys what it exists
-    to protect. A tag is what says "shipped" -- so the notes stay under this
-    gate from the moment they are opened until the moment the tag exists, and
-    are left alone after. Where no tags are visible at all (an export, a
-    checkout fetched without them) this reads nothing rather than guessing;
-    `test_the_tags_are_visible_here` is the failure that names that cause.
+    Delegated rather than implemented twice. This file answered "has it
+    shipped?" with a literal `"v%s" % __version__` while
+    `tests/test_release_metadata.py` answered it with PEP 440, so a `v0.7`
+    tag stood one of them down and left the other armed -- one question with
+    two answers, in two files, is how a gate ends up guarding a record.
     """
-    import subprocess
+    import sys
 
-    from iirds_validate import __version__
+    sys.path.insert(0, str(root / "tests"))
+    from test_release_metadata import current_release_notes
 
-    try:
-        done = subprocess.run(["git", "tag", "--list", "v*"], cwd=root,
-                              capture_output=True, text=True, timeout=30)
-    except OSError:                                     # pragma: no cover
-        return None
-    if done.returncode != 0 or not done.stdout.split():
-        return None
-    if "v%s" % __version__ in done.stdout.split():
-        return None                                     # shipped: it is a record now
-    for section in sections:
-        if section.split(" ", 1)[0] == __version__:
-            return section
-    return None
+    return current_release_notes()
 
 
 def test_the_notes_still_being_written_state_the_count_that_was_measured(tmp_path):

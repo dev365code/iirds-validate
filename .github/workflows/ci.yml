@@ -136,6 +136,13 @@ jobs:
           # default, and tests/test_release_metadata.py fails rather than
           # passing quietly when it cannot see them.
           fetch-tags: true
+          # And the whole history, because one test asks whether any commit
+          # that changed a rule file ever moved the version. A depth-1
+          # checkout grafts its tip as a root commit, which is precisely the
+          # shape that test excuses -- so it read green here while answering
+          # nothing. It refuses a shallow checkout now, and this is what it
+          # needs. Three hundred commits: the fetch is not the cost.
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: ${{ matrix.python }}

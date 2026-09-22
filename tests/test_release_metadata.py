@@ -505,8 +505,9 @@ def test_the_release_notes_publish_the_coverage_that_was_measured():
     sys.path.insert(0, str(ROOT / "tests"))
     from test_covers_is_earned import CLAIMED, held
 
-    notes = (ROOT / "CHANGELOG.md").read_text("utf-8")
-    current = notes.split("## ", 2)[1]
+    current = current_release_notes()
+    if current is None:
+        return                            # shipped, or no tags to say either way
     stated = re.search(r"Coverage of the standard is (\d+) of (\d+), of which (\d+) "
                        r"are held by a package", current)
     assert stated, "the current release's notes no longer state the coverage figure"
@@ -533,8 +534,9 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
 
     import pytest
 
-    notes = (ROOT / "CHANGELOG.md").read_text("utf-8")
-    current = notes.split("## ", 2)[1]
+    current = current_release_notes()
+    if current is None:
+        return                            # shipped, or no tags to say either way
     stated = re.search(r"^(\w+) new rules", current, re.M)
     if stated is None:
         pytest.skip("the current notes do not count new rules")
@@ -544,7 +546,12 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
     said = words.get(stated.group(1).lower())
     assert said is not None, "not a number this test can read: %r" % stated.group(1)
 
-    previous = re.findall(r"^## (\d+\.\d+\.\d+) — \d", notes, re.M)
+    # The whole file here, not the current section: the release before this
+    # one is what the count is a difference against.
+    dated = [name for name, rest, _ in entries((ROOT / "CHANGELOG.md")
+                                               .read_text("utf-8"))
+             if name is not None and DATE.match(rest)]
+    previous = dated
     assert len(previous) >= 2, "there is no previous release to compare against"
     tag = "v" + previous[1]
 
@@ -595,11 +602,19 @@ def current_release_notes():
     published = published_releases()
     if not published:
         return None                       # `test_the_tags_are_visible_here`
-    if release_key(__version__) in published:
+    mine = release_key(__version__)
+    if mine in published:
         return None                       # shipped: it is a record now
-    for section in (ROOT / "CHANGELOG.md").read_text("utf-8").split("\n## "):
-        if section.split(" ", 1)[0] == __version__:
-            return section
+    # Read through `entries`, which is what the rest of this file reads
+    # headings with. Slicing on "\n## " and comparing the first word was a
+    # second reader of the same file, and two readers of one file disagree:
+    # that one saw nothing in `## 0.7 — …` (PEP 440 makes it this release),
+    # nothing under two spaces after the hashes, and nothing under the
+    # three-space indent CommonMark allows and `problems_with` has a named
+    # case for. Each of those turned every figure gate off in silence.
+    for name, _rest, body in entries((ROOT / "CHANGELOG.md").read_text("utf-8")):
+        if name is not None and release_key(name) == mine:
+            return body
     return None
 
 
@@ -730,6 +745,17 @@ def test_no_commit_that_changed_a_rule_moved_the_version():
     # `^__version__ = ` was the pattern and it is evaded by annotating the
     # line: one commit writes `__version__: str = "..."`, and every later
     # bump stops matching. The name is the anchor, not the spacing.
+    # A shallow checkout grafts its tip as a root commit, so `sha^` fails for
+    # it and the "the first commit is excused" branch below swallows exactly
+    # the commit this refuses. `actions/checkout` fetches depth 1 unless told
+    # otherwise, so this gate was vacuous on every CI run while reading green.
+    # It says which thing happened rather than passing.
+    shallow = subprocess.run(["git", "rev-parse", "--is-shallow-repository"],
+                             cwd=ROOT, capture_output=True, text=True, timeout=30)
+    assert shallow.stdout.strip() != "true", (
+        "this checkout is shallow, so the history this reads is one commit "
+        "deep and the question cannot be answered here; fetch the history")
+
     moved = subprocess.run(["git", "log", "-G", "^__version__", "--format=%H",
                             "--", "src/iirds_validate/__init__.py"],
                            cwd=ROOT, capture_output=True, text=True, timeout=120)

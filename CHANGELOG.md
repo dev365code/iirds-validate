@@ -23,7 +23,12 @@ is the sender's to choose. A constant for the ceiling was there and was used
 by nothing.
 
 It is used now: the scan stops at eight mebibytes across all of those files,
-and the same package reads back 8,388,902 bytes. Stopping quietly would be the
+and the scan reads back 8,388,609 bytes -- the ceiling plus one, whatever the
+package holds, because the read that crosses it is the last one. The figure
+above counts the whole of what a run read under `META-INF/`, which is 293
+bytes more than the scan's own total: `META-INF/metadata.rdf` is read by the
+container and skipped by this scan, and the two numbers are about different
+readers. Stopping quietly would be the
 other half of the defect, since a scan that gave up and a scan that found
 nothing otherwise look alike, so `S12` names the file it stopped on and says
 the rest of `META-INF/` went unexamined.
@@ -351,13 +356,13 @@ meaning. Both claim the same obligation, so the coverage figures do not move;
 the rule count goes to 236.
 
 **The machine-readable report is version 2, and a report from an earlier
-release cannot be read against a run of this one.** Not one key changed shape.
-`judgedBy.rulesRun` changed meaning: three rules the runner answers itself on
-a `lint` run were listed only when they failed, so a clean answer from them
-could not be told apart from a rule that did not exist. Comparing across that
-change would report a package as having broken something it never touched, so
-the version says the two are not comparable rather than leaving a reader to
-find out. Re-validating the package produces a current report; nothing else is
+release cannot be read against a run of this one.** Not one key changed shape;
+keys arrived. A report any release has written carries no `judgedBy` at all,
+so it cannot say which build made it, which rules ran, or which gate decided
+it -- and a comparison that cannot answer those is not a comparison of the
+same question. Comparing across it would report a package as having broken
+something it never touched, so the version says the two are not comparable
+rather than leaving a reader to find out. Re-validating the package produces a current report; nothing else is
 needed and nothing is lost.
 
 The report also says why every rule it did not answer went unanswered,

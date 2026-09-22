@@ -574,3 +574,185 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
     assert len(now - before) == said, (
         "the notes say %d new rules and the tree adds %d since %s: %s"
         % (said, len(now - before), tag, sorted(now - before)))
+
+
+def current_release_notes():
+    """The notes for this tree's version while no tag carries it, else None.
+
+    A shipped section is the record of what the tool said when it shipped, and
+    a gate that keeps rewriting those to today's measurement destroys the
+    record it exists to protect -- the same reason
+    `test_the_notes_still_being_written_state_the_count_that_was_measured`
+    reads one section and not the file.
+
+    Chosen by the version and by the tags, not by position. Reading the top
+    section positionally was wrong twice over: it goes on reading these notes
+    after their tag exists, so the first rule to land afterwards demands that
+    a shipped record be edited to today's measurement; and opening the next
+    entry above them moves the top section to one that states none of these
+    figures, so every one of them reads as absent at once.
+    """
+    published = published_releases()
+    if not published:
+        return None                       # `test_the_tags_are_visible_here`
+    if release_key(__version__) in published:
+        return None                       # shipped: it is a record now
+    for section in (ROOT / "CHANGELOG.md").read_text("utf-8").split("\n## "):
+        if section.split(" ", 1)[0] == __version__:
+            return section
+    return None
+
+
+def _rules_checked(path):
+    from iirds_validate import runner
+
+    return runner.check(path).checked
+
+
+def _a_conformant_package(directory):
+    """The package the notes' counts are about, built here.
+
+    Not `fixtures/good.iirds`: `fixtures/` is ignored by git, so that path is
+    a local artefact of `make tools` and is absent from a fresh clone and
+    from a bare `pytest` run. A gate that reads it passes on the machine that
+    built it and fails everywhere else -- which is what the first version of
+    this did, reporting `1 rule checked` and an `S1` about an unreadable
+    container. Built from the same generator the Makefile's rule calls, so it
+    is the same package.
+    """
+    from make_fixture_package import build_package
+
+    directory.mkdir(parents=True, exist_ok=True)
+    return build_package(directory, "good.iirds")
+
+
+def figures_the_notes_state(package):
+    """`{what: (stated, measured)}` for every live figure in those notes.
+
+    Live means "a number about this tree, which this tree can be asked".
+    Figures about the past are not in here and are not gateable: what a
+    release shipped is what its own section says.
+    """
+    from iirds_validate.registry import all_rules
+
+    notes = current_release_notes()
+    if notes is None:
+        return {}                         # shipped, or no tags to say either way
+    rules = list(all_rules())
+    found = {}
+
+    def stated(what, pattern, measured):
+        # Every occurrence, not the first: a section that states a figure and
+        # restates it differently lower down disagrees with itself, and
+        # reading only the first match lets it.
+        said = sorted({int(n) for n in re.findall(pattern, notes)})
+        found[what] = (said or None, measured)
+
+    stated("the size of the registry",
+           r"the rule count goes to (\d+)", len(rules))
+    stated("the rules that claim no obligation",
+           r"(\d+) rules claim nothing",
+           sum(1 for rule in rules if not rule.covers))
+    stated("rules checked on a packed container",
+           r"`iirds check` on a directory said `PASS,\s+(\d+)\s+rules checked`",
+           _rules_checked(package))
+    return found
+
+
+def test_the_release_notes_state_figures_this_run_produces(tmp_path):
+    """Every one of these was right when it was typed and wrong when it was
+    published, because nothing read them again.
+
+    Five were found at once in the notes for this release: the registry as
+    233 when it is 236, two counts of rules checked each one behind, a count
+    of commits that had grown by ten, and a transcript quoted as shipping in
+    five releases that shipped in none. The README states the same figures
+    and states them correctly, because `tools/gen_stable_section.py` writes
+    them and `--check` refuses a stale one. This file had no such reader.
+
+    The rule this draws: a figure about *this* tree, in the notes for *this*
+    release, is measured here. A figure about a release that has shipped is
+    not -- that is a record, and rewriting it to today's measurement is the
+    defect, not the fix.
+    """
+    package = _a_conformant_package(tmp_path)
+    wrong = ["%s: the notes say %s and this run gives %s"
+             % (what, "nothing" if said is None else ", ".join(map(str, said)),
+                measured)
+             for what, (said, measured) in figures_the_notes_state(package).items()
+             if said != [measured]]
+    assert wrong == [], "\n".join(wrong)
+
+
+def test_the_release_notes_state_the_count_an_unpacked_container_gives(tmp_path):
+    """The other half of the same sentence, kept apart because measuring it
+    costs an unpack: the notes say what the count moves *to* when the same
+    package is checked as a directory."""
+    import zipfile
+
+    notes = current_release_notes()
+    if notes is None:
+        return                            # shipped, or no tags to say either way
+    said = {(int(a), int(b))
+            for a, b in re.findall(r"the count moves from (\d+) to (\d+)", notes)}
+    assert said, "the notes no longer state the count an unpacked container gives"
+
+    package = _a_conformant_package(tmp_path / "packed")
+    unpacked = tmp_path / "unpacked"
+    with zipfile.ZipFile(package) as archive:
+        archive.extractall(unpacked)
+    assert said == {(_rules_checked(package), _rules_checked(unpacked))}, sorted(said)
+
+
+def test_no_commit_that_changed_a_rule_moved_the_version():
+    """The notes say so, so it is asked rather than remembered.
+
+    `toolVersion` is the field a reader is told can say two runs had
+    different rule *bodies*, and the claim behind that is this one. It was
+    published as a count of commits, which grows with every rule change and
+    would have to be edited by hand for ever; the property is what was meant
+    and is what a machine can hold.
+
+    Asked as "which commits moved the `__version__` line", not as "which
+    commits touched both files" -- the first version of this gate asked the
+    second and named two commits that edit a docstring in one file and a rule
+    in the other, moving nothing.
+    """
+    notes = current_release_notes()
+    if notes is not None:
+        # A gate on a sentence has to check the sentence is still there. This
+        # one had no such anchor, so the claim could be deleted, negated, or
+        # turned back into the count it replaced with nothing noticing.
+        assert re.search(r"no commit that changed\s+a?\s*rule file has ever "
+                         r"moved it", notes), \
+            "the notes no longer make the claim this gate holds"
+
+    # `^__version__ = ` was the pattern and it is evaded by annotating the
+    # line: one commit writes `__version__: str = "..."`, and every later
+    # bump stops matching. The name is the anchor, not the spacing.
+    moved = subprocess.run(["git", "log", "-G", "^__version__", "--format=%H",
+                            "--", "src/iirds_validate/__init__.py"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=120)
+    if moved.returncode != 0:                               # pragma: no cover
+        pytest.skip("no git history visible here")
+    releases = moved.stdout.split()
+    assert releases, "no commit here ever moved the version, so this read nothing"
+
+    both = []
+    for sha in releases:
+        names = subprocess.run(["git", "show", "--format=", "--name-only", sha],
+                               cwd=ROOT, capture_output=True, text=True, timeout=60)
+        touched = names.stdout.split()
+        if not any(name.startswith("src/iirds_validate/rules/") for name in touched):
+            continue
+        # The first commit created every file there is, so it moved the
+        # version and wrote the rules in one breath without being an
+        # instance of the thing this refuses.
+        parent = subprocess.run(["git", "rev-parse", "--quiet", "--verify",
+                                 sha + "^"], cwd=ROOT, capture_output=True)
+        if parent.returncode != 0:
+            continue
+        both.append(sha)
+    assert both == [], ("these commits moved the version and changed a rule "
+                        "file together, so the notes' claim is no longer "
+                        "true: %s" % ", ".join(sha[:8] for sha in both))

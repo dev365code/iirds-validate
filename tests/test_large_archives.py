@@ -203,8 +203,10 @@ def test_no_rule_keeps_its_own_archive_guard():
     Each of these rules opened with `if not ctx.package.is_archive: return`,
     and the runner counted them as checked before running them -- which is the
     defect above. With the runner deciding, the guards became seven lines no
-    package can reach, and the unreached-line baseline said so: eleven to
-    seventeen in one measurement.
+    package can reach, and the unreached-line baseline said so. The pair of
+    figures that used to sit here described neither the baseline before nor
+    the baseline after: `docs/silent-paths.json` is the record, and it is the
+    thing to read.
 
     R3 is why this is a gate and not a deletion. It carries the same guard, is
     about the archive's own layout -- "the container must be at the root of the
@@ -238,7 +240,37 @@ def test_no_rule_keeps_its_own_archive_guard():
 IN_WORDS = {6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
 
 
-def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
+def _the_notes_still_being_written(root, sections):
+    """The section for this tree's version while no tag carries it, else None.
+
+    A shipped release's notes are the record of what the tool said then, and
+    a gate that rewrites them to today's measurement destroys what it exists
+    to protect. A tag is what says "shipped" -- so the notes stay under this
+    gate from the moment they are opened until the moment the tag exists, and
+    are left alone after. Where no tags are visible at all (an export, a
+    checkout fetched without them) this reads nothing rather than guessing;
+    `test_the_tags_are_visible_here` is the failure that names that cause.
+    """
+    import subprocess
+
+    from iirds_validate import __version__
+
+    try:
+        done = subprocess.run(["git", "tag", "--list", "v*"], cwd=root,
+                              capture_output=True, text=True, timeout=30)
+    except OSError:                                     # pragma: no cover
+        return None
+    if done.returncode != 0 or not done.stdout.split():
+        return None
+    if "v%s" % __version__ in done.stdout.split():
+        return None                                     # shipped: it is a record now
+    for section in sections:
+        if section.split(" ", 1)[0] == __version__:
+            return section
+    return None
+
+
+def test_the_notes_still_being_written_state_the_count_that_was_measured(tmp_path):
     """The release notes for this change said "six", and there are seven.
 
     They were right when written. R3 joined the list afterwards, and nothing
@@ -272,20 +304,23 @@ def test_the_unreleased_notes_state_the_count_that_was_measured(tmp_path):
     root = Path(runner.__file__).resolve().parents[2]
     sections = (root / "CHANGELOG.md").read_text("utf-8").split("\n## ")
     unreleased = [s for s in sections if s.splitlines()[0].endswith("unreleased")]
-    # Zero of them between cutting a release and opening the next entry: this
-    # gate polices the unreleased notes, and having none is not a fault. Two
-    # is, because then "the unreleased notes" names two different things. The
-    # release that first carried this test found the `== 1` here by failing
-    # `make check` on the day it was cut.
+    # Two is a fault, because then "the unreleased notes" names two different
+    # things. Zero is not -- and zero is what dating a release leaves, which
+    # is why the section this reads is chosen by what has *shipped* rather
+    # than by the word "unreleased". Between cutting a release and tagging it
+    # the notes carry a date and are still being edited; reading only the
+    # undated ones turned this gate off for exactly that window, which is the
+    # window the figures move in.
     assert len(unreleased) <= 1, [s.splitlines()[0] for s in sections[1:]]
-    if not unreleased:
+    current = _the_notes_still_being_written(root, sections)
+    if current is None:
         return
-    entry = next(p for p in unreleased[0].split("\n\n") if "`notApplicable`" in p)
+    entry = next(p for p in current.split("\n\n") if "`notApplicable`" in p)
 
     assert re.search(r"\b%s\b" % IN_WORDS[moved], entry), (
         "the notes no longer say %r about the %d rules the runner stands down"
         % (IN_WORDS[moved], moved))
-    move = re.search(r"the count moves from (\d+) to (\d+)", unreleased[0])
+    move = re.search(r"the count moves from (\d+) to (\d+)", current)
     assert move, "the notes no longer state the move this change makes"
     before, after = (int(n) for n in move.groups())
     assert before - after == moved, (

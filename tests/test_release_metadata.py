@@ -582,7 +582,7 @@ def current_release_notes():
     Only that one. A shipped section is the record of what the tool said when
     it shipped, and a gate that keeps rewriting those to today's measurement
     destroys the record it exists to protect -- the same reason
-    `test_the_unreleased_notes_state_the_count_that_was_measured` reads one
+    `test_the_notes_still_being_written_state_the_count_that_was_measured` reads one
     section and not the file.
     """
     return (ROOT / "CHANGELOG.md").read_text("utf-8").split("## ", 2)[1]

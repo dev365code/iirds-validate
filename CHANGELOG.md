@@ -236,9 +236,9 @@ same bytes; the hash on a release page is something a rebuild of the tagged
 commit can be compared against, with the dependency versions as the one thing
 nobody pins. `SECURITY.md` and `docs/offline-install.md` say which
 reproducibility this is, and the latter now tells the reader carrying a file
-across an air gap how to check it against what was published. **The `.pyz`'s
-hash therefore moves against 0.6.0's**: an approval record or a build pinning
-the old one has to be re-pinned against this release's, which is on the
+across an air gap how to check it against what was published. **The `.pyz`'s hash
+therefore moves against the one before it**: an approval record or a build
+pinning an older one has to be re-pinned against this release's, which is on the
 release page beside the file. Two entry attributes that came from the building machine are pinned with the timestamps now, and a dependency that started publishing platform-specific wheels would stop the build rather than put a compiled file into an archive that promises none.
 
 **The vendored rule catalogue and the reference corpus move to a newer upstream
@@ -361,8 +361,10 @@ find out. Re-validating the package produces a current report; nothing else is
 needed and nothing is lost.
 
 The report also says why every rule it did not answer went unanswered,
-whatever command was asked of it. `iirds check` used to leave the fourteen
-interoperability rules unmentioned, `iirds lint` two hundred and four, and a
+whatever command was asked of it. `iirds check` used to leave fourteen lint
+rules unmentioned -- the interoperability rules less the two that are marked
+conformance and so are asked on a conformance run -- and `iirds lint` two
+hundred and four of the rest, and a
 container that would not open named one rule and was silent about the rest.
 Two reasons are new: a kind this command never put, and a rule never put
 because the container would not open. The printed line is unchanged — rules
@@ -412,10 +414,11 @@ file has one author were pulling in opposite directions, and the gate won
 every time.
 
 The text now comes from `report.render_text`, so the picture cannot say
-something the tool does not. Two lines of that output are longer than the
-picture is wide; they are cut at a word, marked, and the caption says so,
-because a picture that quietly shortens what it calls real output is telling a
-small lie about the tool. `tools/gen_door.py --check` regenerates into memory
+something the tool does not. Output longer than the picture is wide is cut at
+a word, marked, and the caption says so, because a picture that quietly
+shortens what it calls real output is telling a small lie about the tool. The
+caption states no number, because how many lines run long is a property of
+what the checker prints that day. `tools/gen_door.py --check` regenerates into memory
 and byte-compares, and `make check` runs it.
 
 **Rows the requirement index could not tell apart, and the two facts that tell
@@ -560,8 +563,11 @@ nodes leave the graph.
 
 Measured: a conformant iiRDS/H container, plus one stray `iirds:Package` whose
 only content is `iirds:formatRestriction A`, is judged iiRDS/A when the stray's
-IRI sorts first and iiRDS/H when it sorts last — 212 rules against 188, with
-four handover findings present in one reading and absent in the other. The
+IRI sorts first and iiRDS/H when it sorts last. The two readings run
+different rule sets, and the handover rules are the difference: present in one
+reading and absent in the other. No count is given here because the count is a
+function of how large the registry is on the day, and what matters is that the
+same container is judged against two different sets of obligations. The
 stray declares no edition, and a package that declares none ranks as the
 newest, deliberately, so nothing passes by saying less. Here saying less won.
 
@@ -634,7 +640,7 @@ Twelve rules already say this about thirteen of the forty-six relations —
 R10, R12, M17, M18, M22.2, M26, M94 and the five below — each as a MUST,
 because for those the standard states the range obligation in a sentence of its
 own. L16 is the same observation about the other thirty-three, where it states
-none. Seven of the thirteen were seven when L16 was written; the number is
+none. Seven of the thirteen were there when L16 was written; the number is
 measured rather than listed, so adding those five moved it by itself. It is a
 warning and claims no obligation: `rdfs:range` in RDF is an inference and not a
 constraint, and the one general-looking range MUST, section 7.3.3's, is about a
@@ -745,11 +751,14 @@ applications", and "hard to check" belongs in none of them.
 **An unpacked container no longer reports nine rules it did not run
 (`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
 194 rules checked`, and nine of those were the requirements about the ZIP
-archive itself — that it is not encrypted, that a large one uses ZIP64, that the
-first entry is an uncompressed `mimetype`, that the container sits at the root
-of the archive rather than inside a folder, that every entry is compressed with
-a method a bounded read can be made of, that the central directory carries one
-record per entry name. Each returns at its first line when
+archive itself — that it is not corrupt, that its name ends `.iirds`, that it
+is not encrypted, that a large one uses ZIP64, that the first entry is an
+uncompressed `mimetype`, that the container sits at the root of the archive
+rather than inside a folder, that every entry is compressed with a method a
+bounded read can be made of, that every local file header describes the entry
+the central directory describes, and that the central directory carries one
+record per entry name. Nine clauses for nine rules: `C1`, `C3`, `S7`, `S8`,
+`C6`, `R3`, `S14`, `S10`, `S15`. Each returns at its first line when
 there is no archive, and the count was incremented before it ran, so they were
 presented as checked and clean.
 

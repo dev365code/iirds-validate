@@ -203,8 +203,10 @@ def test_no_rule_keeps_its_own_archive_guard():
     Each of these rules opened with `if not ctx.package.is_archive: return`,
     and the runner counted them as checked before running them -- which is the
     defect above. With the runner deciding, the guards became seven lines no
-    package can reach, and the unreached-line baseline said so: eleven to
-    seventeen in one measurement.
+    package can reach, and the unreached-line baseline said so. The pair of
+    figures that used to sit here described neither the baseline before nor
+    the baseline after: `docs/silent-paths.json` is the record, and it is the
+    thing to read.
 
     R3 is why this is a gate and not a deletion. It carries the same guard, is
     about the archive's own layout -- "the container must be at the root of the

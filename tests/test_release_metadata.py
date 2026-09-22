@@ -577,15 +577,30 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
 
 
 def current_release_notes():
-    """The section for the release this tree is, which is the top one.
+    """The notes for this tree's version while no tag carries it, else None.
 
-    Only that one. A shipped section is the record of what the tool said when
-    it shipped, and a gate that keeps rewriting those to today's measurement
-    destroys the record it exists to protect -- the same reason
-    `test_the_notes_still_being_written_state_the_count_that_was_measured` reads one
-    section and not the file.
+    A shipped section is the record of what the tool said when it shipped, and
+    a gate that keeps rewriting those to today's measurement destroys the
+    record it exists to protect -- the same reason
+    `test_the_notes_still_being_written_state_the_count_that_was_measured`
+    reads one section and not the file.
+
+    Chosen by the version and by the tags, not by position. Reading the top
+    section positionally was wrong twice over: it goes on reading these notes
+    after their tag exists, so the first rule to land afterwards demands that
+    a shipped record be edited to today's measurement; and opening the next
+    entry above them moves the top section to one that states none of these
+    figures, so every one of them reads as absent at once.
     """
-    return (ROOT / "CHANGELOG.md").read_text("utf-8").split("## ", 2)[1]
+    published = published_releases()
+    if not published:
+        return None                       # `test_the_tags_are_visible_here`
+    if release_key(__version__) in published:
+        return None                       # shipped: it is a record now
+    for section in (ROOT / "CHANGELOG.md").read_text("utf-8").split("\n## "):
+        if section.split(" ", 1)[0] == __version__:
+            return section
+    return None
 
 
 def _rules_checked(path):
@@ -621,12 +636,17 @@ def figures_the_notes_state(package):
     from iirds_validate.registry import all_rules
 
     notes = current_release_notes()
+    if notes is None:
+        return {}                         # shipped, or no tags to say either way
     rules = list(all_rules())
     found = {}
 
     def stated(what, pattern, measured):
-        match = re.search(pattern, notes)
-        found[what] = (int(match.group(1)) if match else None, measured)
+        # Every occurrence, not the first: a section that states a figure and
+        # restates it differently lower down disagrees with itself, and
+        # reading only the first match lets it.
+        said = sorted({int(n) for n in re.findall(pattern, notes)})
+        found[what] = (said or None, measured)
 
     stated("the size of the registry",
            r"the rule count goes to (\d+)", len(rules))
@@ -657,9 +677,10 @@ def test_the_release_notes_state_figures_this_run_produces(tmp_path):
     """
     package = _a_conformant_package(tmp_path)
     wrong = ["%s: the notes say %s and this run gives %s"
-             % (what, "nothing" if said is None else said, measured)
+             % (what, "nothing" if said is None else ", ".join(map(str, said)),
+                measured)
              for what, (said, measured) in figures_the_notes_state(package).items()
-             if said != measured]
+             if said != [measured]]
     assert wrong == [], "\n".join(wrong)
 
 
@@ -670,15 +691,17 @@ def test_the_release_notes_state_the_count_an_unpacked_container_gives(tmp_path)
     import zipfile
 
     notes = current_release_notes()
-    said = re.search(r"the count moves from (\d+) to (\d+)", notes)
+    if notes is None:
+        return                            # shipped, or no tags to say either way
+    said = {(int(a), int(b))
+            for a, b in re.findall(r"the count moves from (\d+) to (\d+)", notes)}
     assert said, "the notes no longer state the count an unpacked container gives"
 
     package = _a_conformant_package(tmp_path / "packed")
     unpacked = tmp_path / "unpacked"
     with zipfile.ZipFile(package) as archive:
         archive.extractall(unpacked)
-    assert (int(said.group(1)), int(said.group(2))) == \
-        (_rules_checked(package), _rules_checked(unpacked)), said.group(0)
+    assert said == {(_rules_checked(package), _rules_checked(unpacked))}, sorted(said)
 
 
 def test_no_commit_that_changed_a_rule_moved_the_version():
@@ -695,7 +718,19 @@ def test_no_commit_that_changed_a_rule_moved_the_version():
     second and named two commits that edit a docstring in one file and a rule
     in the other, moving nothing.
     """
-    moved = subprocess.run(["git", "log", "-G", "^__version__ = ", "--format=%H",
+    notes = current_release_notes()
+    if notes is not None:
+        # A gate on a sentence has to check the sentence is still there. This
+        # one had no such anchor, so the claim could be deleted, negated, or
+        # turned back into the count it replaced with nothing noticing.
+        assert re.search(r"no commit that changed\s+a?\s*rule file has ever "
+                         r"moved it", notes), \
+            "the notes no longer make the claim this gate holds"
+
+    # `^__version__ = ` was the pattern and it is evaded by annotating the
+    # line: one commit writes `__version__: str = "..."`, and every later
+    # bump stops matching. The name is the anchor, not the spacing.
+    moved = subprocess.run(["git", "log", "-G", "^__version__", "--format=%H",
                             "--", "src/iirds_validate/__init__.py"],
                            cwd=ROOT, capture_output=True, text=True, timeout=120)
     if moved.returncode != 0:                               # pragma: no cover

@@ -143,6 +143,19 @@ NOT_RDFXML = "not an RDF/XML document"
 #: `(graph, None)` or `(None, error)`, into a caller told otherwise.
 UNREADABLE_ENCODING = "declares an encoding no codec answers to"
 
+#: A document whose declaration and this reader disagree about what it says.
+#: rdflib decodes as UTF-8 whatever the declaration names, so where the
+#: declaration names something else there are two readings of one file. Where
+#: they are the same text -- every byte under 128, which is most of a
+#: conformant package that happens to declare a codepage -- there is nothing
+#: to report and nothing is reported. Where they differ, one of them is what
+#: the supplier meant and this reader is holding the other, so it refuses
+#: instead of choosing. That case was silent before: the refusal was rdflib
+#: failing on a high byte, which caught the document written in the codepage
+#: it declared and missed the one whose declaration was simply false over
+#: UTF-8 bytes.
+UNUSED_ENCODING = "declares an encoding this reader reads differently"
+
 #: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
 #: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
 #: else that is an absolute IRI names a node element -- the class of a typed
@@ -193,6 +206,32 @@ def _declared_encoding_name(raw: bytes) -> Optional[str]:
     """The name the document declares, or None where it declares none."""
     found = _DECLARED.match(raw.lstrip(b"\xef\xbb\xbf"))
     return found.group(2).decode("ascii", "replace") if found else None
+
+
+def _decoded(raw: bytes, encoding: str):
+    """The text those bytes are under that encoding, or None where they are
+    not that encoding at all.
+
+    Both readings are taken so they can be compared. Nothing here decodes
+    with `errors=` set: a replacement character is this reader deciding what
+    a supplier's byte meant and then saying nothing about it, which is the
+    one thing an input layer must not do.
+    """
+    try:
+        return raw.decode(encoding)
+    except (UnicodeDecodeError, LookupError):
+        return None
+
+
+def _is_utf8_name(name: str) -> bool:
+    """Whether a declaration names UTF-8, however it is spelled.
+
+    Normalised rather than looked up, for the reason `_codec_exists` gives
+    about this library's import list. XML encoding names are not case
+    sensitive and `UTF-8`, `utf8` and `utf_8` are one name; anything else is
+    another encoding whatever it decodes to.
+    """
+    return name.strip().lower().replace("_", "").replace("-", "") == "utf8"
 
 
 def _codec_exists(name: str) -> bool:
@@ -401,6 +440,11 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
         declared = _declared_encoding_name(raw)
         if declared is not None and not _codec_exists(declared):
             return None, "%s: %s: %s" % (name, UNREADABLE_ENCODING, declared)
+        if declared is not None and not _is_utf8_name(declared):
+            theirs = _decoded(raw, declared)
+            ours = _decoded(raw, "utf-8")
+            if theirs is None or ours is None or theirs != ours:
+                return None, "%s: %s: %s" % (name, UNUSED_ENCODING, declared)
         element = _document_element(raw)
         if element is not None and not is_rdfxml_document_element(element):
             return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))

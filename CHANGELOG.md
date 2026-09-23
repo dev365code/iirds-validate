@@ -23,8 +23,10 @@ is the sender's to choose. A constant for the ceiling was there and was used
 by nothing.
 
 It is used now: the scan stops at eight mebibytes across all of those files,
-and the scan reads back 8,388,609 bytes -- the ceiling plus one, whatever the
-package holds, because the read that crosses it is the last one. The figure
+and the scan reads back 8,388,609 bytes -- the ceiling plus one, which is what
+any package that reaches the ceiling reads back however much more it holds,
+because the read that crosses it is the last one. A package whose side files
+come to less than that is read whole and draws no S12. The figure
 above counts the whole of what a run read under `META-INF/`, which is 293
 bytes more than the scan's own total: `META-INF/metadata.rdf` is read by the
 container and skipped by this scan, and the two numbers are about different
@@ -332,11 +334,14 @@ a reason where there are no source files to read, as in the zipapp.
 different questions and one id was answering both: `C1` asks whether an
 archive that opened gives every entry back, and it was also being reported for
 a file that is not an archive at all. That made it invisible to `iirds lint`,
-which does not put the container rules — so a clean lint report never mentioned
-it and a broken one did, and a rule that appears only when it fails has no
-clean state for anything to compare against. `S13` is a system rule, and the
-system rules are put whichever question was asked: it is answered on every run,
-clean when the container opened and firing when it did not. `C1` keeps its own
+which of the container rules puts only the three the runner asks itself — so a
+clean lint report never mentioned it and a broken one did, and a rule that
+appears only when it fails has no clean state for anything to compare against.
+`S13` is a system rule, so every command that opens a container puts it: clean
+when the container opened and firing when it did not. A path that exists and
+cannot be read is the exception in the other direction — nothing gets as far
+as opening it, `S1` is the one rule answered, and `S13` is named among the
+rules that were never put. `C1` keeps its own
 meaning. Both claim the same obligation, so the coverage figures do not move;
 the rule count goes to 236.
 
@@ -495,9 +500,10 @@ newest, deliberately, so nothing passes by saying less. Here saying less won.
 
 **And an interoperability run said nothing at all about it.** M3 reports that
 several packages claim one container, but M3 is a schema rule and a lint run
-asks for lint and system rules only — so `iirds lint` on such a container
-returned `ok=True`, no findings, and no note, having silently picked one of the
-two. `system` is the one kind every run includes, which is why this rule is one.
+asks for the lint and system rules, plus the three metadata rules the runner
+puts itself — so `iirds lint` on such a container returned `ok=True`, no
+findings, and no note, having silently picked one of the two. Every kind set
+includes `system`, which is why this rule is one.
 
 It reports rather than resolves, because there is nothing to prefer: A and H
 are two values with no order between them, and any rule for picking is a coin
@@ -647,8 +653,9 @@ own markup. What changes is that the coverage report names them instead of
 leaving them in the unmapped remainder, where they had been sitting silently.
 
 **An unpacked container no longer reports nine rules it did not run
-(`notApplicable` gains `unpacked`).** `iirds check` on a directory said `PASS,
-194 rules checked`, and nine of those were the requirements about the ZIP
+(`notApplicable` gains `unpacked`).** `iirds check` on a directory reported the
+same count as the same package packed -- `194 rules checked` on this build --
+and nine of those were the requirements about the ZIP
 archive itself — that it is not corrupt, that its name ends `.iirds`, that it
 is not encrypted, that a large one uses ZIP64, that the first entry is an
 uncompressed `mimetype`, that the container sits at the root of the archive

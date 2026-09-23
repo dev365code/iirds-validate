@@ -765,8 +765,14 @@ def figures_the_notes_state(package):
 
     stated("the size of the registry",
            r"the rule count goes to (\d+)", len(rules))
+    # The sentence and the measurement are the same subject now. It used to
+    # read "`iirds check` on a directory said `PASS, 194 rules checked`" and be
+    # measured with a run on the packed archive, so a figure no directory run
+    # has ever printed -- the tree before the repair printed 175 -- was blessed
+    # by a gate measuring something else. The notes say the directory reported
+    # the packed count, which is what the defect was, and this measures that.
     stated("rules checked on a packed container",
-           r"`iirds check` on a directory said `PASS,\s+(\d+)\s+rules checked`",
+           r"same package packed -- `(\d+) rules checked` on this build",
            _rules_checked(package))
 
     # Read against the text with its line wrapping flattened. These notes are

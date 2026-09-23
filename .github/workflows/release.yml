@@ -11,6 +11,13 @@ name: release
 on:
   push:
     tags: ["v*"]
+  # A tag is the only thing that publishes. This runs the same build job on
+  # demand so that a change to the gates can be proved against this workflow
+  # *before* a tag is pushed: the first tag of 0.7.0 failed here, in the one
+  # job no push had ever exercised, and the publish jobs below never ran.
+  # Every one of them is `if: github.event_name == 'push'`, so a dispatch
+  # cannot publish whatever it is given.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,11 +40,20 @@ jobs:
           # triggering ref alone, so without this the job that publishes is the
           # one place the check cannot pass.
           fetch-tags: true
+          # And the whole history, for the same reason ci.yml gives: one test
+          # asks whether any commit that changed a rule file ever moved the
+          # version, and a depth-1 checkout grafts its tip as a root commit.
+          # That test used to read green on a shallow clone while answering
+          # nothing; it refuses one now, and this job is where that refusal
+          # first bit -- the release workflow runs on tags alone, so a change
+          # to the gates cannot reach it until a tag is already pushed.
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: "3.12"
 
       - name: the tag and the version agree
+        if: github.event_name == 'push'
         run: |
           pip install -e ".[dev,shacl]"
           v="$(python -c 'import iirds_validate; print(iirds_validate.__version__)')"
@@ -110,6 +126,7 @@ jobs:
   # a second build is a second set of bytes, and the checksum file beside them
   # would be describing the first.
   publish-release:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -153,6 +170,7 @@ jobs:
   # repository for a project, that project's job fails visibly, on purpose,
   # without touching the GitHub Release above.
   publish-iirds:
+    if: github.event_name == 'push'
     needs: publish-release
     runs-on: ubuntu-latest
     environment: pypi-iirds
@@ -169,6 +187,7 @@ jobs:
           packages-dir: up
 
   publish-iirds-validate:
+    if: github.event_name == 'push'
     needs: publish-iirds
     runs-on: ubuntu-latest
     environment: pypi          # the publisher pypi.org already trusts for this project
@@ -185,6 +204,7 @@ jobs:
           packages-dir: up
 
   publish-iirds-sdk:
+    if: github.event_name == 'push'
     needs: publish-iirds
     runs-on: ubuntu-latest
     environment: pypi-iirds-sdk

@@ -135,12 +135,16 @@ reasoning applies to any test you add here: compare reports that say something.
 
 ## Cutting a release
 
-The release is one number in six places, and a test holds them together:
-`pyproject.toml`, `src/iirds_validate/__init__.py`, `src/iirds/__init__.py`,
-and the two compatibility packages under `shims/` (their `version` and their
-`iirds>=` floor). Change them all, give the top entry of `CHANGELOG.md` its
-date, run `python tools/emit_shacl.py` so the shape manifest records the
-version, then `make check`. The tag is `v` and the number.
+The release is one number in eight places. Seven of them are yours to
+change: `pyproject.toml`, `src/iirds_validate/__init__.py`,
+`src/iirds/__init__.py`, and the two compatibility packages under `shims/`,
+which carry it twice each -- their `version` and their `iirds>=` floor. The
+eighth is `shapes/MANIFEST.json`, which you do not edit: run `python
+tools/emit_shacl.py` and the manifest follows the version by itself. Give the
+top entry of `CHANGELOG.md` its date in the same commit, then `make check` --
+each of the eight fails a test of its own if it is left behind, and the
+changelog fails one if the date and the number are not in one commit. The tag
+is `v` and the number.
 
 Look at the action pins before you tag. Every `uses:` in
 `.github/workflows/` names a commit rather than a tag, which means none

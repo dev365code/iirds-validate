@@ -91,11 +91,11 @@ def is_named(node) -> bool:
     `rdf:about=""` is a relative reference to the document itself, so it
     resolves to the base and comes back looking like a perfectly good IRI — a
     node that *is* the base was never named. Every "MUST have an IRI" rule
-    turns on this, so getting it wrong silences sixty of them at once.
+    turns on this, so getting it wrong silences all sixty-three at once.
 
     A *relative* IRI does count as named. It identifies the resource; whether
     it should have been absolute is M5's question, and M5 is a RECOMMENDED.
-    Conflating the two turned a recommendation into sixty MUSTs and failed
+    Conflating the two turned a recommendation into sixty-one MUSTs and failed
     packages the reference tool accepts.
     """
     return isinstance(node, URIRef) and str(node) not in ("", PACKAGE_BASE)

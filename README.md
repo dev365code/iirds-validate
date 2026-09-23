@@ -252,17 +252,19 @@ that moves an exit code says so in those words. If you gate a build on the exit
 code, read that file before upgrading. That much is discipline, not a gate.
 
 **A command-line usage error exits `64`, not `2`** — breaking, and said here
-because the exit codes are a stable surface. A mistyped option and an input the
-run could not read both exited `2`, so a build that treats `2` as "this package
-could not be judged" was catching its own broken command line and reporting it
-as a package problem. `64` is the conventional value for a usage error
-(`EX_USAGE`); `2` keeps its present meaning and nothing else moves. A mistyped
-*verb* is not one of these: `iirds <path>` is shorthand for `iirds all <path>`,
-so the first word is read as a path and a misspelt one exits `2`. `iirds chekc pkg.iirds` exits `2`,
-naming `chekc` as the file it could not find.
-What a gate holds is narrower and worth more: a rule id is a citation somebody
-else made, so what fired is compared against a committed record on every build,
-and a rule that quietly stops firing stops the build.
+because the exit codes are a stable surface. A mistyped option and an input
+the run could not read both exited `2`, so a build that treats `2` as "this
+package could not be judged" was catching its own broken command line and
+reporting it as a package problem. `64` is the conventional value for a usage
+error (`EX_USAGE`); `2` keeps its present meaning and nothing else moves. A
+mistyped *verb* typed on its own is not one of these: `iirds <path>` is
+shorthand for `iirds all <path>`, so the first word is read as a path and a
+misspelt one exits `2` -- `iirds chekc pkg.iirds` exits `2`, naming `chekc` as
+the file it could not find. Typed with that verb's own options, `iirds serv
+--port 8080` leaves `all` an option it has never had, and that is a usage
+error: `64`. What a gate holds is narrower and worth more: a rule id is a
+citation somebody else made, so what fired is compared against a committed
+record on every build, and a rule that quietly stops firing stops the build.
 
 What has held, and how to see it for yourself. The table below is written by
 `tools/gen_stable_section.py` from what those commands print, because a number

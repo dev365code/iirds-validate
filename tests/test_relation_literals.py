@@ -425,8 +425,10 @@ ALREADY_A_MUST = {
 def test_the_relations_a_must_already_covers_are_the_ones_named(tmp_path):
     """"No rule read it" was the first draft's claim and it was false seven
     times over, and is now false thirteen times over. For thirteen of the
-    forty-six the standard states the range obligation in a sentence of its
-    own, a rule implements it as a MUST, and L16 restates it as a warning.
+    forty-six a rule already states the obligation at MUST level and L16
+    restates it as a warning; only some of those rules rest on a sentence the
+    standard states about that relation alone, which is why most of them
+    claim no requirement row.
     That overlap is fine -- what is not fine is a docstring that says the
     opposite of it.
 

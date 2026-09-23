@@ -249,6 +249,23 @@ def checked(document, which: str) -> dict:
     if document.get("validatedAgainst") is not None:
         _text(document["validatedAgainst"], "%s: validatedAgainst" % which)
 
+    # Read by `difference` below and, until this line, not checked -- the third
+    # field in this function to go that way. `summary.warnings` was the first
+    # and `judgedBy.gate` the second, and the comments beside them say what
+    # this one says: whatever `checked` returns, `difference` dereferences
+    # without asking again. A digest written as the string it prints as is the
+    # shape a hand-edited baseline arrives in, and it reached `.get` and raised
+    # `AttributeError` -- a traceback, and exit 1, where the contract is a
+    # sentence and exit 2. Exit 1 is the value that means the package has
+    # errors, so a damaged baseline read as a verdict about somebody's package.
+    digest = document.get("packageDigest")
+    if digest is not None:
+        if not isinstance(digest, dict):
+            _refuse("%s: packageDigest must be an object saying which bytes were "
+                    "judged, and is %s" % (which, type(digest).__name__))
+        if digest.get("digest") is not None:
+            _text(digest["digest"], "%s: packageDigest.digest" % which)
+
     ran = set(envelope["rulesRun"])
     excused = {}
     for reason, ids in reasons.items():

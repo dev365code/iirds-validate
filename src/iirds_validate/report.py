@@ -99,6 +99,12 @@ _REASON_LABELS = {
     "version": "for other editions",
     "fragment": "suspended for a fragment",
     "raised": "not answered -- the rule raised",
+    # Without this the nine rules a directory stands down fall through to the
+    # label for a different edition, and the summary line said "9 for another
+    # profile" about rules suspended for having no archive to look at -- a
+    # different sentence entirely, in the one release that made the reason
+    # visible in the first place.
+    "unpacked": "not asked -- there is no archive to look at",
     "unreadable": "never put -- the container would not open",
 }
 

@@ -48,11 +48,21 @@ PACKAGE = "src/iirds_validate/package.py"
 SYSTEM = "src/iirds_validate/rules/system.py"
 CONTAINER = "src/iirds_validate/rules/container.py"
 CLI = "src/iirds_validate/cli.py"
+DIFFERENCE = "src/iirds_validate/difference.py"
 LINKS = "tests/test_unpacked_links.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("difference/a-stored-digest-of-the-wrong-shape-is-let-through",
+     DIFFERENCE,
+     '        if not isinstance(digest, dict):',
+     '        if False:',
+     ["tests/test_difference.py"],
+     "a baseline whose packageDigest is the string it prints as reaches `.get`, "
+     "and the refusal becomes a traceback and exit 1 -- the code that means the "
+     "package has errors"),
+
     ("links/only-the-last-component-is-followed",
      PACKAGE,
      "        if _is_link(here):",

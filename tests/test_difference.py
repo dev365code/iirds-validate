@@ -184,6 +184,10 @@ def test_a_directory_and_an_archive_are_not_the_same_basis(make_package, tmp_pat
     (lambda d: d.update(findings={}), "findings that are not a list"),
     (lambda d: d.update(variant=None), "no profile"),
     (lambda d: d.update(ok="yes"), "a verdict that is not a verdict"),
+    (lambda d: d.update(packageDigest="sha256:whatever"),
+     "a digest written as the string it prints as"),
+    (lambda d: d.update(packageDigest=[{"digest": "sha256:x"}]),
+     "a digest wrapped in a list"),
 ])
 def test_a_document_that_cannot_be_trusted_is_refused(clean, wreck, why):
     """Every one of these reached a class and produced a difference a reader

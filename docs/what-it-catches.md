@@ -1,0 +1,164 @@
+# What this catches, and what it says when it does
+
+Written by `tools/gen_what_it_catches.py`; every block is the output of
+the command above it, captured on the run that wrote this file. Build the
+containers and reproduce any of it with the two commands each case names.
+
+Nothing here is a claim about any other validator.
+
+## Two kinds of finding, and the difference matters
+
+A finding either quotes the standard or it does not, and the report says
+which. Where the standard states an obligation, the rule carries the
+sentence it is enforcing and a link that lands on it. Where the standard is
+silent but a package will still be unusable, the rule is this tool's own
+judgement and carries no specification reference -- those are the `L*`
+interoperability rules and the `S*` rules about the run itself.
+
+## The container is not a container
+
+    $ printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
+    $ iirds check fixtures/what-it-catches/not-a-container.iirds
+
+    not-a-container.iirds   iiRDS not declared
+
+      ERROR S13       cannot open container
+                          fixtures/what-it-catches/not-a-container.iirds
+                          File is not a zip file
+                        → Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on
+                        → it should list mimetype first. Nothing else here has run, because there
+                        → was nothing to run against.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      1 rule checked, 221 not applicable to this version/variant (221 never put -- the container would not open)
+
+Exit code 1.
+
+**This tool's own rule** (`S13`), no specification reference.
+
+The standard describes a container, and a file that will not open is not one
+yet. The last line is the point: the run says how many rules it never put,
+rather than leaving a reader to assume they passed.
+
+## `mimetype` with a trailing newline
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/mimetype.iirds --broken mimetype
+    $ iirds check fixtures/what-it-catches/mimetype.iirds
+
+    mimetype.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      ERROR C5        mimetype must contain exactly 'application/iirds+zip' with no line ending
+                          mimetype
+                          b'application/iirds+zip\n'
+                        → Make the file contain exactly application/iirds+zip, ASCII, with no
+                        → trailing newline and no byte order mark. Editors add both silently, so
+                        → write it with a tool that does not.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**The standard says so.** "The mimetype file MUST contain the following ASCII-encoded text in a single line, without any line delimiters such as CR or LF: application/iirds+zip"
+
+<https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=It%20MUST%20contain,application/iirds%2Bzip>
+
+The finding prints the bytes it read, because an editor shows nothing wrong
+with a file that ends in a newline.
+
+## No `metadata.rdf`
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-metadata-rdf.iirds --broken jsonld-only
+    $ iirds check fixtures/what-it-catches/no-metadata-rdf.iirds
+
+    no-metadata-rdf.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.jsonld
+
+      ERROR C8        META-INF must contain metadata.rdf
+                        → Add META-INF/metadata.rdf. It carries everything a consumer knows about
+                        → the package; without it the content files are a folder of documents with
+                        → no structure or meaning.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**The standard says so.** "The META-INF directory MUST contain the file metadata.rdf"
+
+<https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).>
+
+A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
+
+## A rendition with no format
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-format.iirds --broken missing-format
+    $ iirds check fixtures/what-it-catches/no-format.iirds
+
+    no-format.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      ERROR M11       Rendition must have exactly one iirds:format
+                          urn:test:topic1 has-rendition
+                          0 found
+                        → Give the Rendition exactly one iirds:format, holding the media type of the
+                        → file it points at, for example application/xhtml+xml or application/pdf.
+                        → Add one if there is none; remove the extras if there are several.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**The standard says so.** "An iirds:Rendition MUST have the property iirds:format"
+
+<https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3ARendition%20MUST%20also%20have%20the%20property%20iirds%3Aformat.>
+
+The finding names the subject and how many were found, so a package with
+several renditions says which one.
+
+## Metadata that points at a file the package does not carry
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/missing-content.iirds --broken missing-content
+    $ iirds check fixtures/what-it-catches/missing-content.iirds
+
+    missing-content.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      ERROR L2        iirds:source does not resolve to a file in the container
+                          urn:test:topic1 has-rendition
+                          content/topic1.xhtml
+                        → Add the file to the container at exactly the path iirds:source names, or
+                        → correct the path. Paths are relative to the container root,
+                        → case-sensitive, and use forward slashes.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**This tool's own rule** (`L2`), no specification reference.
+
+The graph is well-formed and every stated obligation is met. The package
+simply cannot be read by anyone, because the document it describes is not in
+it. That is the half of the question the standard does not ask.
+
+## What it does not flag, and why
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/description-style.iirds --broken description-style
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
+    $ iirds check fixtures/what-it-catches/description-style.iirds && iirds check fixtures/what-it-catches/attribute-style.iirds
+
+    description-style.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      PASS  0 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Both pass, and the two reports are the same document: every key identical
+apart from the package's own path and digest, which is what a different
+file is. One writes its properties as nested elements and the other as
+attributes on the node; the graph is the same graph, so the answer is the
+same answer. `--broken` names them only because that flag names every
+variant the generator can produce, not because either is a defect.

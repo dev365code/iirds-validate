@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = [ROOT / "docs" / "divergences.md",
         ROOT / "docs" / "scope.md",
         ROOT / "docs" / "design.md",
+        ROOT / "docs" / "what-it-catches.md",
         ROOT / "README.md",
         ROOT / "CHANGELOG.md",
         ROOT / "SECURITY.md",

@@ -60,6 +60,7 @@ Written down because each of these was, at some point, about to be built.
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |
 | `docs/silence.json` | why this validator is silent on each pair the reference reports; CI fails if it moves |
 | `docs/divergences.md` | every place this project and the reference differ, and why |
+| `docs/what-it-catches.md` | one example per finding, each block the output of the command above it — written by `tools/gen_what_it_catches.py`, so a case whose verdict moves stops the build rather than going stale on the page |
 
 ## How this project knows it is right
 

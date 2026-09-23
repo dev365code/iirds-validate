@@ -81,8 +81,11 @@ copying one file.
 
 ## Advisories
 
-A security fix that shipped in a release has a GitHub security advisory on
-this repository, naming the versions it reaches and the release that fixes it.
+From 0.6.1 on, a security fix that ships in a release has a GitHub security
+advisory on this repository, naming the versions it reaches and the release
+that fixes it. Security fixes in earlier releases -- this project's 0.4.2 and
+the `iirds` library's 0.3.1 among them -- are recorded in their changelogs and
+have no advisory.
 
 - [GHSA-836f-9r66-gxcc](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-836f-9r66-gxcc):
   checking a directory could read files outside it and put parts of them in

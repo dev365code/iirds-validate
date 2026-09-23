@@ -52,10 +52,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Its own step, because the check below it is about a tag and this is
+      # not: a dry run has no tag to agree with, and skipping the comparison
+      # used to skip the install with it. `make check` then ran with no ruff.
+      - name: install
+        run: pip install -e ".[dev,shacl]"
+
       - name: the tag and the version agree
         if: github.event_name == 'push'
         run: |
-          pip install -e ".[dev,shacl]"
           v="$(python -c 'import iirds_validate; print(iirds_validate.__version__)')"
           [ "$GITHUB_REF_NAME" = "v$v" ] || { echo "tag $GITHUB_REF_NAME != version $v"; exit 1; }
 

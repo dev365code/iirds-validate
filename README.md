@@ -8,7 +8,7 @@
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
 
-[Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Five doors](#five-doors-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
+[Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Every door](#every-door-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
 
 </div>
 
@@ -94,7 +94,7 @@ interoperability rules, most with no counterpart in the specification, because a
 conformant package can still be undeliverable:
 
 <details>
-<summary>The fifteen, briefly</summary>
+<summary>One line each</summary>
 
 | | |
 |---|---|
@@ -141,7 +141,7 @@ flowchart LR
 
 **The referee between producer and receiver.** Same file → same verdict, byte for byte — no uploads, no telemetry, no model in the judgement loop.
 
-## Five doors, one judgement
+## Every door, one judgement
 
 | Door | For | What you get |
 |---|---|---|

@@ -244,6 +244,6 @@ rather than leaving a reader to assume they passed.
 
 - done -- upstream catalogue pinned by commit
 - done -- checked weekly for change
-- not yet -- one pin move shipped
+- done -- one pin move shipped
 
-**Before 1.0.** + one pin move shipped
+**Before 1.0.** met — a pin move has shipped

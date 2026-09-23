@@ -5,7 +5,7 @@
 | Report contract | schemaVersion 2, golden, exit codes | + a field-by-field schema page |
 | Entrances | command line, library, single file | + GitHub Action, browser |
 | Input safety | read budgets, advisories, mutation-tested | + lossless declared encodings |
-| Upstream | pinned, checked weekly | + one pin move shipped |
+| Upstream | pinned, checked weekly, a move shipped | met — a pin move has shipped |
 
 **Explanation** — 3 of 5:
 - what is wrong, in one sentence — done (`README.md`: "what is wrong")
@@ -33,7 +33,7 @@
 - tests verified against their own mutations — done (`README.md`: "verified against their own mutations")
 - declared encodings read without loss — not yet
 
-**Upstream** — 2 of 3:
+**Upstream** — 3 of 3:
 - upstream catalogue pinned by commit — done (`README.md`: "catalogue taken from")
 - checked weekly for change — done (`README.md`: "whether upstream still matches it is a weekly job")
-- one pin move shipped — not yet
+- one pin move shipped — done (`CHANGELOG.md`: "taken from `f1119bea`, retrieved 2026-09-13, instead of `0bcf19dd`")

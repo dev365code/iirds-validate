@@ -118,6 +118,12 @@ CASES = [
 ]
 
 
+#: What the page says of a rule that neither links to the standard nor claims
+#: an obligation of it. One string, so the test that checks the claim reads
+#: the label the page is written with rather than its own copy of it.
+OWN_RULE = "**This tool's own rule** (`%s`), no specification reference."
+
+
 def spec_of(rule_id: str):
     """What the rule says, the standard's own words, and the link, or None.
 
@@ -224,8 +230,7 @@ def page() -> str:
                 "quote. `%s` states it as: %s"
                 % (rule_id, ", ".join("`%s`" % c for c in claims), rule_id, title)))
         else:
-            out.append("**This tool's own rule** (`%s`), no specification reference."
-                       % rule_id)
+            out.append(OWN_RULE % rule_id)
         out.append("")
         out.extend(_wrapped(note))
         out.append("")

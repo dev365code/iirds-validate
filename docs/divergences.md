@@ -388,7 +388,7 @@ rejecting the document, which is B1's finding and demotes outside iiRDS/A like
 every other content judgement — the line drawn below. Of the other five, two
 are reported by a rule of their own at the same severity: the total a run will
 decompress is S9's subject, and a compression method no bounded read can be
-made of is S14's, above. The remaining three are S16's, and until 0.7.0 only
+made of is S14's, above. The remaining three are S16's, and until 0.7.1 only
 one of them was:
 
 - the container will not hand the file over — a damaged stream, a file the

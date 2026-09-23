@@ -124,5 +124,5 @@ this repository, naming the versions it reaches and the release that fixes it.
   524,395-byte archive carrying twenty 8 MiB entries made a run read back
   167,771,253 bytes and parse all of it, and the entry count is the sender's to
   choose. `iirds-validate` up to and including 0.6.3, `iirds` and `iirds-sdk`
-  0.5.0 through 0.6.3; fixed in 0.7.0, where the scan stops at eight mebibytes
+  0.5.0 through 0.6.3; fixed in 0.7.1, where the scan stops at eight mebibytes
   and `S12` names the file it stopped on.

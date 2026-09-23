@@ -26,6 +26,7 @@ from __future__ import annotations
 import collections
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,7 @@ DOCS = [ROOT / "docs" / "divergences.md",
         ROOT / "CHANGELOG.md",
         ROOT / "SECURITY.md",
         ROOT / "THIRD_PARTY.md",
+        ROOT / "CONTRIBUTING.md",
         ROOT / "shapes" / "README.md"]
 
 
@@ -475,3 +477,96 @@ def test_every_corpus_fixture_the_document_names_is_in_the_corpus():
     assert not gone, (
         "docs/divergences.md names %s, and the vendored corpus has no such "
         "fixture" % gone)
+
+
+#: Prose this project publishes, read from what git tracks rather than from a
+#: glob. A glob over `*.md` also finds `.claude/RESUME.md`, `build/lib/...`
+#: and `.pytest_cache/README.md` -- none of them published, none of them the
+#: same on two machines, and the first of them a local-only file this project
+#: is careful never to treat as published. The exclusions below are somebody
+#: else's text, vendored under a licence that forbids editing it, so a phrase
+#: in them is not this project's claim to withdraw.
+VENDORED = ("src/iirds_validate/data/ontologies/", "shapes/THIRD-PARTY-NOTICES.md")
+
+
+def tracked_documents():
+    """Every `.md` git tracks, less the corpus and the vendored text."""
+    try:
+        done = subprocess.run(["git", "ls-files", "*.md"], cwd=ROOT,
+                              capture_output=True, text=True, timeout=30)
+    except OSError:                                    # pragma: no cover
+        return []
+    if done.returncode != 0:                           # pragma: no cover
+        return []
+    return sorted(ROOT / name for name in done.stdout.split()
+                  if not name.startswith("tests/corpus/")
+                  and not name.startswith(VENDORED))
+
+
+PUBLISHED = tracked_documents()
+
+#: Phrases that assert something about implementations this project has not
+#: surveyed, or about a property of its own output that nothing here measures.
+#: Each is paired with what would have to exist for it to be sayable.
+UNSURVEYED = [
+    (r"no other (tool|validator|implementation|engine)",
+     "a survey of other tools; the one implementation this project can compare "
+     "against is a catalogue, and its source is not readable from here"),
+    (r"(nobody|no one) else (holds|does|reports|checks)",
+     "the same survey, stated from the other side"),
+    (r"\bthe only (\w+ ){0,2}(validator|tool|implementation|checker)\b",
+     "a census of validators; name the set instead -- 'the tool the "
+     "Consortium's site points at' is checkable, 'the only one' is not"),
+    (r"(world'?s only|first and only|only .{0,30} in the world)",
+     "the same census, with the whole world as its scope"),
+    (r"(no|zero) false positives",
+     "a corpus that represents what users actually send, which this project "
+     "does not have; what it has is the packages it wrote itself"),
+    (r"(unrivall?ed|unmatched|best[- ]in[- ]class|state of the art)",
+     "a comparison against the field, and a definition of the axis"),
+    (r"(hard|difficult|impossible) to (replicate|catch up|reproduce elsewhere)",
+     "evidence about somebody else's cost, which is not observable from here"),
+]
+
+
+def test_the_documents_are_visible_here():
+    """Which thing failed. The list above comes from `git ls-files`, and an
+    export with no git in it yields nothing -- at which point the gate below
+    reads not one word and passes, because there was nothing to read. That is
+    the shape of a gate nobody notices has stopped running, so the empty list
+    is a failure of its own here rather than a silence there."""
+    assert PUBLISHED, ("no tracked documents are visible here, so the claims "
+                       "gate read nothing; this is the checkout, not the prose")
+
+
+def test_the_documents_claim_nothing_about_tools_they_have_not_surveyed():
+    """A sentence about every other implementation is not checkable, and this
+    file's whole argument is that an unchecked sentence in published prose is
+    worse than an absent one.
+
+    Three of these were in here. One said the only iiRDS validator in the
+    world is a web application -- in a document shipped with an iiRDS
+    validator that is not one. One said sixteen rules produced findings no
+    other tool reports, four paragraphs after saying this project cannot read
+    the reference's source. One said a reading nobody else holds, in a section
+    that opens by saying the reference has no counterpart to compare against.
+
+    All three had a narrower form that is true and says the same thing, which
+    is the point: the fix is to name the set, not to delete the sentence.
+
+    One test over every document rather than one per document, because the
+    list is read from git: parametrising over it makes an export with no git
+    in it an *empty* parameter set, which pytest reports as a collection error
+    for the whole module -- the loudest possible failure about the least
+    informative cause, taking the thirty-three other tests here with it.
+    """
+    found = []
+    for path in PUBLISHED:
+        text = prose(path)
+        for pattern, wants in UNSURVEYED:
+            for match in re.finditer(pattern, text, re.I):
+                line = text.count("\n", 0, match.start()) + 1
+                found.append("%s:%d: %r would need %s"
+                             % (path.relative_to(ROOT), line,
+                                match.group(0), wants))
+    assert found == [], "\n".join(found)

@@ -86,13 +86,14 @@ UNINSTALL_FIRST = "pip uninstall -y iirds-validate"
 
 
 def test_both_pages_give_the_same_upgrade_advice():
-    """One hazard, two surfaces, and neither may drift from the other.
+    """One hazard, three surfaces, and none may drift from the others.
 
     Upgrading in place from 0.4.2 leaves the environment with no working
     command, and `pip list` and `pip check` both call it healthy -- the files
     are gone and the records are not, so nothing pip looks at is missing. The
-    advice cannot be a rule; it is prose, on two pages, and this is what keeps
-    the two saying one thing.
+    advice cannot be a rule; it is prose, on two pages and in the release
+    body a version tag lands on, and this is what keeps the three saying one
+    thing.
     """
     surfaces = {
         "README.md": ROOT / "README.md",

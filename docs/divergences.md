@@ -43,7 +43,11 @@ follows the implementation and records the wording.
 
 The last row was the largest single error in this project's history. Sixteen
 rules were implemented from the catalogue's category label, which produced
-findings on tekom's own sample packages that no other tool reports. The
+findings on files the catalogue itself lists as passing them: all sixteen of
+M78 through M93 carry `metadata_iirds_sample_pass.rdf` under `testFiles.true`,
+and not one of them names a failing fixture at all. Whether any other tool
+reports these cannot be settled from here — the middle column above is what
+the reference *checks*, and this project cannot read the reference's source. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
 
@@ -454,7 +458,7 @@ or, for C9, until the grammar the obligation cites was read.
 | M13.1, M13.2 | every Selector needed `rdf:value` and `dcterms:conformsTo` | RangeSelector exempt | a range is addressed by its start and end selectors, which M14.1 and M14.2 check |
 | M19.4 | the identity domain had to be typed here | undescribed domains left to L1 | a reference out of the package is not a typing error |
 | M15.7b/d, M15.8/9/10 | required the class `vcard:Organization` | accepts `vcard:Organization` **or** `vcard:organization` — the vcard *property* IRI used where the class belongs — and still requires a stated `vcard:organization-name` | every handover fixture the reference ships writes the lower-case spelling; both say "organisation" and one is a misspelling of the other |
-| "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI. Conflating that with absoluteness turned a recommendation into sixty MUSTs. **The reason first given here was "absoluteness is M5's question, and M5 is RECOMMENDED", and that is only true of section 6.2.1.** Sections 6.2.2, 6.8.1 and 6.8.4 each say MUST about absoluteness for one named class; R34, R35 and R36 are those three sentences, and the family's message no longer says "absolute" |
+| "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI. Conflating that with absoluteness turned a recommendation into sixty-one MUSTs. **The reason first given here was "absoluteness is M5's question, and M5 is RECOMMENDED", and that is only true of section 6.2.1.** Sections 6.2.2, 6.8.1 and 6.8.4 each say MUST about absoluteness for one named class; R34, R35 and R36 are those three sentences, and the family's message no longer says "absolute" |
 | C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
 
 **What a row here does to a coverage claim.** "More lenient" covers three
@@ -1220,8 +1224,11 @@ exhaustive.
 
 So attribute checking is limited to event-handler attributes, where the
 prohibition is not ambiguous. The cost is real: a genuinely stray attribute
-goes unreported. The alternative cost was failing conformant packages on a
-reading nobody else holds, which is worse.
+goes unreported. The alternative cost was failing the standard's own sample
+packages on a reading those samples contradict, which is worse. Who else holds
+the strict reading is not known here, and this section opens by saying why:
+appendix B has no counterpart in the reference tool, so there is nothing to
+compare a reading of it against.
 
 ### R18 — a name referred to and typed by nobody is not an extension
 

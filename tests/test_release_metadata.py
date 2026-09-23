@@ -18,6 +18,7 @@ run. Most of the states in it were accepted by some earlier version of
 this file; the rest it already refused, and they are pinned so that they
 stay refused.
 """
+import datetime
 import re
 import subprocess
 from pathlib import Path
@@ -194,7 +195,30 @@ def problems_with(changelog: str, release: str, published=frozenset()):
             found.append("the entries are not in descending order: %s is not "
                          "older than %s" % (_name(said, older), _name(said, newer)))
 
-    dates = [rest for name, rest, _ in said if DATE.match(rest)]
+    # `DATE` is a shape and only a shape, which was the whole check for as
+    # long as this gate has existed: `2026-13-45` has four digits, a dash,
+    # two digits, a dash and two digits, and is not a date. Asked of the
+    # calendar here, before the ordering below reads them as comparable
+    # strings -- an unreadable one is dropped from that comparison rather
+    # than dragged through it, because "sits below" about a date nobody can
+    # place is a second complaint with no second cause.
+    dates = []
+    for name, rest, _ in said:
+        if not DATE.match(rest):
+            continue
+        try:
+            when = datetime.date.fromisoformat(rest)
+        except ValueError:
+            found.append("%s is headed %s, which is not a date on any "
+                         "calendar" % (name, rest))
+            continue
+        # A day of slack, deliberately: a release cut late in one timezone is
+        # dated there, and this runs wherever CI runs. More than a day ahead
+        # is not a timezone, and no release ships before it is cut.
+        if when > datetime.date.today() + datetime.timedelta(days=1):
+            found.append("%s is dated %s, which has not happened yet"
+                         % (name, rest))
+        dates.append(rest)
     for older, newer in zip(dates[1:], dates[:-1]):
         if older > newer:
             found.append("entry dated %s sits below one dated %s" % (older, newer))
@@ -347,6 +371,19 @@ BAD = {
     "the dates run backwards":
         (GOOD.replace("## 0.4.2 — 2026-08-26", "## 0.4.2 — 1999-01-01"),
          "sits below one dated"),
+    # The shape was the whole check, so a heading could carry a month and a
+    # day that do not exist and ship green. Month 13 and day 45 read as a
+    # date to a regex and to nothing else.
+    "a date no calendar has":
+        (GOOD.replace("## 0.4.2 — 2026-08-26", "## 0.4.2 — 2026-13-45"),
+         "is not a date"),
+    # A date the shape accepts and the calendar accepts and the world has not
+    # reached. Computed rather than written down, so the case cannot expire.
+    "a date that has not happened yet":
+        (GOOD.replace("## 0.4.2 — 2026-08-26",
+                      "## 0.4.2 — %s" % (datetime.date.today()
+                                         + datetime.timedelta(days=400))),
+         "has not happened"),
     "a heading this gate cannot read":
         (GOOD.replace("## 0.4.1 — 2026-08-25", "## 0.4.1 (2026-08-25)"),
          "cannot read"),
@@ -588,6 +625,64 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
         % (said, len(now - before), tag, sorted(now - before)))
 
 
+#: The files that write this release's number, and the one that is written
+#: for them. Counted from the tree rather than listed as a total, so a third
+#: compatibility package moves the count without anybody remembering to.
+def places_that_declare_the_version():
+    """`{"by hand": n, "generated": m}` -- how many times the tree writes it.
+
+    Counted, not asserted: each of these has a test of its own that says the
+    number is *right*. This one only says how many there are, because that
+    count is quoted in prose a contributor follows.
+    """
+    number = re.escape(__version__)
+    writes = re.compile(r'(?:version\s*=\s*"%s"'
+                        r'|__version__\s*=\s*"%s"'
+                        r'|iirds>=%s'
+                        r'|"_shapes_version":\s*"%s")' % ((number,) * 4))
+    by_hand = [ROOT / "pyproject.toml",
+               ROOT / "src" / "iirds_validate" / "__init__.py",
+               ROOT / "src" / "iirds" / "__init__.py"]
+    by_hand += sorted((ROOT / "shims").glob("*/pyproject.toml"))
+    generated = [ROOT / "shapes" / "MANIFEST.json"]
+
+    def count(paths):
+        return sum(len(writes.findall(p.read_text("utf-8"))) for p in paths)
+
+    return {"by hand": count(by_hand), "generated": count(generated)}
+
+
+
+def test_the_release_checklist_counts_the_places_there_are():
+    """`CONTRIBUTING.md` is the page somebody follows while cutting a
+    release, and it said "six places" while listing seven -- the two shims
+    carry the number twice each, and counting the files rather than the
+    places drops one. Nothing read it, so it had been wrong for as long as
+    the shims have had floors.
+
+    A count in prose with nothing behind it is the defect this repository
+    keeps finding in itself; this is the same shape, on the one page whose
+    whole purpose is to stop a release going out half-done.
+    """
+    places = places_that_declare_the_version()
+    total, by_hand = places["by hand"] + places["generated"], places["by hand"]
+    text = (ROOT / "CONTRIBUTING.md").read_text("utf-8")
+
+    # Whitespace-flexible throughout: this prose is hard-wrapped, and the
+    # wrap falls wherever the sentence happens to reach the margin.
+    said = re.search(r"The\s+release\s+is\s+one\s+number\s+in\s+(\w+)\s+places\."
+                     r"\s+(\w+)\s+of\s+them\s+are\s+yours\s+to\s+change", text)
+    assert said, ("CONTRIBUTING.md no longer states the count this gate "
+                  "reads; it is quoted as `one number in <word> places. "
+                  "<Word> of them are yours to change`")
+    assert WORDS.get(said.group(1).lower()) == total, \
+        "the checklist says %s places and the tree writes it in %d" \
+        % (said.group(1), total)
+    assert WORDS.get(said.group(2).lower()) == by_hand, \
+        "the checklist says %s are yours to change and %d are" \
+        % (said.group(2), by_hand)
+
+
 def current_release_notes():
     """The notes for this tree's version while no tag carries it, else None.
 
@@ -670,33 +765,80 @@ def figures_the_notes_state(package):
 
     stated("the size of the registry",
            r"the rule count goes to (\d+)", len(rules))
+    # The sentence and the measurement are the same subject now. It used to
+    # read "`iirds check` on a directory said `PASS, 194 rules checked`" and be
+    # measured with a run on the packed archive, so a figure no directory run
+    # has ever printed -- the tree before the repair printed 175 -- was blessed
+    # by a gate measuring something else. The notes say the directory reported
+    # the packed count, which is what the defect was, and this measures that.
     stated("rules checked on a packed container",
-           r"`iirds check` on a directory said `PASS,\s+(\d+)\s+rules checked`",
+           r"same package packed -- `(\d+) rules checked` on this build",
            _rules_checked(package))
 
     # Read against the text with its line wrapping flattened. These notes are
     # hard-wrapped, so a pattern written with single spaces stops matching the
-    # day a sentence is reflowed -- and a figure that stops being read is a
-    # figure nothing checks, which is the state every one of these was in.
+    # day a sentence is reflowed. An unmatched pattern is a red run, not a
+    # silent one -- `None` is not the measurement -- so this buys correctness
+    # under reflow rather than closing a hole: without it, moving a line break
+    # fails the build and the failure blames the figure instead of the wrap.
     flat = " ".join(notes.split())
 
+    def a_number(word):
+        """A figure as the notes may write it: a numeral, or a number word."""
+        return int(word) if word.isdigit() else WORDS.get(word.lower())
+
     def spelled(what, pattern, measured):
-        said = sorted({WORDS[n.lower()] for n in re.findall(pattern, flat)
-                       if n.lower() in WORDS})
+        # A word this cannot read is raised, not skipped. Filtering it would
+        # report the figure as absent, which reads as "the notes do not state
+        # this" -- the one answer that is certainly wrong when the notes state
+        # it in a word the map stops short of. `WORDS` ending at twelve while a
+        # figure said "fourteen" is exactly how this was found.
+        words = re.findall(pattern, flat)
+        unreadable = [n for n in words if a_number(n) is None]
+        assert not unreadable, (
+            "%s: the notes state it as %s, which this gate cannot read as a "
+            "number -- add the word to WORDS" % (what, ", ".join(map(repr, unreadable))))
+        said = sorted({a_number(n) for n in words})
         found[what] = (said or None, measured)
 
-    from iirds_validate import model, runner
+    from iirds_validate import runner
 
     report = runner.check(package)
+    by_id = {rule.id: rule for rule in rules}
+    unasked = report.not_applicable["unasked"]
+
+    # The subject is inside the pattern, not assumed around it. "A conformance
+    # run says it for the fourteen lint rules" and "a lint run says it for the
+    # fourteen lint rules" are different claims and only one is true, and a
+    # pattern anchored on the tail alone reads them as the same sentence.
     spelled("lint rules a conformance run does not ask",
-            r"the (\w+) lint rules it does not ask",
-            len(report.not_applicable["unasked"]))
-    spelled("lint rules marked conformance",
-            r"less the (\w+) that are marked conformance",
-            sum(1 for r in rules if r.kind == "lint" and r.conformance))
+            r"A conformance run says it for the (\w+)(?!\s+(?:hundred|thousand))"
+            r" lint rules it does not ask",
+            sum(1 for rule_id in unasked if by_id[rule_id].kind == "lint"))
+
+    # Measured against what the run actually asked, not against the registry.
+    # The sentence says these two *are* asked on a conformance run; counting
+    # them off `kind` and `conformance` restates the selector instead of
+    # checking it, and a rule that is marked and then stood down for its
+    # edition would leave the sentence false with the figure still agreeing.
+    spelled("lint rules marked conformance and asked",
+            r"less the (\w+)(?!\s+(?:hundred|thousand)) that are marked conformance",
+            sum(1 for rule in rules if rule.kind == "lint" and rule.conformance
+                and rule.id in report.ran))
+
     spelled("reasons a report can give",
-            r"reasons a report can give go from \w+ to (\w+)",
-            len(model.Report(package).not_applicable))
+            r"reasons a report can give come to (\w+)(?!\s+(?:hundred|thousand))",
+            len(report.not_applicable))
+
+    # The sentence this holds said the handover rules *were* the difference
+    # between an iiRDS/A reading and an iiRDS/H one, which was a count taken
+    # out of a sentence and generalised: twenty-six go one way and one goes the
+    # other, so "the handover rules" was true of most of the difference and
+    # false of all of it. Both directions are read, because the one that was
+    # wrong is the small one.
+    spelled("rules the A reading asks and the handover reading does not",
+            r"and (\w+)(?!\s+(?:hundred|thousand)) container rule goes the other way",
+            sum(1 for rule in rules if rule.variants and "H" not in rule.variants))
     return found
 
 

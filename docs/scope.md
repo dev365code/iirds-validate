@@ -19,8 +19,11 @@ Three properties follow, and they are the ones to defend when a change is
 proposed:
 
 - **Offline.** Not "works offline too" — offline is the reason the project
-  exists. The only iiRDS validator in the world is a web application, and the
-  industry that most needs one does not put its documentation on the internet.
+  exists. The validation tool the Consortium's own site points at runs in the
+  browser, and the industry that most needs one does not put its documentation
+  on the internet. Whether some other offline validator exists is not
+  something this project has surveyed, so that is not the claim here; the
+  claim is about the route a reader is most likely to be sent down.
 - **Nothing installed.** A `.pyz` and a Python. Not pip, not an index, not a
   virtual environment, not rights to create one.
 - **Reads the graph, never the XML tree.** RDF/XML has many legal

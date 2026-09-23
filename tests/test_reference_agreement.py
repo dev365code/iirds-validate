@@ -28,7 +28,7 @@ def ids(report):
 
 def test_a_relative_iri_is_a_recommendation_not_an_error(make_package):
     """"Must have an IRI" and "should be absolute" are different rules, and
-    conflating them made sixty MUST rules fire on packages the reference tool
+    conflating them made sixty-one MUST rules fire on packages the reference tool
     accepts.
 
     "Should be absolute" is section 6.2.1's RECOMMENDED for a `iirds:Component`

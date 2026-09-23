@@ -35,7 +35,11 @@ import json
 import os
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
+
+from rdflib import Graph
+from rdflib.compare import isomorphic
 
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = ROOT / "docs" / "what-it-catches.md"
@@ -82,7 +86,8 @@ def _build(name: str, broken: str) -> str:
     """One container, built where the page can name it by a relative path."""
     (ROOT / BUILT).mkdir(parents=True, exist_ok=True)
     where = BUILT / ("%s.iirds" % name)
-    _must(["tools/make_fixture_package.py", str(where), "--broken", broken])
+    _must(["tools/make_fixture_package.py", str(where)]
+          + ([] if broken == "none" else ["--broken", broken]))
     return str(where)
 
 
@@ -108,13 +113,15 @@ CASES = [
     ("no-metadata-rdf", "No `metadata.rdf`", "jsonld-only", "C8", 1,
      "A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not."),
     ("no-format", "A rendition with no format", "missing-format", "M11", 1,
-     "The finding names the subject and how many were found, so a package with "
-     "several renditions says which one."),
+     "The finding names the subject and how many were found. A rendition with an "
+     "IRI of its own is named by it; one written as a blank node, as here, is named "
+     "by the unit that has it, so two of those under one unit read alike."),
     ("missing-content", "Metadata that points at a file the package does not carry",
      "missing-content", "L2", 1,
-     "The graph is well-formed and every stated obligation is met. The package "
-     "simply cannot be read by anyone, because the document it describes is not "
-     "in it. That is the half of the question the standard does not ask."),
+     "The graph is well-formed and no rule but `L2` has anything to say about it. "
+     "The package simply cannot be read by anyone, because the document it "
+     "describes is not in it. That is the half of the question the upstream "
+     "catalogue has no rule for."),
 ]
 
 
@@ -180,7 +187,9 @@ def page() -> str:
     out = ["# What this catches, and what it says when it does", "",
            "Written by `tools/gen_what_it_catches.py`; every block is the output of",
            "the command above it, captured on the run that wrote this file. Build the",
-           "containers and reproduce any of it with the two commands each case names.",
+           "containers and reproduce any of it with the commands each case names: one",
+           "that builds its container and one that checks it, two of each for the pair",
+           "at the end.",
            "", "Nothing here is a claim about any other validator.", "",
            "## Where a finding comes from", "",
            "A finding carries a link to the sentence of the standard it enforces when",
@@ -198,7 +207,9 @@ def page() -> str:
         out.append("## %s" % heading)
         out.append("")
         if broken is None:
-            out.append("    $ printf 'not a zip at all' > %s" % package)
+            # `fixtures/` is not in a clone; the other builds make it themselves.
+            out.append("    $ mkdir -p %s && printf 'not a zip at all' > %s"
+                       % (BUILT, package))
         else:
             out.append("    $ python3 tools/make_fixture_package.py %s --broken %s"
                        % (package, broken))
@@ -246,8 +257,15 @@ def _same_graph():
     validator is testing the writer rather than the package, so the page says
     how far they agree and the generator is what decides how far that is.
     """
-    a = _build("description-style", "description-style")
+    a = _build("element-style", "none")
     b = _build("attribute-style", "attribute-style")
+    graphs = []
+    for where in (a, b):
+        with zipfile.ZipFile(ROOT / where) as container:
+            graphs.append(Graph().parse(data=container.read("META-INF/metadata.rdf"),
+                                        format="xml"))
+    if not isomorphic(*graphs):
+        raise Failed("the pair at the end is no longer one graph written two ways")
     for where in (a, b):
         _verdict(where, exit_code=0, names="PASS")
     reports = []
@@ -262,7 +280,7 @@ def _same_graph():
     # iirds check b` above a's report alone, on a page whose first line says
     # every block is the output of the command above it.
     shown = ["## What it does not flag, and why", "",
-             "    $ python3 tools/make_fixture_package.py %s --broken description-style" % a,
+             "    $ python3 tools/make_fixture_package.py %s" % a,
              "    $ python3 tools/make_fixture_package.py %s --broken attribute-style" % b,
              ""]
     for where in (a, b):
@@ -273,10 +291,12 @@ def _same_graph():
     return shown + [
             "Both pass, and the two reports are the same document: every key identical",
             "apart from the package's own path and digest, which is what a different",
-            "file is. One writes its properties as nested elements and the other as",
-            "attributes on the node; the graph is the same graph, so the answer is the",
-            "same answer. `--broken` names them only because that flag names every",
-            "variant the generator can produce, not because either is a defect.", ""]
+            "file is. One is written with typed elements and nested properties, the",
+            "other with the package's and the topic's literals as attributes, the",
+            "rendition as `rdf:parseType=\"Resource\"` and every type as `rdf:type`;",
+            "the graph is the same graph -- this page is not written unless it is -- so",
+            "the answer is the same answer. `--broken` is only the name of the",
+            "generator's one switch; `attribute-style` is not a defect.", ""]
 
 
 def main() -> int:

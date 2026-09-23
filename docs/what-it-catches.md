@@ -2,7 +2,9 @@
 
 Written by `tools/gen_what_it_catches.py`; every block is the output of
 the command above it, captured on the run that wrote this file. Build the
-containers and reproduce any of it with the two commands each case names.
+containers and reproduce any of it with the commands each case names: one
+that builds its container and one that checks it, two of each for the pair
+at the end.
 
 Nothing here is a claim about any other validator.
 
@@ -18,7 +20,7 @@ those nothing yet says there is no section to give.
 
 ## The container is not a container
 
-    $ printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
+    $ mkdir -p fixtures/what-it-catches && printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
     $ iirds check fixtures/what-it-catches/not-a-container.iirds
 
     not-a-container.iirds   iiRDS not declared
@@ -139,8 +141,9 @@ specification's own:
 `M11` states that obligation as: An iirds:Rendition MUST have the property
 iirds:format.
 
-The finding names the subject and how many were found, so a package with
-several renditions says which one.
+The finding names the subject and how many were found. A rendition with an IRI
+of its own is named by it; one written as a blank node, as here, is named by
+the unit that has it, so two of those under one unit read alike.
 
 ## Metadata that points at a file the package does not carry
 
@@ -164,18 +167,19 @@ Exit code 1.
 
 **This tool's own rule** (`L2`), no specification reference.
 
-The graph is well-formed and every stated obligation is met. The package
-simply cannot be read by anyone, because the document it describes is not in
-it. That is the half of the question the standard does not ask.
+The graph is well-formed and no rule but `L2` has anything to say about it.
+The package simply cannot be read by anyone, because the document it describes
+is not in it. That is the half of the question the upstream catalogue has no
+rule for.
 
 ## What it does not flag, and why
 
-    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/description-style.iirds --broken description-style
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/element-style.iirds
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
 
-    $ iirds check fixtures/what-it-catches/description-style.iirds
+    $ iirds check fixtures/what-it-catches/element-style.iirds
 
-    description-style.iirds   iiRDS 1.3
+    element-style.iirds   iiRDS 1.3
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
@@ -191,7 +195,9 @@ it. That is the half of the question the standard does not ask.
 
 Both pass, and the two reports are the same document: every key identical
 apart from the package's own path and digest, which is what a different
-file is. One writes its properties as nested elements and the other as
-attributes on the node; the graph is the same graph, so the answer is the
-same answer. `--broken` names them only because that flag names every
-variant the generator can produce, not because either is a defect.
+file is. One is written with typed elements and nested properties, the
+other with the package's and the topic's literals as attributes, the
+rendition as `rdf:parseType="Resource"` and every type as `rdf:type`;
+the graph is the same graph -- this page is not written unless it is -- so
+the answer is the same answer. `--broken` is only the name of the
+generator's one switch; `attribute-style` is not a defect.

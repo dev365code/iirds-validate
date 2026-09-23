@@ -541,12 +541,10 @@ def s11_container_packages_disagree(ctx):
         profiles = _named_profiles(ctx.graph, node)
         if profiles:
             named.add(profiles[0])
-    # Only a dropped profile is reported here. A disagreement about the
-    # edition is quieter rather than harmless: the rank takes the newest, so
-    # the elected edition is the highest any of them declared, and it asks
-    # everything a later edition added -- but M16.1 and M16.2, which only the
-    # editions before 1.3 ask, go unasked. A profile the election did not
-    # choose is different --
+    # Only a dropped profile is a loss. A disagreement about the edition
+    # cannot be one: the rank takes the newest, so the elected edition is the
+    # highest any of them declared and no rule an older declaration would have
+    # brought is missing. A profile the election did not choose is different --
     # every rule gated to it stands down, and the report names the winner as
     # though nobody had said otherwise.
     dropped = named - {ctx.variant}

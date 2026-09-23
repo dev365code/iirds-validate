@@ -119,14 +119,41 @@ CASES = [
 
 
 def spec_of(rule_id: str):
-    """The sentence the rule enforces and the link that lands on it, or None."""
+    """What the rule says, the standard's own words, and the link, or None.
+
+    The three are kept apart on purpose. A rule's `title` is this project's
+    statement of the obligation and is not always the specification's sentence
+    -- `C8`'s stops before "containing all metadata in RDF 1.1 XML syntax",
+    `M11`'s drops "also" -- so quoting a title under "the standard says so"
+    would attribute near-quotes to the standard. The quotable text is the
+    fragment the link itself highlights, because that string and the link are
+    the same string: if the quotation were wrong the link would miss.
+    """
     sys.path.insert(0, str(ROOT / "src"))
     from iirds_validate.registry import all_rules
 
     rule = {r.id: r for r in all_rules()}.get(rule_id)
     if rule is None:
         raise Failed("%s is not a rule in this build" % rule_id)
-    return rule.title, rule.spec
+    return rule.title, _quoted(rule.spec), rule.spec
+
+
+def _quoted(spec):
+    """The standard's words, out of the link's own text fragment.
+
+    `#:~:text=A` highlights A; `#:~:text=A,B` highlights from A to B, which is
+    rendered with an ellipsis rather than the comma that separates them, since
+    the comma is syntax and not something the specification wrote.
+    """
+    import urllib.parse
+
+    if not spec or ":~:text=" not in spec:
+        return None
+    fragment = urllib.parse.unquote(spec.split(":~:text=")[-1])
+    parts = [part.strip() for part in fragment.split(",") if part.strip()]
+    if len(parts) == 2:
+        return "%s ... %s" % (parts[0], parts[1])
+    return fragment.strip()
 
 
 def _wrapped(prose: str):
@@ -153,7 +180,7 @@ def page() -> str:
     for slug, heading, broken, rule_id, exit_code, note in CASES:
         package = _not_a_container() if broken is None else _build(slug, broken)
         said = _verdict(package, exit_code=exit_code, names=rule_id)
-        title, spec = spec_of(rule_id)
+        title, quotable, spec = spec_of(rule_id)
         out.append("## %s" % heading)
         out.append("")
         if broken is None:
@@ -168,9 +195,16 @@ def page() -> str:
         out.append("Exit code %d." % exit_code)
         out.append("")
         if spec:
-            out.append("**The standard says so.** \"%s\"" % title.rstrip("."))
+            out.extend(_wrapped("**The standard says so.** The link below lands "
+                                "on these words, which are the specification's own:"))
+            out.append("")
+            out.extend(_wrapped("> %s" % quotable) if quotable
+                       else ["> (the link carries no text fragment)"])
             out.append("")
             out.append("<%s>" % spec)
+            out.append("")
+            out.extend(_wrapped("`%s` states that obligation as: %s"
+                                % (rule_id, title)))
         else:
             out.append("**This tool's own rule** (`%s`), no specification reference."
                        % rule_id)

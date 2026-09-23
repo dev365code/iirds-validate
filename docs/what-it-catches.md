@@ -60,9 +60,16 @@ rather than leaving a reader to assume they passed.
 
 Exit code 1.
 
-**The standard says so.** "The mimetype file MUST contain the following ASCII-encoded text in a single line, without any line delimiters such as CR or LF: application/iirds+zip"
+**The standard says so.** The link below lands on these words, which are the
+specification's own:
+
+> It MUST contain ... application/iirds+zip
 
 <https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=It%20MUST%20contain,application/iirds%2Bzip>
+
+`C5` states that obligation as: The mimetype file MUST contain the following
+ASCII-encoded text in a single line, without any line delimiters such as CR or
+LF: application/iirds+zip.
 
 The finding prints the bytes it read, because an editor shows nothing wrong
 with a file that ends in a newline.
@@ -85,9 +92,16 @@ with a file that ends in a newline.
 
 Exit code 1.
 
-**The standard says so.** "The META-INF directory MUST contain the file metadata.rdf"
+**The standard says so.** The link below lands on these words, which are the
+specification's own:
+
+> The META-INF directory MUST contain the file metadata.rdf containing all
+metadata in RDF 1.1 XML syntax (see [rdf-syntax-grammar]).
 
 <https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).>
+
+`C8` states that obligation as: The META-INF directory MUST contain the file
+metadata.rdf.
 
 A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
 
@@ -111,9 +125,15 @@ A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
 
 Exit code 1.
 
-**The standard says so.** "An iirds:Rendition MUST have the property iirds:format"
+**The standard says so.** The link below lands on these words, which are the
+specification's own:
+
+> An iirds:Rendition MUST also have the property iirds:format.
 
 <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=An%20iirds%3ARendition%20MUST%20also%20have%20the%20property%20iirds%3Aformat.>
+
+`M11` states that obligation as: An iirds:Rendition MUST have the property
+iirds:format.
 
 The finding names the subject and how many were found, so a package with
 several renditions says which one.

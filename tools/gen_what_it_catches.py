@@ -6,8 +6,8 @@
 
 A page of examples is the most quotable thing a project publishes and the
 easiest to leave behind: the output was real on the day it was pasted, and
-nothing reads it afterwards. The release notes in this repository spent six
-passes on exactly that failure, so this page is not written by hand. Every
+nothing reads it afterwards. This repository has had to learn that on its own
+release notes, so this page is not written by hand. Every
 block below `$` is a command run from the repository root, and everything under
 it is that command's own output, captured on this run.
 

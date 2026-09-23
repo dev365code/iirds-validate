@@ -92,8 +92,8 @@ generated:
 # The examples page. Every block under a `$$` is that command's own output, and
 # a case whose verdict has moved -- a rule renumbered, an error become a pass --
 # stops the build instead of publishing a heading that promises an error above a
-# `PASS`. The release notes took six passes to learn that prose nothing reads
-# goes wrong quietly; this page is generated so it cannot.
+# `PASS`. Prose that nothing reads goes wrong quietly, which this project has
+# learned on its own release notes; this page is generated so it cannot.
 	$(PYTHON) tools/gen_what_it_catches.py --check
 
 # The vendored corpus is the only external check this project has, and it is

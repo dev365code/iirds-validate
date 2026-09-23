@@ -6,14 +6,15 @@ containers and reproduce any of it with the two commands each case names.
 
 Nothing here is a claim about any other validator.
 
-## Two kinds of finding, and the difference matters
+## Where a finding comes from
 
-A finding either quotes the standard or it does not, and the report says
-which. Where the standard states an obligation, the rule carries the
-sentence it is enforcing and a link that lands on it. Where the standard is
-silent but a package will still be unusable, the rule is this tool's own
-judgement and carries no specification reference -- those are the `L*`
-interoperability rules and the `S*` rules about the run itself.
+A finding carries a link to the sentence of the standard it enforces when
+its rule has one, and the case below it quotes the words the link lands on.
+Some rules claim an obligation of the standard without a link to its
+sentence; a finding does not carry that claim, and `iirds rules <id> -v`
+shows it. Some rules have neither -- this project's interoperability and
+run rules among them, and a few from the upstream catalogue -- and for
+those nothing yet says there is no section to give.
 
 ## The container is not a container
 
@@ -171,9 +172,18 @@ it. That is the half of the question the standard does not ask.
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/description-style.iirds --broken description-style
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
-    $ iirds check fixtures/what-it-catches/description-style.iirds && iirds check fixtures/what-it-catches/attribute-style.iirds
+
+    $ iirds check fixtures/what-it-catches/description-style.iirds
 
     description-style.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      PASS  0 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+    $ iirds check fixtures/what-it-catches/attribute-style.iirds
+
+    attribute-style.iirds   iiRDS 1.3
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational

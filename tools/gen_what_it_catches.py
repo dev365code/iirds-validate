@@ -176,13 +176,14 @@ def page() -> str:
            "the command above it, captured on the run that wrote this file. Build the",
            "containers and reproduce any of it with the two commands each case names.",
            "", "Nothing here is a claim about any other validator.", "",
-           "## Two kinds of finding, and the difference matters", "",
-           "A finding either quotes the standard or it does not, and the report says",
-           "which. Where the standard states an obligation, the rule carries the",
-           "sentence it is enforcing and a link that lands on it. Where the standard is",
-           "silent but a package will still be unusable, the rule is this tool's own",
-           "judgement and carries no specification reference -- those are the `L*`",
-           "interoperability rules and the `S*` rules about the run itself.", ""]
+           "## Where a finding comes from", "",
+           "A finding carries a link to the sentence of the standard it enforces when",
+           "its rule has one, and the case below it quotes the words the link lands on.",
+           "Some rules claim an obligation of the standard without a link to its",
+           "sentence; a finding does not carry that claim, and `iirds rules <id> -v`",
+           "shows it. Some rules have neither -- this project's interoperability and",
+           "run rules among them, and a few from the upstream catalogue -- and for",
+           "those nothing yet says there is no section to give.", ""]
 
     for slug, heading, broken, rule_id, exit_code, note in CASES:
         package = _not_a_container() if broken is None else _build(slug, broken)
@@ -252,13 +253,19 @@ def _same_graph():
         reports.append(json.dumps(document, sort_keys=True))
     if reports[0] != reports[1]:
         raise Failed("the two serialisations no longer report the same document")
-    said = _run(["-m", "iirds_validate", "check", a])[1]
-    return ["## What it does not flag, and why", "",
-            "    $ python3 tools/make_fixture_package.py %s --broken description-style" % a,
-            "    $ python3 tools/make_fixture_package.py %s --broken attribute-style" % b,
-            "    $ iirds check %s && iirds check %s" % (a, b),
-            ""] + ["    " + line if line else "" for line in said.splitlines()] + [
-            "",
+    # Each report under its own command. This block showed `iirds check a &&
+    # iirds check b` above a's report alone, on a page whose first line says
+    # every block is the output of the command above it.
+    shown = ["## What it does not flag, and why", "",
+             "    $ python3 tools/make_fixture_package.py %s --broken description-style" % a,
+             "    $ python3 tools/make_fixture_package.py %s --broken attribute-style" % b,
+             ""]
+    for where in (a, b):
+        said = _run(["-m", "iirds_validate", "check", where])[1]
+        shown += ["    $ iirds check %s" % where, ""]
+        shown += ["    " + line if line else "" for line in said.splitlines()]
+        shown.append("")
+    return shown + [
             "Both pass, and the two reports are the same document: every key identical",
             "apart from the package's own path and digest, which is what a different",
             "file is. One writes its properties as nested elements and the other as",

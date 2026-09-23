@@ -20,7 +20,7 @@
 $ pip install iirds
 ```
 
-**Three parts, every time: what is wrong → the evidence as read from your file → how to fix it.** A rule without a prescription does not ship. The old distribution name `iirds-validate` and the short command `iirdsv` remain as aliases of the same package.
+**Three parts: what is wrong → the evidence as read from your file, where the fault leaves any → how to fix it.** A rule without a prescription does not ship. The old distribution name `iirds-validate` and the short command `iirdsv` remain as aliases of the same package.
 
 > [!TIP]
 > No install for a first try: `uvx iirds check package.iirds` runs it in a throwaway environment.
@@ -87,7 +87,7 @@ $ echo $?
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
 | a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
-Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names none: the interoperability rules are this project's own, the system rules are about the run rather than the package, and `iirds rules S1 -v` prints a remedy with no section beside it.
+Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names none -- most interoperability and system rules are of that kind, being this project's own or about the run rather than the package -- and `iirds rules S1 -v` prints a remedy with no section beside it.
 
 **It asks whether the package will work, not only whether it conforms.** Sixteen
 interoperability rules, most with no counterpart in the specification, because a
@@ -321,8 +321,8 @@ changelog is the file to read before upgrading, whichever number moved.
 **A minor release may add a verdict or move one, and the changelog names every
 package shape whose verdict moved**, with the reading behind it.
 
-**A security fix goes out ahead of anything else in flight**, and carries an
-advisory on this repository's Security tab naming the versions it reaches and
+**A security fix goes out ahead of anything else in flight**, and from 0.6.1 on
+carries an advisory on this repository's Security tab naming the versions it reaches and
 the release that fixes it. `SECURITY.md` lists them.
 
 **Pin what you validated against, and pin `iirds`.** `iirds-validate` and

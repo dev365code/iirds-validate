@@ -83,7 +83,7 @@ $ echo $?
 |---|---|
 | `mimetype` containing `application/zip` | `ERROR C5` — must be exactly `application/iirds+zip`, and the fix names the editors that break it |
 | metadata with no `iirds:Package` root | `ERROR M3` — zero leaves the package unidentified, two leave it ambiguous |
-| a Package that identifies no product variant while every Document looks fine | `ERROR R13` — the Package itself must say what it documents |
+| an iiRDS/H package (iiRDS 1.3) whose Package identifies no product variant while every Document looks fine | `ERROR R13` — under iiRDS/H the Package itself must say what it documents |
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
 | a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
@@ -100,17 +100,17 @@ conformant package can still be undeliverable:
 |---|---|
 | L1 | a relation points at an IRI the package never describes |
 | L2 | `iirds:source` names a file that was not packed |
-| L3 | a directory node unreachable from any root — invisible in every viewer |
+| L3 | a directory node unreachable from any root — invisible to a viewer that walks the tree from its roots |
 | L4 | a cycle in the navigation structure |
-| L5 | a proprietary class not linked to any iiRDS class |
+| L5 | a proprietary class with no `rdfs:subClassOf` or `owl:equivalentClass` of its own into iiRDS (a link through another proprietary class is not followed) |
 | L6 | a metadata value with no label a consumer could display or match |
 | L7 | an information unit with no title |
 | L8 | references out to vocabularies an offline consumer cannot resolve |
 | L9 | the RDF/XML and JSON-LD metadata describe different graphs |
 | L10 | an abstract iiRDS class used to type an instance directly |
-| L11 | content named `.xhtml` but declared as another media type, so nothing checked it |
-| L12 | two entries differing only in case, so one is lost when the package is unpacked |
-| L13 | a name in the iiRDS namespace that the standard does not define, with the term that was probably meant |
+| L11 | content named `.xhtml` but declared as another media type, so no content rule checked it |
+| L12 | two entries differing only in case, so one is lost when the package is unpacked onto a case-insensitive filesystem (Windows, and macOS by default) |
+| L13 | a name in the iiRDS namespace that the standard does not define, and the term that was probably meant when one defined name is clearly nearest |
 | L14 | a namespace one character from an iiRDS namespace, so that every name under it resolves to nothing |
 | L15 | a name from a later edition of iiRDS than the package declares, so a consumer reading it as declared has no definition for it |
 | L16 | a relation carrying text where a reference belongs, so the relation exists and its target does not |
@@ -148,9 +148,9 @@ flowchart LR
 | `iirds check` | a person at a terminal | colour, evidence, prescriptions |
 | `iirds serve` | non-developers | a local drop page, loopback only |
 | `iirds check -f json` | CI and pipelines | machine-readable findings, exit codes |
-| `iirds diff` | anyone with a report they kept | what changed since it, and what moved underneath the comparison |
-| `import iirds` | Python programs | reader + writer as a library |
-| `iirds.pyz` | locked-down machines | one file, no install, byte-identical for a commit and a set of dependency versions — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
+| `iirds diff` | anyone who kept a machine-readable report (`-f json`) from 0.7.1 or later | what changed since it, and what moved underneath the comparison |
+| `import iirds, iirds_validate` | Python programs | a reader and writer, and the judge as a function |
+| `iirds.pyz` | locked-down machines | one file, no install, byte-identical for a commit, a set of dependency versions and a `SOURCE_DATE_EPOCH` (a fixed date when unset) — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
 
 ## Honest coverage
 
@@ -189,12 +189,16 @@ re-measured on every release.
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
 - **Every finding says what to do about it.** All 236 rules carry one imperative
-  sentence naming the change, and a test refuses a rule that does not.
-- **Every rule has been watched fire.** The suite records which rule ids actually
+  sentence naming the change. A test refuses a rule whose remedy is missing, shorter
+  than a sentence, or opens by restating the requirement, and checks the imperative
+  shape itself for a few named rules.
+- **Every rule that can fire has been watched fire.** The suite records which rule ids actually
   produce a finding, and 235 of the 236 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 79 rules this project invented have no second
-  implementation to be compared against; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
+- **What is not established.** The 79 rules this project invented have no
+  implementation by anyone else to be compared against. The SHACL shapes that encode
+  some of them are this project's own second encoding, checked against the Python
+  rule by rule, which catches a slip in translation but cannot confirm the reading; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
   records where this project reads the specification differently, with reasons.
 
 
@@ -225,8 +229,8 @@ timeline
 
 ## When iirds is not the tool
 
-- **Authoring or fixing content** — iirds judges packages; it does not create them (though every finding tells you the fix).
-- **Certification** — no tool can declare legal conformance. The declaration stays yours.
+- **Authoring or fixing content** — iirds judges packages, and can put content and metadata you already have into one (`iirds pack`, or the `iirds` library's writer); it does not author or fix them (though every finding tells you the fix).
+- **Certification** — a clean run is not a declaration of conformance. The declaration stays yours.
 - **Neighbouring standards** — for VDI 2770 containers or AAS submodels, use the sibling judges built the same way: [vdi2770-validate](https://github.com/dev365code/vdi2770-validate), [aas-submodel-validate](https://github.com/dev365code/aas-submodel-validate).
 
 ## Using this validator in your product
@@ -251,12 +255,14 @@ on a package that sits on that line. Those changes are in
 that moves an exit code says so in those words. If you gate a build on the exit
 code, read that file before upgrading. That much is discipline, not a gate.
 
-**A command-line usage error exits `64`, not `2`** — breaking, and said here
+**A command line the argument parser rejects exits `64`, not `2`** — breaking, and said here
 because the exit codes are a stable surface. A mistyped option and an input
 the run could not read both exited `2`, so a build that treats `2` as "this
 package could not be judged" was catching its own broken command line and
 reporting it as a package problem. `64` is the conventional value for a usage
 error (`EX_USAGE`); `2` keeps its present meaning and nothing else moves. A
+value the parser accepts and the command then refuses is not a usage error:
+`iirds serve --host 0.0.0.0` and `iirds rules NOSUCH` exit `2`. A
 mistyped *verb* typed on its own is not one of these: `iirds <path>` is
 shorthand for `iirds all <path>`, so the first word is read as a path and a
 misspelt one exits `2` -- `iirds chekc pkg.iirds` exits `2`, naming `chekc` as
@@ -282,7 +288,7 @@ written:
 | `iirds check` exits `0` when the package drew no error (with `-W`, a warning is one) | `iirds check fixtures/good.iirds; echo $?` | `0` |
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
-| `64` when the command line was the problem: an option that is not one, a missing argument, a value outside the choices | `iirds check --iirds-version 9.9 fixtures/good.iirds; echo $?` | `64` |
+| `64` when the argument parser rejected the command line: an option that is not one, a missing argument, a value outside a fixed list of choices (a value it accepts and the command then refuses, such as `serve --host 0.0.0.0`, is `2`) | `iirds check --iirds-version 9.9 fixtures/good.iirds; echo $?` | `64` |
 | Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 194 run and 42 excused, no overlap, together the whole registry of 236; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
 | The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
@@ -376,4 +382,4 @@ descriptively to name the standard this tool validates against.
 
 ---
 
-<sub>Numbers above are re-measured on every release · findings are judgements about files, never about people</sub>
+<sub>Rule, shape and coverage counts above are re-measured on every build · findings are judgements about files, never about people</sub>

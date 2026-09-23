@@ -148,6 +148,42 @@ def test_the_readme_headline_figures_are_the_counts():
         assert phrase in readme, "README.md no longer says %r" % phrase
 
 
+
+def test_the_rest_of_the_at_a_glance_figures_are_the_counts():
+    """The "At a glance" line ends by saying every number in its section is
+    read by a test that fails the build when it goes stale. The rule and
+    shape counts were. The editions, the profiles, the dependency count and
+    the system fractions were not, and a README with each of them changed
+    passed the suite."""
+    import pathlib
+    import re
+
+    import build_zipapp
+    from iirds_validate.model import VARIANTS, VERSIONS
+
+    words = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+    readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
+    flat = " ".join(re.sub(r"(?m)^>[ \t]?", "", readme).split())  # the line is a blockquote
+    declared = [re.split(r"[<>=!~;\[ ]", spec, maxsplit=1)[0] for spec in build_zipapp.dependencies()]
+    # The .pyz stages every name `dependencies()` returns (test_pack holds
+    # that), which is what leaves nothing for it to install.
+    for phrase in ("across %s editions and %s profiles" % (words[len(VERSIONS)], words[len(VARIANTS)]),
+                   "%s pure-Python dependency (%s), zero for the single-file `.pyz`"
+                   % (words[len(declared)], ", ".join(declared))):
+        assert phrase in flat, "README.md no longer says %r" % phrase
+
+    cov = coverage()
+    for kind, row in (("container", "container (C\\*)"), ("schema", "schema (M\\*)"),
+                      ("system", "system (S\\*)"), ("content", "content (B\\*)"),
+                      ("lint", "interoperability (L\\*)")):
+        total, implemented = cov[kind]["total"], cov[kind]["implemented"]
+        console = "%d/%d" % (implemented, total) if total else "-"
+        table = "%d / %d" % (implemented, total) if total else "\u2014"
+        assert re.search(r"^%s\s+%s\s" % (kind, re.escape(console)), readme, re.M), \
+            "the console block's fraction for %s is not %s" % (kind, console)
+        assert "| %s | %s |" % (row, table) in readme, \
+            "the kind table's fraction for %s is not %s" % (kind, table)
+
 def test_the_registry_knows_every_rule_without_the_runner_being_imported_first():
     """Registration used to be a side effect of importing the package, which
     imported the runner, which imported every rule module. Seven tools and

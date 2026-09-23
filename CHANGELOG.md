@@ -4,6 +4,15 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.7.2 — unreleased
+
+**A page of what this catches, generated from what the commands print.**
+`docs/what-it-catches.md` shows each kind of defect as the command that
+builds a package with it, the command that checks that package, and the
+report that came back -- captured on the run that wrote the page, so a case
+whose verdict moves stops the build rather than going on to show an error
+above a `PASS`.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

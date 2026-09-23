@@ -51,6 +51,14 @@ RELEASE = re.compile(r"^(?P<numbers>[0-9]+(?:\.[0-9]+)*)"
 
 _STAGE = {"a": 0, "b": 1, "rc": 2}
 
+#: These notes spell small numbers out, so a gate that only reads digits reads
+#: none of them. Dropping a spelled figure is therefore invisible twice over:
+#: to the gate, and to the reader who sees a sentence that still parses. That
+#: is how "two hundred and four of the rest" became "the rest of them".
+WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+         "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
+
 
 def release_key(release: str):
     """A release as something sortable, or None where it is not a release.
@@ -540,10 +548,7 @@ def test_the_release_notes_count_the_rules_the_release_actually_adds():
     stated = re.search(r"^(\w+) new rules", current, re.M)
     if stated is None:
         pytest.skip("the current notes do not count new rules")
-    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-             "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
-             "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
-    said = words.get(stated.group(1).lower())
+    said = WORDS.get(stated.group(1).lower())
     assert said is not None, "not a number this test can read: %r" % stated.group(1)
 
     # The whole file here, not the current section: the release before this
@@ -668,6 +673,30 @@ def figures_the_notes_state(package):
     stated("rules checked on a packed container",
            r"`iirds check` on a directory said `PASS,\s+(\d+)\s+rules checked`",
            _rules_checked(package))
+
+    # Read against the text with its line wrapping flattened. These notes are
+    # hard-wrapped, so a pattern written with single spaces stops matching the
+    # day a sentence is reflowed -- and a figure that stops being read is a
+    # figure nothing checks, which is the state every one of these was in.
+    flat = " ".join(notes.split())
+
+    def spelled(what, pattern, measured):
+        said = sorted({WORDS[n.lower()] for n in re.findall(pattern, flat)
+                       if n.lower() in WORDS})
+        found[what] = (said or None, measured)
+
+    from iirds_validate import model, runner
+
+    report = runner.check(package)
+    spelled("lint rules a conformance run does not ask",
+            r"the (\w+) lint rules it does not ask",
+            len(report.not_applicable["unasked"]))
+    spelled("lint rules marked conformance",
+            r"less the (\w+) that are marked conformance",
+            sum(1 for r in rules if r.kind == "lint" and r.conformance))
+    spelled("reasons a report can give",
+            r"reasons a report can give go from \w+ to (\w+)",
+            len(model.Report(package).not_applicable))
     return found
 
 

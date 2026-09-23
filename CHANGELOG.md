@@ -350,15 +350,23 @@ something it never touched, so the version says the two are not comparable
 rather than leaving a reader to find out. Re-validating the package produces a current report; nothing else is
 needed and nothing is lost.
 
-The report also says why every rule it did not answer went unanswered,
-whatever command was asked of it. `iirds check` used to leave fourteen lint
-rules unmentioned -- the interoperability rules less the two that are marked
-conformance and so are asked on a conformance run -- and `iirds lint` every
-rule it does not ask for, and a container that would not open named one rule
+The machine-readable report also says why every rule it did not answer went
+unanswered, whatever command was asked of it. A conformance run says it for
+the fourteen lint rules it does not ask -- the interoperability rules less the
+two that are marked conformance, which it does ask -- a lint run for every
+rule it does not ask, and a container that would not open for every rule it
+never put. Before this release a container that would not open named one rule
 and was silent about the rest.
-Two reasons are new: a kind this command never put, and a rule never put
-because the container would not open. The printed line is unchanged — rules
-nobody asked for are not counted among the rules that did not apply.
+
+The reasons a report can give go from three to seven. Four of the names are
+new -- a rule suspended for a fragment, a rule a directory cannot answer, a
+rule that raised, and a rule never put because the container would not open --
+and the one that had covered a single rule now covers every rule a command
+does not ask. Rules nobody asked for are still not counted among the rules
+that did not apply, so the printed line does not grow by them; what it gains
+is the reasons it can now name. A lint run no longer shows an unasked rule
+under the label for a different profile, and a container that would not open
+says how many rules it never put, where it used to say none.
 
 **`--fragment` gave a different report on every run.** The rules a snippet
 cannot satisfy were written into the report in the order a set produced them,
@@ -650,7 +658,7 @@ presented as checked and clean.
 
 The runner said so in a note all along, in prose no test read and no consumer of
 the JSON report could act on. They are out of the checked count now and named
-under a third `notApplicable` reason, `unpacked`; the note is written from the
+under a `notApplicable` reason of their own, `unpacked`; the note is written from the
 same list, so the sentence and the report cannot disagree. On an unpacked
 container the count moves from 194 to 185 and the nine appear where a reader
 and a machine both look.

@@ -14,14 +14,22 @@ What it holds:
   6. the detail page docs/what-it-catches.md has one section per axis, in the drawn order, and each
      section names that axis's checklist items.
   7. the detail page and the README paragraph under the picture use no comparison words.
+  8. evidence paths are posix on every platform (Windows would otherwise commit backslashes and let
+     "..\\" past the escape check), and the data gates refuse what a reader could not verify: a count
+     the evidence does not say, a 1.0 number the sentence does not say, a one-token quote, the
+     picture's own files as evidence, a comparative aimed at someone else.
 
 Per-repo settings: PACKAGE (import name) and, if the repo keeps the generator elsewhere, GENERATOR.
 """
 import hashlib
 import importlib
+import json
+import ntpath
 import pathlib
 import re
 import sys
+
+import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PACKAGE = "iirds_validate"                      # per repo
@@ -123,3 +131,35 @@ def test_the_prose_around_the_picture_compares_with_nobody():
     assert block, "README lacks the '## Where it stands' section"
     m = gen.FORBIDDEN_PROSE.search(block.group(1))
     assert not m, f"README 'Where it stands': {m.group(0)!r} turns a self-description into a comparison"
+
+
+def test_evidence_paths_are_posix_even_on_windows(monkeypatch):
+    gen = _gen()
+    monkeypatch.setattr(gen.os, "path", ntpath)          # what the generator sees on Windows
+    assert gen._evidence("t", {"file": "docs/./scope.md", "says": "eight chars"})["file"] == "docs/scope.md"
+    for escape in ("docs/../../etc/passwd", "..\\etc\\passwd", "/etc/passwd", "C:/etc/passwd"):
+        with pytest.raises(SystemExit):
+            gen._evidence("t", {"file": escape, "says": "eight chars"})
+
+
+def _refused(tmp_path, mutate):
+    data = json.loads(DATA.read_text(encoding="utf-8"))
+    mutate(data)
+    path = tmp_path / "capabilities.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        _gen().load(str(path))
+
+
+def test_the_data_gates_refuse_what_a_reader_could_not_verify(tmp_path):
+    axes = json.loads(DATA.read_text(encoding="utf-8"))["axes"]
+    counts = [i for i, ax in enumerate(axes) if "items" not in ax]
+    if counts:
+        i = counts[0]
+        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("now", d["axes"][i]["now"] + 1))
+        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("target", d["axes"][i]["target"] + 1))
+    done = next((i, j) for i, ax in enumerate(axes) for j, it in enumerate(ax.get("items", [])) if it["done"])
+    i, j = done
+    _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("says", "ok"))
+    _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("file", "docs/capabilities.json"))
+    _refused(tmp_path, lambda d: d["axes"][0].__setitem__("now_text", "stricter than any other checker"))

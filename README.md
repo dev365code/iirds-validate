@@ -8,7 +8,7 @@
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
 
-[Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Five doors](#five-doors-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
+[Ten seconds](#ten-seconds) · [What it catches](#what-it-catches) · [The local web door](#the-local-web-door) · [Where it sits](#where-it-sits) · [Every door](#every-door-one-judgement) · [Honest coverage](#honest-coverage) · [Roadmap](#roadmap) · [In your product](#using-this-validator-in-your-product)
 
 </div>
 
@@ -87,14 +87,14 @@ $ echo $?
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
 | a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
-Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
+Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names none: the interoperability rules are this project's own, the system rules are about the run rather than the package, and `iirds rules S1 -v` prints a remedy with no section beside it.
 
 **It asks whether the package will work, not only whether it conforms.** Sixteen
 interoperability rules, most with no counterpart in the specification, because a
 conformant package can still be undeliverable:
 
 <details>
-<summary>The fifteen, briefly</summary>
+<summary>One line each</summary>
 
 | | |
 |---|---|
@@ -120,7 +120,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=81e6af11" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion 2, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisories, mutation-tested; Upstream: pinned, checked weekly, a move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=e0b13a02" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion 2, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisories, mutation-tested; Upstream: pinned, checked weekly, a move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, measured on the code this page describes, against the conditions it has set for 1.0. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json), and every item it marks done names a file in this repository that says so; the cases behind each axis are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -149,7 +149,7 @@ flowchart LR
 
 **The referee between producer and receiver.** Same file → same verdict, byte for byte — no uploads, no telemetry, no model in the judgement loop.
 
-## Five doors, one judgement
+## Every door, one judgement
 
 | Door | For | What you get |
 |---|---|---|
@@ -276,7 +276,11 @@ record on every build, and a rule that quietly stops firing stops the build.
 
 What has held, and how to see it for yourself. The table below is written by
 `tools/gen_stable_section.py` from what those commands print, because a number
-typed into prose goes stale on the day the thing it counts moves:
+typed into prose goes stale on the day the thing it counts moves. The two
+packages it names are built rather than shipped -- `make fixtures/good.iirds
+fixtures/bad.iirds`, or `python tools/make_fixture_package.py` directly -- so
+a fresh clone makes them once and then the commands below are runnable as
+written:
 
 <!-- what-has-held: written by tools/gen_stable_section.py -->
 
@@ -341,7 +345,7 @@ asks for at least 220 of 280.
 
 Before it calls a release 1.0 this project asks of itself, on the six things
 the picture under *Where it stands* draws -- each a condition on top of what is
-already there: **Coverage** at least 220 of 280 covered · **Explanation** + a section for every rule, and the line · **Report contract** + a field-by-field schema page · **Entrances** + GitHub Action, browser · **Input safety** + lossless declared encodings · **Upstream** met — a pin move has shipped.
+already there: **Coverage** at least 220 of 280 covered · **Explanation** + every rule says its section or none, and the line · **Report contract** + a field-by-field schema page · **Entrances** + GitHub Action, browser · **Input safety** + lossless declared encodings · **Upstream** met — a pin move has shipped.
 
 ## Reading and writing packages from Python
 

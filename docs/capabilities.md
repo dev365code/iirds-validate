@@ -1,7 +1,7 @@
 | Axis | Now | 1.0 condition |
 |---|---|---|
 | Coverage | 172 of 280 obligations covered | at least 220 of 280 covered |
-| Explanation | what, evidence, remedy | + a section for every rule, and the line |
+| Explanation | what, evidence, remedy | + every rule says its section or none, and the line |
 | Report contract | schemaVersion 2, golden, exit codes | + a field-by-field schema page |
 | Entrances | command line, library, single file | + GitHub Action, browser |
 | Input safety | read budgets, advisories, mutation-tested | + lossless declared encodings |
@@ -11,12 +11,12 @@
 - what is wrong, in one sentence — done (`README.md`: "what is wrong")
 - the evidence as read from the file — done (`README.md`: "the evidence as read from your file")
 - a remedy, for every rule — done (`README.md`: "A rule without a prescription does not ship")
-- the section of the specification each rule enforces — not yet
+- every rule names its section, or says it has none — not yet
 - the line in the file — not yet
 
 **Report contract** — 3 of 4:
 - schemaVersion in every report — done (`docs/golden-report.json`: ""schemaVersion": 2")
-- a golden report held by a test — done (`tools/golden_report.py`: "--check")
+- a golden report held by a test — done (`.github/workflows/ci.yml`: "the stored report is the one this tree produces")
 - exit codes 0, 1, 2 and 64 under test — done (`README.md`: "`64` when the command line was the problem")
 - a field-by-field schema page — not yet
 
@@ -29,7 +29,7 @@
 
 **Input safety** — 3 of 4:
 - read budgets, per file and per run — done (`SECURITY.md`: "Every limit in the table above is a limit on")
-- a security fix ships with an advisory — done (`SECURITY.md`: "A security fix that shipped in a release has a GitHub security advisory")
+- from 0.6.1, a security fix ships with an advisory — done (`SECURITY.md`: "a security fix that ships in a release has a GitHub security advisory")
 - tests verified against their own mutations — done (`README.md`: "verified against their own mutations")
 - declared encodings read without loss — not yet
 

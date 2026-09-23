@@ -29,8 +29,11 @@ Data file (public text only):
 }
 An axis is either a count (now/target) or a checklist (items); never both. Evidence is a file in
 this repository plus the words that file says; `--check` and the test read the file and look for the
-words, so a done item cannot point at a file that does not say it. Words that would turn a
-self-description into a comparison, dates, and text too wide for the card are refused. Output is
+words, so a done item cannot point at a file that does not say it. The quote is at least eight
+characters, never the picture's own files, and for a count the `now` number must be inside one of
+the quotes and the `target` number inside `target_text`, so the polygon cannot move without the words
+moving with it. Words that would turn a self-description into a comparison (including comparatives
+such as "stricter than any other"), dates, and text too wide for the card are refused. Output is
 deterministic: no dates, no environment values, fixed geometry. The picture is a dark card with its
 own background, like the other pictures on the page, so it reads the same on light and dark pages.
 README carries the picture as `capabilities.svg?v=<first 8 hex of its sha256>`; writing the picture
@@ -40,22 +43,27 @@ import hashlib
 import json
 import math
 import os
+import posixpath
 import re
 import sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OWN_FILES = ("docs/capabilities.json", "docs/capabilities.svg", "docs/capabilities.md")
 
-# A self-description, not a comparison. The short texts on the picture refuse these words outright.
+# A self-description, not a comparison. The short texts on the picture refuse these words outright,
+# and so is any comparative aimed at someone else ("stricter than any other ...").
+COMPARATIVE = (r"\bthan\s+(?:any|every|all|other|others|most|the\s+rest|anyone|anything)\b|"
+               r"\b(?:better|stricter|faster|stronger|safer|more\s+(?:accurate|complete|reliable|thorough))\b")
 FORBIDDEN = re.compile(
     r"\b(world|first|only|unique|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
     r"guarantee[sd]?|certif\w*|state[- ]of[- ]the[- ]art|ahead\s+of|no(?:body|\s+one)\s+else)\b|"
-    r"\bfalse[\s-]+positives?\b", re.I)
+    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.I)
 # Prose pages (the detail page, the README paragraph) get the same list without the everyday words.
 FORBIDDEN_PROSE = re.compile(
     r"\b(world|unique|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
     r"guarantee[sd]?|certif\w*|state[- ]of[- ]the[- ]art|ahead\s+of|no(?:body|\s+one)\s+else)\b|"
-    r"\bfalse[\s-]+positives?\b", re.I)
+    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.I)
 DATED = re.compile(r"\b(?:19|20)\d{2}-\d{2}-\d{2}\b|\bQ[1-4]\b|"
                    r"\b(?:January|February|March|April|June|July|August|September|October|November|December)\b")
 MARKUP = re.compile(r'["<>&|]')      # would break the alt attribute, a markdown table cell, or the picture
@@ -111,14 +119,22 @@ def _refuse(where, text):
 
 
 def _evidence(where, ev):
-    if not isinstance(ev, dict) or not ev.get("file") or not ev.get("says"):
+    if not isinstance(ev, dict) or not ev.get("file") or not isinstance(ev.get("says"), str):
         raise SystemExit(f"{where}: evidence must be {{\"file\": ..., \"says\": ...}}")
     raw = ev["file"]
-    if "\\" in raw or os.path.isabs(raw) or re.match(r"^[A-Za-z]:", raw):
+    if "\\" in raw or raw.startswith("/") or re.match(r"^[A-Za-z]:", raw):
         raise SystemExit(f"{where}: evidence {raw!r} must be a relative posix path inside the repository")
-    path = os.path.normpath(raw)
+    # posixpath on purpose: os.path is ntpath on Windows, which would render backslashes into the
+    # committed summary (a spurious drift) and would let "..\\" past the check below (09-24, iiRDS).
+    path = posixpath.normpath(raw)
     if path == ".." or path.startswith("../"):
         raise SystemExit(f"{where}: evidence {raw!r} points outside the repository")
+    if path in OWN_FILES:
+        raise SystemExit(f"{where}: evidence {raw!r} is the picture's own data; cite the page it comes from")
+    says = ev["says"].strip()
+    if len(says) < 8 or not re.search(r"[A-Za-z0-9]", says):
+        raise SystemExit(f"{where}: evidence 'says' must quote at least eight characters of the file "
+                         f"(a token like {ev['says']!r} is found in almost any file)")
     return {"file": path, "says": ev["says"]}
 
 
@@ -158,6 +174,12 @@ def load(path):
             if not ax["evidence"]:
                 raise SystemExit(f"axis {key}: a count names at least one evidence file")
             ax["evidence"] = [_evidence(f"axis {key}", ev) for ev in ax["evidence"]]
+            # the number drawn must be the number the evidence says, and the number promised must be
+            # the number the 1.0 sentence says — otherwise the polygon can be moved without touching text
+            if not any(str(ax["now"]) in ev["says"] for ev in ax["evidence"]):
+                raise SystemExit(f"axis {key}: now={ax['now']} does not appear in any evidence 'says'")
+            if str(ax["target"]) not in ax["target_text"]:
+                raise SystemExit(f"axis {key}: target={ax['target']} does not appear in target_text")
         if ax["target"] <= 0:
             raise SystemExit(f"axis {key}: target must be positive")
         if ax["now"] < 0:
@@ -252,7 +274,7 @@ def render_svg(data):
     out.append(f'<text x="{PANEL_X}" y="40" font-family="{FONT}" font-size="16" font-weight="600" fill="{INK}">'
                f'{escape(title)}</text>')
     out.append(f'<text x="{PANEL_X}" y="62" font-family="{FONT}" font-size="12" fill="{INK2}">'
-               f'What is checked now, and what this project asks of itself before 1.0. Click for the cases.</text>')
+               f'Checked now, and what this project asks of itself for 1.0.</text>')
     out.append(f'<line x1="{PANEL_X}" y1="72" x2="{W - 24}" y2="72" stroke="{LINE}"/>')
     for i, ax in enumerate(axes):
         y = ROW_Y0 + i * ROW_DY
@@ -322,10 +344,16 @@ def main(argv):
             for ev in ax["evidence"]:
                 if not evidence_holds(ROOT, ev):
                     bad.append(f"{ax['key']}: {ev['file']} does not say {ev['says']!r} (or is missing)")
+        if not os.path.isfile(os.path.join(ROOT, data["detail"])):
+            bad.append(f"detail page {data['detail']} does not exist (the picture would link to a 404)")
         if os.path.exists(readme):
             page = _read(readme)
             if STAMP.search(page) and f"capabilities.svg?v={digest_of(svg)}" not in page:
                 bad.append("README.md: the ?v= stamp is not the committed picture's hash; rerun the generator")
+            if "capabilities.svg" not in page:
+                bad.append("README.md does not embed docs/capabilities.svg")
+            elif f'alt="{summary_line(data)}"' not in page:
+                bad.append("README.md: the picture's alt text is not the generator's summary line")
         if bad:
             print("capabilities drift:", *bad, sep="\n  ")
             return 1

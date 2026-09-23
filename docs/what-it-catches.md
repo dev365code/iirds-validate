@@ -161,23 +161,24 @@ variant the generator can produce, not because either is a defect.
 
 ## Explanation
 
-A finding either quotes the standard or it does not, and the report says
-which. Where the standard states an obligation, the rule carries the sentence
-it is enforcing and a link that lands on it. Where the standard is silent but
-a package will still be unusable, the rule is this tool's own judgement and
-carries no specification reference -- those are the `L*` interoperability
-rules and the `S*` rules about the run itself, which is why a section for
-every rule is a condition and not a fact.
+A finding says where it comes from, and it comes from one of three places.
+Where the standard states the obligation and the rule links to the sentence,
+the report carries the link. Where the rule claims an obligation of the
+standard but has no link to it, the report names the requirement it claims.
+Where the standard says nothing and a package will still be unusable, the rule
+is this tool's own judgement and says so. A section for every rule is
+therefore a condition and not a fact: a rule of the third kind has none to
+give.
 
 **Now.**
 
 - done -- what is wrong, in one sentence
 - done -- the evidence as read from the file
 - done -- a remedy, for every rule
-- not yet -- the section of the specification each rule enforces
+- not yet -- every rule names its section, or says it has none
 - not yet -- the line in the file
 
-**Before 1.0.** + a section for every rule, and the line
+**Before 1.0.** + every rule says its section or none, and the line
 
 ## Report contract
 
@@ -223,7 +224,10 @@ every rule is a condition and not a fact.
 
 Exit code 1.
 
-**This tool's own rule** (`S13`), no specification reference.
+**The standard states this obligation**, and `S13` claims it as
+`dfn-iirds-package#1`; the rule carries no link to the sentence, so the page
+has none to quote. `S13` states it as: the container could not be opened at
+all
 
 The standard describes a container, and a file that will not open is not one
 yet. The last line is the point: the run says how many rules it never put,
@@ -232,7 +236,7 @@ rather than leaving a reader to assume they passed.
 **Now.**
 
 - done -- read budgets, per file and per run
-- done -- a security fix ships with an advisory
+- done -- from 0.6.1, a security fix ships with an advisory
 - done -- tests verified against their own mutations
 - not yet -- declared encodings read without loss
 

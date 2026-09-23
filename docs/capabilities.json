@@ -46,7 +46,7 @@
           }
         },
         {
-          "text": "the section of the specification each rule enforces",
+          "text": "every rule names its section, or says it has none",
           "done": false
         },
         {
@@ -55,7 +55,7 @@
         }
       ],
       "now_text": "what, evidence, remedy",
-      "target_text": "+ a section for every rule, and the line"
+      "target_text": "+ every rule says its section or none, and the line"
     },
     {
       "key": "report",
@@ -73,8 +73,8 @@
           "text": "a golden report held by a test",
           "done": true,
           "evidence": {
-            "file": "tools/golden_report.py",
-            "says": "--check"
+            "file": ".github/workflows/ci.yml",
+            "says": "the stored report is the one this tree produces"
           }
         },
         {
@@ -146,11 +146,11 @@
           }
         },
         {
-          "text": "a security fix ships with an advisory",
+          "text": "from 0.6.1, a security fix ships with an advisory",
           "done": true,
           "evidence": {
             "file": "SECURITY.md",
-            "says": "A security fix that shipped in a release has a GitHub security advisory"
+            "says": "a security fix that ships in a release has a GitHub security advisory"
           }
         },
         {

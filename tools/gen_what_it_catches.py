@@ -135,7 +135,7 @@ def spec_of(rule_id: str):
     rule = {r.id: r for r in all_rules()}.get(rule_id)
     if rule is None:
         raise Failed("%s is not a rule in this build" % rule_id)
-    return rule.title, _quoted(rule.spec), rule.spec
+    return rule.title, _quoted(rule.spec), rule.spec, tuple(rule.covers)
 
 
 def _quoted(spec):
@@ -157,10 +157,17 @@ def _quoted(spec):
 
 
 def _wrapped(prose: str):
-    """Prose at the width the other documents here are written to."""
+    """Prose at the width the other documents here are written to.
+
+    Never breaking a word. `textwrap` splits at hyphens by default, and the
+    first requirement id placed in prose here -- `dfn-iirds-package#1` -- came
+    out as `dfn-iirds-` on one line and `package#1` on the next, which renders
+    as a different id with a space in it. A line longer than 78 is the lesser
+    fault.
+    """
     import textwrap
 
-    return textwrap.wrap(prose, width=78)
+    return textwrap.wrap(prose, width=78, break_on_hyphens=False, break_long_words=False)
 
 
 #: Which axis of `docs/capabilities.json` each case is evidence for. A case
@@ -180,7 +187,7 @@ CAPABILITIES = ROOT / "docs" / "capabilities.json"
 def _case_block(slug, heading, broken, rule_id, exit_code, note):
     package = _not_a_container() if broken is None else _build(slug, broken)
     said = _verdict(package, exit_code=exit_code, names=rule_id)
-    title, quotable, spec = spec_of(rule_id)
+    title, quotable, spec, claims = spec_of(rule_id)
     out = ["### %s" % heading, ""]
     if broken is None:
         out.append("    $ printf 'not a zip at all' > %s" % package)
@@ -203,6 +210,16 @@ def _case_block(slug, heading, broken, rule_id, exit_code, note):
         out.append("<%s>" % spec)
         out.append("")
         out.extend(_wrapped("`%s` states that obligation as: %s" % (rule_id, title)))
+    elif claims:
+        # A claim with no link is still a claim. Deciding "this tool's own" by
+        # the absence of a link called S13 that while it claims "An iiRDS
+        # package MUST implement an iiRDS ZIP archive" and counts toward the
+        # coverage the front page publishes.
+        out.extend(_wrapped(
+            "**The standard states this obligation**, and `%s` claims it as %s; "
+            "the rule carries no link to the sentence, so the page has none to "
+            "quote. `%s` states it as: %s"
+            % (rule_id, ", ".join("`%s`" % c for c in claims), rule_id, title)))
     else:
         out.append("**This tool's own rule** (`%s`), no specification reference."
                    % rule_id)
@@ -241,25 +258,37 @@ def page() -> str:
            "an axis with no case to show shows none.", "",
            "Nothing here is a claim about any other validator.", ""]
 
+    placed = set()
     for axis in axes:
         out.extend(["## %s" % axis["label"], ""])
         if axis["key"] == "explanation":
             out.extend(_wrapped(
-                "A finding either quotes the standard or it does not, and the report "
-                "says which. Where the standard states an obligation, the rule carries "
-                "the sentence it is enforcing and a link that lands on it. Where the "
-                "standard is silent but a package will still be unusable, the rule is "
-                "this tool's own judgement and carries no specification reference -- "
-                "those are the `L*` interoperability rules and the `S*` rules about the "
-                "run itself, which is why a section for every rule is a condition and "
-                "not a fact."))
+                "A finding says where it comes from, and it comes from one of three "
+                "places. Where the standard states the obligation and the rule links to "
+                "the sentence, the report carries the link. Where the rule claims an "
+                "obligation of the standard but has no link to it, the report names "
+                "the requirement it claims. Where the standard says nothing and a "
+                "package will still be unusable, the rule is this tool's own judgement "
+                "and says so. A section for every rule is therefore a condition and "
+                "not a fact: a rule of the third kind has none to give."))
             out.append("")
         for case in CASES:
             if AXIS_OF.get(case[0]) == axis["key"]:
                 out.extend(_case_block(*case))
+                placed.add(case[0])
         if axis["key"] == "coverage":
             out.extend(_same_graph())
         out.extend(_now_and_after(axis))
+
+    # A case is shown under the axis its key names, and only there. Grouping
+    # made that a lookup, and a lookup that finds nothing drops the case
+    # without a word -- renaming one key in the data left one case of six on
+    # the page while this still printed "6 cases". So a case that lands under
+    # no axis is refused here rather than silently left out.
+    missing = sorted(slug for slug, *_ in CASES if slug not in placed)
+    if missing:
+        raise Failed("these cases name no axis the data has, so the page would "
+                     "leave them out: %s" % ", ".join(missing))
 
     return "\n".join(out).rstrip() + "\n"
 

@@ -34,7 +34,10 @@ interoperability rules and the `S*` rules about the run itself.
 
 Exit code 1.
 
-**This tool's own rule** (`S13`), no specification reference.
+**The standard states this obligation**, and `S13` claims it as
+`dfn-iirds-package#1`; the rule carries no link to the sentence, so the page
+has none to quote. `S13` states it as: the container could not be opened at
+all
 
 The standard describes a container, and a file that will not open is not one
 yet. The last line is the point: the run says how many rules it never put,

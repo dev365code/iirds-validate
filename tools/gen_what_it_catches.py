@@ -135,7 +135,7 @@ def spec_of(rule_id: str):
     rule = {r.id: r for r in all_rules()}.get(rule_id)
     if rule is None:
         raise Failed("%s is not a rule in this build" % rule_id)
-    return rule.title, _quoted(rule.spec), rule.spec
+    return rule.title, _quoted(rule.spec), rule.spec, tuple(rule.covers)
 
 
 def _quoted(spec):
@@ -157,10 +157,17 @@ def _quoted(spec):
 
 
 def _wrapped(prose: str):
-    """Prose at the width the other documents here are written to."""
+    """Prose at the width the other documents here are written to.
+
+    Never breaking a word. `textwrap` splits at hyphens by default, and the
+    first requirement id placed in prose here -- `dfn-iirds-package#1` -- came
+    out as `dfn-iirds-` on one line and `package#1` on the next, which renders
+    as a different id with a space in it. A line longer than 78 is the lesser
+    fault.
+    """
     import textwrap
 
-    return textwrap.wrap(prose, width=78)
+    return textwrap.wrap(prose, width=78, break_on_hyphens=False, break_long_words=False)
 
 
 def page() -> str:
@@ -180,7 +187,7 @@ def page() -> str:
     for slug, heading, broken, rule_id, exit_code, note in CASES:
         package = _not_a_container() if broken is None else _build(slug, broken)
         said = _verdict(package, exit_code=exit_code, names=rule_id)
-        title, quotable, spec = spec_of(rule_id)
+        title, quotable, spec, claims = spec_of(rule_id)
         out.append("## %s" % heading)
         out.append("")
         if broken is None:
@@ -205,6 +212,16 @@ def page() -> str:
             out.append("")
             out.extend(_wrapped("`%s` states that obligation as: %s"
                                 % (rule_id, title)))
+        elif claims:
+            # A claim with no link is still a claim. Deciding "this tool's own"
+            # by the absence of a link called S13 that while it claims "An iiRDS
+            # package MUST implement an iiRDS ZIP archive" and counts toward the
+            # coverage the front page publishes.
+            out.extend(_wrapped(
+                "**The standard states this obligation**, and `%s` claims it as %s; "
+                "the rule carries no link to the sentence, so the page has none to "
+                "quote. `%s` states it as: %s"
+                % (rule_id, ", ".join("`%s`" % c for c in claims), rule_id, title)))
         else:
             out.append("**This tool's own rule** (`%s`), no specification reference."
                        % rule_id)

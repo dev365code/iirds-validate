@@ -268,7 +268,11 @@ record on every build, and a rule that quietly stops firing stops the build.
 
 What has held, and how to see it for yourself. The table below is written by
 `tools/gen_stable_section.py` from what those commands print, because a number
-typed into prose goes stale on the day the thing it counts moves:
+typed into prose goes stale on the day the thing it counts moves. The two
+packages it names are built rather than shipped -- `make fixtures/good.iirds
+fixtures/bad.iirds`, or `python tools/make_fixture_package.py` directly -- so
+a fresh clone makes them once and then the commands below are runnable as
+written:
 
 <!-- what-has-held: written by tools/gen_stable_section.py -->
 

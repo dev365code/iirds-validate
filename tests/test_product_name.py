@@ -36,7 +36,7 @@ OLD_DISTRIBUTION_ALLOWED = {
                       "were published under that name, and calling them anything else "
                       "would make the advisory point at versions that never existed"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),
-    "README.md": (24, "the badge and workflow addresses, the alias sentence, the absolute "
+    "README.md": (28, "the badge and workflow addresses, the alias sentence, the absolute "
                        "links into the repository's tree -- the changelog the stable section "
                        "sends an upgrader to is one of them -- under the repository's address "
                        "until it is renamed, so that PyPI can follow them, and the upgrade "

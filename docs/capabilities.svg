@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="950" height="330" viewBox="0 0 950 330" role="img" aria-labelledby="t d">
-<title id="t">iirds-validate: six capability axes, what is checked now against the 1.0 condition</title>
+<title id="t">iirds: six capability axes, what is checked now against the 1.0 condition</title>
 <desc id="d">Coverage: 172 of 280 obligations covered (1.0: at least 220 of 280 covered); Explanation: what, evidence, remedy (1.0: + a section for every rule, and the line); Report contract: schemaVersion 2, golden, exit codes (1.0: + a field-by-field schema page); Entrances: command line, library, single file (1.0: + GitHub Action, browser); Input safety: read budgets, advisories, mutation-tested (1.0: + lossless declared encodings); Upstream: pinned, checked weekly, a move shipped (1.0: met — a pin move has shipped)</desc>
 <rect x="0.5" y="0.5" width="949" height="329" rx="10" fill="#0b0f14" stroke="#2a3238"/>
 <polygon points="232.0,136.0 254.5,149.0 254.5,175.0 232.0,188.0 209.5,175.0 209.5,149.0" fill="none" stroke="#2a3238" stroke-width="1" stroke-dasharray="3 3"/>
@@ -29,7 +29,7 @@
 <text x="50" y="314" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">now</text>
 <line x1="86" y1="310" x2="106" y2="310" stroke="#7d8891" stroke-width="1.5"/>
 <text x="112" y="314" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0 condition</text>
-<text x="450" y="40" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#e6edf3">iirds-validate</text>
+<text x="450" y="40" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#e6edf3">iirds</text>
 <text x="450" y="62" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9da7b1">What is checked now, and what this project asks of itself before 1.0. Click for the cases.</text>
 <line x1="450" y1="72" x2="926" y2="72" stroke="#2a3238"/>
 <text x="450" y="92" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Coverage</text>

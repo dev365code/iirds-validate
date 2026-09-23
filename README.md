@@ -120,7 +120,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=77483497" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion 2, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisories, mutation-tested; Upstream: pinned, checked weekly, a move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=81e6af11" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion 2, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisories, mutation-tested; Upstream: pinned, checked weekly, a move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, measured on the code this page describes, against the conditions it has set for 1.0. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json), and every item it marks done names a file in this repository that says so; the cases behind each axis are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*

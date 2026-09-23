@@ -10,7 +10,7 @@ Usage:
 
 Data file (public text only):
 {
-  "product": "iirds-validate",
+  "product": "iirds",
   "as_of": "0.7.0",                       # must equal the package version (the test asserts it)
   "detail": "docs/what-it-catches.md",    # where the picture links to
   "axes": [                               # exactly six, in drawing order (top, then clockwise)

@@ -1,5 +1,5 @@
 {
-  "product": "iirds-validate",
+  "product": "iirds",
   "as_of": "0.7.1",
   "detail": "docs/what-it-catches.md",
   "axes": [

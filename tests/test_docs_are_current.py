@@ -44,6 +44,7 @@ DOCS = [ROOT / "docs" / "divergences.md",
         ROOT / "CHANGELOG.md",
         ROOT / "SECURITY.md",
         ROOT / "THIRD_PARTY.md",
+        ROOT / "CONTRIBUTING.md",
         ROOT / "shapes" / "README.md"]
 
 

@@ -7,8 +7,8 @@ the container rules need to know about the ZIP lives here, including the things
 A directory is the form the package exists in while it is being built. Checking
 it before zipping is the difference between finding a defect in the second you
 made it and finding it in the artefact — and content rules in particular are
-worth running on every save. Six requirements are about the archive rather
-than the package and cannot be assessed on a directory; `is_archive` says so,
+worth running on every save. The requirements about the archive rather than
+the package cannot be assessed on a directory; `is_archive` says so,
 and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations

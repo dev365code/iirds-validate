@@ -1165,8 +1165,16 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     it and has to be the measured one.
     """
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    demoted = sorted(rule.id for rule in all_rules() if rule.covers and rule.kind == "content")
-    stated = re.search(r"(\w+) of the (\d+) are appendix B's rules", scope)
+    # Obligations, not rules. Nine content rules claim ten of appendix B's, and
+    # the sentence counted the rules while saying "of the 172", which are
+    # obligations. Each must be claimed by content rules alone, or breaching it
+    # is not the PASS the page says it is.
+    kinds = {rule.id: rule.kind for rule in all_rules()}
+    demoted = sorted(requirement for requirement in CLAIMED if requirement.startswith("b-"))
+    for requirement in demoted:
+        assert {kinds[rule_id] for rule_id in CLAIMED[requirement]} == {"content"}, \
+            (requirement, CLAIMED[requirement])
+    stated = re.search(r"(\w+) of the (\d+) are appendix B's obligations", scope)
     assert stated, "docs/scope.md no longer states how many claims are demoted outside iiRDS/A"
     words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
              "seven": 7, "eight": 8, "nine": 9, "ten": 10}

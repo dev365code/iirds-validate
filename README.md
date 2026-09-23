@@ -87,7 +87,7 @@ $ echo $?
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
 | a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
-Every code carries a prescription and the section of the specification it enforces — `iirds rules C5 -v` shows any rule's source and remedy.
+Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names none: the interoperability rules are this project's own, the system rules are about the run rather than the package, and `iirds rules S1 -v` prints a remedy with no section beside it.
 
 **It asks whether the package will work, not only whether it conforms.** Sixteen
 interoperability rules, most with no counterpart in the specification, because a

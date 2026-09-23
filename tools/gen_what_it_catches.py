@@ -163,56 +163,104 @@ def _wrapped(prose: str):
     return textwrap.wrap(prose, width=78)
 
 
+#: Which axis of `docs/capabilities.json` each case is evidence for. A case
+#: goes under the one axis it demonstrates and no other; an axis with no case
+#: here shows none rather than borrowing one.
+AXIS_OF = {
+    "not-a-container": "input",
+    "mimetype": "coverage",
+    "no-metadata-rdf": "coverage",
+    "no-format": "coverage",
+    "missing-content": "coverage",
+}
+
+CAPABILITIES = ROOT / "docs" / "capabilities.json"
+
+
+def _case_block(slug, heading, broken, rule_id, exit_code, note):
+    package = _not_a_container() if broken is None else _build(slug, broken)
+    said = _verdict(package, exit_code=exit_code, names=rule_id)
+    title, quotable, spec = spec_of(rule_id)
+    out = ["### %s" % heading, ""]
+    if broken is None:
+        out.append("    $ printf 'not a zip at all' > %s" % package)
+    else:
+        out.append("    $ python3 tools/make_fixture_package.py %s --broken %s"
+                   % (package, broken))
+    out.append("    $ iirds check %s" % package)
+    out.append("")
+    out.extend("    " + line if line else "" for line in said.splitlines())
+    out.append("")
+    out.append("Exit code %d." % exit_code)
+    out.append("")
+    if spec:
+        out.extend(_wrapped("**The standard says so.** The link below lands "
+                            "on these words, which are the specification's own:"))
+        out.append("")
+        out.extend(_wrapped("> %s" % quotable) if quotable
+                   else ["> (the link carries no text fragment)"])
+        out.append("")
+        out.append("<%s>" % spec)
+        out.append("")
+        out.extend(_wrapped("`%s` states that obligation as: %s" % (rule_id, title)))
+    else:
+        out.append("**This tool's own rule** (`%s`), no specification reference."
+                   % rule_id)
+    out.append("")
+    out.extend(_wrapped(note))
+    out.append("")
+    return out
+
+
+def _now_and_after(axis):
+    """What is there now and what 1.0 asks, in the data's own words.
+
+    Checklist items are printed exactly as `docs/capabilities.json` spells them,
+    because the picture's gate looks for each one inside this axis's section and
+    a paraphrase here would be a second text for one fact.
+    """
+    out = ["**Now.**", ""]
+    if "items" in axis:
+        for item in axis["items"]:
+            out.append("- %s -- %s" % ("done" if item["done"] else "not yet", item["text"]))
+    else:
+        out.append("- %s" % axis["now_text"])
+    out.extend(["", "**Before 1.0.** %s" % axis["target_text"], ""])
+    return out
+
+
 def page() -> str:
+    import json
+
+    axes = json.loads(CAPABILITIES.read_text("utf-8"))["axes"]
     out = ["# What this catches, and what it says when it does", "",
            "Written by `tools/gen_what_it_catches.py`; every block is the output of",
            "the command above it, captured on the run that wrote this file. Build the",
            "containers and reproduce any of it with the two commands each case names.",
-           "", "Nothing here is a claim about any other validator.", "",
-           "## Two kinds of finding, and the difference matters", "",
-           "A finding either quotes the standard or it does not, and the report says",
-           "which. Where the standard states an obligation, the rule carries the",
-           "sentence it is enforcing and a link that lands on it. Where the standard is",
-           "silent but a package will still be unusable, the rule is this tool's own",
-           "judgement and carries no specification reference -- those are the `L*`",
-           "interoperability rules and the `S*` rules about the run itself.", ""]
+           "It is arranged by the six things the picture on the front page draws, and",
+           "an axis with no case to show shows none.", "",
+           "Nothing here is a claim about any other validator.", ""]
 
-    for slug, heading, broken, rule_id, exit_code, note in CASES:
-        package = _not_a_container() if broken is None else _build(slug, broken)
-        said = _verdict(package, exit_code=exit_code, names=rule_id)
-        title, quotable, spec = spec_of(rule_id)
-        out.append("## %s" % heading)
-        out.append("")
-        if broken is None:
-            out.append("    $ printf 'not a zip at all' > %s" % package)
-        else:
-            out.append("    $ python3 tools/make_fixture_package.py %s --broken %s"
-                       % (package, broken))
-        out.append("    $ iirds check %s" % package)
-        out.append("")
-        out.extend("    " + line if line else "" for line in said.splitlines())
-        out.append("")
-        out.append("Exit code %d." % exit_code)
-        out.append("")
-        if spec:
-            out.extend(_wrapped("**The standard says so.** The link below lands "
-                                "on these words, which are the specification's own:"))
+    for axis in axes:
+        out.extend(["## %s" % axis["label"], ""])
+        if axis["key"] == "explanation":
+            out.extend(_wrapped(
+                "A finding either quotes the standard or it does not, and the report "
+                "says which. Where the standard states an obligation, the rule carries "
+                "the sentence it is enforcing and a link that lands on it. Where the "
+                "standard is silent but a package will still be unusable, the rule is "
+                "this tool's own judgement and carries no specification reference -- "
+                "those are the `L*` interoperability rules and the `S*` rules about the "
+                "run itself, which is why a section for every rule is a condition and "
+                "not a fact."))
             out.append("")
-            out.extend(_wrapped("> %s" % quotable) if quotable
-                       else ["> (the link carries no text fragment)"])
-            out.append("")
-            out.append("<%s>" % spec)
-            out.append("")
-            out.extend(_wrapped("`%s` states that obligation as: %s"
-                                % (rule_id, title)))
-        else:
-            out.append("**This tool's own rule** (`%s`), no specification reference."
-                       % rule_id)
-        out.append("")
-        out.extend(_wrapped(note))
-        out.append("")
+        for case in CASES:
+            if AXIS_OF.get(case[0]) == axis["key"]:
+                out.extend(_case_block(*case))
+        if axis["key"] == "coverage":
+            out.extend(_same_graph())
+        out.extend(_now_and_after(axis))
 
-    out.extend(_same_graph())
     return "\n".join(out).rstrip() + "\n"
 
 
@@ -236,7 +284,7 @@ def _same_graph():
     if reports[0] != reports[1]:
         raise Failed("the two serialisations no longer report the same document")
     said = _run(["-m", "iirds_validate", "check", a])[1]
-    return ["## What it does not flag, and why", "",
+    return ["### What it does not flag, and why", "",
             "    $ python3 tools/make_fixture_package.py %s --broken description-style" % a,
             "    $ python3 tools/make_fixture_package.py %s --broken attribute-style" % b,
             "    $ iirds check %s && iirds check %s" % (a, b),

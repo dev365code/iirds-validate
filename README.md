@@ -117,6 +117,14 @@ conformant package can still be undeliverable:
 
 </details>
 
+## Where it stands
+
+<a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=cec1bdd8" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion 2, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisories, mutation-tested; Upstream: pinned, checked weekly" width="100%">
+</a>
+
+*Six things this tool holds itself to, measured on the code this page describes, against the conditions it has set for 1.0. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json), and every item it marks done names a file in this repository that says so; the cases behind each axis are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
+
 ## The local web door
 
 **For people who do not read terminals** — that is literally what the help says:
@@ -328,8 +336,12 @@ name you install and leaves the rules free to move under it. `iirds==<version>`
 is the pin that holds them still.
 
 **1.0 will mean the report schema stops moving.** Until then it may gain
-fields, and the coverage figure above is re-measured on every release rather
-than promised.
+fields, and the coverage figure above is re-measured on every release; 1.0
+asks for at least 220 of 280.
+
+Before it calls a release 1.0 this project asks of itself, on the six things
+the picture under *Where it stands* draws -- each a condition on top of what is
+already there: **Coverage** at least 220 of 280 covered · **Explanation** + a section for every rule, and the line · **Report contract** + a field-by-field schema page · **Entrances** + GitHub Action, browser · **Input safety** + lossless declared encodings · **Upstream** + one pin move shipped.
 
 ## Reading and writing packages from Python
 

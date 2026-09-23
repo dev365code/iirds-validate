@@ -1,0 +1,72 @@
+{
+  "product": "iirds-validate",
+  "as_of": "0.7.1",
+  "detail": "docs/what-it-catches.md",
+  "axes": [
+    {"key": "coverage", "label": "Coverage",
+     "now": 172, "target": 220,
+     "now_text": "172 of 280 obligations covered",
+     "target_text": "at least 220 of 280 covered",
+     "evidence": [{"file": "docs/scope.md", "says": "Coverage of the standard is 172 of 280"}]},
+    {"key": "explanation", "label": "Explanation",
+     "items": [
+       {"text": "what is wrong, in one sentence", "done": true,
+        "evidence": {"file": "README.md", "says": "what is wrong"}},
+       {"text": "the evidence as read from the file", "done": true,
+        "evidence": {"file": "README.md", "says": "the evidence as read from your file"}},
+       {"text": "a remedy, for every rule", "done": true,
+        "evidence": {"file": "README.md", "says": "A rule without a prescription does not ship"}},
+       {"text": "the section of the specification each rule enforces", "done": false},
+       {"text": "the line in the file", "done": false}
+     ],
+     "now_text": "what, evidence, remedy",
+     "target_text": "+ a section for every rule, and the line"},
+    {"key": "report", "label": "Report contract",
+     "items": [
+       {"text": "schemaVersion in every report", "done": true,
+        "evidence": {"file": "docs/golden-report.json", "says": "\"schemaVersion\": 2"}},
+       {"text": "a golden report held by a test", "done": true,
+        "evidence": {"file": "tools/golden_report.py", "says": "--check"}},
+       {"text": "exit codes 0, 1, 2 and 64 under test", "done": true,
+        "evidence": {"file": "README.md", "says": "`64` when the command line was the problem"}},
+       {"text": "a field-by-field schema page", "done": false}
+     ],
+     "now_text": "schemaVersion 2, golden, exit codes",
+     "target_text": "+ a field-by-field schema page"},
+    {"key": "entrances", "label": "Entrances",
+     "items": [
+       {"text": "command line", "done": true,
+        "evidence": {"file": "pyproject.toml", "says": "[project.scripts]"}},
+       {"text": "Python library", "done": true,
+        "evidence": {"file": "README.md", "says": "import iirds"}},
+       {"text": "single file, nothing to install", "done": true,
+        "evidence": {"file": "README.md", "says": "one file, no install"}},
+       {"text": "GitHub Action", "done": false},
+       {"text": "browser, nothing installed", "done": false}
+     ],
+     "now_text": "command line, library, single file",
+     "target_text": "+ GitHub Action, browser"},
+    {"key": "input", "label": "Input safety",
+     "items": [
+       {"text": "read budgets, per file and per run", "done": true,
+        "evidence": {"file": "SECURITY.md", "says": "Every limit in the table above is a limit on"}},
+       {"text": "a security fix ships with an advisory", "done": true,
+        "evidence": {"file": "SECURITY.md", "says": "A security fix that shipped in a release has a GitHub security advisory"}},
+       {"text": "tests verified against their own mutations", "done": true,
+        "evidence": {"file": "README.md", "says": "verified against their own mutations"}},
+       {"text": "declared encodings read without loss", "done": false}
+     ],
+     "now_text": "read budgets, advisories, mutation-tested",
+     "target_text": "+ lossless declared encodings"},
+    {"key": "upstream", "label": "Upstream",
+     "items": [
+       {"text": "upstream catalogue pinned by commit", "done": true,
+        "evidence": {"file": "README.md", "says": "catalogue taken from"}},
+       {"text": "checked weekly for change", "done": true,
+        "evidence": {"file": "README.md", "says": "whether upstream still matches it is a weekly job"}},
+       {"text": "one pin move shipped", "done": false}
+     ],
+     "now_text": "pinned, checked weekly",
+     "target_text": "+ one pin move shipped"}
+  ]
+}

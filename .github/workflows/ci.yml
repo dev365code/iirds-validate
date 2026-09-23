@@ -71,6 +71,8 @@ jobs:
         # has moved stops the build rather than publishing a heading that
         # promises an error above a `PASS`.
         run: python tools/gen_what_it_catches.py --check
+      - name: the picture on the front page is what its data says
+        run: python tools/capabilities_svg.py docs/capabilities.json --check
 
       - name: no rule claims a version whose vocabulary it predates
         # Every `versions` array came from the reference tool. A rule applicable

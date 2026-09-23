@@ -3,44 +3,14 @@
 Written by `tools/gen_what_it_catches.py`; every block is the output of
 the command above it, captured on the run that wrote this file. Build the
 containers and reproduce any of it with the two commands each case names.
+It is arranged by the six things the picture on the front page draws, and
+an axis with no case to show shows none.
 
 Nothing here is a claim about any other validator.
 
-## Two kinds of finding, and the difference matters
+## Coverage
 
-A finding either quotes the standard or it does not, and the report says
-which. Where the standard states an obligation, the rule carries the
-sentence it is enforcing and a link that lands on it. Where the standard is
-silent but a package will still be unusable, the rule is this tool's own
-judgement and carries no specification reference -- those are the `L*`
-interoperability rules and the `S*` rules about the run itself.
-
-## The container is not a container
-
-    $ printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
-    $ iirds check fixtures/what-it-catches/not-a-container.iirds
-
-    not-a-container.iirds   iiRDS not declared
-
-      ERROR S13       cannot open container
-                          fixtures/what-it-catches/not-a-container.iirds
-                          File is not a zip file
-                        → Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on
-                        → it should list mimetype first. Nothing else here has run, because there
-                        → was nothing to run against.
-
-      FAIL  1 error(s), 0 warning(s), 0 informational
-      1 rule checked, 221 not applicable to this version/variant (221 never put -- the container would not open)
-
-Exit code 1.
-
-**This tool's own rule** (`S13`), no specification reference.
-
-The standard describes a container, and a file that will not open is not one
-yet. The last line is the point: the run says how many rules it never put,
-rather than leaving a reader to assume they passed.
-
-## `mimetype` with a trailing newline
+### `mimetype` with a trailing newline
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/mimetype.iirds --broken mimetype
     $ iirds check fixtures/what-it-catches/mimetype.iirds
@@ -74,7 +44,7 @@ LF: application/iirds+zip.
 The finding prints the bytes it read, because an editor shows nothing wrong
 with a file that ends in a newline.
 
-## No `metadata.rdf`
+### No `metadata.rdf`
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-metadata-rdf.iirds --broken jsonld-only
     $ iirds check fixtures/what-it-catches/no-metadata-rdf.iirds
@@ -105,7 +75,7 @@ metadata.rdf.
 
 A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
 
-## A rendition with no format
+### A rendition with no format
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-format.iirds --broken missing-format
     $ iirds check fixtures/what-it-catches/no-format.iirds
@@ -138,7 +108,7 @@ iirds:format.
 The finding names the subject and how many were found, so a package with
 several renditions says which one.
 
-## Metadata that points at a file the package does not carry
+### Metadata that points at a file the package does not carry
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/missing-content.iirds --broken missing-content
     $ iirds check fixtures/what-it-catches/missing-content.iirds
@@ -164,7 +134,7 @@ The graph is well-formed and every stated obligation is met. The package
 simply cannot be read by anyone, because the document it describes is not in
 it. That is the half of the question the standard does not ask.
 
-## What it does not flag, and why
+### What it does not flag, and why
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/description-style.iirds --broken description-style
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
@@ -182,3 +152,98 @@ file is. One writes its properties as nested elements and the other as
 attributes on the node; the graph is the same graph, so the answer is the
 same answer. `--broken` names them only because that flag names every
 variant the generator can produce, not because either is a defect.
+
+**Now.**
+
+- 172 of 280 obligations covered
+
+**Before 1.0.** at least 220 of 280 covered
+
+## Explanation
+
+A finding either quotes the standard or it does not, and the report says
+which. Where the standard states an obligation, the rule carries the sentence
+it is enforcing and a link that lands on it. Where the standard is silent but
+a package will still be unusable, the rule is this tool's own judgement and
+carries no specification reference -- those are the `L*` interoperability
+rules and the `S*` rules about the run itself, which is why a section for
+every rule is a condition and not a fact.
+
+**Now.**
+
+- done -- what is wrong, in one sentence
+- done -- the evidence as read from the file
+- done -- a remedy, for every rule
+- not yet -- the section of the specification each rule enforces
+- not yet -- the line in the file
+
+**Before 1.0.** + a section for every rule, and the line
+
+## Report contract
+
+**Now.**
+
+- done -- schemaVersion in every report
+- done -- a golden report held by a test
+- done -- exit codes 0, 1, 2 and 64 under test
+- not yet -- a field-by-field schema page
+
+**Before 1.0.** + a field-by-field schema page
+
+## Entrances
+
+**Now.**
+
+- done -- command line
+- done -- Python library
+- done -- single file, nothing to install
+- not yet -- GitHub Action
+- not yet -- browser, nothing installed
+
+**Before 1.0.** + GitHub Action, browser
+
+## Input safety
+
+### The container is not a container
+
+    $ printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
+    $ iirds check fixtures/what-it-catches/not-a-container.iirds
+
+    not-a-container.iirds   iiRDS not declared
+
+      ERROR S13       cannot open container
+                          fixtures/what-it-catches/not-a-container.iirds
+                          File is not a zip file
+                        → Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on
+                        → it should list mimetype first. Nothing else here has run, because there
+                        → was nothing to run against.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      1 rule checked, 221 not applicable to this version/variant (221 never put -- the container would not open)
+
+Exit code 1.
+
+**This tool's own rule** (`S13`), no specification reference.
+
+The standard describes a container, and a file that will not open is not one
+yet. The last line is the point: the run says how many rules it never put,
+rather than leaving a reader to assume they passed.
+
+**Now.**
+
+- done -- read budgets, per file and per run
+- done -- a security fix ships with an advisory
+- done -- tests verified against their own mutations
+- not yet -- declared encodings read without loss
+
+**Before 1.0.** + lossless declared encodings
+
+## Upstream
+
+**Now.**
+
+- done -- upstream catalogue pinned by commit
+- done -- checked weekly for change
+- not yet -- one pin move shipped
+
+**Before 1.0.** + one pin move shipped

@@ -358,7 +358,7 @@ rule it does not ask, and a container that would not open for every rule it
 never put. Before this release a container that would not open named one rule
 and was silent about the rest.
 
-The reasons a report can give go from three to seven. Four of the names are
+The reasons a report can give come to seven. Four of the names are
 new -- a rule suspended for a fragment, a rule a directory cannot answer, a
 rule that raised, and a rule never put because the container would not open --
 and the one that had covered a single rule now covers every rule a command
@@ -482,10 +482,14 @@ nodes leave the graph.
 Measured: a conformant iiRDS/H container, plus one stray `iirds:Package` whose
 only content is `iirds:formatRestriction A`, is judged iiRDS/A when the stray's
 IRI sorts first and iiRDS/H when it sorts last. The two readings run
-different rule sets, and the handover rules are the difference: present in one
-reading and absent in the other. No count is given here because the count is a
-function of how large the registry is on the day, and what matters is that the
-same container is judged against two different sets of obligations. The
+different rule sets. The handover rules are most of the difference, present in
+the iiRDS/H reading and absent in the iiRDS/A one -- and one container rule
+goes the other way, because `C11.1` is declared for the unrestricted and A
+profiles while `C11.1H` carries the same obligation for handover, so the A
+reading asks one of them and the H reading the other. What matters is not the
+size of the difference, which is a function of how large the registry is on
+the day, but that the same container is judged against two different sets of
+obligations. The
 stray declares no edition, and a package that declares none ranks as the
 newest, deliberately, so nothing passes by saying less. Here saying less won.
 

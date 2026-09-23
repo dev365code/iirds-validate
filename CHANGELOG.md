@@ -27,14 +27,14 @@ It is used now: the scan stops at eight mebibytes across all of those files,
 and the scan reads back 8,388,609 bytes -- the ceiling plus one, which is what
 any package that reaches the ceiling reads back however much more it holds,
 because the read that crosses it is the last one. A package whose side files
-come to less than that is read whole and draws no S12. The figure
-above counts the whole of what a run read under `META-INF/`, which is 293
-bytes more than the scan's own total: `META-INF/metadata.rdf` is read by the
-container and skipped by this scan, and the two numbers are about different
-readers. Stopping quietly would be the
-other half of the defect, since a scan that gave up and a scan that found
-nothing otherwise look alike, so `S12` names the file it stopped on and says
-the rest of `META-INF/` went unexamined.
+come to less than that is read whole and draws no S12. That figure is the
+scan's own total and not the run's: `META-INF/metadata.rdf` is read by the
+container and skipped by this scan, so what a run reads under `META-INF/` is
+the scan's total and that one file besides, and the two numbers are about
+different readers. Stopping quietly would be the other half of the defect,
+since a scan that gave up and a scan that found nothing otherwise look alike,
+so `S12` names the file it stopped on and says the rest of `META-INF/` went
+unexamined.
 
 The read is bounded by what is left of the ceiling now, and the cut is recorded
 where it happens. **A package carrying side files past the ceiling failed to
@@ -295,7 +295,8 @@ build when the page and the commands disagree, and three copies of one
 coverage figure in this repository are why a figure on that page is no longer
 typed. `tools/extract_catalog.py` grew `--pin`, which answers offline which
 commit the committed catalogue came from and fails when that is not the commit
-the script pins -- two records of one fact that nothing had compared.
+the script pins -- two records of one fact the suite had been holding together
+with nothing to ask it from a command line.
 
 **A dropped file could be written outside the directory made for it, on
 Windows.** `iirds serve` gives the copy the name the sender chose, minus
@@ -347,13 +348,15 @@ It reads reports this release writes. An older one is refused with the reason,
 and re-validating the package produces a current one.
 
 **A report now says which bytes it judged, and which rule sources ran.** Two
-reports about two different files compared without a murmur, because nothing in
-either document said which package it was about. The container's sha256 and its
-size are recorded, and they answer one question — the same bytes or different
-bytes — and never the identity of a package: recompressing the same content
-moves the digest and leaves the verdict where it was. An unpacked container is
-not one file and an unreadable path has no bytes, so both come back null with
-the reason said beside them rather than as a digest of nothing.
+reports about two different files compared without a murmur whenever the two
+runs were handed the same path, because the only thing either document said
+about the package was the path it was given, and a path is not the bytes. The
+container's sha256 and its size are recorded, and they answer one question —
+the same bytes or different bytes — and never the identity of a package:
+recompressing the same content moves the digest and leaves the verdict where
+it was. An unpacked container is not one file and an unreadable path has no
+bytes, so both come back null with the reason said beside them rather than as
+a digest of nothing.
 
 Beside it, a digest of the rule sources. The rule-set digest is over registered
 identities and cannot see a rule's implementation, and `toolVersion` moves
@@ -552,10 +555,12 @@ editions before 1.3 ask alone.
 
 **The library said its reading was the checker's, and it is not.**
 `iirds.Package.version` takes the first package that declares one; the checker
-takes the ranked winner. On a container whose packages disagree the two answer
-differently, which is the whole subject above. The docstring said "identical to
-the validator's reading" and now says what it actually does, and why a library
-giving the document's first answer is right for a library.
+takes the ranked winner. On a container whose packages disagree the two can
+answer differently -- they part whenever the first package to declare a
+version is not the one the ranking picks -- which is the whole subject above.
+The docstring said "identical to the validator's reading" and now says what it
+actually does, and why a library giving the document's first answer is right
+for a library.
 
 **The upgrade that leaves no working command is now said on the front page
 too.** `pip install -U iirds-validate` from 0.4.2 or earlier ends with every

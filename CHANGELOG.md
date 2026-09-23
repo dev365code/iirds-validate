@@ -13,14 +13,15 @@ exited 0 with a file in it that nothing had parsed. `ERROR S16` names them
 now. What that costs is under **What now fails** below.
 
 **The search for a package's own ontology had no ceiling on what it read in
-total.** R18 finds one by reading every entry under `META-INF/` the standard
-does not name and parsing each as RDF, so what a package can ask a run to read
-is whatever its entry count and entry sizes say. Each read was bounded per
-entry and nothing bounded their sum: measured, a 524,395-byte archive carrying
-twenty 8 MiB entries made a run read back 167,771,253 bytes and parse all of
-it, which is three hundred and twenty times the archive, and the entry count
-is the sender's to choose. A constant for the ceiling was there and was used
-by nothing.
+total.** R18 finds one by reading the entries under `META-INF/` the standard
+does not name and parsing each as RDF, and until this release it read every
+one of them, so what a package could ask a run to read was whatever its entry
+count and entry sizes said. Each read was bounded per entry and nothing
+bounded their sum: measured, a 524,395-byte archive carrying twenty 8 MiB
+entries made a run read back 167,771,253 bytes and parse all of it, which is
+three hundred and twenty times the archive, and the entry count is the
+sender's to choose. A constant for the ceiling was there and was used by
+nothing.
 
 It is used now: the scan stops at eight mebibytes across all of those files,
 and the scan reads back 8,388,609 bytes -- the ceiling plus one, which is what
@@ -42,54 +43,69 @@ verdict moves from pass to fail. That is the repair rather than a side effect
 of it: a scan that stopped early and said so is the only honest answer.
 
 What the ceiling costs is stated where it falls. The file the scan stops on is
-not read, so R18 -- which decides whether a file under `META-INF/` attaches
-anything to iiRDS -- cannot answer for it, and a file that would have drawn
-R18 before draws S12 instead. Both are MUST, so the verdict does not move; the
-finding says which file went unexamined and that the question about it is open,
-rather than leaving R18's silence to be read as an answer.
+read only as far as the ceiling had left and is never parsed, so R18 -- which
+decides whether a file under `META-INF/` attaches anything to iiRDS -- cannot
+answer for it, and the entries after it are not read at all. S12 names the
+file the scan stopped on and says the rest of `META-INF/` went unexamined, so
+a file that would have drawn R18 before is covered by that sentence rather
+than by a finding naming it. Both are MUST, so the verdict does not move; the
+finding says which file went unexamined and that the question about it is
+open, rather than leaving R18's silence to be read as an answer.
 
-**What now fails, and did not on 0.6.3: a rendition larger on its own than the
-64 MiB this tool reads in one piece, and a document that declares XML
-entities.** Both files are legal -- a package may carry a 200 MiB rendition
-and a topic with an internal subset and breach nothing the specification says
--- and both refusals are this project's own: the ceiling is a number chosen
-here rather than a setting a run can be given, and the entity guard exists
-because the billion-laughs shape has nothing invalid about it and a parser has
-to not meet it at all. 0.6.3 left both alone deliberately, and said so about
-the ceiling, because closing them moves a legal package's verdict and that
-release was a patch.
+**What now fails in a content file, and did not on 0.6.3: a rendition larger
+on its own than the 64 MiB this tool reads in one piece, and a document that
+declares XML entities.** The third shape this release newly fails is the one
+above: a package whose `META-INF/` side files run past the scan's ceiling,
+which draws `S12`. Both files are legal -- a package may carry a 200 MiB
+rendition and a topic with an internal subset and breach nothing the
+specification says -- and both refusals are this project's own: the ceiling is
+a number chosen here rather than a setting a run can be given, and the entity
+guard exists because the billion-laughs shape has nothing invalid about it and
+a parser has to not meet it at all. 0.6.3 left both alone deliberately, and
+said so about the ceiling, because closing them moves a legal package's
+verdict and that release was a patch.
 
 S16 is a system rule -- the statement is about the run, not about the profile
--- and it stops where another rule already speaks at the same severity. Six
-things stop a content rule getting a parsed document. One is the parser
-rejecting the document, which stays B1's and is below. Of the other five, two
-draw an error of their own -- the run's content budget as `S9` and a
+-- and it stops where another rule already speaks: `S9` and `S14` at its own
+severity, and B1 for a document a parser rejected, which outside iiRDS/A is a
+warning. Six things stop a content rule getting a parsed document. One is the
+parser rejecting the document, which stays B1's and is below. Of the other
+five, two draw an error of their own -- the run's content budget as `S9` and a
 compression method no bounded read can be made of as `S14` -- and naming those
 files here as well would print two errors for one fault with one remedy
 between them. The remaining three are this rule's, and two of the three are
 new here.
 
-What they cost a reader is the same as the case 0.6.3 did close. B1 named the
-file, the demotion made that a warning outside iiRDS/A, and the package came
-back `PASS`, exit 0 -- with B2 through B11 counted among the rules the run
-checked and none of them having seen the file. `-W` was the answer on offer
-and it is not one: it promotes every warning at once, and this project reports
-warnings that are not failures on purpose, eleven of them from B10 across the
+What they cost a reader is what the case 0.6.3 closed cost it in an unpacked
+container; in an archive that case failed anyway, because C1 opens every entry
+and reports the one the container will not hand over, and these two files are
+handed over. B1 named the file, the demotion made that a warning outside
+iiRDS/A, and the package came back `PASS`, exit 0 -- with B2 through B11
+counted among the rules the run checked and only B6, which reads the name and
+never the file, able to answer for it. `-W` was the answer on offer and it is
+not one: it promotes every warning at once, and this project reports warnings
+that are not failures on purpose, eleven of them from B10 across the
 Consortium's own samples. A gate that wants "fail if a content file went
 unparsed" could not ask for that without also failing those.
 
 A document that does reach a parser and is rejected by it -- malformed, or
 declaring an encoding no codec has -- is not this rule's: that is the
-document's own defect, B1 reports it, and what severity it carries is the
-profile's business. The line is whose decision left the file unparsed.
+document's own defect, and where the document is a rendition B1 reports it and
+the severity it carries is the profile's business. Under iiRDS/H the content
+list is not a rendition, so B1 never reads it and a malformed `index.html` is
+reported by nothing here. The line is whose decision left the file unparsed.
 
-What the rule already reported is unchanged and is described under 0.6.3
-below. One thing there is not: the remedy for a document that declares
-entities now names both halves, because deleting the declarations and keeping
-the references clears the error and leaves a document that still does not
-parse -- a package that passes with a file nothing read. B1's remedy for the
-same file says it too. `docs/divergences.md` carries the argument, including
-what the change costs.
+Which files the rule reports for the case 0.6.3 shipped is unchanged, and that
+case is described under 0.6.3 below; what it prints is not -- the finding's
+sentence, the rule's title and its remedy are rewritten for the three causes
+it now carries. One thing there is not: the remedy for a document that
+declares entities now names both halves, because deleting the declarations and
+keeping the references clears the error and leaves a document that still does
+not parse -- a package that passes with a file nothing read. Where the file is
+a rendition, B1's remedy for it says so too; under iiRDS/H the content list is
+not a rendition and B1 is silent there, so S16's is the only remedy that says
+it. `docs/divergences.md` carries the argument, including what the change
+costs.
 
 **Three repairs that shipped in 0.6.2 and 0.6.3 and that neither release's
 notes describe, kept here so the record exists somewhere.** All three are
@@ -110,15 +126,17 @@ the enumeration was one short of what the reader could return. It points at
 the reason printed beside the finding now, and offers the causes seen so far
 as examples rather than as a list that closes.
 
-**A graph the library had always written could come back refused** (0.6.3).
+**A graph RDF/XML writes without complaint could come back refused** (0.6.3).
 Where a graph's blank nodes are not a forest there is no fingerprint to use,
 so `write_metadata` compares what it read back with rdflib's isomorphism
-instead -- and that canonicalises through N3, which refuses an IRI holding a
-character RFC 3987 leaves out: a space, a brace, a bar. RDF/XML writes such
-IRIs without complaint. The refusal reached the caller as a bare `Exception`
-rather than the `ValueError` the function now documents, and a comparison that
-refuses its input has decided nothing -- which is not the same as deciding the
-round trip failed. It is a `ValueError` now, and says so.
+instead -- and that canonicalises through N3, which refuses an IRI holding any
+of the characters rdflib itself will not write -- a space, a brace, a bar
+among them -- while others RFC 3987 leaves out of an IRI, a bare percent or a
+DEL, go through. RDF/XML writes such IRIs without complaint. The refusal
+reached the caller as a bare `Exception` rather than the `ValueError` the
+function now documents, and a comparison that refuses its input has decided
+nothing -- which is not the same as deciding the round trip failed. It is a
+`ValueError` now, and says so.
 
 **These notes now carry 0.6.1, 0.6.2 and 0.6.3, which were released from the
 0.6.x line.** Their version bumps never came back here, so a reader of this

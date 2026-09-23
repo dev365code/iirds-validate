@@ -179,18 +179,21 @@ read from a command it could not parse. `64` is `EX_USAGE` from `sysexits`.
 Every subcommand answers the same way, not only the top level -- `iirds pack`
 with no directory, `iirds diff` with one argument -- because argparse builds a
 subcommand's parser from the type of its parent, and a test says so rather
-than leaving it to a default nobody wrote down. One mistake does not reach it:
-`iirds <path>` is shorthand for `iirds all <path>`, so a mistyped *verb* is
-read as a path that is not there and exits `2` with the name in the message.
-That is what the shorthand costs, and it is pinned rather than left to be
-found.
+than leaving it to a default nobody wrote down. One kind of mistake does not
+reach it: `iirds <path>` is shorthand for `iirds all <path>`, so a mistyped
+*verb* typed on its own, or with paths after it, is read as a path that is not
+there and exits `2` with the name in the message. Typed with that verb's own
+options -- `iirds serv --port 8080` -- it leaves `all` an option `all` has
+never had, and that is a command line this cannot parse: `64`. That is what
+the shorthand costs, and it is pinned rather than left to be found.
 
 A paragraph in these notes had announced it for a release later than this one,
 and the front page announced it for this one; the two never agreed, and
 neither went out, because 0.6.1 through 0.6.3 were cut from another line. No
-reader was given the notice before now. Stating a breaking change in the
-release that makes it is what this file did for the last one, and is what it
-does here.
+release carried the notice: it stood on the front page and in these notes,
+contradicting each other, where only somebody reading the repository would
+meet it. Stating a breaking change in the release that makes it is what this
+file did for the last one, and is what it does here.
 
 **`-W` decided the verdict and left no mark, so the command printed `PASS` and
 exited 1 on the same run.** A package with one warning and no errors, checked
@@ -217,21 +220,27 @@ built it.** A build on Python 3.9 and a build on 3.12 now produce the same
 bytes, where before they produced two files that differed in four entries on
 one and five on the other -- `RECORD` for each bundled dependency, and
 `REQUESTED` for each one pip was asked for by name, which is a different set
-depending on which dependencies the builder's own Python already satisfies. Neither is a term the dependency is redistributed under -- every `METADATA`, every
-`WHEEL` and every licence file still travels, which is why the `dist-info` is
-kept at all -- and both are written by pip about an installation the archive
-is not. rdflib 7.6.0's `RECORD` listed a hundred and fifty paths, six of them the
-console scripts this build deletes on purpose, so the archive shipped a list
-that was false about its own contents and named the very files removed to make
-it reproducible. Two builds whose pip wrote different bookkeeping now give the
-same bytes; the hash on a release page is something a rebuild of the tagged
-commit can be compared against, with the dependency versions as the one thing
-nobody pins. `SECURITY.md` and `docs/offline-install.md` say which
-reproducibility this is, and the latter now tells the reader carrying a file
-across an air gap how to check it against what was published. **The `.pyz`'s hash
-therefore moves against the one before it**: an approval record or a build
-pinning an older one has to be re-pinned against this release's, which is on the
-release page beside the file. Two entry attributes that came from the building machine are pinned with the timestamps now, and a dependency that started publishing platform-specific wheels would stop the build rather than put a compiled file into an archive that promises none.
+depending on which dependencies the builder's own Python already satisfies.
+Neither is a term the dependency is redistributed under -- every `METADATA`,
+every `WHEEL` and every licence file still travels, which is why the
+`dist-info` is kept at all -- and both are written by pip about an
+installation the archive is not. rdflib 7.6.0's `RECORD` listed a hundred and
+fifty paths, six of them the console scripts this build deletes on purpose, so
+the archive shipped a list that was false about its own contents and named the
+very files removed to make it reproducible. Two builds whose pip wrote
+different bookkeeping now give the same bytes; the hash on a release page is
+something a rebuild of the tagged commit can be compared against, once the
+dependency versions match and neither build set `SOURCE_DATE_EPOCH` -- the two
+inputs nobody pins, which `SECURITY.md` names together. `SECURITY.md` and
+`docs/offline-install.md` say which reproducibility this is, and the latter
+now tells the reader carrying a file across an air gap how to check it against
+what was published. **The `.pyz`'s hash therefore moves against the one before
+it**: an approval record or a build pinning an older one has to be re-pinned
+against this release's, which is on the release page beside the file. Two
+entry attributes that came from the building machine are pinned with the
+timestamps now, and a dependency that started publishing platform-specific
+wheels would stop the build rather than put a compiled file into an archive
+that promises none.
 
 **The vendored rule catalogue and the reference corpus move to a newer upstream
 commit, and one reading now differs where it did not.** The catalogue and the
@@ -255,18 +264,20 @@ iiRDS class into a proprietary namespace is not. Cross-validation therefore
 moves by one pair, to 114 with `agree` 43.
 
 **The front page says which surfaces move, and a command says the rest back.**
-"What is stable here, and what is not" sits under "Using this validator in your
-product": the packaging is not the contract, the verdicts move and every move
-is written down here, and then a table of what has held -- the report's
-`schemaVersion` and its keys, each exit code, the account that every registered
-rule is answered for, the commit the rule catalogue was taken from, the
-ontology digests. Every cell in it is what a command printed, written by
-`tools/gen_stable_section.py`, and `--check` fails the build when the page and
-the commands disagree; three copies of one coverage figure in this repository
-are why a figure on that page is no longer typed. `tools/extract_catalog.py`
-grew `--pin`, which answers offline which commit the committed catalogue came
-from and fails when that is not the commit the script pins -- two records of
-one fact that nothing had compared.
+"What is stable here, and what is not" sits under "Using this validator in
+your product": the packaging is not the contract, the verdicts move and every
+move is written down here, and then a table of what has held -- the report's
+`schemaVersion` and its keys, each exit code, the account that every
+registered rule is answered for, the commit the rule catalogue was taken from,
+the ontology digests. Every figure in it is what a command printed, written by
+`tools/gen_stable_section.py`, while the claim beside each figure and the way
+to see it are written out; the two rows that cite `make check` and a test
+rather than a command carry no captured output at all. `--check` fails the
+build when the page and the commands disagree, and three copies of one
+coverage figure in this repository are why a figure on that page is no longer
+typed. `tools/extract_catalog.py` grew `--pin`, which answers offline which
+commit the committed catalogue came from and fails when that is not the commit
+the script pins -- two records of one fact that nothing had compared.
 
 **A dropped file could be written outside the directory made for it, on
 Windows.** `iirds serve` gives the copy the name the sender chose, minus
@@ -277,10 +288,12 @@ written outside that directory. That was true on one platform. `ntpath.join`
 as `D:evil.iirds` was written to that drive's working directory, where the
 per-request cleanup never saw it again.
 
-What it is not: a way past any boundary. The page is loopback-only, a browser
-cannot produce such a name from a file chooser, and a local client that can
-post one can already write files as the same user. What broke is a property
-this project states, which is the thing it sells.
+What it is not: a way past a trust boundary. What was passed is the directory
+this page makes for the request. The page is loopback-only, and a browser
+cannot produce such a name from a file chooser on the one platform where a
+path join reads it as a drive; what is left is a local process that can reach
+the port, which on a machine with one account is already writing as this user.
+What broke is a property this project states, which is the thing it sells.
 
 A name a path join would read as more than a name — one carrying a drive, a
 Windows device name, a control character — is now replaced whole rather than
@@ -289,16 +302,18 @@ reading the container's file name, and the page must not answer differently
 from the command line for the same file. The name the sender chose still
 reaches the report.
 
-**`iirds diff <report.json> <package>` — what changed since a report you kept.**
-The command line could say whether a package is conformant and not what moved
-since the last one you signed off. This reads a stored report against a fresh
-run and says which rules went from clean to firing, which stopped, which each
-run answered that the other did not, and — for every one of those — why.
+**`iirds diff <report.json> <package>` — what changed since a report you
+kept.** The command line could say whether a package is conformant and not
+what moved since the last one you signed off. This reads a stored report
+against a fresh run and says which rules went from clean to firing, which
+stopped, and which each run answered that the other did not -- with the reason
+beside it wherever the other side recorded one, and the bare id where the
+other side has no record of that rule at all.
 
-It exits 1 when this run has errors the stored report does not, 0 otherwise,
-and 2 when it will not read the stored file, which is a sentence on stderr and
-never a traceback. That keeps the documented meaning of the codes: 0 clean, 1
-errors found, 2 could not run.
+It exits 1 when this run has errors the stored report does not, 0 when it does
+not, 64 when the command line was the problem, and 2 when it will not read the
+stored file -- a sentence on stderr, never a traceback. That keeps the
+documented meaning of the codes: 0 clean, 1 errors found, 2 could not run.
 
 Two things it will not do. It does not say a package broke something when the
 comparison itself moved underneath: if the two runs were judged by different
@@ -347,13 +362,13 @@ the rule count goes to 236.
 
 **The machine-readable report is version 2, and a report from an earlier
 release cannot be read against a run of this one.** Not one key changed shape;
-keys arrived. A report any release has written carries no `judgedBy` at all,
-so it cannot say which build made it, which rules ran, or which gate decided
-it -- and a comparison that cannot answer those is not a comparison of the
-same question. Comparing across it would report a package as having broken
+keys arrived. A report an earlier release has written carries no `judgedBy` at
+all, so it cannot say which build made it, which rules ran, or which gate
+decided it -- and a comparison that cannot answer those is not a comparison of
+the same question. Comparing across it would report a package as having broken
 something it never touched, so the version says the two are not comparable
-rather than leaving a reader to find out. Re-validating the package produces a current report; nothing else is
-needed and nothing is lost.
+rather than leaving a reader to find out. Re-validating the package produces a
+current report; nothing else is needed and nothing is lost.
 
 The machine-readable report also says why every rule it did not answer went
 unanswered, whatever command was asked of it. A conformance run says it for
@@ -373,31 +388,35 @@ is the reasons it can now name. A lint run no longer shows an unasked rule
 under the label for a different profile, and a container that would not open
 says how many rules it never put, where it used to say none.
 
-**`--fragment` gave a different report on every run.** The rules a snippet
-cannot satisfy were written into the report in the order a set produced them,
-which depends on the hash seed a process starts with: seven distinct documents
-across eight seeds, on a tool whose first stated property is that the same file
-gives the same verdict byte for byte. Fixed, and the gate for that property now
-covers the fragment path, a run of every rule, and an unpacked container
-instead of one command on one archive.
+**`--fragment`'s report depended on the hash seed the process started with.**
+The rules a snippet cannot satisfy were written into the report in the order a
+set produced them, which depends on the hash seed a process starts with: seven
+distinct documents across eight seeds, on a tool whose first stated property
+is that the same file gives the same verdict byte for byte. Fixed, and the
+gate for that property now covers the fragment path, a run of every rule, and
+an unpacked container instead of one command on one archive.
 
 **The drop page no longer leaves a copy of what you dropped.** `iirds serve`
 writes the package it receives to a file — the alternative is holding a
 quarter of a gigabyte in memory for each check running at the time — and moved
-that file into a directory it removed. Every other way out of a request left
-it behind: a checker that raised, which the page catches and answers, so
-nothing downstream noticed. Counted on one machine: 1008 of them. The copy now
-lives in a directory made for the request and removed before the answer is
-sent, so by the time the page shows a verdict it is already gone. SECURITY.md
-says what is written, where, why, and when it goes.
+that file into a directory it removed. A refused body was removed by the
+reader that wrote it, and a request turned away earlier made no copy at all;
+what fell between those two owners was left where it lay -- a checker that
+raised, which the page catches and answers, so nothing downstream noticed.
+Counted on one machine: 1008 of them. The copy now lives in a directory made
+for the request and removed before the answer is sent, so by the time the page
+shows a verdict it is already gone. SECURITY.md says what is written, where,
+why, and when it goes.
 
 **Appendix B's rules had never looked at the content list, and the reason was
 another rule.** Their population is the files the metadata declares as XHTML
-renditions. Section 8.3.1.1 says the content list MUST NOT be referenced in the
-metadata file — so it is never declared, so it was never read. Measured: an
-iiRDS/H package whose `index.html` carries a `<script>`, a `<form>` and an
-`<iframe>` — three things appendix B says MUST NOT be used — drew eight
-findings, none of them from a content rule.
+renditions. Section 8.3.1.1 says the content list MUST NOT be referenced in
+the metadata file -- so a package that obeys it never declares the file, and
+what is never declared was never read; a package that referenced it anyway had
+its content list read as an ordinary rendition, which is the shape `R40` now
+reports. Measured: an iiRDS/H package whose `index.html` carries a `<script>`,
+a `<form>` and an `<iframe>` — three things appendix B says MUST NOT be used —
+drew eight findings, none of them from a content rule.
 
 That file is the one a person opens in a browser, and section 8.3.1.1 also says
 it MUST be based on iiRDS XHTML 5. The population now includes it under the
@@ -485,8 +504,8 @@ packages naming different profiles tie, and the tie falls back to the order the
 nodes leave the graph.
 
 Measured: a conformant iiRDS/H container, plus one stray `iirds:Package` whose
-only content is `iirds:formatRestriction A`, is judged iiRDS/A when the stray's
-IRI sorts first and iiRDS/H when it sorts last. The two readings run
+only content is `iirds:formatRestriction A`, is judged iiRDS/A when the
+stray's IRI sorts first and iiRDS/H when it sorts last. The two readings run
 different rule sets. The handover rules are most of the difference, present in
 the iiRDS/H reading and absent in the iiRDS/A one -- and one container rule
 goes the other way, because `C11.1` is declared for the unrestricted and A
@@ -494,9 +513,10 @@ profiles while `C11.1H` carries the same obligation for handover, so the A
 reading asks one of them and the H reading the other. What matters is not the
 size of the difference, which is a function of how large the registry is on
 the day, but that the same container is judged against two different sets of
-obligations. The
-stray declares no edition, and a package that declares none ranks as the
-newest, deliberately, so nothing passes by saying less. Here saying less won.
+obligations. The stray declares no edition, and a package that declares none
+ranks as the newest, deliberately, so saying less cannot drop a rule the
+newest edition asks; what it does drop are the two only the earlier editions
+ask, `M16.1` and `M16.2` on `iirds:Event`. Here saying less won.
 
 **And an interoperability run said nothing at all about it.** M3 reports that
 several packages claim one container, but M3 is a schema rule and a lint run
@@ -507,9 +527,10 @@ includes `system`, which is why this rule is one.
 
 It reports rather than resolves, because there is nothing to prefer: A and H
 are two values with no order between them, and any rule for picking is a coin
-toss the report would print as a fact. A disagreement about the *edition* alone
-is not reported — the rank takes the newest, so no rule an older declaration
-would have brought is missing.
+toss the report would print as a fact. A disagreement about the *edition*
+alone is not reported — the rank takes the newest, which asks everything a
+later edition added; what it lets go are `M16.1` and `M16.2`, the two the
+editions before 1.3 ask alone.
 
 **The library said its reading was the checker's, and it is not.**
 `iirds.Package.version` takes the first package that declares one; the checker
@@ -529,9 +550,12 @@ the files the old record never listed survive.
 The warning and the one-line repair were already on the compatibility
 package's PyPI page, which is the wrong place for half the readers. Somebody
 who has already run the upgrade cannot ask the tool anything -- that is the
-failure -- so they arrive at the repository, and the repository said nothing.
-Both pages carry it now, and a test reads the two against each other, because
-one hazard written twice is two things that can drift.
+failure -- so they arrive at the repository, where it stood in the changelog
+several releases down and not on the page they land on. The front page and the
+compatibility package's page both carry it now, and so does the release-notes
+body a version tag lands on; a test holds all three to the same two commands,
+because one hazard restated on several surfaces is several things that can
+drift.
 
 **Three MUSTs about absolute IRIs that a recommendation was standing in for
 (R34, R35, R36).** Section 6.2.1 says it is RECOMMENDED to use absolute IRIs in
@@ -564,17 +588,23 @@ rdf:resource="urn:x:party1"/>` points at a party, and
 rules asking whether it is there are satisfied, and the rules asking about its
 target find a literal and step over it.
 
-Twelve rules already say this about thirteen of the forty-six relations —
-R10, R12, M17, M18, M19.4, M22.2, M26, M94 and R19 to R21 and R23 — each as a MUST,
-because for those the standard states the range obligation in a sentence of its
-own. L16 is the same observation about the other thirty-three, where it states
-none. Seven of the thirteen were there when L16 was written; the number is
-measured rather than listed, so adding M19.4 and R19 to R21 and R23 moved it
-by itself. It is a
-warning and claims no obligation: `rdfs:range` in RDF is an inference and not a
-constraint, and the one general-looking range MUST, section 7.3.3's, is about a
-proprietary property complying with the iiRDS property it refines. Coverage is
-unchanged, which is the point of keeping "claimed" and "held" apart.
+Twelve rules already say this about thirteen of the forty-six relations — R10,
+R12, M17, M18, M19.4, M22.2, M26, M94 and R19 to R21 and R23 — at MUST level,
+M17 as a MUST NOT. Four of them answer a sentence the standard states about
+that relation alone: R10's §6.8.2, R12's and M22.2's §6.8.3, M26's §6.9.2. The
+others claim nothing, and the code beside them says why: the two selector rows
+share one sentence stated once per property, and the sentence naming the class
+an identity or classification domain must be carries no keyword at all. L16 is
+the same observation across all forty-six: on the thirty-three the standard
+states nothing about, it is the only rule that speaks; on the other thirteen
+it restates as a warning what a MUST has already reported. Seven of the
+thirteen were there when L16 was written; the number is measured rather than
+listed, so adding M19.4 and R19 to R21 and R23 moved it by itself. It is a
+warning and claims no obligation: `rdfs:range` in RDF is an inference and not
+a constraint, and the one general-looking range MUST, section 7.3.3's, is
+about a proprietary property complying with the iiRDS property it refines.
+Coverage is unchanged, which is the point of keeping "claimed" and "held"
+apart.
 
 The rule reads the ontology's own word for what a relation is rather than a
 list or a proxy. Every property the standard declares descends from
@@ -636,12 +666,14 @@ by nothing at all.
 
 **Twenty-six appendix rows no validator can reach are named as such.**
 Appendix A describes each term in a "Definition:" and a "Description:" cell,
-and the specification's own markup calls a word inside twenty-nine of those an
-RFC 2119 keyword — `<em title="REQUIRED in RFC 2119 context" class="rfc2119">`
-around "REQUIRED" in "Physical items REQUIRED for the running of a
-manufacturing production". Twenty-six of the twenty-nine describe a thing in
-the world or bind somebody in it: `RestrictionOnUse` is about how a product may
-be used, `ScopeOfDelivery` about what a supplier must deliver "according to the
+and the specification's own markup calls a word inside many of those an RFC
+2119 keyword — MAY and OPTIONAL among them, which bind nobody; the twenty-nine
+at issue here are the ones that do bind, the MUSTs, REQUIREDs and SHALLs —
+`<em title="REQUIRED in RFC 2119 context" class="rfc2119">` around "REQUIRED"
+in "Physical items REQUIRED for the running of a manufacturing production".
+Twenty-six of the twenty-nine describe a thing in the world or bind somebody
+in it: `RestrictionOnUse` is about how a product may be used,
+`ScopeOfDelivery` about what a supplier must deliver "according to the
 purchase order". A container can neither satisfy nor breach one. (Twenty-six
 markers over fewer sentences — the specification repeats several of these
 verbatim between a class and its instance, and each occurrence is counted the

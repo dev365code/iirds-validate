@@ -83,6 +83,11 @@ that.
 rules.** Its note said "the 9 requirements about the ZIP archive itself" and
 listed nine rule identifiers; those nine rules cover seven requirements.
 
+Also released as 0.7.2: the seven entries headed **Security** below, with
+[GHSA-gv27-g2mp-8ghv](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-gv27-g2mp-8ghv),
+[GHSA-pj7w-78cj-j5h8](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-pj7w-78cj-j5h8) and
+[GHSA-325m-q3mp-wx43](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-325m-q3mp-wx43).
+
 **Security. Whether a directory was a container could depend on a file
 outside it.** The markers were looked up as names at the last step only, so a
 `META-INF` that was itself a link out of the directory was followed, and a file

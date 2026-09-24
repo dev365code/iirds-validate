@@ -139,6 +139,40 @@ The finding names the subject and how many were found. A rendition with an IRI
 of its own is named by it; one written as a blank node, as here, is named by
 the unit that has it, so two of those under one unit read alike.
 
+### A topic created twice
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/two-dates.iirds --broken two-dates
+    $ iirds check fixtures/what-it-catches/two-dates.iirds
+
+    two-dates.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      ERROR M2.3      more than one iirds:dateOfCreation
+                          urn:test:topic1
+                          2 values: 2020-01-01, 2021-01-01
+                        → Keep one iirds:dateOfCreation and remove the rest. Two creation dates give
+                        → a consumer no way to choose, and most will silently take whichever they
+                        → read first.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**The standard says so.** The link below lands on these words, which are the
+specification's own:
+
+> 0..1  iirds:dateOfCreation property -
+http://www.w3.org/2001/XMLSchema#dateTimeStamp
+
+<https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp>
+
+`M2.3` states that obligation as: iirds:InformationUnit MUST NOT have more
+than one property iirds:dateOfCreation.
+
+Appendix A gives an information unit at most one creation date, and this one
+carries two. The finding names the unit and the values it found.
+
 **Now.**
 
 - 172 of 280 obligations covered

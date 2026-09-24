@@ -115,6 +115,9 @@ CASES = [
      "The finding names the subject and how many were found. A rendition with an "
      "IRI of its own is named by it; one written as a blank node, as here, is named "
      "by the unit that has it, so two of those under one unit read alike."),
+    ("two-dates", "A topic created twice", "two-dates", "M2.3", 1,
+     "Appendix A gives an information unit at most one creation date, and this "
+     "one carries two. The finding names the unit and the values it found."),
     ("missing-content", "Metadata that points at a file the package does not carry",
      "missing-content", "L2", 1,
      "The graph is well-formed and no rule but `L2` has anything to say about it. "
@@ -189,6 +192,7 @@ AXIS_OF = {
     "mimetype": "coverage",
     "no-metadata-rdf": "coverage",
     "no-format": "coverage",
+    "two-dates": "coverage",
     "missing-content": "explanation",   # L2 names no section: the item not done
 }
 

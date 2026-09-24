@@ -9,7 +9,6 @@ from here; there is one copy.
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import re
 import xml.etree.ElementTree as ElementTree
@@ -89,7 +88,7 @@ def _raise(exception):
     raise exception()
 
 
-def _declares_entities(raw: bytes) -> bool:
+def _declares_entities(raw: bytes, encoding: Optional[str] = None) -> bool:
     """Whether the parser will be handed declarations to expand.
 
     Asked of the parser rather than of the bytes. A pattern over bytes has to
@@ -105,8 +104,14 @@ def _declares_entities(raw: bytes) -> bool:
     expanded. Stopped at the root element: declarations live in the DTD, the
     DTD precedes the root, and an external one is not fetched -- so an
     external DTD passes, declaring nothing this parser will see.
+
+    `encoding` is the one to read the document as; left out, the document's
+    own declaration decides. The caller asks both ways, because the parser
+    under the graph reads the document as UTF-8 whatever it declares: asked
+    only under the declaration, this answered for a text the parser never
+    saw wherever the two readings differed.
     """
-    parser = expat.ParserCreate()
+    parser = expat.ParserCreate(encoding)
     parser.EntityDeclHandler = lambda *_args: _raise(_Declared)
     parser.StartElementHandler = lambda *_args: _raise(_RootReached)
     try:
@@ -116,14 +121,10 @@ def _declares_entities(raw: bytes) -> bool:
     except _RootReached:
         return False
     except Exception:
-        # Caught broadly, and this is the honest part: what expat cannot read
-        # it cannot answer for, and the parser underneath the graph is not
-        # this one. So a document expat refuses and rdflib accepts would pass
-        # here unexamined. The decode above is what keeps that set empty -- it
-        # hands on bytes whose declaration agrees with them, so the two read
-        # the same document -- and the tests hold that, with and without a
-        # byte order mark, because a mark was how they came apart. Raising is
-        # not an option either: parse_errors promises that reading never does.
+        # Caught broadly: what expat cannot read under a declared encoding it
+        # cannot answer for, and the answer that decides is the one asked as
+        # UTF-8, the way the parser under the graph reads. Raising is not an
+        # option either: parse_errors promises that reading never does.
         return False
     return False
 
@@ -177,12 +178,34 @@ def _split(tag: str) -> Tuple[str, str]:
     return "", tag
 
 
-def _document_element(raw: bytes) -> Optional[str]:
+class _Element(Exception):
+    """The first element, by its expanded name."""
+
+
+class _FirstElement:
+    """A tree builder's place, taken by one that stops at the first element."""
+
+    def start(self, tag, _attributes):
+        raise _Element(tag)
+
+    def close(self):
+        return None
+
+
+def _document_element(raw: bytes, encoding: Optional[str] = None) -> Optional[str]:
     """The expanded name of the first element, or None where XML itself
-    cannot say -- which the parser then reports in its own words."""
+    cannot say -- which the parser then reports in its own words.
+
+    `encoding` as for the entity guard, and asked both ways for the same
+    reason: the parser under the graph reads UTF-8, and a judge that
+    followed only the declaration read other text and let a document
+    through."""
+    parser = ElementTree.XMLParser(target=_FirstElement(), encoding=encoding)
     try:
-        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
-            return element.tag
+        parser.feed(raw)
+        parser.close()
+    except _Element as first:
+        return first.args[0]
     except ElementTree.ParseError:
         return None
     return None
@@ -347,7 +370,7 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # are another is refused outright by a parser reading it as it arrived --
     # and a guard that stopped there would answer "no declarations" about a
     # document the decode was about to make readable, entities and all.
-    if fmt == "xml" and _declares_entities(raw):
+    if fmt == "xml" and (_declares_entities(raw) or _declares_entities(raw, "UTF-8")):
         return None, "%s: refused: the document declares XML entities" % name
 
     # Whether the document is RDF/XML at all is decided here, on the decoded
@@ -358,9 +381,10 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # document, so nothing was read, and the reader says so rather than
     # handing on a graph nobody wrote.
     if fmt == "xml":
-        element = _document_element(raw)
-        if element is not None and not is_rdfxml_document_element(element):
-            return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))
+        for encoding in (None, "utf-8"):
+            element = _document_element(raw, encoding)
+            if element is not None and not is_rdfxml_document_element(element):
+                return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))
 
 
     if fmt == "json-ld":

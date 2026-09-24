@@ -247,9 +247,12 @@ gone wrong.
 6. ~~The archive's own index is taken at its word~~ **Closed**: S10 reads
    every entry's local file header where the central directory says it is
    and reports the entry where the two describe different files -- name,
-   method, the flags a reader acts on, checksum and sizes, and data that
-   runs into the next entry. The extra fields and timestamps writers put in
-   the two records differ legitimately and are not compared. Nothing in the
+   as each record's bit 11 reads it and as its bytes spell it, method, the
+   flags a reader acts on, checksum and sizes, and data that runs into the
+   next entry. The extra fields and timestamps writers put in the two
+   records differ legitimately and are not compared; a Unicode Path field,
+   which a reader takes the name from, is held to its own record's name.
+   Nothing in the
    specification addresses the case; a consumer reading the archive as a
    stream does.
 

@@ -858,7 +858,8 @@ _PLACEHOLDER = 0xFFFFFFFF
 
 class LocalHeader(NamedTuple):
     """The fields of a local file header (APPNOTE 4.3.7) a reader acts on,
-    with the ZIP64 sizes (4.5.3) already read in for the placeholders."""
+    with the ZIP64 sizes (4.5.3) already read in for the placeholders. The
+    extra field is kept whole: a reader can take the entry's name from it."""
     offset: int
     name: bytes
     flag_bits: int
@@ -867,6 +868,7 @@ class LocalHeader(NamedTuple):
     compress_size: int
     file_size: int
     data_start: int
+    extra: bytes = b""
 
 
 def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
@@ -880,7 +882,8 @@ def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
     extra = raw[_HEADER_FIXED + name_len:_HEADER_FIXED + name_len + extra_len]
     compress_size, file_size = _zip64_sizes(extra, _u32(raw, 18), _u32(raw, 22))
     return LocalHeader(offset, name, _u16(raw, 6), _u16(raw, 8), _u32(raw, 14),
-                       compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len)
+                       compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len,
+                       extra)
 
 
 def _zip64_sizes(extra: bytes, compress_size: int, file_size: int):

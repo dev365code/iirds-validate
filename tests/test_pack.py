@@ -186,6 +186,28 @@ def declared_licence_files():
     return re.findall(r'"([^"]+)"', block.group(1))
 
 
+def test_the_entry_point_is_the_same_bytes_on_every_system(tmp_path, monkeypatch):
+    """Text mode on Windows writes every `\\n` as `\\r\\n`, so an entry point
+    written as text made a Windows build a different file from the same
+    commit. That translation is reproduced here, on whatever runs the test,
+    for anything opened for writing as text."""
+    import pathlib
+
+    import build_zipapp
+
+    opened_as = pathlib.Path.open
+
+    def as_windows_would(self, mode="r", buffering=-1, encoding=None, errors=None,
+                         newline=None):
+        if "b" not in mode and newline is None:
+            newline = "\r\n"
+        return opened_as(self, mode, buffering, encoding, errors, newline)
+
+    monkeypatch.setattr(pathlib.Path, "open", as_windows_would)
+    build_zipapp.write_entry_point(tmp_path)
+    assert (tmp_path / "__main__.py").read_bytes() == build_zipapp.MAIN.encode("utf-8")
+
+
 def test_the_pyz_carries_the_same_licence_files_the_wheel_does():
     """Apache-2.0 asks that a copy of the licence and the NOTICE travel with
     the work. Every dependency's terms were kept here deliberately -- the

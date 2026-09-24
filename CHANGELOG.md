@@ -43,6 +43,13 @@ with a traceback and `1` -- the code that says a package failed. The parser
 now refuses a port outside 0 to 65535, as it already refused one that is not
 a number.
 
+**The single-file `.pyz` writes its entry point as bytes.** `__main__.py` was
+written as text, so a build on Windows carried `\r\n` line endings in it and
+was a different file from the same commit. `SECURITY.md` and
+`docs/offline-install.md` said the archive was byte-identical wherever it is
+built; what is measured is one runner building it twice, and they now say
+that.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

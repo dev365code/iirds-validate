@@ -223,7 +223,7 @@ def test_a_defence_that_names_a_rule_cites_a_test_that_names_it():
 FIGURES = {
     "pairs are cases where the reference does not report": ("silence", "neither"),
     "are gated by a version or variant": ("silence", "gated"),
-    "are fixtures nobody can parse": ("silence", "malformed"),
+    "are pairs whose fixture this tool cannot read as RDF/XML": ("silence", "malformed"),
     "are defects that exist only in the XML tree": ("silence", "invisible"),
     "pairs name a rule that does not apply": ("silence", "gated"),
     "mismatched, the": ("silence", "mismatched"),

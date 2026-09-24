@@ -1027,7 +1027,7 @@ M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
 #: The one region cut whole rather than by shape, so its size is pinned: a
 #: sentence appended inside it would be cut with it and read by nobody, which
 #: is the fifth way found past this gate.
-M25_PARAGRAPH_LENGTH = 503
+M25_PARAGRAPH_LENGTH = 493
 
 #: A rule id and an obligation id within 200 characters of each other, in
 #: either order, over whitespace-collapsed text.

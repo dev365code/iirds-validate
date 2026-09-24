@@ -1027,7 +1027,7 @@ M25_PARAGRAPH = re.compile(r"The rule does not claim `covers=.*?(?=\n\n)", re.S)
 #: The one region cut whole rather than by shape, so its size is pinned: a
 #: sentence appended inside it would be cut with it and read by nobody, which
 #: is the fifth way found past this gate.
-M25_PARAGRAPH_LENGTH = 503
+M25_PARAGRAPH_LENGTH = 493
 
 #: A rule id and an obligation id within 200 characters of each other, in
 #: either order, over whitespace-collapsed text.
@@ -1159,14 +1159,26 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     """A claim means "a violation is reported", not "the package fails".
 
     The runner demotes content findings to warnings outside profile iiRDS/A,
-    so a package breaching one of appendix B's rules is reported and still
-    exits 0. That is deliberate and argued in docs/divergences.md -- and the
-    coverage figure is the line a reader quotes, so the count has to be beside
-    it and has to be the measured one.
+    so a package breaching an obligation that only content rules claim is
+    reported and still exits 0. That is deliberate and argued in
+    docs/divergences.md -- and the coverage figure is the line a reader quotes,
+    so the count has to be beside it and has to be the measured one.
     """
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    demoted = sorted(rule.id for rule in all_rules() if rule.covers and rule.kind == "content")
-    stated = re.search(r"(\w+) of the (\d+) are appendix B's rules", scope)
+    # Obligations, not rules: nine content rules claim ten of appendix B's, and
+    # the sentence once counted the rules while saying "of the 172", which are
+    # obligations. The set is every obligation only content rules claim, since
+    # breaching any of those is the PASS the page describes, and the page calls
+    # them appendix B's: counting appendix B's alone let an eleventh, claimed
+    # by a content rule from another section, go uncounted.
+    kinds = {rule.id: rule.kind for rule in all_rules()}
+    demoted = sorted(requirement for requirement, claimants in CLAIMED.items()
+                     if {kinds[rule_id] for rule_id in claimants} == {"content"})
+    appendix_b = sorted(requirement for requirement in CLAIMED if requirement.startswith("b-"))
+    assert demoted == appendix_b, (
+        "only content rules claim %s; appendix B's claimed obligations are %s"
+        % (demoted, appendix_b))
+    stated = re.search(r"(\w+) of the (\d+) are appendix B's obligations", scope)
     assert stated, "docs/scope.md no longer states how many claims are demoted outside iiRDS/A"
     words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
              "seven": 7, "eight": 8, "nine": 9, "ten": 10}

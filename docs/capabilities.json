@@ -1,0 +1,205 @@
+{
+  "product": "iirds",
+  "as_of": "0.7.1",
+  "detail": "docs/what-it-catches.md",
+  "axes": [
+    {
+      "key": "coverage",
+      "label": "Coverage",
+      "now": 172,
+      "target": 220,
+      "now_text": "172 of 280 obligations covered",
+      "target_text": "at least 220 of 280 covered",
+      "evidence": [
+        {
+          "file": "docs/scope.md",
+          "says": "Coverage of the standard is 172 of 280"
+        }
+      ]
+    },
+    {
+      "key": "explanation",
+      "label": "Explanation",
+      "items": [
+        {
+          "text": "what is wrong, in one sentence",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "what is wrong"
+          }
+        },
+        {
+          "text": "the evidence as read from the file",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "the evidence as read from your file"
+          }
+        },
+        {
+          "text": "a remedy, for every rule",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "A rule without a prescription does not ship"
+          }
+        },
+        {
+          "text": "every rule names its section, or says it has none",
+          "done": false
+        },
+        {
+          "text": "the line in the file",
+          "done": false
+        }
+      ],
+      "now_text": "what, evidence, remedy",
+      "target_text": "+ every rule names its section, the line"
+    },
+    {
+      "key": "report",
+      "label": "Report contract",
+      "items": [
+        {
+          "text": "schemaVersion in every report",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "The report is a document with a `schemaVersion`"
+          }
+        },
+        {
+          "text": "a golden report held by a CI check",
+          "done": true,
+          "evidence": {
+            "file": ".github/workflows/ci.yml",
+            "says": "the stored report is the one this tree produces"
+          }
+        },
+        {
+          "text": "exit codes 0, 1, 2 and 64 under test",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "`64` when the argument parser rejected the command line"
+          }
+        },
+        {
+          "text": "a field-by-field schema page",
+          "done": false
+        }
+      ],
+      "now_text": "schemaVersion, golden, exit codes",
+      "target_text": "+ a field-by-field schema page"
+    },
+    {
+      "key": "entrances",
+      "label": "Entrances",
+      "items": [
+        {
+          "text": "command line",
+          "done": true,
+          "evidence": {
+            "file": "pyproject.toml",
+            "says": "iirds = \"iirds_validate.cli:main\""
+          }
+        },
+        {
+          "text": "Python library",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "import iirds, iirds_validate"
+          }
+        },
+        {
+          "text": "single file, nothing to install but Python",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "one file, no install"
+          }
+        },
+        {
+          "text": "GitHub Action",
+          "done": false
+        },
+        {
+          "text": "browser, nothing installed",
+          "done": false
+        }
+      ],
+      "now_text": "command line, library, single file",
+      "target_text": "+ GitHub Action, browser"
+    },
+    {
+      "key": "input",
+      "label": "Input safety",
+      "items": [
+        {
+          "text": "read budgets per file, and per run for content",
+          "done": true,
+          "evidence": {
+            "file": "SECURITY.md",
+            "says": "Across one run, what the content rules read is held to a total ceiling"
+          }
+        },
+        {
+          "text": "from 0.6.1, a shipped security fix has an advisory",
+          "done": true,
+          "evidence": {
+            "file": "SECURITY.md",
+            "says": "a security fix that ships in a release has a GitHub security advisory"
+          }
+        },
+        {
+          "text": "tests of named gates verified against mutations",
+          "done": true,
+          "evidence": {
+            "file": ".github/workflows/ci.yml",
+            "says": "python tools/mutation_table.py --run"
+          }
+        },
+        {
+          "text": "declared encodings read without loss",
+          "done": false
+        }
+      ],
+      "now_text": "read budgets, advisory, mutations",
+      "target_text": "+ declared encodings read without loss"
+    },
+    {
+      "key": "upstream",
+      "label": "Upstream",
+      "items": [
+        {
+          "text": "upstream catalogue pinned by commit",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "catalogue taken from"
+          }
+        },
+        {
+          "text": "checked weekly for change",
+          "done": true,
+          "evidence": {
+            "file": "README.md",
+            "says": "whether upstream still matches it is a weekly job"
+          }
+        },
+        {
+          "text": "one pin move shipped",
+          "done": true,
+          "evidence": {
+            "file": "CHANGELOG.md",
+            "says": "The vendored rule catalogue and the reference corpus move to a newer upstream commit"
+          }
+        }
+      ],
+      "now_text": "pinned, checked weekly, one pin move shipped",
+      "target_text": "met"
+    }
+  ]
+}

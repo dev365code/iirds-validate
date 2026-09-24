@@ -53,7 +53,7 @@ def test_the_census_numbers_hold():
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
     assert counts["sparql_emitted"] == 36
     assert counts["deferred_v1.1"] == 9
-    assert counts["not_expressible"] == 55
+    assert counts["not_expressible"] == 60
     assert counts["noop"] == 1
 
 
@@ -448,7 +448,7 @@ def test_the_readme_says_how_many_shapes_are_edition_specific():
     assert limited, "no edition-limited shape at all would be surprising"
 
     readme = (SHAPE_DIR.parent / "README.md").read_text("utf-8")
-    assert "%d of them encode a rule that iiRDS 1.3 added" % len(limited) in readme, \
+    assert "%d of them encode a rule that does not apply to every edition" % len(limited) in readme, \
         "shapes/README.md should say %d; it says something else" % len(limited)
 
 

@@ -119,6 +119,27 @@ def test_the_named_party_rules_do_not_quote_the_document_sentence():
             assert rule.spec and ":~:text=" not in rule.spec, rule.id
 
 
+def test_the_readme_rules_block_is_what_iirds_rules_prints(capsys):
+    """The front page shows the tail of `iirds rules`, in a section that says
+    every number in it is read by a test. The table beside it was read and the
+    block was not: its labels were nobody's, and five content rules arrived
+    under one that named appendix B alone for rules about PDF, SVG, raster,
+    video and audio files."""
+    import pathlib
+    import re
+
+    from iirds_validate.cli import main
+
+    readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
+    block = re.search(r"```console\n\$ iirds rules\n(.*?)\n```", readme, re.S)
+    assert block, "README no longer shows `iirds rules` in a console block"
+    assert main(["rules"]) == 0
+    summary = [line for line in capsys.readouterr().out.splitlines()
+               if re.match(r"(?:container|schema|system|content|lint) ", line)]
+    assert summary, "`iirds rules` printed no summary line this test can read"
+    assert block.group(1).splitlines() == summary
+
+
 def test_the_readme_headline_figures_are_the_counts():
     """Every number this project publishes is supposed to be read by a test.
     Four were not: the rule count in the badge line, the shape count, "All N
@@ -147,6 +168,42 @@ def test_the_readme_headline_figures_are_the_counts():
                    "%d of the %d have" % (coverage["exercised"], coverage["rules"])):
         assert phrase in readme, "README.md no longer says %r" % phrase
 
+
+
+def test_the_rest_of_the_at_a_glance_figures_are_the_counts():
+    """The "At a glance" line ends by saying every number in its section is
+    read by a test that fails the build when it goes stale. The rule and
+    shape counts were. The editions, the profiles, the dependency count and
+    the system fractions were not, and a README with each of them changed
+    passed the suite."""
+    import pathlib
+    import re
+
+    import build_zipapp
+    from iirds_validate.model import VARIANTS, VERSIONS
+
+    words = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+    readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
+    flat = " ".join(re.sub(r"(?m)^>[ \t]?", "", readme).split())  # the line is a blockquote
+    declared = [re.split(r"[<>=!~;\[ ]", spec, maxsplit=1)[0] for spec in build_zipapp.dependencies()]
+    # The .pyz stages every name `dependencies()` returns (test_pack holds
+    # that), which is what leaves nothing for it to install.
+    for phrase in ("across %s editions and %s profiles" % (words[len(VERSIONS)], words[len(VARIANTS)]),
+                   "%s pure-Python dependency (%s), zero for the single-file `.pyz`"
+                   % (words[len(declared)], ", ".join(declared))):
+        assert phrase in flat, "README.md no longer says %r" % phrase
+
+    cov = coverage()
+    for kind, row in (("container", "container (C\\*)"), ("schema", "schema (M\\*)"),
+                      ("system", "system (S\\*)"), ("content", "content (B\\*)"),
+                      ("lint", "interoperability (L\\*)")):
+        total, implemented = cov[kind]["total"], cov[kind]["implemented"]
+        console = "%d/%d" % (implemented, total) if total else "-"
+        table = "%d / %d" % (implemented, total) if total else "\u2014"
+        assert re.search(r"^%s\s+%s\s" % (kind, re.escape(console)), readme, re.M), \
+            "the console block's fraction for %s is not %s" % (kind, console)
+        assert "| %s | %s |" % (row, table) in readme, \
+            "the kind table's fraction for %s is not %s" % (kind, table)
 
 def test_the_registry_knows_every_rule_without_the_runner_being_imported_first():
     """Registration used to be a side effect of importing the package, which

@@ -178,9 +178,10 @@ def l2_missing_content_files(ctx):
 
 
 @_lint("L3", "every iirds:DirectoryNode should be reachable from a root node",
-       fix="Link the node in with iirds:has-first-child or iirds:has-next-sibling from a node that is itself reachable, or remove it. A node no root reaches is invisible in every viewer, whatever it contains.")
+       fix="Link the node in with iirds:has-first-child or iirds:has-next-sibling from a node that is itself reachable, or remove it. A node no root reaches is invisible to a viewer that walks the tree from its roots, whatever it contains.")
 def l3_orphan_directory_nodes(ctx):
-    """Nodes hanging off nothing: they exist, but no consumer will ever show them."""
+    """Nodes hanging off nothing: they exist, and a viewer that walks the tree
+    from its roots never shows them."""
     nodes = set(ctx.instances_of(T.DirectoryNode))
     if not nodes:
         return
@@ -236,8 +237,8 @@ def l4_directory_cycles(ctx):
                 stack.append((child, trail + [node]))
 
 
-@_lint("L5", "proprietary classes should be linked to the iiRDS vocabulary",
-       fix="Add rdfs:subClassOf from the proprietary class to the nearest iiRDS class. Without it a consumer sees a class it has no rules for and can only ignore the instances; with it they degrade to the iiRDS meaning.")
+@_lint("L5", "a proprietary class should link into the iiRDS vocabulary itself",
+       fix="Add rdfs:subClassOf from the proprietary class to the nearest iiRDS class. A consumer that reads only a class's own statements sees a class it has no rules for and can only ignore the instances; with the link they degrade to the iiRDS meaning. A link through another proprietary class is not followed here.")
 def l5_unmapped_custom_classes(ctx):
     """Spec section 7: extensions are understood only if they hang off iiRDS.
 
@@ -255,7 +256,8 @@ def l5_unmapped_custom_classes(ctx):
         if any(ctx.ontology.is_iirds_term(p) for p in parents + equivalents):
             continue
         reported.add(cls)
-        yield Violation("proprietary class is not linked to any iiRDS class",
+        yield Violation("proprietary class has no rdfs:subClassOf or owl:equivalentClass "
+                        "of its own into iiRDS",
                         subject=ctx.ref(cls),
                         detail="add rdfs:subClassOf or owl:equivalentClass pointing into iiRDS")
 
@@ -425,8 +427,8 @@ def l10_abstract_class_used_directly(ctx):
                                    if subclasses else "define a proprietary subclass")
 
 
-@_lint("L11", "content named .xhtml but declared as another media type is never checked",
-       fix="Either declare the rendition as application/xhtml+xml, or rename the file so it does not claim to be iiRDS XHTML5. Until the two agree, none of the content rules examine it.")
+@_lint("L11", "content named .xhtml but declared as another media type is not checked as iiRDS XHTML5 through that rendition",
+       fix="Either declare the rendition as application/xhtml+xml, or rename the file so it does not claim to be iiRDS XHTML5. Until the two agree, the iiRDS XHTML5 rules do not read the file through this rendition.")
 def l11_content_hidden_from_the_content_rules(ctx):
     """The B rules examine only what the package declares to be iiRDS XHTML5,
     which is right — running XHTML5 checks over a PDF would be nonsense. But
@@ -446,7 +448,9 @@ def l11_content_hidden_from_the_content_rules(ctx):
     rendition is not iiRDS XHTML5" describes most renditions in most packages
     and is not worth saying. `.xhtml` is the extension B6 requires of iiRDS
     XHTML5 content, so a file carrying it and declaring otherwise is one of the
-    two fields being wrong — and either way nothing examined the file.
+    two fields being wrong — and either way no iiRDS XHTML5 rule examined the
+    file through this rendition. Another rendition may declare it, and under
+    iiRDS/A the format rules may read it.
     """
     # Imported rather than restated: two media-type parsers that disagree would
     # put this rule and the B rules into a gap where a file is neither checked
@@ -464,16 +468,17 @@ def l11_content_hidden_from_the_content_rules(ctx):
             # the packages it is for.
             name = entry_named(str(source))
             if name and name.lower().endswith(".xhtml") and ctx.package.has(name):
-                yield Violation("this file is named .xhtml but is not declared as iiRDS "
-                                "XHTML5, so none of the content rules examined it",
+                yield Violation("this file is named .xhtml and this rendition does not "
+                                "declare it as iiRDS XHTML5, so the iiRDS XHTML5 rules do "
+                                "not read it through this rendition",
                                 subject=name,
                                 detail="declared as %s" % ", ".join(sorted(declared)))
 
 
-@_lint("L12", "two entries differing only in case will not survive extraction",
+@_lint("L12", "two entries differing only in case will not survive extraction onto a case-insensitive filesystem",
        fix="Rename one of them so the two differ by more than case. The ZIP holds both, "
-           "and Windows and macOS filesystems hold one, so the package a consumer unpacks "
-           "is missing a file that validated perfectly.",
+           "and a case-insensitive filesystem -- Windows, and macOS by default -- holds one, "
+           "so the package a consumer unpacks there is missing a file that validated perfectly.",
 )
 def l12_case_only_collisions(ctx):
     """C15 asks whether the same path appears twice, and it is right to: within

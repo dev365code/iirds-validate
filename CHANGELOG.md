@@ -4,9 +4,216 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.7.0 — 2026-09-23
+## 0.8.0 — unreleased
 
-**A legal package that passed on 0.6.3 can fail on 0.7.0**, and that is the
+**Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The
+changelog is meant to name every package shape whose verdict moves, and these
+moved unnamed. For a package with nothing else wrong, each takes the
+exit code from `0` to `1`.
+
+- From 0.7.1, where 0.6.3 passed: an `iirds:ClassificationDomain` naming more
+  than one classification type or relating to more than one party (R24, R25;
+  iiRDS 1.2 and 1.3); an `iirds:IdentityDomain` or `iirds:ProductVariant`
+  relating to more than one party (R26, R27); an
+  `iirds:ExternalClassification` carrying more than one classification
+  version (R28; 1.2 and 1.3); a Package declaring more than one format
+  restriction (R29); a Rendition with more than one selector (R30); an Event
+  with more than one event code or event type (R32, R33; 1.2 and 1.3); and,
+  in iiRDS 1.3 outside iiRDS/H, a Document with more than one
+  `iirdsHov:has-document-category` (R31 -- under iiRDS/H, `M15.2` already
+  failed it). Each is a row of appendix A that allows at most one value.
+- From 0.7.1, in an iiRDS/H 1.3 package: a rendition no document owns (R38),
+  and a rendition naming a selector the package does not describe, so that it
+  selects part of a file rather than referencing the whole of it (R39 -- one
+  the package describes already failed, on `M15.11c`).
+- From 0.6.0, where 0.5.0 passed: a party pointing at a vCard the package does
+  not describe, in any package of any edition (R4). Before 0.6.0, R4 asked
+  that only of an iiRDS/H 1.3 package.
+
+**iiRDS/A content formats: five rules, claiming none of the sentences yet.**
+Section 8.2.1 names the formats an iiRDS/A package may carry. R41 asks that a
+rendition declared as PDF be named `.pdf`, R42 that one declared as SVG be
+named `.svg`, or `.svgz` when it is gzip-compressed, R44 that video be named
+`.mp4` and R45 audio `.mp3`; each compares the extension case-blind, as B6
+does. R43 reads the first bytes of each file but `mimetype` and those under
+`META-INF/`, and refuses GIF, TIFF, WebP and BMP; a file R42 or R43 cannot
+read is reported as not judged. None claims its sentence: each sentence binds
+a file a page points at as well, which R41, R42, R44 and R45 do not read, and
+R43 knows four raster formats by their bytes. Coverage stays 172 of 280.
+For an iiRDS/A package with nothing else wrong, each of the five takes the
+exit code from `0` to `1`; no other package is judged by them. `iirds rules`
+labels the content rules "the content files (Appendix B, section 8.2.1)",
+where it named appendix B alone.
+
+**Remedies and messages say what their rule checks.** L3's remedy said a
+node no root reaches is invisible in every viewer; it is invisible to a viewer
+that walks the tree from its roots. L5's message said a proprietary class is
+linked to no iiRDS class, and it reports a class with no `rdfs:subClassOf` or
+`owl:equivalentClass` of its own into iiRDS -- a link through another
+proprietary class is not followed. L11 said no content rule examined the file;
+the iiRDS XHTML5 rules do not read it through the rendition that names it, and
+under iiRDS/A the format rules above may. L12 named Windows and macOS
+filesystems for a case-insensitive one, which macOS uses by default. M2.3 no
+longer says what most consumers do with two creation dates, and C5 says an
+editor can add a newline or a byte order mark without showing it, where it
+said editors add both. The titles of L5, L11 and L12 and the messages of L5
+and L11 change; a consumer matching on their text sees the new wording.
+
+**A metadata document whose encoding declaration reads its bytes as other text
+is refused.** `metadata.rdf` is read as UTF-8 whatever its declaration names,
+so a document declaring `windows-1252` over bytes that are UTF-8 was read one
+way here and another by a reader that honours the declaration -- and passed,
+where the same declaration over bytes in that code page was refused with a
+decode error. The two readings are compared now: where they differ the
+document is refused, naming the declaration (C16.1, S2); where they agree, as
+they do for a document whose bytes are all under 128, it passes as before. For
+a package with nothing else wrong whose metadata declares a code page over
+UTF-8 text outside ASCII, that takes the exit code from `0` to `1`. A
+declaration no codec answers to is refused with that sentence rather than the
+name of a Python exception, and `iirds.parse_metadata` returns it as an error,
+as it promises, where it raised `LookupError`.
+
+**A page of what this catches, generated from what the commands print.**
+`docs/what-it-catches.md` shows each kind of defect as the command that
+builds a package with it, the command that checks that package, and the
+report that came back -- captured on the run that wrote the page, so a case
+whose verdict moves stops the build rather than going on to show an error
+above a `PASS`.
+
+**`iirds serve --port` with a number that is not a port exits `64`.**
+`--port 99999` and `--port -5` went past the parser and failed at the bind,
+with a traceback and `1` -- the code that says a package failed. The parser
+now refuses a port outside 0 to 65535, as it already refused one that is not
+a number.
+
+**The single-file `.pyz` writes its entry point as bytes.** `__main__.py` was
+written as text, so a build on Windows carried `\r\n` line endings in it and
+was a different file from the same commit. `SECURITY.md` and
+`docs/offline-install.md` said the archive was byte-identical wherever it is
+built; what is measured is one runner building it twice, and they now say
+that.
+
+**A check of an unpacked container calls the archive rules it could not ask
+rules.** Its note said "the 9 requirements about the ZIP archive itself" and
+listed nine rule identifiers; those nine rules cover seven requirements.
+
+**Security. Whether a directory was a container could depend on a file
+outside it.** The markers were looked up as names at the last step only, so a
+`META-INF` that was itself a link out of the directory was followed, and a file
+at the far end decided whether the directory was read as a container. The
+directory a marker sits in is now walked like every other name, where a
+directory is searched and where a container is opened, and one that does not
+resolve inside the container counts as the marker being there, for S6 to name.
+Where the far end held no marker, that takes the exit code from `2` -- no
+package found -- to `1`. Every release through 0.7.1 looks through such a
+link.
+
+**Security. A container holding a directory that could be listed but not
+searched was checked without the files in it.** Each name came back from the
+listing and every question about it failed, so it was neither a file nor a link
+and left the listing without a word. Such a directory now refuses the
+container, as one that cannot be listed already did (S13), and so does an
+entry that cannot be looked up for any other reason -- one removed after the
+listing, or a name the system lists and cannot open -- named as itself. For a
+package with nothing else wrong, that takes the exit code from `0` to `1`. An
+archive has no such state: its entries are read from the archive whatever mode
+bits they record, measured on one whose directory entry records a mode that
+forbids searching it. 0.6.1 through 0.7.1 leave such files out.
+
+**Security. `--fragment` read the whole file before the metadata limit
+applied.** The file was copied into a throwaway container by reading all of it
+into memory, and only the container's read was bounded. The copy now stops one
+byte past the limit, and the gate refuses the document the way it refuses an
+archive's (C16.1). Every release from 0.3.0, the first with `--fragment`,
+through 0.7.1 reads the whole file.
+
+**Security. Pointing at a directory of packages left out the ones in a
+subdirectory it could not read.** The search walked the directory with a glob,
+which skips a subdirectory it cannot list without a word; from one it can list
+and not search it returns the names, and the file test after it dropped each of
+them without a word. The run passed on the packages it did find. The search now
+walks the directory the way a container is listed: a subdirectory it cannot
+list, or a `.iirds` name it cannot look up, refuses the search with `2`, named
+as the argument was given, as a name that leads out of the directory already
+does. A name gone by the time it is looked up is left out, and an unpacked
+container found there refuses what it cannot read itself when it is opened
+(S13), with the containers beside it still checked. Where every package found
+beside such a subdirectory passes, that takes the exit code from `0` to `2`;
+where one of them fails, from `1`. Every release through 0.7.1 leaves out a
+subdirectory it cannot list; one it can list and not search, 0.6.1 through
+0.7.1 leave out, and earlier releases stop with `2` on the permission error
+(under Python 3.14 they leave it out too).
+
+**Security. A link through a name that is not a directory read the file beside
+it.** A container's links are resolved one component at a time, and a component
+that was not there, or was a file, was kept as if it were a directory: a `..`
+after it took it away again, and a `.` or a separator after a file was dropped,
+so the link was listed and read as the file beside it, where a consumer on
+Linux or macOS opening the same path gets an error. The walk now asks a name
+that a `..`, a `.` or a separator follows to be a directory, and a link through
+one that is not leads nowhere: S6 names it, and for a package with nothing else
+wrong that takes the exit code from `0` to `1`. Windows removes those by their
+text and would open the file beside it; the answer here is the same wherever
+the check runs. An absolute target is walked as written rather than tidied
+first, so one that steps above the container on its way is named as leading
+out. When a directory is searched, a `.iirds` name that is a link leading
+nowhere is now refused by name with `2`, where 0.6.1 through 0.7.1 checked one
+of this shape as the file beside it and left a plainly dangling one out without
+a word. 0.6.1 through 0.7.1 resolve such a link as text.
+
+**Security. Listing an unpacked container, and searching a directory, asked
+each link what it points at.** The container listing sorted names into
+directories and files with a question that a link answers from its far end, and
+on Python 3.9 and 3.10 the directory search's glob asked the same. No verdict
+depended on the answer -- every link is resolved from the root afterwards --
+but the question reached wherever the link points. Each name is sorted by its
+own entry now, in both. Every release through 0.7.1 asks; up to 0.6.0 the
+answer also decided what was listed and read (see 0.6.1), and from 0.6.1
+through 0.7.1 it decided nothing.
+
+**Security. An entry could be judged under a name its records do not give it.**
+From Python 3.12, zipfile names an entry by an Info-ZIP Unicode Path extra
+field in the central directory where one holds, and libarchive names it by
+the field in the local header; S10 compared only the names the two records'
+bytes spell. An entry this run judged under one name could reach another
+reader under another -- one that leads out of the package among them, which
+S6, reading zipfile's name, passed. APPNOTE makes the field the same name in
+UTF-8, so S10 now holds every field in each record to the name that record's
+bytes read -- up to a NUL, and composed alike -- whatever its version or
+CRC-32, since readers check those differently: zipfile the whole name's,
+libarchive the name it holds by then, converted to the system's form and
+renamed by any field before it. A field that renames the entry is one
+finding, whose remedy is the writer's -- store names as UTF-8 under bit 11,
+which needs no field; a field one reader refuses and another passes by, or
+local extra data that runs past its end, is another. S10 reads the fields
+itself, so the verdict is the same on every interpreter, and files its
+findings under the name the directory's bytes read. S6 checks every name an
+entry is read as, stopping at a NUL as the readers do. A Latin name in code
+page 437 with a field giving the same name, as Info-ZIP writes, passes; one
+in another code page, where readers disagree, does not. S10 also compares
+the name as each record's bit 11 reads it, beside its bytes, so one set of
+bytes the two flags read as two names draws S10 beside the C1 it drew.
+Every release through 0.7.1 passes a package whose declared files resolve
+under a directory field's name when run on Python 3.12 or later, and one
+whose local header carries a field libarchive follows to another name on any
+interpreter; 0.5.0 is the first with S10. For a package with nothing else
+wrong, such a field takes the exit code from `0` to `1` on every
+interpreter; zipfile already refused a directory field that runs past the
+extra data (`S13`), and from 3.12 one too short or not UTF-8. No verdict
+moves on the vendored corpus or the examples page.
+
+**`SECURITY.md` says where its link handling stops, and when the promise about
+security releases starts.** An absolute link under one of the container's two
+names is walked like a relative one rather than refused; a file swapped after
+the listing for a link that stays inside is read; one bounded read of a bzip2
+or lzma entry could decompress all of it, not always did. A security fix goes
+out ahead of anything else in flight from the release after 0.7.1: the fix for
+GHSA-qwv2-9vgj-vc2w shipped with 0.7.1, and the README and `SECURITY.md` say
+so.
+
+## 0.7.1 — 2026-09-23
+
+**A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the
 change rather than a side effect of it: two refusals of this tool's own
 were named by B1 alone, which is a warning outside iiRDS/A, and the package
 exited 0 with a file in it that nothing had parsed. `ERROR S16` names them

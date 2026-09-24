@@ -430,7 +430,7 @@ ivs:M2.3 a sh:NodeShape ;
   sh:message "iirds:InformationUnit MUST NOT have more than one property iirds:dateOfCreation." ;
   ivm:ruleId "M2.3" ;
   ivm:ruleSource "catalogue" ;
-  sh:description "Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first." ;
+  sh:description "Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose between them." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   ivm:covers "rdfclasses_core_InformationUnit#2" ;
@@ -440,7 +440,7 @@ ivs:M2.3-p a sh:PropertyShape ;
   sh:message "iirds:InformationUnit MUST NOT have more than one property iirds:dateOfCreation." ;
   sh:severity sh:Violation ;
   ivm:ruleId "M2.3" ;
-  sh:description "Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first." ;
+  sh:description "Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose between them." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp> ;
   sh:path iirds:dateOfCreation ;
   sh:maxCount 1 .

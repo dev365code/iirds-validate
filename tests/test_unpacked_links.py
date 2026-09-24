@@ -28,7 +28,7 @@ import pytest
 
 from conftest import MINIMAL_RDF
 from iirds_validate import runner
-from iirds_validate.cli import EXIT_ERROR, main
+from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, main
 from iirds_validate.model import MAX_LISTED_PER_RULE
 from iirds_validate.package import MAX_LINK_HOPS, DirectoryPackage, Package, PackageError, search
 
@@ -425,6 +425,163 @@ def test_a_container_is_recognised_by_the_names_it_holds(unpacked, tmp_path):
     assert [p.name for p in found] == ["ours"] and refused == []
 
 
+def test_a_marker_behind_a_link_decides_nothing(unpacked, tmp_path):
+    """`META-INF` as a link out of the directory. The marker under it was
+    looked up through the link, so a file somewhere else decided whether this
+    was a container. Walked like every other name now, the answer is the same
+    whatever is at the far end -- a container, whose link S6 then names."""
+    answers = []
+    for far_end_has_it in (True, False):
+        side = tmp_path / ("side-%s" % far_end_has_it)
+        ours = side / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        found, refused = search(side)
+        answers.append(([p.name for p in found], [p.name for p in refused]))
+    assert answers == [(["ours"], [])] * 2, answers
+
+
+def test_a_marker_behind_a_link_decides_nothing_in_the_report(unpacked, tmp_path):
+    """The same two directories, checked rather than searched. Opening a
+    container asked its own question about the marker, through the link, so
+    the far end still chose between the container opened with S6 naming the
+    link and a refusal that it was a container at all."""
+    reports = []
+    for far_end_has_it in (True, False):
+        ours = tmp_path / ("side-%s" % far_end_has_it) / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        report = runner.run(ours, runner.ALL_KINDS)
+        reports.append(sorted((f.rule.id, f.violation.subject or "") for f in report.findings))
+    assert reports[0] == reports[1], reports
+    assert ("S6", "META-INF") in reports[0], reports[0]
+
+
+def test_an_entry_that_cannot_be_looked_up_is_named_as_itself(unpacked, monkeypatch):
+    """Listed, then gone before it could be looked up -- an editor's temporary
+    file in the middle of a save, say. Refused like an unsearchable directory,
+    because the check cannot vouch for what it did not see, but named as the
+    entry and by what went wrong: the directory holding it is not at fault."""
+    gone = unpacked / "content" / "topic1.xhtml~"
+    gone.write_bytes(b"draft")
+    looked_up = os.lstat
+
+    def vanished(path, *args, **kwargs):
+        if os.fspath(path) == str(gone):
+            raise FileNotFoundError(2, "No such file or directory", os.fspath(path))
+        return looked_up(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", vanished)
+    report = runner.run(unpacked, runner.ALL_KINDS)
+    detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+    assert detail and "could not be looked up: content/topic1.xhtml~" in detail[0], detail
+
+
+def test_a_step_back_from_a_name_that_is_not_a_directory_resolves_to_nothing(unpacked):
+    """`missing/../topic1.xhtml` names nothing Linux or macOS can open: their
+    kernels stop at `missing`, and `..` after it does not undo that; `file/.`
+    and `file/` stop them the same way. Resolved as text, the name that was not
+    a directory was erased and the link read as the file beside it -- listed,
+    and read. Windows removes those by their text and would open that file, so
+    this is one answer for every system rather than each system's own: a
+    verdict that depended on the machine checking would be two verdicts."""
+    content = unpacked / "content"
+    shapes = {
+        "through-nothing.xhtml": os.path.join("missing", "..", "topic1.xhtml"),
+        "through-a-file.xhtml": os.path.join("topic1.xhtml", "..", "topic1.xhtml"),
+        "a-file-as-a-directory.xhtml": "topic1.xhtml" + os.sep + os.curdir,
+        "a-file-with-a-separator.xhtml": "topic1.xhtml" + os.sep,
+        "absolute-through-nothing.xhtml": str(content / "missing" / os.pardir / "topic1.xhtml"),
+    }
+    for name, target in shapes.items():
+        link(content / name, target)
+    # Windows stores an absolute target already resolved -- its `..` is gone
+    # before anything reads the link, which then does point at the file -- so
+    # a shape is a case here only where the link keeps its text as written.
+    kept = [name for name, target in shapes.items()
+            if os.readlink(str(content / name)) == target]
+    assert "through-nothing.xhtml" in kept, kept
+    if os.name != "nt":
+        for name in kept:
+            assert not os.path.exists(str(content / name)), name
+    package = DirectoryPackage(unpacked)
+    for name in kept:
+        entry = "content/" + name
+        assert entry not in package.files, entry
+        assert entry in package.dangling_links, (entry, package.dangling_links)
+
+
+def test_the_listing_asks_nothing_of_a_links_far_end(unpacked, outside, monkeypatch):
+    """The listing sorted each name into directories and files by asking what
+    it is -- and for a link, that answer comes from wherever the link points.
+    The verdict never depended on it, since every link is resolved from the
+    root afterwards, but the question itself reached the far end, and a far end
+    can be a place that answers slowly, or keeps a record of being asked. A
+    link is sorted as a link now, by its own entry."""
+    link(unpacked / "content" / "to-a-directory", os.path.join("..", "..", "elsewhere"))
+    link(unpacked / "content" / "to-a-file",
+         os.path.join("..", "..", "elsewhere", outside.name))
+    followed = []
+    scanning = os.scandir
+
+    class Entry:
+        def __init__(self, entry):
+            self.entry = entry
+            self.name, self.path = entry.name, entry.path
+
+        def is_dir(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.is_dir(follow_symlinks=follow_symlinks)
+
+        def is_file(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.is_file(follow_symlinks=follow_symlinks)
+
+        def is_symlink(self):
+            return self.entry.is_symlink()
+
+        def stat(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.stat(follow_symlinks=follow_symlinks)
+
+    class Listing:
+        def __init__(self, path):
+            self.listing = scanning(path)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return Entry(next(self.listing))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.listing.close()
+
+        def close(self):
+            self.listing.close()
+
+    monkeypatch.setattr(os, "scandir", Listing)
+    package = DirectoryPackage(unpacked)
+    assert followed == [], followed
+    assert sorted(package.outward_links) == ["content/to-a-directory", "content/to-a-file"]
+
+
 def test_a_link_that_leads_nowhere_is_named(unpacked):
     """Not listed -- there is no file to read -- and not silent either. It is
     an entry the container holds and no rule can use, which is the third thing
@@ -494,6 +651,107 @@ def test_a_container_holding_a_directory_it_cannot_list_is_refused(unpacked, out
         assert MARK not in json.dumps(report.as_dict())
     finally:
         os.chmod(str(hidden), 0o755)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+def test_a_directory_that_cannot_be_searched_refuses_the_container(unpacked):
+    """The other half of the one above: a directory whose names can be listed
+    but not looked up. Every file in it failed the test for being a file, so it
+    was left out of the listing without a word -- the same half-read container,
+    reached from the other mode bit."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root looks up what the mode bits forbid")
+    shut = unpacked / "content" / "shut"
+    shut.mkdir()
+    (shut / "topic.xhtml").write_bytes(b"<html/>")
+    os.chmod(str(shut), 0o444)
+    try:
+        report = runner.run(unpacked, runner.ALL_KINDS)
+        assert not report.ok
+        detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+        assert detail and "content/shut" in detail[0], detail
+    finally:
+        os.chmod(str(shut), 0o755)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+@pytest.mark.parametrize("mode", [0o444, 0o111], ids=["listed-not-searched", "searched-not-listed"])
+def test_a_search_refuses_a_subdirectory_it_cannot_read(make_package, tmp_path, capsys, mode):
+    """Pointing at a directory of packages walked it with a glob, which skips a
+    subdirectory it cannot list without a word; from one it can list and not
+    search it returns the names, and the file test after it dropped them
+    without a word. Either way the packages in there were left out and the run
+    passed on the rest. Refused by name instead, with 2, as a name that leads
+    out of the directory already is."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root reads what the mode bits forbid")
+    builds = tmp_path / "builds"
+    shut = builds / "shut"
+    shut.mkdir(parents=True)
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    shutil.copy(str(make_package(name="hidden.iirds")), str(shut / "hidden.iirds"))
+    os.chmod(str(shut), mode)
+    try:
+        assert main(["check", str(builds), "-q"]) == EXIT_ERROR
+        assert "shut" in capsys.readouterr().err
+    finally:
+        os.chmod(str(shut), 0o755)
+
+
+def test_a_search_refuses_a_package_name_that_leads_nowhere(make_package, tmp_path, capsys):
+    """A `.iirds` name that is a link through a name that is not there leads
+    nowhere a consumer on Linux or macOS can open. Read as text it was the
+    package beside it and was checked; walked as the kernel walks it, it was
+    left out without a word. Refused by name, with 2, like a link that leads
+    out -- on every system."""
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    link(builds / "odd.iirds", os.path.join("missing", "..", "good.iirds"))
+    assert main(["check", str(builds), "-q"]) == EXIT_ERROR
+    assert "odd.iirds" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+def test_a_container_that_cannot_be_read_fails_alone_in_a_search(unpacked, tmp_path, capsys):
+    """A directory of unpacked containers, one of which holds a directory that
+    cannot be listed. That container refuses itself when it is opened (S13);
+    the search does not refuse the others on its account."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root reads what the mode bits forbid")
+    shelf = tmp_path / "shelf"
+    shelf.mkdir()
+    for name in ("good", "shut"):
+        shutil.copytree(str(unpacked), str(shelf / name), symlinks=True)
+    hidden = shelf / "shut" / "content" / "hidden"
+    hidden.mkdir()
+    os.chmod(str(hidden), 0o111)
+    try:
+        assert main(["check", str(shelf), "-q"]) == EXIT_FINDINGS
+    finally:
+        os.chmod(str(hidden), 0o755)
+
+
+def test_a_package_name_gone_before_it_is_looked_up_is_not_a_refusal(
+        make_package, tmp_path, monkeypatch):
+    """A search that meets a `.iirds` name and then finds it gone -- a build
+    replacing its output, an editor saving -- has lost nothing it could have
+    checked. It is left out, and the rest of the search goes on."""
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    gone = builds / "draft.iirds"
+    gone.write_bytes(b"")
+    looked_up = os.lstat
+
+    def vanished(path, *args, **kwargs):
+        if os.fspath(path) == str(gone):
+            raise FileNotFoundError(2, "No such file or directory", os.fspath(path))
+        return looked_up(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", vanished)
+    found, refused = search(builds)
+    assert [p.name for p in found] == ["good.iirds"] and refused == []
 
 
 def test_a_search_does_not_follow_a_name_through_a_directory_that_leads_out(

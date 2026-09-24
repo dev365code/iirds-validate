@@ -25,7 +25,7 @@ from iirds import PackError, pack
 from . import PROGRAM, __version__, runner
 from .banner import banner
 from .model import VERSIONS, WARNINGS_ARE_ERRORS
-from .package import search
+from .package import PackageError, search
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -61,6 +61,21 @@ class _Parser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, "%s: error: %s\n" % (self.prog, message))
 
 
+def port(text: str) -> int:
+    """A TCP port: a number from 0 to 65535.
+
+    `int` alone let `--port 99999` and `--port -5` past the parser, and the
+    bind raised an `OverflowError` that no handler here catches -- a traceback
+    and `1`, the code that says a package failed. A number that is not a port
+    is a command line the parser rejects, the way a port that is not a number
+    already was.
+    """
+    number = int(text)
+    if not 0 <= number <= 65535:
+        raise argparse.ArgumentTypeError("%d is not a port: 0 to 65535" % number)
+    return number
+
+
 def _add_target(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("package", nargs="+",
                         help="packages: a .iirds file, an unpacked container directory, "
@@ -86,18 +101,22 @@ def _targets(paths):
     with packages somewhere underneath. Pointing at a build output directory
     should do the obvious thing rather than require a shell glob.
     """
-    found, missing, empty, leaving = [], [], [], []
+    found, missing, empty, leaving, unread = [], [], [], [], []
     for path in paths:
         if not os.path.exists(path):
             missing.append(path)
             continue
-        expanded, out = search(path)
+        try:
+            expanded, out = search(path)
+        except PackageError as refusal:
+            unread.append(str(refusal))
+            continue
         leaving.extend(out)
         if expanded:
             found.extend(expanded)
         elif not out:
             empty.append(path)
-    return found, missing, empty, leaving
+    return found, missing, empty, leaving, unread
 
 
 def _run(args, kinds) -> int:
@@ -114,7 +133,7 @@ def _run(args, kinds) -> int:
         reports = [runner.run_fragment(path, kinds, version=args.version)
                    for path in args.package]
     else:
-        targets, missing, empty, leaving = _targets(args.package)
+        targets, missing, empty, leaving, unread = _targets(args.package)
         for path in missing:
             print("%s: no such file or directory: %s" % (PROGRAM, path), file=sys.stderr)
         for path in empty:
@@ -126,8 +145,13 @@ def _run(args, kinds) -> int:
             # that quietly checks less than it was asked to is one that passes
             # for the wrong reason.
             print("%s: not checked: %s is a link that leads out of the directory "
-                  "being searched" % (PROGRAM, path), file=sys.stderr)
-        if missing or empty or leaving:
+                  "being searched, or to nothing" % (PROGRAM, path), file=sys.stderr)
+        for reason in unread:
+            # The same refusal as a link out: part of what was pointed at could
+            # not be read, and a search that answered for the rest would pass
+            # on less than it was asked to check.
+            print("%s: not checked: %s" % (PROGRAM, reason), file=sys.stderr)
+        if missing or empty or leaving or unread:
             return EXIT_ERROR
         reports = [runner.run(path, kinds, version=args.version) for path in targets]
 
@@ -165,7 +189,7 @@ def _cmd_pack(args) -> int:
     """Write the archive, then validate the archive.
 
     Validating what was just written rather than the directory is the point:
-    the six requirements about the ZIP that a directory cannot answer are now
+    the rules about the ZIP that a directory cannot answer are now
     answerable, and answered against the file that will actually be delivered.
     """
     try:
@@ -230,7 +254,7 @@ def _cmd_rules(args) -> int:
     labels = {"container": "the ZIP and its layout",
               "schema": "the metadata graph",
               "system": "the run itself",
-              "content": "iiRDS XHTML5 (Appendix B)",
+              "content": "the content files (Appendix B, section 8.2.1)",
               "lint": "will a consumer be able to use it"}
     for kind in ("container", "schema", "system", "content", "lint"):
         c = cov.get(kind)
@@ -300,7 +324,7 @@ def build_parser():
         "serve", help="a drop page on this machine, for people who do not read terminals")
     p_serve.add_argument("--host", default="127.0.0.1",
                          help="loopback only; anything else is refused")
-    p_serve.add_argument("--port", type=int, default=0,
+    p_serve.add_argument("--port", type=port, default=0,
                          help="0 picks a free one (default)")
     p_serve.add_argument("--no-open", dest="open_browser", action="store_false",
                          help="do not open a browser")

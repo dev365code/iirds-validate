@@ -157,6 +157,8 @@ CHECK_COMMANDS = (
     "tools/gen_door.py --check",
     "tools/gen_stable_section.py --check",
     "tools/golden_report.py --check",
+    "tools/gen_what_it_catches.py --check",
+    "tools/capabilities_svg.py docs/capabilities.json --check",
     "tools/vendor_corpus.py --check",
     "tools/crossvalidate.py --check",
     "tools/explain_silence.py --check",

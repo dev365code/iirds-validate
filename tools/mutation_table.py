@@ -50,6 +50,8 @@ CONTAINER = "src/iirds_validate/rules/container.py"
 CLI = "src/iirds_validate/cli.py"
 DIFFERENCE = "src/iirds_validate/difference.py"
 LINKS = "tests/test_unpacked_links.py"
+RUNNER = "src/iirds_validate/runner.py"
+SIZES = "tests/test_size_gates.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
@@ -72,8 +74,8 @@ TABLE = [
 
     ("links/a-step-above-the-root-is-allowed",
      PACKAGE,
-     "            if not done:\n                return LEAVES, None",
-     "            if False:\n                return LEAVES, None",
+     "                if not done:\n                    return LEAVES, None",
+     "                if False:\n                    return LEAVES, None",
      [LINKS],
      "`../..` out of the container resolves and the file outside is read"),
 
@@ -91,12 +93,15 @@ TABLE = [
      [LINKS],
      "the tool reads names the system itself refuses with ELOOP"),
 
-    ("links/directory-links-unclassified",
+    ("links/links-unclassified",
      PACKAGE,
-     "            if _is_link(full):\n                directories.remove(name)",
-     "            if False:\n                directories.remove(name)",
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     "            if False:\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
      [LINKS],
-     "a directory link out of the container is walked through"),
+     "a link is taken at its word: one to a file out of the container is read, and "
+     "one to a directory out of it goes unnamed"),
 
     ("links/no-follow-at-the-read",
      PACKAGE,
@@ -107,18 +112,68 @@ TABLE = [
 
     ("links/markers-answered-by-the-far-end",
      PACKAGE,
-     '    return (os.path.lexists(str(path / MIMETYPE_FILE))\n'
-     '            or os.path.lexists(str(path / METADATA_RDF)))',
-     "    return (path / MIMETYPE_FILE).exists() or (path / METADATA_RDF).exists()",
+     "    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])\n"
+     "    if verdict != INSIDE:\n"
+     "        return True\n"
+     "    return os.path.lexists(os.path.join(where, last))",
+     "    return os.path.exists(os.path.join(roots[0], *name.split('/')))",
      [LINKS],
      "whether a file somewhere else exists decides whether a directory is a container"),
 
     ("links/an-unlistable-directory-is-silence",
      PACKAGE,
-     "    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):",
-     "    for here, directories, files in os.walk(top, followlinks=False):",
+     "        except OSError as error:\n"
+     "            refuse(error)\n"
+     "            continue",
+     "        except OSError:\n"
+     "            continue",
      [LINKS],
      "a directory the check cannot read is skipped and the package passes on what is left"),
+
+    ("links/an-unsearchable-directory-is-silence",
+     PACKAGE,
+     "            full = os.path.join(here, name)\n"
+     "            examinable(here, full)\n"
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     "            full = os.path.join(here, name)\n"
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     [LINKS],
+     "a directory the check can list and not search is left out and the package passes on what is left"),
+
+    ("links/a-search-that-cannot-read-is-silence",
+     PACKAGE,
+     "            except OSError as error:\n"
+     "                refuse(OSError(error.errno, error.strerror, full),\n"
+     "                       \"a package name being searched could not be looked up\")",
+     "            except OSError:\n"
+     "                continue",
+     [LINKS],
+     "a directory search leaves out a subdirectory it cannot read and passes on the rest"),
+
+    ("links/a-step-back-erases-a-name-that-is-not-there",
+     PACKAGE,
+     "            if done and not os.path.isdir(os.path.join(top, *done)):\n"
+     "                return NOWHERE, None",
+     "            if False:\n"
+     "                return NOWHERE, None",
+     [LINKS],
+     "a link through a name that is not a directory reads the file beside it"),
+
+    ("links/the-listing-looks-through-links",
+     PACKAGE,
+     "    for here, directories, files in _listing(top, refuse):",
+     "    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):",
+     [LINKS],
+     "listing a container puts a question to wherever each of its links points"),
+
+    ("sizes/a-fragment-read-whole-before-the-gate",
+     RUNNER,
+     "    left = MAX_METADATA_BYTES + 1",
+     "    left = float(\"inf\")",
+     [SIZES],
+     "--fragment reads a file of any size into its staging copy before the metadata limit applies"),
 
     ("links/one-root-spelling-only",
      PACKAGE,
@@ -136,7 +191,9 @@ TABLE = [
 
     ("links/the-search-roots-unresolved",
      PACKAGE,
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))",
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.abspath(str(path)),)",
      [LINKS],
      "an ordinary alias inside a build directory is refused and nothing is checked"),
@@ -185,10 +242,55 @@ TABLE = [
 
     ("cli/says-nothing-about-what-it-refused",
      CLI,
-     "        if missing or empty or leaving:",
+     "        if missing or empty or leaving or unread:",
      "        if missing or empty:",
      [LINKS],
      "a gate passes while checking less than it was asked to"),
+
+    ("s10/names-compared-as-bytes",
+     SYSTEM,
+     "    if local_name != info.orig_filename:",
+     "    if header.name != _name_bytes(info):",
+     ["tests/test_header_agreement.py"],
+     "one set of bytes that the two records' bit 11 reads as two names passes S10"),
+
+    ("s10/unicode-path-unread",
+     SYSTEM,
+     "        if not _same_name(said, reads):",
+     "        if False:",
+     ["tests/test_header_agreement.py"],
+     "from Python 3.12 an entry is judged under a name its local header does not give"),
+
+    ("s10/spellings-not-compared",
+     SYSTEM,
+     "    elif header.name != spelled:",
+     "    elif False:",
+     ["tests/test_header_agreement.py"],
+     "one name spelled in two encodings passes, and libarchive cannot create the file"),
+
+    ("s10/a-passed-field-ends-the-walk",
+     SYSTEM,
+     "                broken.append(\"a Unicode Path extra field too short to hold a name\")\n"
+     "            continue",
+     "                broken.append(\"a Unicode Path extra field too short to hold a name\")\n"
+     "            break",
+     ["tests/test_header_agreement.py"],
+     "a field readers pass by hides a renaming field behind it"),
+
+    ("s10/names-compared-as-code-points",
+     SYSTEM,
+     "    return unicodedata.normalize(\"NFC\", one) == unicodedata.normalize(\"NFC\", other)",
+     "    return one == other",
+     ["tests/test_header_agreement.py"],
+     "a name a field spells decomposed, as macOS keeps names, is reported as another name"),
+
+    ("s6/local-header-unread",
+     SYSTEM,
+     "        if header is not None:\n            names.append(_local_reading(header))",
+     "        if False:\n            names.append(_local_reading(header))",
+     ["tests/test_header_agreement.py"],
+     "a name libarchive takes from a local header's Unicode Path field leads out, and S6 "
+     "passes it"),
 
     # The canary. It has to survive: if it dies, the harness is reporting red
     # for everything and the rows above prove nothing.

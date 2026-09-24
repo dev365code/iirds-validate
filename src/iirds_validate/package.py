@@ -7,8 +7,8 @@ the container rules need to know about the ZIP lives here, including the things
 A directory is the form the package exists in while it is being built. Checking
 it before zipping is the difference between finding a defect in the second you
 made it and finding it in the artefact — and content rules in particular are
-worth running on every save. Six requirements are about the archive rather
-than the package and cannot be assessed on a directory; `is_archive` says so,
+worth running on every save. The requirements about the archive rather than
+the package cannot be assessed on a directory; `is_archive` says so,
 and the report says so too, rather than quietly passing them.
 """
 from __future__ import annotations
@@ -435,21 +435,7 @@ MAX_LINK_HOPS = 32
 #: nothing will follow to the end, or it is written as an absolute path -- which
 #: this cannot show to be inside the container without walking out of it, and
 #: which is not how a package names its own files.
-INSIDE, LEAVES, CHAINED, ABSOLUTE = "inside", "leaves", "chained", "absolute"
-
-
-def _under(child: str, top: str) -> bool:
-    """Whether a path is `top` or spelled beneath it -- as text, on purpose.
-
-    Asking the filesystem is the thing being avoided: `os.path.realpath` walks
-    a path to answer, and what it finds out there -- whether a directory
-    exists, whether it may be searched -- would then be readable off the
-    report. Every path compared here is a link's own text against a root this
-    tool was handed.
-    """
-    top = os.path.normcase(os.path.normpath(top))
-    child = os.path.normcase(os.path.normpath(child))
-    return child == top or child.startswith(top + os.sep)
+INSIDE, LEAVES, CHAINED, ABSOLUTE, NOWHERE = "inside", "leaves", "chained", "absolute", "nowhere"
 
 
 def _is_link(path: str) -> bool:
@@ -511,10 +497,19 @@ def _rooted(target: str, roots: Tuple[str, ...]) -> Optional[List[str]]:
         target = target[len(_EXTENDED):]
         if target[:4].upper() == "UNC" + os.sep:
             target = os.sep + os.sep + target[4:]
+    # Component by component and as written: a `..` or a `.` in the target is
+    # the walk's to judge, as it judges them in a relative one. Normalised
+    # first, `/root/missing/../x` read as `/root/x`, which no kernel opens.
+    parts = _split(target)
     for root in roots:
-        if root and _under(target, root):
-            return [part for part in _split(os.path.relpath(target, root))
-                    if part and part != os.curdir]
+        if not root:
+            continue
+        stem = root.rstrip(os.sep)
+        base = _split(stem) if stem else [""]
+        if (len(parts) >= len(base) and
+                [os.path.normcase(p) for p in parts[:len(base)]]
+                == [os.path.normcase(p) for p in base]):
+            return parts[len(base):]
     return None
 
 
@@ -545,12 +540,18 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
     hops = 0
     while pending:
         part = pending.pop()
-        if not part or part == os.curdir:
-            continue
-        if part == os.pardir:
-            if not done:
-                return LEAVES, None                     # a step above the root
-            done.pop()
+        if not part or part in (os.curdir, os.pardir):
+            # Each asks the name reached so far to be a directory: `file/.`,
+            # `file/` and `missing/..` stop the kernel on Linux and macOS, and
+            # Windows, which removes them by their text, would open something
+            # else. One answer on every system -- such a name leads nowhere --
+            # because a verdict that depends on the machine checking is two.
+            if done and not os.path.isdir(os.path.join(top, *done)):
+                return NOWHERE, None
+            if part == os.pardir:
+                if not done:
+                    return LEAVES, None                 # a step above the root
+                done.pop()
             continue
         here = os.path.join(top, *done, part)
         if _is_link(here):
@@ -573,8 +574,7 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
                 done = []
                 pending.extend(reversed(inner))
             else:
-                pending.extend(reversed([p for p in _split(target)
-                                         if p and p != os.curdir] or [os.curdir]))
+                pending.extend(reversed(_split(target)))
             continue
         done.append(part)
     return INSIDE, os.path.join(top, *done)
@@ -588,6 +588,39 @@ class Unlistable(PackageError):
     this tool must not do. `os.walk` skips such a directory in silence, and a
     package can make one -- so the container is refused instead, by name.
     """
+
+
+def _listing(top: str, refuse) -> Iterator[Tuple[str, List[str], List[str]]]:
+    """Every directory under `top`, top down, as `os.walk` yields it, without
+    asking a link what it points at.
+
+    `os.walk` sorts each name with `is_dir()`, which answers for a link's far
+    end, so listing a container put a question to every place its links point.
+    This sorts by the entry's own type: a symbolic link lands among the files
+    whatever it points at, for the caller to resolve from the root. A name the
+    caller removes from the directories is not descended into, and a directory
+    whose names cannot be read is handed to `refuse`, as `os.walk` hands it to
+    `onerror`.
+    """
+    pending = [top]
+    while pending:
+        here = pending.pop()
+        try:
+            with os.scandir(here) as listing:
+                entries = list(listing)
+        except OSError as error:
+            refuse(error)
+            continue
+        directories: List[str] = []
+        files: List[str] = []
+        for entry in entries:
+            try:
+                directory = entry.is_dir(follow_symlinks=False)
+            except OSError:
+                directory = False       # as os.walk counts one it cannot ask
+            (directories if directory else files).append(entry.name)
+        yield here, directories, files
+        pending.extend(os.path.join(here, name) for name in reversed(directories))
 
 
 def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str, ...],
@@ -617,18 +650,35 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
     dangling: List[str] = []
     absolute: List[str] = []
 
-    def refuse(error: OSError) -> None:
+    def refuse(error: OSError,
+               what: str = "a directory in the container could not be listed") -> None:
         where = error.filename or top
         with contextlib.suppress(ValueError):           # another drive: named as given
             where = os.path.relpath(where, top).replace(os.sep, "/")
-        raise Unlistable("a directory in the container could not be listed: %s (%s)"
-                         % (where, error.strerror or error))
+        raise Unlistable("%s: %s (%s)" % (what, where, error.strerror or error))
 
-    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):
+    def examinable(here: str, full: str) -> None:
+        # A directory can be listed and not searched: its names come back and
+        # every question about one of them fails, so each was neither a file
+        # nor a link and fell out of the listing without a word. Refused
+        # either way; named by what failed -- the directory when it is the
+        # permission, the entry when it is anything else (one removed after
+        # the listing, or a name this system lists and cannot look up).
+        try:
+            os.lstat(full)
+        except PermissionError as error:
+            refuse(OSError(error.errno, error.strerror, here),
+                   "a directory in the container could not be searched")
+        except OSError as error:
+            refuse(OSError(error.errno, error.strerror, full),
+                   "an entry in the container could not be looked up")
+
+    for here, directories, files in _listing(top, refuse):
         relative = os.path.relpath(here, top)
         prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
         for name in list(directories):
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 directories.remove(name)
                 verdict, _target = _resolve(roots, (prefix + name).split("/"))
@@ -638,9 +688,12 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
                     chained.append(prefix + name)
                 elif verdict == ABSOLUTE:
                     absolute.append(prefix + name)
+                elif verdict == NOWHERE:
+                    dangling.append(prefix + name)
         for name in files:
             entry = prefix + name
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 verdict, target = _resolve(roots, entry.split("/"))
                 if verdict == LEAVES:
@@ -649,6 +702,8 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
                     chained.append(entry)
                 elif verdict == ABSOLUTE:
                     absolute.append(entry)
+                elif verdict == NOWHERE:
+                    dangling.append(entry)
                 elif os.path.isfile(target):
                     names.append(entry)
                 elif not os.path.lexists(target):
@@ -674,8 +729,10 @@ class DirectoryPackage:
         self.path = Path(path)
         if not self.path.is_dir():
             raise PackageError("not a directory: %s" % self.path)
-        if not (os.path.lexists(str(self.path / METADATA_RDF))
-                or os.path.lexists(str(self.path / MIMETYPE_FILE))):
+        # The same question the search asks, asked the same way: through a
+        # `META-INF` that is a link the old test here looked at the far end,
+        # so a file somewhere else still decided between two reports.
+        if not looks_like_a_container(self.path):
             raise PackageError(
                 "%s is not an unpacked iiRDS container: no %s and no %s"
                 % (self.path, MIMETYPE_FILE, METADATA_RDF))
@@ -801,7 +858,8 @@ _PLACEHOLDER = 0xFFFFFFFF
 
 class LocalHeader(NamedTuple):
     """The fields of a local file header (APPNOTE 4.3.7) a reader acts on,
-    with the ZIP64 sizes (4.5.3) already read in for the placeholders."""
+    with the ZIP64 sizes (4.5.3) already read in for the placeholders. The
+    extra field is kept whole: a reader can take the entry's name from it."""
     offset: int
     name: bytes
     flag_bits: int
@@ -810,6 +868,7 @@ class LocalHeader(NamedTuple):
     compress_size: int
     file_size: int
     data_start: int
+    extra: bytes = b""
 
 
 def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
@@ -823,7 +882,8 @@ def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
     extra = raw[_HEADER_FIXED + name_len:_HEADER_FIXED + name_len + extra_len]
     compress_size, file_size = _zip64_sizes(extra, _u32(raw, 18), _u32(raw, 22))
     return LocalHeader(offset, name, _u16(raw, 6), _u16(raw, 8), _u32(raw, 14),
-                       compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len)
+                       compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len,
+                       extra)
 
 
 def _zip64_sizes(extra: bytes, compress_size: int, file_size: int):
@@ -935,9 +995,22 @@ def looks_like_a_container(path: Path) -> bool:
     `META-INF/metadata.rdf` was a link out of it was a container when the file
     at the far end happened to be there and was not one when it was not. That
     is one bit about a path of the sender's choosing, read off the verdict.
+    `lexists` settled the last step and not the one before it: a `META-INF`
+    that was itself a link was followed to wherever it led. The directory a
+    marker sits in is walked the way every name is, and one that does not
+    resolve inside counts as the marker being there -- the container is then
+    opened, and S6 names the link.
     """
-    return (os.path.lexists(str(path / MIMETYPE_FILE))
-            or os.path.lexists(str(path / METADATA_RDF)))
+    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
+    return any(_marker_there(roots, name) for name in (MIMETYPE_FILE, METADATA_RDF))
+
+
+def _marker_there(roots: Tuple[str, ...], name: str) -> bool:
+    *above, last = name.split("/")
+    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])
+    if verdict != INSIDE:
+        return True
+    return os.path.lexists(os.path.join(where, last))
 
 
 def open_package(path):
@@ -975,15 +1048,19 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
     # text before, so `build/x.iirds -> b/theirs.iirds`, with `b` a link out,
     # read somebody else's package and said nothing.
     roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
-    pattern = "**/*.iirds" if recursive else "*.iirds"
     found: List[Path] = []
     leaving: List[Path] = []
-    for candidate in sorted(path.glob(pattern)):
+    for candidate in _candidates(path, recursive):
         verdict, where = _resolve(roots, candidate.relative_to(path).parts)
         if verdict != INSIDE:
             leaving.append(candidate)
         elif os.path.isfile(where):
             found.append(candidate)
+        elif _is_link(str(candidate)) and not os.path.lexists(where):
+            # A link that leads nowhere -- through a name that is not a
+            # directory, say, where the kernel stops -- is refused out loud
+            # like one that leads out, rather than left out without a word.
+            leaving.append(candidate)
     if found or leaving:
         return found, leaving
     # No archives: perhaps a directory of unpacked containers.
@@ -994,6 +1071,47 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
         elif os.path.isdir(where) and looks_like_a_container(candidate):
             found.append(candidate)
     return found, leaving
+
+
+def _candidates(top: Path, recursive: bool) -> List[Path]:
+    """The `.iirds` names under `top`, found by the walk that lists a container.
+
+    A glob was the search before, and a glob skips a directory it cannot list
+    without a word, returns from one it can list and not search names the file
+    test after it dropped without a word, and on older Pythons asks every link
+    what it points at. This lists each directory once and asks no link
+    anything. A directory it cannot list, and a `.iirds` name it cannot look
+    up, may each hide a package, so either refuses the search, named as the
+    argument was given; a name that is gone by the time it is looked up is
+    gone, and anything not named `.iirds` is not looked up at all. A link is
+    not walked into, and neither is an unpacked container: opened, it refuses
+    what it cannot read on its own (S13), and the containers beside it are
+    still checked.
+    """
+    def refuse(error: OSError,
+               what: str = "a directory being searched could not be listed") -> None:
+        raise Unlistable("%s: %s (%s)" % (what, error.filename or top,
+                                          error.strerror or error))
+
+    found: List[Path] = []
+    for here, directories, files in _listing(str(top), refuse):
+        for name in files:
+            if not name.endswith(".iirds"):
+                continue
+            full = os.path.join(here, name)
+            try:
+                os.lstat(full)
+            except FileNotFoundError:
+                continue                                # gone, not hidden
+            except OSError as error:
+                refuse(OSError(error.errno, error.strerror, full),
+                       "a package name being searched could not be looked up")
+            found.append(Path(full))
+        directories[:] = ([d for d in directories
+                           if not _is_link(os.path.join(here, d))
+                           and not looks_like_a_container(Path(here, d))]
+                          if recursive else [])
+    return sorted(found)
 
 
 def discover(path, recursive: bool = True) -> List[Path]:

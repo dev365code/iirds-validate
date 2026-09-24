@@ -214,3 +214,39 @@ def test_the_terminal_picture_is_a_run_that_happened(tmp_path):
     assert re.findall(r"ERROR (C\d+|M\d+(?:\.\d+)?)", caption) == shown, (
         "the alt text lists %s and the picture shows %s"
         % (re.findall(r"ERROR (C\d+|M\d+(?:\.\d+)?)", caption), shown))
+
+
+def test_the_front_page_is_right_about_which_rules_name_a_section():
+    """"Every code carries a prescription and the section of the specification
+    it enforces" was on this page from 0.6.0 to 0.7.0 and the second half was
+    false: thirty-one rules name no section, and `iirds rules S1 -v` is one of
+    them -- a system rule is about the run, not about a sentence of the
+    standard, so it has none to name.
+
+    Held as the two halves the page now states separately, because they are
+    true for different reasons: the prescription is a promise about every
+    rule, and the section is a promise only about rules that claim one.
+    """
+    from iirds_validate.registry import all_rules
+
+    rules = list(all_rules())
+    assert rules, "no rules to ask about"
+
+    without_a_remedy = [r.id for r in rules if not r.fix]
+    assert without_a_remedy == [], without_a_remedy
+
+    page = (ROOT / "README.md").read_text("utf-8")
+    flat = " ".join(page.split())
+    assert "Every code carries a prescription" in flat, \
+        "the page no longer makes the claim this gate holds"
+    assert "a rule that claims a sentence of the specification names the section it claims" \
+        in flat, "the page's claim about sections moved; this gate reads the old one"
+
+    # The page names `S1` as the case where there is nothing to name. If a
+    # section is ever attached to it the sentence stops being demonstrated by
+    # the command it cites, which is how the first version went wrong.
+    s1 = next(r for r in rules if r.id == "S1")
+    assert not s1.spec and not s1.covers, (s1.spec, s1.covers)
+
+    c5 = next(r for r in rules if r.id == "C5")
+    assert c5.spec or c5.covers, "the page cites `iirds rules C5 -v` as the case that shows one"

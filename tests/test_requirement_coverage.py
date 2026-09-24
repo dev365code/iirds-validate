@@ -212,8 +212,9 @@ CHAPTER_FIVE_GAPS = {
     # directory MUST contain the file metadata.jsonld." C16.2 claimed this and
     # does not check it: it asks whether an iiRDS/H package has the file and
     # whether the file parses, and the reader opens two fixed paths, so a
-    # package carrying JSON-LD metadata at META-INF/metadata.json is read by
-    # nothing and reported by nothing -- built and run, it passes clean. What
+    # package carrying JSON-LD metadata at META-INF/metadata.json is read as
+    # metadata by nothing and reported by nothing -- built and run, it passes
+    # clean. What
     # would close it is a rule about the other files in META-INF, and section
     # 5.1.1 recommends consumers ignore them, so the reading wants settling
     # before a rule is written.
@@ -256,8 +257,9 @@ def test_the_scope_document_publishes_the_coverage_it_has():
     assert int(found.group(1)) == len(COVERED), (
         "docs/scope.md says %s requirements are covered and the rules claim %d"
         % (found.group(1), len(COVERED)))
-    # The distinct count, not the parse: the parse counts one obligation twice
-    # in two derived ways, and the published denominator is the honest one.
+    # The distinct count, not the parse: the parse finds ids in two derived
+    # ways that are not further obligations, and the published denominator is
+    # the honest one.
     assert int(found.group(2)) == INDEX["reductions"]["distinct"], (
         "docs/scope.md says %s absolute requirements and the index has %d distinct"
         % (found.group(2), INDEX["reductions"]["distinct"]))
@@ -337,8 +339,9 @@ def test_the_front_page_publishes_the_coverage_it_measures():
 
 
 def _reduced():
-    """The ids the parse counted twice: the keyword-defining sentence, and the
-    appendix overview's restatements."""
+    """The ids the parse finds that are not further obligations: the keywords
+    named in the sentence defining them, and the appendix overview's
+    restatements."""
     return (set(INDEX["reductions"]["keyword_definition"])
             | set(INDEX["reductions"]["restated_in_the_overview"]))
 

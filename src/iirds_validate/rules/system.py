@@ -13,6 +13,7 @@ in one place.
 from __future__ import annotations
 
 import posixpath
+import unicodedata
 
 from iirds import unreadable_method
 
@@ -135,7 +136,10 @@ def s6_entries_stay_inside_the_container(ctx):
     and path length but says nothing about escaping the root, because it
     assumes good faith.
     """
-    for name in ctx.package.names:
+    # Every name an entry is read as, not only the one zipfile gives on this
+    # interpreter: from Python 3.12 that is a Unicode Path field's where one
+    # holds, and a name that escapes under the bytes alone was passed there.
+    for name in readings(ctx.package):
         if name.startswith("/") or name.startswith("\\") or ":" in name.split("/")[0]:
             yield Violation("container entry is an absolute path",
                             subject=name)
@@ -241,13 +245,152 @@ def _name_bytes(info) -> bytes:
                                      errors="replace")
 
 
+#: The Info-ZIP Unicode Path extra field (APPNOTE 4.6.9): a name in UTF-8
+#: that a reader takes in place of the one the record spells.
+_UNICODE_PATH = 0x7075
+
+
+def _as_read(name: str) -> str:
+    """A name as readers take it: zipfile and libarchive both stop at a NUL."""
+    return name.split("\x00", 1)[0]
+
+
+def _same_name(one: str, other: str) -> bool:
+    """Two names a reader takes for one: equal once both are composed alike,
+    as a filesystem that normalises names composes them."""
+    return unicodedata.normalize("NFC", one) == unicodedata.normalize("NFC", other)
+
+
+def _unicode_paths(extra: bytes, reads: str, *, central: bool):
+    """The names a record's Unicode Path extra fields give, and which of its
+    fields make readers disagree.
+
+    APPNOTE 4.6.9 makes the field "the UTF-8 version of the contents of the
+    File Name field", so a field is held to the name the record's bytes read
+    -- up to a NUL, and composed alike -- whatever its version and CRC-32.
+    Readers differ in how they check those: zipfile follows the directory's
+    from Python 3.12, version 1 with the CRC-32 of the whole name; libarchive
+    follows the local header's, of any version, against the name it holds by
+    then, cut at a NUL, converted to the system's form, and renamed by any
+    field before it. A field one reader might follow and that names the
+    entry otherwise is two names for one entry.
+
+    Broken fields are the ones a reader refuses where another passes them
+    by: in the directory, one too short or not UTF-8, which zipfile refuses
+    from 3.12; in the local header, one that is not UTF-8 or names nothing,
+    and extra data of any kind that runs past its end, which libarchive
+    refuses and zipfile never reads.
+
+    `(names, renamed, broken)`: the names the fields give, and the two kinds
+    of fault, as sentences.
+    """
+    names, renamed, broken, at = [], [], [], 0
+    while at + 4 <= len(extra):
+        tag = int.from_bytes(extra[at:at + 2], "little")
+        size = int.from_bytes(extra[at + 2:at + 4], "little")
+        body = extra[at + 4:at + 4 + size]
+        at += 4 + size
+        if len(body) < size:
+            if not central:
+                broken.append("extra data that runs past its end")
+            break
+        if tag != _UNICODE_PATH:
+            continue
+        if len(body) < 5:
+            if central:
+                broken.append("a Unicode Path extra field too short to hold a name")
+            continue
+        try:
+            said = _as_read(body[5:].decode("utf-8"))
+        except UnicodeDecodeError:
+            broken.append("a Unicode Path extra field that is not UTF-8")
+            continue
+        if not said:
+            if not central:
+                broken.append("a Unicode Path extra field that names nothing")
+            continue
+        names.append(said)
+        if not _same_name(said, reads):
+            renamed.append("a Unicode Path extra field naming the entry %s, where its bytes "
+                           "read %s" % (said, reads))
+    return names, renamed, broken
+
+
+def _local_reading(header) -> str:
+    return _as_read(header.name.decode("utf-8" if header.flag_bits & 0x800 else "cp437",
+                                       errors="replace"))
+
+
+def readings(package):
+    """Every name each entry is read as, in directory order.
+
+    For an archive: the name zipfile gives on this interpreter, the one each
+    record's bytes spell under its own bit 11, and the ones each record's
+    Unicode Path fields give their readers -- zipfile the directory's from
+    Python 3.12, libarchive the local header's. Names stop at a NUL, as both
+    readers stop. An entry's names are each given once; an entry the
+    directory lists twice is two entries here, as it was. An unpacked
+    container's names are its paths.
+    """
+    if not package.infos:
+        yield from package.names
+        return
+    for info, header, _descriptor in package.local_headers():
+        names = [info.filename, _as_read(info.orig_filename)]
+        names += _unicode_paths(info.extra, _as_read(info.orig_filename), central=True)[0]
+        if header is not None:
+            names.append(_local_reading(header))
+            names += _unicode_paths(header.extra, _local_reading(header), central=False)[0]
+        yield from dict.fromkeys(name for name in names if name)
+
+
+#: What to do about an entry whose Unicode Path field renames it.
+UNICODE_PATH_FIX = (
+    "Repackage the archive with its names stored as UTF-8 and bit 11 set. A reader that "
+    "follows the Unicode Path field sees one name for this entry and a reader that does "
+    "not sees another; a writer that stores names in a local code page adds the field to "
+    "carry the Unicode name, and with bit 11 the name itself is Unicode and needs no field.")
+
+#: What to do about a Unicode Path field one reader refuses and another passes by.
+BROKEN_PATH_FIX = (
+    "Rebuild the archive without the field, or with it whole. zipfile refuses a broken "
+    "Unicode Path field in the central directory from Python 3.12, and libarchive skips "
+    "or refuses an entry whose local header carries one, while other readers pass it by.")
+
+
+def _name_faults(info, header):
+    """What each record's Unicode Path fields do to its name: `(renamed, broken)`."""
+    renamed, broken = [], []
+    for where, extra, reads, central in (
+            ("directory", info.extra, _as_read(info.orig_filename), True),
+            ("local header", header.extra, _local_reading(header), False)):
+        _names, moved, bad = _unicode_paths(extra, reads, central=central)
+        renamed += ["the %s carries %s" % (where, fault) for fault in moved]
+        broken += ["the %s carries %s" % (where, fault) for fault in bad]
+    return renamed, broken
+
+
 def _disagreements(info, header, descriptor):
     """Every field on which the local header describes a different entry
-    from the central directory's, in the order a reader meets them."""
-    if header.name != _name_bytes(info):
-        local_name = header.name.decode("utf-8" if header.flag_bits & 0x800 else "cp437",
-                                        errors="replace")
+    from the central directory's, in the order a reader meets them.
+
+    The name is compared as each record reads it under its own bit 11, and as
+    bytes: one set of bytes read under two flags is two names, and one name
+    spelled in two encodings is two to a reader that does not read the flags
+    as zipfile does. A record's Unicode Path fields are `_name_faults`'s.
+    """
+    local_name = header.name.decode("utf-8" if header.flag_bits & 0x800 else "cp437",
+                                    errors="replace")
+    spelled = _name_bytes(info)
+    if local_name != info.orig_filename:
         yield "file name: directory %s, local header %s" % (info.orig_filename, local_name)
+    elif header.name != spelled:
+        # One name to zipfile, which reads each record under its own flag, and
+        # two to a reader that takes bytes without the flag in its own
+        # encoding: libarchive extracts code page 437's 0x82 as the byte it
+        # is, where the directory's UTF-8 says e-acute.
+        yield ("file name: directory and local header both read %s, from different bytes"
+               % local_name)
     if header.compress_type != info.compress_type:
         yield "compression method: directory %s, local header %s" % (
             _method(info.compress_type), _method(header.compress_type))
@@ -332,12 +475,14 @@ def s10_local_headers_agree_with_the_directory(ctx):
     the local file header before each entry's data instead, and where the
     two records disagree the two readers receive different files -- a
     package blessed here on the seven bytes the directory described while a
-    stream received seven hundred. Compared per entry: the name, the
-    method, the flags that change what a reader does, and the crc and
-    sizes -- from the local header, or from the data descriptor where the
-    local header defers to one (bit 3). Extra fields and timestamps differ
-    between writers and between the two records legitimately and are not
-    compared. Then the entries' extents: data that runs into the next
+    stream received seven hundred. Compared per entry: the name, as each
+    record's bit 11 reads it and as its bytes spell it, the method, the
+    flags that change what a reader does, and the crc and sizes -- from the
+    local header, or from the data descriptor where the local header defers
+    to one (bit 3). Extra fields and timestamps differ between writers and
+    between the two records legitimately and are not compared; a Unicode
+    Path field, which a reader takes the name from, is held to its own
+    record's name. Then the entries' extents: data that runs into the next
     entry's header is handed out by a trusting reader as this entry's.
 
     One extent per entry a reader receives, which is one per name. A directory
@@ -351,12 +496,27 @@ def s10_local_headers_agree_with_the_directory(ctx):
     for info, header, descriptor in package.local_headers():
         if header is None:
             yield Violation("no local file header at the offset the central directory gives",
-                            subject=info.filename, detail="offset %d" % info.header_offset)
+                            subject=_as_read(info.orig_filename),
+                            detail="offset %d" % info.header_offset)
             continue
+        # Filed under the name the directory's bytes read: zipfile's own name
+        # is a Unicode Path field's from 3.12, and the report is not to
+        # depend on the interpreter any more than the verdict is.
+        subject = _as_read(info.orig_filename)
         found = list(_disagreements(info, header, descriptor))
         if found:
             yield Violation("local file header disagrees with the central directory",
-                            subject=info.filename, detail="; ".join(found))
+                            subject=subject, detail="; ".join(found))
+        renamed, broken = _name_faults(info, header)
+        if renamed:
+            yield Violation("the entry's Unicode Path extra field gives readers different "
+                            "names for it", subject=subject, detail="; ".join(renamed),
+                            fix=UNICODE_PATH_FIX)
+        if broken:
+            yield Violation("the entry carries a Unicode Path extra field one reader refuses "
+                            "and another passes by", subject=subject, detail="; ".join(broken),
+                            fix=BROKEN_PATH_FIX)
+        if found:
             continue
         # One extent per entry a reader receives, which is one per *name* and
         # not one per record: the directory may list a name many times, and
@@ -369,7 +529,8 @@ def s10_local_headers_agree_with_the_directory(ctx):
         # collides with nothing. S15 states that duplication once, as the fact
         # about the directory that it is.
         resolved[info.filename] = (info.header_offset,
-                                   header.data_start + info.compress_size, info.filename)
+                                   header.data_start + info.compress_size,
+                                   _as_read(info.orig_filename))
     extents = sorted(resolved.values())
     # Nothing here for two extents at one offset, and there can be nothing: an
     # extent is only reached by a record that agreed with the local header it

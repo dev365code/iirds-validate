@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-67 of the 236 rules have no shape, in four honest categories,
+72 of the 241 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **55 not expressible** — 55 of the 236 rules are about ZIP bytes, content
+- **60 not expressible** — 60 of the 241 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, the compression
   method an entry uses, how many records the central directory gives one
@@ -180,8 +180,8 @@ each listed with its reason in `MANIFEST.json`:
 ## Why you can trust the translation
 
 **These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
-43 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
-carries, so running them against a package that declares an older edition
+43 of them encode a rule that does not apply to every edition -- from 1.1,
+from 1.2, or 1.3 alone -- so running them against a package that declares an older edition
 reports rules that edition does not have. The Python validator gates on the
 declared version and stays silent on those. Gating the shapes themselves would
 put an inference about editions inside an artefact whose point is that a SHACL
@@ -189,7 +189,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 236-rule Python
+Every emitted shape is **differentially tested against the 241-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

@@ -3,14 +3,24 @@
 The README promises that results can be diffed against the [iiRDS Validation
 Tool](https://github.com/plusmeta/iirds-validation-tool) rule by rule. That
 promise is only worth anything if the places the two disagree are written down.
-Every one is here, with the evidence.
+Every disagreement the corpus measures is counted here, and argued with its
+evidence except the two `mismatched` pairs, M6 and M96.4, which are counted and
+not argued, and M7.1 and M20.1, which the classifier files under `neither`
+although the reference reports them and this tool reports the same defect as
+R34 and R35.
 
-`tools/crossvalidate.py` and `tools/explain_silence.py` reproduce all of it.
+`tools/crossvalidate.py` and `tools/explain_silence.py` reproduce the
+pair-by-pair agreement and how its silence is classified; the readings of the
+reference's source -- apart from the assertions `tools/explain_silence.py` ports
+for three of its categories -- and the results on the Consortium's sample
+packages they do not.
 
 ## How the reference tool was read
 
 Not from its rule text — from its source. `src/config/validation/schema-rules.js`
-holds the assertion for each rule, and `src/util/rules.js` the helpers. Several
+holds the assertion for each schema rule and `container-rules.js` the one for
+each container rule; `system-rules.js` holds S1 to S3's priority and wording and
+no assertion; `src/util/rules.js` holds the helpers. Several
 rules do not do what their own wording says, which is the single most important
 thing to know before comparing anything.
 
@@ -47,7 +57,8 @@ findings on files the catalogue itself lists as passing them: all sixteen of
 M78 through M93 carry `metadata_iirds_sample_pass.rdf` under `testFiles.true`,
 and not one of them names a failing fixture at all. Whether any other tool
 reports these cannot be settled from here — the middle column above is what
-the reference *checks*, and this project cannot read the reference's source. The
+the reference *checks*, and no source of the reference is vendored here --
+`tools/extract_catalog.py` fetches its rule files only to extract the catalogue. The
 observation the label describes is real and useful, so it survives as **L10**, a
 warning, labelled as this project's own reading rather than as a MUST.
 
@@ -56,13 +67,16 @@ its own descriptions, and the sentence is spelled four ways: "Not intended to
 be used directly", "Not intented", "Not indented" and "No intended". A marker
 on the negation read two of the four and also matched
 `iirds:ForeseeableMisuse`, whose description is prose that begins "Use of a
-product in a manner not intended by the producer or supplier" — a concrete
-class with no subclasses, told to become one of them. The marker is the phrase
+product in a manner not intended by the producer or supplier" — a term the
+bundled ontology types as an instance of `iirds:Safety`, not a class, so it
+has no subclasses -- and it was told to become one of them. The marker is the phrase
 the four spellings share.
 
-**M15.10** is not in that table, because the table's middle column is what the
-reference checks and this project cannot read the reference's source — only its
-fixtures, which say the opposite of its catalogue wording. What follows is a
+**M15.10** is not in that table. The reference's assertion for it --
+`hasValidIdentity`, in its rule files at the pinned commit, fetched and not
+vendored here -- asks an identity's domain for a Creator party with a vCard,
+not the object's own `relates-to-Party`; its fixtures agree with that and not
+with its catalogue wording. What follows is a
 disagreement with the *catalogue*, settled from the specification.
 
 Its catalogue wording asks an `iirds:InformationObject` for
@@ -92,9 +106,14 @@ error on all three.
 Two of the three are silent now. Example 63 is not, and not because of this
 rule: the example declares its creator party at `http://iirds.org/example/…`
 while the identity domain points at `https://iirds.org/example/…`, so the party
-the domain names is a resource the package never describes. Reconcile the two
-schemes and it goes quiet; the author party carries the same typo the other way
-round. The example stays in view because a specification's own worked example
+the domain names is a resource the package never describes. Reconciling the two
+schemes clears that finding -- the author party carries the same typo the other
+way round, which draws M15.8 until it is reconciled too -- and what remains on
+the metadata is R12, on each vcard the example writes as a string literal (the
+shape `tests/test_party_vcard_kind.py` reproduces), and M15.2, because the
+example spells the handover prefix `iirdshov:`, which its context does not
+define. Example 63 is in the 1.3 specification, which this repository does not
+hold. The example stays in view because a specification's own worked example
 is the cheapest oracle a validator has, and because the claim that this rule no
 longer fires on it was written before anyone ran it.
 
@@ -165,17 +184,20 @@ would mean checking `purpose` twice and never checking `dateOfStatus` at all.
 ## Catalogue titles that name a term the ontology does not define
 
 Rule titles are the catalogue's wording, reproduced character for character
-so results stay diffable against the reference tool rule by rule. Eight of
-them name a property or class that does not exist under the spelling given.
-Correcting them here would break that comparison, so they are recorded
-rather than edited — and a gate skips exactly these when it checks that a
-rule's *own* prose names real terms.
+wherever this project has not written its own, so results stay diffable
+against the reference tool rule by rule. Eight entries of that wording name a
+property or class that does not exist under the spelling given; they are
+still the titles of their rules here, except M15.10's, which this project
+rewrote. Correcting them would break that comparison, so they are recorded
+rather than edited — and the gate that checks that a rule's *own* prose names
+real terms skips every title reproduced verbatim from the catalogue, these
+among them.
 
 | the title says | the ontology defines | rules |
 |---|---|---|
 | `iirds:eventCode` | `iirds:has-event-code` | M16.1 |
 | `iirds:eventType` | `iirds:has-event-type` | M16.2 |
-| `iirds:relates-to-Party` | `iirds:relates-to-party` — capitalisation only | M15.8, M15.9, M15.10 |
+| `iirds:relates-to-Party` | `iirds:relates-to-party` — capitalisation only | M15.8, M15.9 (and M15.10's catalogue wording) |
 | `iirds:ContentLifecyleStatus` | `iirds:ContentLifeCycleStatus` — "Lifecyle" is a typo for "LifeCycle" | M21.1 |
 | `iirds:ContentLifecyleStatusValue` | `iirds:ContentLifeCycleStatusValue`, same typo | M21.1 |
 | `iirds:DocumentTypes` | `iirds:DocumentType` — plural | M15.1 |
@@ -185,9 +207,14 @@ rule's *own* prose names real terms.
 The first two were already noted where the Consortium's own samples are
 discussed, because the 1.0 prose uses them too and the 1.0 *schema* does
 not — a discrepancy between one edition's document and its own vocabulary,
-not a tool's mistake. The other six are the catalogue's alone. None of them
-affects what any rule checks: every term a rule *evaluates* comes from
-`terms.py`, where a test resolves it against the bundled ontology. What is
+not a tool's mistake. Of the other six, `ContentLifecyleStatus`,
+`ContentLifecyleStatusValue` and `DocumentTypes` are spelled that way in the
+1.3 specification's own sentences too (6.8.2, 6.5.1), and `relates-to-Party`
+in section 8.3.2's mandatory lists; `first-child` and `next-sibling` are the
+catalogue's alone. None of them affects what any rule checks: the terms a
+rule *evaluates* are named in code -- `terms.py`, the class table in
+`rules/schema_tables.py`, or the rule itself -- never in its title, and tests
+resolve the first two against the bundled ontology. What is
 affected is what a reader is told, which is why they are listed rather than
 left to be rediscovered.
 
@@ -208,8 +235,8 @@ Each is implemented here from the specification text instead.
 This table had a third row, for M15.10, claiming that the reference's
 `hasValidIdentity` was "a different requirement" and that the catalogue's
 wording was "explicit". The wording was explicit and it was not the
-specification's; both of the reference's handover fixtures failed this rule
-because the rule was wrong, and one of them is marked as passing. The row
+specification's; both fixtures the catalogue lists as passing for M15.10
+failed this rule because the rule was wrong. The row
 above, in the wording table, records what section 8.3.2 actually says. Being
 stricter than the reference is a position this project takes on purpose and
 has to defend from the specification; when the defence is the catalogue's own
@@ -266,8 +293,10 @@ it fails under either reading.
 
 ## Metadata in an encoding this reader does not decode
 
-**C16.1 — `metadata.rdf` declaring anything but UTF-8 is refused, and the bytes
-are not the problem.**
+**C16.1 — `metadata.rdf` whose bytes do not decode as UTF-8 is refused,
+whatever it declares, unless a UTF-16 or UTF-32 byte order mark, or the byte
+pattern of unmarked UTF-16, settles another encoding — and the package below was
+refused with nothing in it damaged.**
 
 A real third-party package declares `encoding="windows-1252"`. This tool
 reports `ERROR C16.1` and says nothing about the graph. `xml.etree`, in the
@@ -294,9 +323,9 @@ not being it, the file was saved in another encoding and the declaration left
 where it was. Written not at all, UTF-8 is what XML assumes, and the file is
 worth looking at before it is asked for again.
 
-Transcoding the same package to UTF-8 and nothing else turns the verdict into a
-pass with no findings, which is the measurement that says the markup was never
-the problem.
+Transcoding that package -- which is not in this repository -- to UTF-8 and
+nothing else turned the verdict into a pass with no findings, which is the
+measurement that says the markup was never the problem.
 
 ## What this tool refuses to read, and why that is its own decision
 
@@ -388,7 +417,7 @@ rejecting the document, which is B1's finding and demotes outside iiRDS/A like
 every other content judgement — the line drawn below. Of the other five, two
 are reported by a rule of their own at the same severity: the total a run will
 decompress is S9's subject, and a compression method no bounded read can be
-made of is S14's, above. The remaining three are S16's, and until 0.7.0 only
+made of is S14's, above. The remaining three are S16's, and until 0.7.1 only
 one of them was:
 
 - the container will not hand the file over — a damaged stream, a file the
@@ -469,8 +498,8 @@ the code it describes.
 
 | rule | kind of leniency | claim |
 |---|---|---|
-| M17, M18 | **narrows the sentence** — the rule asks something else and the difference is unreported | withdrawn |
-| M15.7b, M15.7d, M15.8, M15.9, M15.10, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all | kept |
+| M17, M18 | **narrows the sentence** — the rule asks something else; M17's difference is unreported, and M18's sentence is R11's, reported there | withdrawn |
+| M15.7b, M15.7d, M15.8, M15.9, M15.10, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all; M15.8 and M15.9 hold no claim to keep | kept |
 | M13.1, M13.2 | **not a leniency** — Example 13 shows a `RangeSelector` carrying neither property and its two fragment selectors carrying both, which these rules check | kept |
 | M19.4 | **narrows the sentence** | never claimed |
 | M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced absoluteness on top of that. What the narrowing dropped for three classes is now R34 to R36, so nothing the standard requires is left to a recommendation | kept |
@@ -483,7 +512,8 @@ or where what is called leniency is really the correction of a strictness the
 sentence never asked for. Where the rule genuinely checks less than the
 sentence says, the claim goes with it.
 
-**Which claims stand is not stated in this document.** It was, in a paragraph
+**Which claims stand is read by a test in two places only: the `claim` column
+above and the M25 paragraph.** It was, in a paragraph
 here that named two rules and described the state of their citations; both had
 moved by the time anyone read it again. The paragraph further down about
 section 6.9.1 went the same way, in this file. A sentence of
@@ -495,7 +525,8 @@ as rule-and-obligation pairs in `tests/test_covers_is_earned.py`; a claim is
 `covers=` on the rule, and every one of them is either held by a package there
 or named in that file's UNAUDITED list. The table above says which rows of it
 keep a claim, and a test reads the column. This document explains *why* a
-reading was chosen. It no longer says what the code does.
+reading was chosen. Outside that column and the M25 paragraph, what it says
+about which claims stand is read by nothing.
 
 What is worth keeping from that paragraph is the part about withdrawals
 themselves. A withdrawal is cheaper than a wrong claim and it is not free: it
@@ -534,9 +565,9 @@ no element at all to the judge and two triples to the parser.
 
 **RDF collapses duplicate statements.** M2.7, M2.8 and M2.9 have fixtures that
 repeat an element with an identical empty value. In RDF that is one statement,
-so a graph-based validator cannot see two. Their fixtures and ours describe
-byte-identical graphs — `tools/explain_silence.py` classifies these as
-`invisible` by computing the diff. A package with two *different* values is
+so a graph-based validator cannot see two. The failing fixture and the passing
+fixture it is diffed against describe the same graph — `tools/explain_silence.py`
+classifies these as `invisible` because the diff between the two is empty. A package with two *different* values is
 still caught.
 
 **Malformed fixtures.** Eleven fixtures are not well-formed XML. This validator
@@ -562,8 +593,10 @@ equivalent class" and was reported as a violation of it.
 It also contradicted **L5**, which asks authors to link proprietary classes to
 the iiRDS vocabulary. One rule forbade what another recommended.
 
-Now it fires only when both ends of the statement are the standard's own terms,
-which is what "restating the schema" means. Worth recording where this came
+Now a `subClassOf`, `subPropertyOf`, `domain` or `range` statement is reported
+only when both its ends are the standard's own terms, which is what "restating
+the schema" means; declaring an iiRDS name a class or property is still
+reported on the subject alone. Worth recording where this came
 from: at the revision this was written against, no fixture in the reference
 corpus exercised it, and fixing it moved not one figure in
 `docs/agreement.json`. Cross-validation against another implementation could
@@ -585,17 +618,17 @@ there. The fixtures are agreement about something else.
 The iiRDS Sample Content (2019-10-31, behind free registration at iirds.org)
 contains the only two complete packages the standard's authors have published:
 `iirds-sample-1.iirds` and `iirds-sample-2.iirds`, both declaring iiRDS 1.0,
-variant A. The first genuine 1.0 material this project has seen — 159 rules
-ran, 29 correctly stood down for the version and profile.
+variant A. The first genuine 1.0 material this project has seen, and the rules
+that do not apply to 1.0 or to iiRDS/A stood down on it.
 
-Every error was verified against the 1.0 specification text (2018-04-18)
-before being called a defect:
+Every error was verified against the 1.0 specification text (2018-04-18),
+which this repository does not hold, before being called a defect:
 
 | finding | verdict | the sentence, from the edition the package declares |
 |---|---|---|
 | sample 1, **M22.1** (error) | **defect in the official sample** | "An iirds:Party MUST have a related iirds:Role that is assigned by the property iirds:has-party-role" — the reviewer Party carries only a vcard |
 | sample 2, **M18** (error) | **defect in the official sample** | "As product variants are a proprietary iiRDS extension, they MUST be present in the metadata.rdf of the iiRDS package" — verbatim in 1.0 and 1.3; the package relates to `pifan#X5-DH2` and declares no ProductVariant |
-| both samples, B10 (warning ×11) | correct observation | eleven hazard statements at caution or warning level carry a triangular ISO warning sign — in five of them the safety alert symbol itself — and tag none of them, so a consumer cannot tell the alert symbol from the flammable-materials sign beside it. The packages provide the symbols; the `data-role` that identifies one is what is absent. Six in sample 1, five in sample 2; the four notices carry a blue circle and are left alone |
+| both samples, B10 (warning ×11) | correct observation | hazard statements at caution or warning level tag no picture as the safety alert symbol — six in sample 1, five in sample 2, the counts `tests/test_official_samples.py` pins. Seen by hand and not held here: each shows a triangular ISO sign, five of them the safety alert symbol itself, so a consumer cannot tell the alert symbol from the flammable-materials sign beside it; the `data-role` that identifies one is what is absent, and the four notices carry a blue circle and are left alone |
 | sample 1, L10 (warning) | correct observation | the package types `mch:EnvironmentalProtectionInstruction` directly as `iirds:InformationSubject`; tekom's own 1.3 machinery vocabulary types that term as an instance of `iirds:Safety` — the warning's advice is the vocabulary's current position |
 | sample 2, L1 (warning) | correct observation | `relates-to-party` names a UUID described only in sample 1; a consumer holding sample 2 alone cannot resolve it |
 | sample 2, L8 ×5 (info) | as designed | references into the external `pifan` vocabulary, which an offline consumer cannot fetch |
@@ -615,27 +648,33 @@ already says `has-event-code` and `has-event-type` — so M16.1/M16.2 check the
 right names for every edition, and the discrepancy is between the 1.0 document
 and the 1.0 schema, not in any tool. The same fetch showed the sample's L10
 warning holds against the package's own era: `mch:EnvironmentalProtectionInstruction`
-is typed `iirds:Safety` in the 1.0 machinery vocabulary too.
+is typed `iirds:Safety` in the 1.0 machinery vocabulary too. The repository keeps
+only that edition's term list, which cannot show a type.
 
 ## Version scoping the reference got wrong
 
 Every `versions` array in the catalogue came from the reference tool, and none
 had ever been checked against anything. `tools/version_inventory.py` now does
-it mechanically: fetch each tagged release of the ontology once, reduce it to
-the set of term IRIs, and require that no rule declares itself applicable to a
-version whose vocabulary lacks a term the rule names.
+it mechanically: `--refresh` fetches the schema files of 1.0, 1.0.1, 1.1 and 1.2
+from the Consortium's downloads once, takes 1.3 from the bundled ontologies,
+and reduces each edition to term IRIs; the check requires that no rule whose
+source names an iiRDS term declares itself applicable to an edition that lacks
+it, and lists the rules that read the graph but name no term as ones it cannot
+answer for.
 
 Five rules failed. **M96.1, M96.2, M96.3, M97.1 and M97.2** are dated from 1.0
 in the catalogue and name `iirds:ExternalClassification`,
-`iirds:classificationIdentifier` and `iirds:ClassificationDomain` — the whole
-external classification vocabulary, which arrives in **1.2**. Eleven terms
+`iirds:classificationIdentifier` and `iirds:ClassificationDomain` — terms of
+the external classification vocabulary, which arrives in **1.2**; its
+classification types `DCC` and `VDI2770` follow in 1.3. Eleven terms
 appear between 1.1 and 1.2 and all of them belong to it. A rule cannot apply
 before the class it is about exists, so the five are narrowed to 1.2 and 1.3
 here.
 
-The consequence of leaving it would have been small and entirely in the claim
-rather than the output: on a 1.1 package those rules ran, matched nothing, and
-reported clean. What was wrong was `iirds rules` saying they applied.
+The consequence of leaving it was mostly in the claim: on a 1.1 package
+without the 1.2 vocabulary those rules ran, matched nothing and reported clean,
+and on the reference's own 1.1 fixtures, which use that vocabulary anyway,
+M96.1, M96.2, M96.3 and M97.1 fired. What was wrong was `iirds rules` saying they applied.
 
 Four pairs in `docs/agreement.json` moved from `agree` to `silent` as a result,
 and the movement is this project getting the answer right rather than wrong.
@@ -653,8 +692,9 @@ external classification vocabulary — `ExternalClassification`,
 `ClassificationDomain`, `ClassificationType`, `classificationIdentifier`,
 `classificationVersion`, `has-classification-domain`,
 `has-classification-type`, `has-external-classification`, `CDD`,
-`EclassCodedName`, `EclassIRDI` — is a coherent feature landing in one release
-rather than a gap in the tagged ontology.
+`EclassCodedName`, `EclassIRDI` — is a coherent feature landing in one release,
+to which 1.3 adds two classification types, rather than a gap in the tagged
+ontology.
 
 The inventory initially covered 1.1 onward, because the GitHub tags carry
 nothing older; the Consortium's site publishes every edition's schemas, and
@@ -670,8 +710,9 @@ seven catalogue version arrays corrected in all.
 
 The other direction, and the one worth checking first, because a scoping that
 is too narrow turns a MUST off for versions people actually ship. Both rules
-are dated 1.0 to 1.1, and both name `iirds:Event` and `iirds:has-event-code`,
-which exist in every version including 1.3 — so the vocabulary check cannot
+are dated 1.0 to 1.1 and name `iirds:Event`, with `iirds:has-event-code` and
+`iirds:has-event-type` respectively, all of which exist in every version
+including 1.3 — so the vocabulary check cannot
 settle it and the specification has to.
 
 iiRDS 1.3, section 6.6.1:
@@ -759,7 +800,9 @@ makes one, and each of them used to. The fifth shape re-opened the self-loop
 bypass closed the commit before, by pairing the self-loop with any one of the
 other four.
 
-What this does **not** do is report the child that carries the triple. §5.3's
+What this reading does **not** do is report the child that carries the triple;
+the rule about a package naming its own parent does, when that parent is not
+described in the same file as an `iirds:Package`. §5.3's
 two prohibitions are `x5-3-nested-iirds-packages#2` and `#3`, and both were
 gaps when this was written. They are no longer the same kind of thing.
 
@@ -823,10 +866,12 @@ settles is a different sentence, not this one: R8 answers §6.3.3's "must be in
 the archive", and knowing that a document is wrong somewhere is not knowing
 that it is the nested package.
 
-**The shapes are the 1.3 rule set and carry no version gate.** Twenty-nine
-emitted shapes encode a rule that only iiRDS 1.3 carries, so running
-`shapes/iirds-1.3/` against a package declaring an older edition reports rules
-that edition does not have; the Python rules gate on the declared version and
+**The shapes are the 1.3 rule set and carry no version gate.** Every emitted
+shape whose rule does not apply to every edition -- from 1.1, from 1.2, or 1.3
+alone --
+`shapes/README.md` gives how many, and a test holds it there -- reports, run as
+`shapes/iirds-1.3/` against a package declaring an older edition, rules that
+edition does not have; the Python rules gate on the declared version and
 stay silent on those. Gating the shapes would put an inference about editions
 inside an artefact whose point is that a SHACL engine runs it without this
 project's code, so the boundary is stated rather than papered over — and the
@@ -837,8 +882,8 @@ feeding itself 1.3 documents, which is why it had never seen this.
 off the package this container is about, and a package the metadata says is
 nested does not set them — the reason is written in the rule that does the
 reading, and it is the false-reject direction: a nested child declaring the
-handover profile would otherwise switch seventeen handover MUSTs on against a
-container that never claimed to be one.
+handover profile would otherwise switch every handover-only rule on -- each of
+them a MUST or a MUST NOT -- against a container that never claimed to be one.
 
 That reading has a residual, and it is not closed here. A container whose own
 package declares the handover profile *and* declares itself nested inside an
@@ -862,17 +907,20 @@ inference in the one place where an inference is silent: the choice of profile
 happens before any rule runs and produces no finding to disagree with.
 
 The cost, named: a parent's `metadata.rdf` that misspells its own package's
-IRI in the child's reference now draws M8 **and M3** on the child — M3 because
-two packages are then representing this container. That graph already breaks
+IRI in the child's reference now draws M3 and R7 on the child, and M8 as well
+when the child carries `iirds:has-rendition` — M3 because two packages are then
+representing this container. That graph already breaks
 §6.3.3's "MUST reference exactly one `iirds:Package`" — it references zero —
 so the defect is real and only the rule ids are approximate. A rule for that
-sentence would retire the approximation; there is none yet, and §6.3.3 is at
-1 of 4.
+sentence would retire the approximation; there is none yet, and which of
+§6.3.3's sentences are claimed, and by what, is in `covers=`.
 
 What does *not* accompany it: `iirds check` runs the conformance rules only,
 and L1 — "relation points at an IRI that is never described in this package" —
-is a lint rule. Under `iirds lint` it reports the dangling reference; under
-the default subcommand nothing does.
+is a lint rule. Under `iirds lint`, and under the default subcommand, which is
+`iirds all`, it reports the dangling reference; under `iirds check` no rule
+says the reference points at nothing described, and R7 names the IRI only as
+the parent the package claims.
 
 The population is the graph's own subclass closure, not the ontology's,
 because SHACL's `sh:class` sees only the data graph — the two encodings have
@@ -913,8 +961,8 @@ a chain. That graph is pinned.
 
 An earlier attempt moved the rule to `sh:sparql` on the belief that Core could
 not express any of this, which would have cost a Core-only engine a MUST NOT
-for nothing. M3 reads the same predicate through `sh:sparql`, and both of its
-`FILTER NOT EXISTS` blocks carry the class test now — without it the two
+for nothing. M3 reads the same predicate through `sh:sparql`, and every one of
+its `FILTER NOT EXISTS` blocks over that predicate carries the class test now — without it the two
 encodings disagreed on every one of the five shapes above.
 
 ### M22.1 and M22.2 — one sentence, two checks, one fixture
@@ -934,9 +982,13 @@ fixture under both ids, so the pair (M22.2, that fixture) shows up here as a
 silence.
 
 It is not a disagreement. The defect is caught, under the other id. What is
-true is that **the second half of the sentence is exercised by no fixture in
-the corpus**: a `has-party-role` resolving to something that is not a PartyRole
-is reported here and is not in their test material at all. So this is a gap in
+true is that **the second half of the sentence is exercised in the corpus only
+under another rule's id**: `metadata_iirds_sample_pass-M54_false.rdf`, listed
+for M54, points `has-party-role` at the document itself. M22.2 reports a role
+that is a literal, a blank node, a name in the standard's own namespace, or a
+resource the package describes that is not a PartyRole; any other IRI the
+package does not describe is left to L1, a lint, and that is all this fixture
+draws on it. So this is a gap in
 the oracle, not a divergence in the rule, and cross-validation cannot tell the
 two apart on its own.
 
@@ -958,8 +1010,8 @@ straight at the class IRI. Both close a level here.
 The rule does not claim `covers=x6-9-1-directory-nodes#3`, because it does not
 cover all of it. A node nothing points at is a root, and M25 exempts roots --
 tekom's own `iirds-sample-1` has twenty-seven directory nodes, exactly one
-root, and that root carries no `iirds:has-next-sibling` at all, in every one
-of the fifty-one fixtures built from it. A reading that made the requirement
+root, and that root carries no `iirds:has-next-sibling` at all, in every
+fixture built from it that parses. A reading that made the requirement
 reach the root would fail the Consortium's own sample, so the exemption stays
 and the citation would be an overclaim.
 
@@ -1057,9 +1109,10 @@ nowhere — so `iirds:relates-to-componnet` passed every rule, in the standard's
 own namespace, where a reader has the least reason to doubt it.
 
 **Why it is a warning and not the error the sentence would support.** Run
-over the reference corpus, the rule names exactly two terms. One is the
-corpus author's own negative fixture, `iirds:ThisIsNotAStandardizedDocumentType`,
-which is the rule working. The other is
+over the reference corpus, the rule names three terms. One is the corpus
+author's own negative fixture, `iirds:ThisIsNotAStandardizedDocumentType`,
+which is the rule working, and one is `iirdsMch:has-part`, which
+`M30_false.rdf` uses and the machinery vocabulary does not define. The third is
 `iirds:EnvironmentalProtectionInstruction`, named in the core namespace by
 fifty-one files — seven of them fixtures the catalogue marks as passing — where
 the standard defines that term under `iirds/domain/machinery#`. The IRIs differ,
@@ -1092,24 +1145,37 @@ parser's, and both are below this rule.
 
 ## Where severity currently outruns the reading
 
-The README's rule is that anything resting on this project's own reading is a
-warning. Two places do not yet honour it, named here so the promise stays
-checkable rather than aspirational:
+The rule here is that anything resting on this project's own reading is a
+warning. The places found so far that do not honour it are named -- the list is
+not known to be complete -- so the promise stays checkable rather than
+aspirational:
 
 - **L4** (navigation cycles) is reported as an error on this project's own
   authority: no specification sentence names cycles, but no consumer walking
   a cyclic structure terminates, and a defect that hangs the reader did not
   seem to belong at warning level. If tekom's answer to the open questions
-  below settles it otherwise, it moves.
-- ~~The Appendix B entry condition~~ **Corrected**: content findings now
-  report as errors under iiRDS/A — whose whole point is restricting content to
-  iiRDS XHTML5 — and demote to warnings under every other profile, where the
+  above settles it otherwise, it moves.
+- **M30**, on a `subClassOf`, `subPropertyOf`, `domain` or `range` statement
+  between two iiRDS terms: reading that as the schema written out is this
+  project's inference from section 7.1, argued above, and it reports as an
+  error.
+- **R8**, on the middle container of a chain three deep: reading section
+  8.3.1.2's nesting over the flattening reading is this project's choice,
+  recorded in the rule, and it reports as an error.
+- **L2**, on an `iirds:source` written the way its file is named: the URL
+  reading below is this project's choice between two normative sentences, and
+  a file whose name holds `%`, `#` or `?`, referenced that way, reports as an
+  error.
+- ~~The Appendix B entry condition~~ **Corrected**: content findings from the
+  MUST-level B rules now report as errors under iiRDS/A — which restricts content to the
+  formats section 8.2.1 lists, iiRDS XHTML5 for structured text — and demote to warnings under every other profile, where the
   standard permits any content and the entry condition is this project's
   reading. The rule keeps its MUST priority (the sentences are MUSTs); the
-  *runner* assigns the severity, because only it knows the profile. So the
-  list above is one item long: L4.
+  *runner* assigns the severity, because only it knows the profile. B10, a
+  recommendation, is a warning in every profile. So the list above names L4,
+  M30, R8 and L2.
 
-A third case sits beside these and is not one of them. `ERROR S16` fires where no content rule
+One more case sits beside these and is not one of them. `ERROR S16` fires where no content rule
 got a parsed document for a file the package lists as content — including two
 refusals of this project's own, a rendition past a ceiling chosen here and a
 document refused in its prolog for declaring XML entities — and it is an error
@@ -1129,7 +1195,7 @@ normative sentences, and it costs something either way, so it is written
 down here rather than left in a docstring.
 
 **For "URL".** §6.3, the only place the standard says what the value *is*,
-says it twice in one sentence, both MUSTs:
+says it in two consecutive sentences, both MUSTs:
 
 > To identify the physical file, the property `iirds:source` MUST relate the
 > rendition to the **URL** of the physical file. The **URL** MUST be relative
@@ -1153,9 +1219,9 @@ A plain literal has no encoding layer: a producer with a file named
 `a b.xhtml` writes `a b.xhtml`, because nothing in literal syntax asks for
 anything else.
 
-**What the corpus says: nothing.** Across the 99 that parse of the 132
-vendored metadata documents, plus the three packages under `fixtures/`,
-**1,395 `iirds:source` values carry no `%`, `#`, `?`, space or backslash** — and neither do the spec's own
+**What the corpus says: nothing.** Across the vendored metadata documents
+that parse, **no `iirds:source` value carries a `%`, `#`, `?`, space or
+backslash** — and neither do the spec's own
 examples in either release. Every real value available is spelled the same
 under both readings. The corpus cannot decide this and neither can
 cross-validation: the reference tool never resolves the value against an
@@ -1172,9 +1238,9 @@ may not contain — `/,”*:<>\` — and `%` and `#` are not among them. So:
 |---|---|---|
 | `:` | no | refusing a value that still holds one costs nothing |
 | `\` | no | folding backslashes costs nothing |
-| `%` | **yes** | a file named `a%20b.xhtml` cannot be addressed |
-| `#` | **yes** | a file named `a#b.xhtml` cannot be addressed |
-| `?` | yes as written | same, though the list is plainly a garbled Windows-reserved set and `?` is likely meant to be in it |
+| `%` | **yes** | a file named `a%20b.xhtml` is addressed only with its `%` escaped as `%25`; written as it is named, the value names `a b.xhtml` |
+| `#` | **yes** | a file named `a#b.xhtml` is addressed only with its `#` escaped as `%23`; written as it is named, the value names `a` |
+| `?` | yes as written | the same: addressed only with its `?` escaped as `%3F`, and written as it is named the value names `a`; the list is plainly a garbled Windows-reserved set and `?` is likely meant to be in it |
 
 The quietest case is a directory legally named `%2e%2e`: the value
 `content/%2e%2e/topic.xhtml` decodes to `content/../topic.xhtml` and names
@@ -1217,7 +1283,7 @@ makes.
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages
-carry `type` on `<link>`, which appears neither in that list nor in any
+-- which this repository does not hold -- carry `type` on `<link>`, which appears neither in that list nor in any
 element-specific table. A strict whitelist therefore fails the standard's own
 examples, which is strong evidence that the list is not meant to be read as
 exhaustive.
@@ -1242,8 +1308,8 @@ the sentence says nothing section 5.1.1 does not already say about all
 metadata, and the claim on it was withdrawn once for that reason.
 
 What the standard does not spell out, its own vocabulary settles: **a class is
-a vocabulary class when the ontology types instances of it directly, and
-Appendix A does not say those instances may go unnamed.** Twenty document
+a vocabulary class when the ontology types instances of it directly and its
+Appendix A row says `IRI: required`.** Twenty document
 types ship with the standard, eight party roles, eight identity types, five
 classification types. No documents ship, and no topics, because those are
 data. A company adding a term of the first kind extends the vocabulary; a
@@ -1260,7 +1326,7 @@ of the eleven classes admitted that way say "Not intended to be used directly"
 in their own description. And Appendix A's IRI column, because a class whose
 instances the standard says need not be named cannot be a vocabulary: a term
 nobody can refer to is not a term, and that is what `iirds:PlanningTime` and
-its three siblings are — durations and frequencies.
+its subclasses are — durations and frequencies.
 
 **What a proprietary extension is comes from section 7.3, not from the shape
 of an IRI.** The first form of this rule asked whether a name was outside the
@@ -1309,7 +1375,9 @@ over the shift key. A package that genuinely uses the wrong extension --
 `.html`, `.htm` -- is still reported, which is the case the sentence is about.
 
 This is a spelling, so the claim on the sentence stands. It is one call to
-`.lower()` if the Consortium reads it the other way.
+`.lower()` if the Consortium reads it the other way. R41, R42, R44 and R45,
+which hold iiRDS/A renditions to `.pdf`, `.svg` or `.svgz`, `.mp4` and `.mp3`
+and claim no sentence, compare the same way.
 
 ### B8 — "only one" is scoped to a hazard statement, not to a file
 
@@ -1383,8 +1451,8 @@ which is the sentence, and it is silent on every piece of official material.
 B10 is the other half, and it does not carry a MUST, because the sentence and
 the check are not the same fact. The subject of the requirement is *the iiRDS
 package* and the verb is *provide*. Both Consortium packages provide the
-symbols — open the files and five of the eleven flagged statements hold the
-yellow triangle with the exclamation mark, the rest another triangular ISO
+symbols — seen by hand in files this repository does not hold, five of the
+eleven flagged statements hold the yellow triangle with the exclamation mark, the rest another triangular ISO
 sign. What is absent is the `data-role` saying which picture that is. Turning
 "provide" into "tag it as a child of the signal word panel" rests on the note
 above the table and the tagging example below it, and section 1 of both
@@ -1398,7 +1466,7 @@ than a neighbouring standard's. The bundled ontology defines danger, warning
 and caution each by personal injury, and notice as a "message that contains
 information considered important but not related to personal injury" — so no
 safety alert symbol is *applicable* to it, in the requirement's own word. The
-sample packages draw the same line: a triangle on the eleven, a blue circle on
+sample packages -- inspected by hand, and not held here -- draw the same line: a triangle on the eleven, a blue circle on
 the four. The hazard level is read from the `data-role` value, never from the
 signal word's text, which is written in the content's language.
 
@@ -1432,10 +1500,13 @@ python tools/explain_silence.py
 
 Both write what they measured down: `docs/agreement.json` holds the verdict on
 each pair, `docs/silence.json` which bucket each silent one is in, and `--check`
-on either fails when a run no longer matches the file. Every figure below is
-read from one of the two by a test, named bucket by named bucket -- a total
-would let two of these rows swap values and say nothing, which is how a
-paragraph here came to state 34 where the table said 32.
+on either fails when a run no longer matches the file. Each row of the table
+below, and each bucket figure in the paragraph under *Half the silence* that
+restates them, is read from one of the two by a test, named bucket by named
+bucket -- a total would let two of these rows swap values and say nothing,
+which is how a paragraph here came to state 34 where the table said 32.
+Nothing else below is read: not the totals, not the untestable or silent
+counts, not the fixture counts, the pairs per fixture or the percentages.
 
 The reference marks 114 rule/fixture pairs as "this fixture must fail this
 rule". Ten of those nothing can test: eight name one of the two fixtures
@@ -1446,7 +1517,7 @@ lists and their repository does not ship. Of the remaining **104 pairs, across
 | | pairs | |
 |---:|---|---|
 | **43** | the expected rule fires here | |
-| 32 | silent — and the reference's own assertion passes too | its unit tests call `validateSingleRule` directly, bypassing the version and variant filters its product applies, so a fixture can be listed against a rule that does not apply to it |
+| 32 | silent — and the reference's own assertion passes too | the rule applies to the fixture's version and profile, and `tools/explain_silence.py`'s port of the reference's assertion for its category passes on it. The port is exact for the "must have IRI" pairs; for the "absolute IRI" pairs, M7.1 and M20.1, it tests only that `rdf:about` is present -- the reference's own assertion fails on both fixtures, and this tool reports the same relative IRIs under R34 and R35 |
 | 9 | silent — the fixture does not parse | 9 pairs over 8 fixtures. Seven are among the corpus's 11 malformed files; the eighth is well-formed XML that is not valid RDF/XML, which is a wider category than the manifest's word for it. No comparison is possible, and none is repaired — see below |
 | 13 | silent — gated by version or variant here | five of them because the fixture declares 1.1 while using vocabulary that arrives in 1.2; see above |
 | 3 | silent — the defect exists only in the XML tree | two serialisations of one graph; there is nothing in the graph to report |
@@ -1454,7 +1525,8 @@ lists and their repository does not ship. Of the remaining **104 pairs, across
 | 1 | silent — labelled **ours**, and mislabelled | M22.2: the defect *is* reported, as M22.1. See above — this is the worked example of what the classifier cannot do |
 | 1 | silent — **unclassified** | M25's failing fixture parses; the passing fixture it is held against, `Example 38 - Table of contents.rdf`, does not — one of the eleven malformed. M25 has a second passing fixture that does parse, and `tools/explain_silence.py` gives up at the first one it cannot read rather than trying the rest, so this row is this project's classifier and not the corpus |
 
-No finding fires on a fixture the reference says should pass. Two did, both
+No rule fires on a fixture the catalogue lists as passing for that same rule.
+Two did, both
 M15.10, and both were this project's error rather than the reference's: the
 rule asked an information object for a party section 8.3.2 hangs on its
 identity domain. Correcting it emptied that category, which had existed since
@@ -1482,10 +1554,12 @@ stand in for the number that mattered.
 ### Half the silence is one fixture
 
 `metadata_iirds_sample_pass-M49_false.rdf` is listed upstream as the must-fail
-fixture for **29 different rules** — M40, M43 through M76, and more. Its name
-says M49, and M49 is the rule it actually violates. The other 28 pairs are a
-file listed against rules it does not breach, which is why the reference's own
-assertion passes on almost all of them.
+fixture for **29 different rules** — M40, M43–M45, M47–M49, M51, M55–M59 and
+M61–M76, and nothing else. Its name says M49, but the file carries no
+`iirds:IdentityType`: what it breaks is the IRI of its Package and of a
+Component, which M52, M38 and M2.1 report here, and one Topic's, moved onto another's,
+which leaves a reference for L1 -- and none of the rules it is listed against,
+which is why the ported assertion passes on every one of them.
 
 That single fixture accounts for **48% of the 61 silent pairs**. Add the five
 against `metadata_iirds_sample-M15_false.rdf` and the figure is decided, more
@@ -1496,7 +1570,7 @@ same mistake this document already records twice.
 
 The 41% is misleading in the other direction, because almost all of the silence
 is accounted for: 32 pairs are cases where the reference does not report
-either, 13 are gated by a version or variant, 9 are fixtures nobody can parse,
+either, 13 are gated by a version or variant, 9 are pairs whose fixture this tool cannot read as RDF/XML,
 and 3 are defects that exist only in the XML tree. Those four groups, and the
 four pairs named below, are the whole of it. Read the table above rather than
 any single figure. What is actually unresolved is **four pairs** — the 2 mismatched, the 1

@@ -56,23 +56,45 @@ def test_oversized_metadata_is_refused_in_a_directory_too(tmp_path):
 
 def test_a_fragment_is_staged_within_the_limit(tmp_path, monkeypatch):
     """`--fragment` copies the file into a container before any gate sees it,
-    and the copy read the whole file first. It stops one byte past the
-    metadata limit now, and the gate refuses what arrives the way it refuses
-    an archive's."""
+    and the copy read the whole file first. It reads to one byte past the
+    metadata limit now and no further -- counted at the read, since a copy
+    that read everything and then cut it would stage the same bytes -- and the
+    gate refuses what arrives the way it refuses an archive's. Held at a small
+    limit, so the file can be many times it without being large."""
     import iirds
+    from iirds_validate import context
 
+    limit = 1 << 16
+    monkeypatch.setattr(iirds, "MAX_METADATA_BYTES", limit)
+    monkeypatch.setattr(context, "MAX_METADATA_BYTES", limit)
     fragment = tmp_path / "big.rdf"
-    fragment.write_bytes(OVER_METADATA + b" " * 1024)
-    staged = []
-    packing = iirds.pack
+    fragment.write_bytes(MINIMAL_RDF.encode("utf-8") + b" " * (8 * limit))
 
-    def watched(source, output=None, **options):
-        staged.append((Path(source) / METADATA_RDF).stat().st_size)
-        return packing(source, output, **options)
+    read = []
+    opened = open
 
-    monkeypatch.setattr(iirds, "pack", watched)
+    class Counted:
+        def __init__(self, handle):
+            self.handle = handle
+
+        def read(self, size=-1):
+            data = self.handle.read(size)
+            read.append(len(data))
+            return data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.handle.close()
+
+    def counting(file, mode="r", *args, **kwargs):
+        handle = opened(file, mode, *args, **kwargs)
+        return Counted(handle) if Path(file) == fragment else handle
+
+    monkeypatch.setattr(runner, "open", counting, raising=False)
     report = runner.run_fragment(fragment, runner.CONFORMANCE_KINDS)
-    assert staged == [MAX_METADATA_BYTES + 1]
+    assert sum(read) == limit + 1, sum(read)
     hits = [f for f in report.findings if f.rule.id == "C16.1"]
     assert hits and "byte limit" in hits[0].violation.detail
 

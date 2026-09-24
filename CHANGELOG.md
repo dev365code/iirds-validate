@@ -10,23 +10,31 @@ changes in the library is recorded beside what changes in the checker.
 outside it.** The markers were looked up as names at the last step only, so a
 `META-INF` that was itself a link out of the directory was followed, and a file
 at the far end decided whether the directory was read as a container. The
-directory a marker sits in is now walked like every other name, and one that
-leads out counts as the marker being there, for S6 to name. 0.7.1 does this.
+directory a marker sits in is now walked like every other name, where a
+directory is searched and where a container is opened, and one that does not
+resolve inside the container counts as the marker being there, for S6 to name.
+Where the far end held no marker, that takes the exit code from `2` -- no
+package found -- to `1`. Every release through 0.7.1 looks through such a
+link.
 
 **Security. A container holding a directory that could be listed but not
 searched was checked without the files in it.** Each name came back from the
 listing and every question about it failed, so it was neither a file nor a link
 and left the listing without a word. Such a directory now refuses the
-container, as one that cannot be listed already did (S13). An archive has no
-such state: its entries are read from the archive whatever mode bits they
-record, measured on one whose directory entry records a mode that forbids
-searching it. 0.7.1 does this.
+container, as one that cannot be listed already did (S13), and so does an
+entry that cannot be looked up for any other reason -- one removed after the
+listing, or a name the system lists and cannot open -- named as itself. For a
+package with nothing else wrong, that takes the exit code from `0` to `1`. An
+archive has no such state: its entries are read from the archive whatever mode
+bits they record, measured on one whose directory entry records a mode that
+forbids searching it. 0.6.1 through 0.7.1 leave such files out.
 
 **Security. `--fragment` read the whole file before the metadata limit
 applied.** The file was copied into a throwaway container by reading all of it
 into memory, and only the container's read was bounded. The copy now stops one
 byte past the limit, and the gate refuses the document the way it refuses an
-archive's (C16.1). 0.7.1 does this.
+archive's (C16.1). Every release from 0.3.0, the first with `--fragment`,
+through 0.7.1 reads the whole file.
 
 ## 0.7.1 — 2026-09-23
 

@@ -15,29 +15,42 @@ Data file (public text only):
   "detail": "docs/what-it-catches.md",    # where the picture links to
   "axes": [                               # exactly six, in drawing order (top, then clockwise)
     {"key": "coverage", "label": "Coverage",
-     "now": 172, "target": 220,           # a measured count: ratio drawn = min(now / target, 1)
-     "now_text": "172 of 280 obligations covered",
-     "target_text": "at least 220 of 280 covered",
-     "evidence": [{"file": "docs/scope.md", "says": "172 of 280"}]},
+     "now": 40, "target": 60,             # a measured count: ratio drawn = min(now / target, 1)
+     "now_text": "40 of 80 obligations covered",         # leads with now
+     "target_text": "at least 60 of 80 covered",         # leads with target
+     "evidence": [{"file": "docs/scope.md", "says": "Coverage of the standard is 40 of 80"}]},
     {"key": "entrances", "label": "Entrances",
      "items": [                           # a checklist: now = items done, target = all items
        {"text": "command line", "done": true,
-        "evidence": {"file": "pyproject.toml", "says": "[project.scripts]"}},
+        "evidence": {"file": "pyproject.toml", "says": "yourtool = \"your_project.cli:main\""}},
        {"text": "browser, nothing installed", "done": false}],   # undone items need no evidence
-     "now_text": "command line", "target_text": "+ browser, nothing installed"}
+     "now_text": "command line",                          # pieces of done items ("none yet" if none)
+     "target_text": "+ browser, nothing installed"}       # "+ " pieces of undone items ("met" if none)
   ]
 }
+The card also carries "as of <as_of>" in its corner, so a copy of the picture shown beside an older
+release's text still says which release it describes.
 An axis is either a count (now/target) or a checklist (items); never both. Evidence is a file in
 this repository plus the words that file says; `--check` and the test read the file and look for the
-words, so a done item cannot point at a file that does not say it. The quote is at least eight
-characters, never the picture's own files, and for a count the `now` number must be inside one of
-the quotes and the `target` number inside `target_text`, so the polygon cannot move without the words
-moving with it. Words that would turn a self-description into a comparison (including comparatives
-such as "stricter than any other"), dates, and text too wide for the card are refused. Output is
-deterministic: no dates, no environment values, fixed geometry. The picture is a dark card with its
-own background, like the other pictures on the page, so it reads the same on light and dark pages.
-README carries the picture as `capabilities.svg?v=<first 8 hex of its sha256>`; writing the picture
-re-stamps that, and `--check` confirms the stamp is the committed picture's.
+words, so a done item cannot point at a file that does not say it. What the gates hold the words to:
+  - a quote is at least three words, and never from a file generated from this data (the picture's
+    own files, the detail page), nor from this generator or its test, nor from README's own copy of
+    it (the "Where it stands" section, the 1.0 paragraph, HTML comments);
+  - for a count, now_text, target_text and one quote each LEAD with the number drawn or promised,
+    as whole tokens (280 in "172 of 280" is not 28 and not 280 for now=172);
+  - for a checklist, every comma-separated piece of now_text is part of a done item, target_text is
+    "+ " plus pieces of undone items, or exactly "met" when nothing is undone;
+  - README states the 1.0 condition paragraph (`condition_paragraph`, printed at the end of
+    docs/capabilities.md) verbatim in its visible text: every checklist item, done or not, right
+    after its axis label, so a shrunken checklist changes a public sentence.
+Words that would turn a self-description into a comparison (including comparatives and contrasts
+such as "stricter than any other", "unlike other validators"), dates, and text too wide for the card
+are refused. Output is deterministic: no dates, no environment values, fixed geometry. The picture
+is a dark card with its own background, like the other pictures on the page, so it reads the same
+on light and dark pages. README carries the picture as `capabilities.svg?v=<first 8 hex of its
+sha256>` with the summary line as its alt text; writing the picture re-stamps both, and `--check`
+confirms the stamp is the committed picture's, the alt text is the summary line, the 1.0 paragraph
+is on the page, and the detail page exists.
 """
 import hashlib
 import json
@@ -49,11 +62,23 @@ import sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OWN_FILES = ("docs/capabilities.json", "docs/capabilities.svg", "docs/capabilities.md")
+_SELF = "/".join(os.path.relpath(os.path.abspath(__file__), ROOT).split(os.sep))
+# files whose words come from this data, or that are this machinery itself: none of them is evidence
+OWN_FILES = ("docs/capabilities.json", "docs/capabilities.svg", "docs/capabilities.md",
+             _SELF, "tests/test_capabilities_current.py")
 
 # A self-description, not a comparison. The short texts on the picture refuse these words outright,
-# and so is any comparative aimed at someone else ("stricter than any other ...").
-COMPARATIVE = (r"\bthan\s+(?:any|every|all|other|others|most|the\s+rest|anyone|anything)\b|"
+# and so is any comparative or superlative aimed past this tool ("stricter than any other ...",
+# "more rules than X", "unlike other validators", "the most thorough", "second to none").
+# "than" followed by a number ("more than 200 rules") describes this tool and passes.
+COMPARATIVE = (r"(?<!rather )(?<!other )\bthan\b(?!\s+\d)|"
+               r"\b(?:unlike|versus|vs\.?|compared\s+(?:to|with)|competit\w*|outperform\w*)\b|"
+               r"\b(?:other|any\s+other|no\s+other|none\s+other)\s+(?:validators?|tools?|checkers?|readers?|projects?|implementations?)\b|"
+               r"\bof\s+any\s+(?:validators?|tools?|checkers?|readers?|projects?|implementations?)\b|"
+               r"\b(?:any|no)\s+other\b|\bsecond\s+to\s+none\b|"
+               r"\bmost\s+(?:thorough|complete|accurate|reliable|strict|precise|comprehensive|rigorous|careful|"
+               r"capable|advanced|robust|mature|efficient|powerful|extensive|detailed)\b|"
+               r"\b(?:strict|wid|broad|deep|rich|strong|safe|tough|full|tight|great)est\b|"
                r"\b(?:better|stricter|faster|stronger|safer|more\s+(?:accurate|complete|reliable|thorough))\b")
 FORBIDDEN = re.compile(
     r"\b(world|first|only|unique|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
@@ -118,29 +143,53 @@ def _refuse(where, text):
         raise SystemExit(f"{where}: {m.group(0)!r} is not allowed in picture text (alt text, table cells)")
 
 
-def _evidence(where, ev):
+def _numbers(text):
+    """Whole-number tokens in reading order; '220' is not a hit for 22, '280' is not a hit for 28."""
+    return [int(n) for n in re.findall(r"(?<![\d.,])\d+(?![\d.,])", text or "")]
+
+
+def _pieces(text, prefix=""):
+    """The comma-separated pieces of a short summary, casefolded, without the given prefix."""
+    body = text[len(prefix):] if text.startswith(prefix) else None
+    if body is None:
+        raise SystemExit(f"summary {text!r} must start with {prefix!r}")
+    pieces = [p.strip().casefold() for p in body.split(",")]
+    if not all(pieces):
+        raise SystemExit(f"summary {text!r} has an empty piece")
+    return pieces
+
+
+def _evidence(where, ev, generated):
     if not isinstance(ev, dict) or not ev.get("file") or not isinstance(ev.get("says"), str):
         raise SystemExit(f"{where}: evidence must be {{\"file\": ..., \"says\": ...}}")
     raw = ev["file"]
     if "\\" in raw or raw.startswith("/") or re.match(r"^[A-Za-z]:", raw):
         raise SystemExit(f"{where}: evidence {raw!r} must be a relative posix path inside the repository")
     # posixpath on purpose: os.path is ntpath on Windows, which would render backslashes into the
-    # committed summary (a spurious drift) and would let "..\\" past the check below (09-24, iiRDS).
+    # committed summary (a spurious drift) and would let "..\\" past the check below.
     path = posixpath.normpath(raw)
     if path == ".." or path.startswith("../"):
         raise SystemExit(f"{where}: evidence {raw!r} points outside the repository")
-    if path in OWN_FILES:
-        raise SystemExit(f"{where}: evidence {raw!r} is the picture's own data; cite the page it comes from")
+    if path.casefold() in generated:
+        raise SystemExit(f"{where}: evidence {raw!r} is generated from this data or copied from the picture; "
+                         f"cite the page the fact comes from")
     says = ev["says"].strip()
-    if len(says) < 8 or not re.search(r"[A-Za-z0-9]", says):
-        raise SystemExit(f"{where}: evidence 'says' must quote at least eight characters of the file "
-                         f"(a token like {ev['says']!r} is found in almost any file)")
+    if len(says) < 12 or len(says.split()) < 3 or not re.search(r"[A-Za-z0-9]", says):
+        raise SystemExit(f"{where}: evidence 'says' must quote at least three words of the file "
+                         f"(a fragment like {ev['says']!r} is found in almost any file)")
     return {"file": path, "says": ev["says"]}
 
 
 def load(path):
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
+    for k in ("product", "as_of", "detail"):
+        if not data.get(k):
+            raise SystemExit(f"missing {k}")
+    _refuse("product", data["product"])
+    _refuse("as_of", str(data["as_of"]))
+    # files whose words come from this data (or are copied from the picture) cannot be evidence for it
+    generated = {f.casefold() for f in OWN_FILES} | {posixpath.normpath(data["detail"]).casefold()}
     axes = data["axes"]
     if len(axes) != 6:
         raise SystemExit(f"exactly six axes are drawn; got {len(axes)}")
@@ -163,23 +212,47 @@ def load(path):
                     raise SystemExit(f"axis {key}: every item needs text and done")
                 _refuse(f"axis {key} item", it["text"])
                 if it["done"]:
-                    it["evidence"] = _evidence(f"axis {key} item {it['text']!r}", it.get("evidence"))
+                    it["evidence"] = _evidence(f"axis {key} item {it['text']!r}", it.get("evidence"), generated)
             ax["now"] = sum(1 for it in ax["items"] if it["done"])
             ax["target"] = len(ax["items"])
             ax["evidence"] = [it["evidence"] for it in ax["items"] if it["done"]]
+            # the two summaries are abbreviations of the items, not free text: every comma-separated
+            # piece of now_text is part of a done item, every piece of target_text (after "+ ") is part
+            # of an undone item, and "met" is the only target_text when nothing is undone
+            done = [it["text"].casefold() for it in ax["items"] if it["done"]]
+            undone = [it["text"].casefold() for it in ax["items"] if not it["done"]]
+            if not done:
+                if ax["now_text"] != "none yet":
+                    raise SystemExit(f"axis {key}: with no item done, now_text is 'none yet'")
+            else:
+                for piece in _pieces(ax["now_text"]):
+                    if not any(piece in d for d in done):
+                        raise SystemExit(f"axis {key}: now_text piece {piece!r} is not part of any done item")
+            if not undone:
+                if ax["target_text"] != "met":
+                    raise SystemExit(f"axis {key}: with every item done, target_text is 'met'")
+            else:
+                for piece in _pieces(ax["target_text"], "+ "):
+                    if not any(piece in u for u in undone):
+                        raise SystemExit(f"axis {key}: target_text piece {piece!r} is not part of any undone item")
         else:
             for k in ("now", "target", "evidence"):
                 if k not in ax:
                     raise SystemExit(f"axis {key}: missing {k}")
             if not ax["evidence"]:
                 raise SystemExit(f"axis {key}: a count names at least one evidence file")
-            ax["evidence"] = [_evidence(f"axis {key}", ev) for ev in ax["evidence"]]
-            # the number drawn must be the number the evidence says, and the number promised must be
-            # the number the 1.0 sentence says — otherwise the polygon can be moved without touching text
-            if not any(str(ax["now"]) in ev["says"] for ev in ax["evidence"]):
-                raise SystemExit(f"axis {key}: now={ax['now']} does not appear in any evidence 'says'")
-            if str(ax["target"]) not in ax["target_text"]:
-                raise SystemExit(f"axis {key}: target={ax['target']} does not appear in target_text")
+            if not isinstance(ax["now"], int) or not isinstance(ax["target"], int):
+                raise SystemExit(f"axis {key}: now and target are whole numbers")
+            ax["evidence"] = [_evidence(f"axis {key}", ev, generated) for ev in ax["evidence"]]
+            # the count drawn is the first number of now_text and of one evidence quote, and the count
+            # promised is the first number of target_text — whole tokens, so 280 in "172 of 280" is not
+            # a hit for now=28 or now=280, and the polygon cannot move without the words moving
+            if _numbers(ax["now_text"])[:1] != [ax["now"]]:
+                raise SystemExit(f"axis {key}: now_text {ax['now_text']!r} must lead with now={ax['now']}")
+            if _numbers(ax["target_text"])[:1] != [ax["target"]]:
+                raise SystemExit(f"axis {key}: target_text {ax['target_text']!r} must lead with target={ax['target']}")
+            if not any(_numbers(ev["says"])[:1] == [ax["now"]] for ev in ax["evidence"]):
+                raise SystemExit(f"axis {key}: no evidence quote leads with the count now={ax['now']}")
         if ax["target"] <= 0:
             raise SystemExit(f"axis {key}: target must be positive")
         if ax["now"] < 0:
@@ -190,10 +263,6 @@ def load(path):
                 raise SystemExit(f"axis {key}: {k} {ax[k]!r} is too wide for the card "
                                  f"(about {_width(ax[k], size, bold):.0f} px of {budget}); the long form belongs "
                                  f"on the detail page")
-    for k in ("product", "as_of", "detail"):
-        if not data.get(k):
-            raise SystemExit(f"missing {k}")
-    _refuse("product", data["product"])
     return data
 
 
@@ -206,11 +275,49 @@ def summary_line(data):
     return "; ".join(f"{ax['label']}: {ax['now_text']}" for ax in data["axes"])
 
 
+def condition_paragraph(data):
+    """The 1.0 condition in full — every checklist item, done or not — as README must state it.
+
+    The picture's outer ring is this paragraph; README carries it verbatim (the test and `--check`
+    look for it in the visible text, after stripping HTML comments), each condition right after its
+    axis label, so the picture cannot promise what the page does not, and a shrunken checklist shows
+    up as a change to a public sentence.
+    """
+    parts = []
+    for ax in data["axes"]:
+        if "items" in ax:
+            parts.append(f"{ax['label']}: " + " · ".join(it["text"] for it in ax["items"]))
+        else:
+            parts.append(f"{ax['label']}: {ax['target_text']}")
+    return "Before it calls a release 1.0, this project asks of itself — " + "; ".join(parts) + "."
+
+
+COMMENT = re.compile(r"<!--.*?-->", re.S)
+STANDS = re.compile(r"(?ms)^## Where it stands$.*?(?=^## |\Z)")
+
+
 def _squash(text):
     return re.sub(r"\s+", " ", text)
 
 
-def evidence_holds(root, ev):
+def visible(text):
+    """Markdown as a reader sees it: without HTML comments."""
+    return COMMENT.sub(" ", text)
+
+
+def _quotable(path, text, data):
+    """The part of a file that may be quoted as evidence: README without the picture's own section
+    and the 1.0 paragraph (both are copies of this data), markdown without HTML comments."""
+    if path.casefold().endswith(".md"):
+        text = visible(text)
+    if posixpath.basename(path).casefold() == "readme.md":
+        text = STANDS.sub(" ", text)
+        if data is not None:
+            text = _squash(text).replace(_squash(condition_paragraph(data)), " ")
+    return text
+
+
+def evidence_holds(root, ev, data=None):
     """True when the evidence file lies inside root and contains the words it is said to say."""
     rootr = os.path.realpath(root)
     real = os.path.realpath(os.path.join(rootr, ev["file"]))
@@ -221,7 +328,7 @@ def evidence_holds(root, ev):
             text = f.read()
     except OSError:
         return False
-    return _squash(ev["says"]) in _squash(text)
+    return _squash(ev["says"]) in _squash(_quotable(ev["file"], text, data))
 
 
 def digest_of(svg_text):
@@ -236,7 +343,7 @@ def render_svg(data):
                f'role="img" aria-labelledby="t d">')
     out.append(f'<title id="t">{escape(title)}: six capability axes, what is checked now against the 1.0 condition</title>')
     desc = "; ".join(f"{ax['label']}: {ax['now_text']} (1.0: {ax['target_text']})" for ax in axes)
-    out.append(f'<desc id="d">{escape(desc)}</desc>')
+    out.append(f'<desc id="d">{escape(desc)}; as of {escape(str(data["as_of"]))}</desc>')
     out.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="10" fill="{BG}" stroke="{LINE}"/>')
     # rings (the outer ring is the 1.0 condition)
     for r in RINGS:
@@ -270,6 +377,10 @@ def render_svg(data):
     out.append(f'<text x="50" y="{ly}" font-family="{FONT}" font-size="11" fill="{INK2}">now</text>')
     out.append(f'<line x1="86" y1="{ly - 4}" x2="106" y2="{ly - 4}" stroke="{TARGET}" stroke-width="1.5"/>')
     out.append(f'<text x="112" y="{ly}" font-family="{FONT}" font-size="11" fill="{INK2}">1.0 condition</text>')
+    # the version this picture describes: a copy of the picture shown beside an older release's text
+    # (a package index keeps each release's page) still says which release it is about
+    out.append(f'<text x="{W - 24}" y="{ly}" text-anchor="end" font-family="{FONT}" font-size="11" fill="{INK2}">'
+               f'as of {escape(str(data["as_of"]))}</text>')
     # right panel: title, then one row per axis (label, what is checked now, the 1.0 condition)
     out.append(f'<text x="{PANEL_X}" y="40" font-family="{FONT}" font-size="16" font-weight="600" fill="{INK}">'
                f'{escape(title)}</text>')
@@ -302,10 +413,14 @@ def render_md(data):
                     lines.append(f"- {it['text']} — done (`{it['evidence']['file']}`: \"{it['evidence']['says']}\")")
                 else:
                     lines.append(f"- {it['text']} — not yet")
+    lines += ["", condition_paragraph(data)]
     return "\n".join(lines) + "\n"
 
 
 STAMP = re.compile(r"(capabilities\.svg\?v=)[0-9a-fA-F]+")
+# the README image's alt text is the summary line; the generator rewrites it with the stamp so that a
+# change to any now_text cannot leave the page saying something the picture no longer says
+ALT = re.compile(r'(capabilities\.svg\?v=[0-9a-fA-F]+"\s+alt=")[^"]*(")')
 
 
 def _read(path):
@@ -342,18 +457,21 @@ def main(argv):
                 bad.append(f"{os.path.relpath(path, ROOT)} is stale or missing: rerun the generator")
         for ax in data["axes"]:
             for ev in ax["evidence"]:
-                if not evidence_holds(ROOT, ev):
-                    bad.append(f"{ax['key']}: {ev['file']} does not say {ev['says']!r} (or is missing)")
+                if not evidence_holds(ROOT, ev, data):
+                    bad.append(f"{ax['key']}: {ev['file']} does not say {ev['says']!r} "
+                               f"(or is missing, or says it only in the picture's own text)")
         if not os.path.isfile(os.path.join(ROOT, data["detail"])):
             bad.append(f"detail page {data['detail']} does not exist (the picture would link to a 404)")
         if os.path.exists(readme):
-            page = _read(readme)
+            page = visible(_read(readme))
             if STAMP.search(page) and f"capabilities.svg?v={digest_of(svg)}" not in page:
                 bad.append("README.md: the ?v= stamp is not the committed picture's hash; rerun the generator")
             if "capabilities.svg" not in page:
                 bad.append("README.md does not embed docs/capabilities.svg")
             elif f'alt="{summary_line(data)}"' not in page:
                 bad.append("README.md: the picture's alt text is not the generator's summary line")
+            if _squash(condition_paragraph(data)) not in _squash(page):
+                bad.append("README.md does not state the 1.0 condition paragraph (see docs/capabilities.md)")
         if bad:
             print("capabilities drift:", *bad, sep="\n  ")
             return 1
@@ -365,9 +483,10 @@ def main(argv):
     if os.path.exists(readme):
         page = _read(readme)
         stamped, n = STAMP.subn(lambda m: m.group(1) + digest_of(svg), page)
-        if n and stamped != page:
+        stamped, n_alt = ALT.subn(lambda m: m.group(1) + summary_line(data) + m.group(2), stamped)
+        if (n or n_alt) and stamped != page:
             _write(readme, stamped)
-            print(f"stamped README.md ?v={digest_of(svg)}")
+            print(f"stamped README.md ?v={digest_of(svg)}" + (" and the alt text" if n_alt else ""))
     return 0
 
 

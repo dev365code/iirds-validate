@@ -42,15 +42,15 @@ def main() -> int:
     args = ap.parse_args()
 
     index = json.loads(INDEX.read_text("utf-8"))
-    # The parse counts one obligation twice in two ways it derives itself --
-    # the sentence that defines the RFC 2119 keywords, and appendix A's
-    # overview restating cardinalities the class tables already give. The
+    # The parse finds two kinds of id it derives itself that are not further
+    # obligations: the keywords named in the sentence that defines them, and
+    # appendix A's overview restating cardinalities the class tables give. The
     # denominator this prints is the one docs/scope.md and the README publish,
     # so a reader running this arrives at the figure they were shown.
-    counted_twice = set(index["reductions"]["keyword_definition"])
-    counted_twice |= set(index["reductions"]["restated_in_the_overview"])
+    set_aside = set(index["reductions"]["keyword_definition"])
+    set_aside |= set(index["reductions"]["restated_in_the_overview"])
     requirements = [r for r in index["requirements"]
-                    if r["absolute"] and r["id"] not in counted_twice]
+                    if r["absolute"] and r["id"] not in set_aside]
     covered = defaultdict(list)
     for rule in all_rules():
         for rid in rule.covers:
@@ -101,9 +101,9 @@ def main() -> int:
 
     print()
     print("  %d of %d absolute obligations are claimed by a rule" % (done, total))
-    print("  (%d more are the same obligations counted twice by the parse: %d from the "
-          "sentence that defines the RFC 2119 keywords, %d restated in appendix A's overview)"
-          % (len(counted_twice), len(index["reductions"]["keyword_definition"]),
+    print("  (%d more are not further obligations: %d are the RFC 2119 keywords named "
+          "in the sentence that defines them, %d restated in appendix A's overview)"
+          % (len(set_aside), len(index["reductions"]["keyword_definition"]),
              len(index["reductions"]["restated_in_the_overview"])))
     if elsewhere:
         print("  %d more %s addressed to consumers rather than to packages, so no "

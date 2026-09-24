@@ -466,3 +466,24 @@ def test_a_wheel_that_is_not_pure_is_refused(tmp_path):
     with pytest.raises(SystemExit) as refused:
         build_zipapp.refuse_anything_compiled(tmp_path)
     assert "charset_normalizer" in str(refused.value), refused.value
+
+
+def test_the_pyz_writes_its_entries_in_one_order_on_every_system():
+    """Windows compares paths without regard to case. Sorting the staged
+    paths put a dependency's `entry_points.txt` after its `LICENSE` and
+    `METADATA` everywhere else and before them there, so one commit and one
+    set of dependency versions built two different files."""
+    from pathlib import PurePosixPath, PureWindowsPath
+
+    import build_zipapp
+
+    names = ["rdflib-7.dist-info/entry_points.txt", "rdflib-7.dist-info/LICENSE",
+             "rdflib-7.dist-info/METADATA", "a-b/x.py", "a/b.py", "A/c.py",
+             # A separator compared as a character sorts `/` before `2` and `\\`
+             # after it, so ordering by the path's text would split here too.
+             "pkg/x.py", "pkg2/y.py"]
+    orders = []
+    for flavour, root in ((PurePosixPath, "/stage"), (PureWindowsPath, "C:/stage")):
+        written = build_zipapp.in_archive_order(flavour(root, name) for name in names)
+        orders.append([path.relative_to(flavour(root)).as_posix() for path in written])
+    assert orders[0] == orders[1]

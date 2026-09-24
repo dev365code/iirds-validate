@@ -21,13 +21,26 @@ from iirds_validate.registry import all_rules
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "docs" / "what-it-catches.md"
 
-#: The label the page gives a rule it says the standard does not stand behind.
-OWN = re.compile(r"\*\*This tool's own rule\*\* \(`([A-Z0-9.]+[a-z]?)`\)")
+def _own_labels(text):
+    """The rules the page calls this tool's own, found with the generator's own
+    label. A pattern kept here would go on matching nothing once the label's
+    wording changed, and the test below would pass for having found none."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    from gen_what_it_catches import OWN_RULE
+
+    before, _, after = OWN_RULE.partition("%s")
+    return re.findall(re.escape(before) + r"([A-Z][A-Z0-9.]*[a-z]?)" + re.escape(after), text)
 
 
 def test_a_rule_the_page_calls_its_own_claims_no_obligation():
     rules = {rule.id: rule for rule in all_rules()}
-    labelled = OWN.findall(PAGE.read_text("utf-8"))
+    labelled = _own_labels(PAGE.read_text("utf-8"))
+    # The page shows one such rule today (L2). Finding none means the label
+    # moved or the case went, and either way this test would be asserting
+    # nothing; if the page is meant to show none, change this on purpose.
+    assert labelled, "the page carries no own-rule label this test can read"
 
     wrong = sorted(rule_id for rule_id in labelled
                    if rules[rule_id].spec or rules[rule_id].covers)

@@ -9,15 +9,24 @@ What it holds:
   4. README embeds the picture from the repository's raw URL, stamped with the committed picture's
      hash, inside a link to the detail page, and the image alt text equals the one-line summary the
      generator derives from the data (readers without the picture get the same six facts).
-  5. every 1.0 condition the picture shows is stated in the README's own words, so the picture
-     cannot promise what the page does not.
+  5. README states the generator's 1.0 condition paragraph verbatim in its visible text (every
+     checklist item, done or not, right after its axis label), so the picture cannot promise what
+     the page does not, and a shrunken checklist changes a public sentence.
   6. the detail page docs/what-it-catches.md has one section per axis, in the drawn order, and each
      section names that axis's checklist items.
   7. the detail page and the README paragraph under the picture use no comparison words.
   8. evidence paths are posix on every platform (Windows would otherwise commit backslashes and let
      "..\\" past the escape check), and the data gates refuse what a reader could not verify: a count
-     the evidence does not say, a 1.0 number the sentence does not say, a one-token quote, the
-     picture's own files as evidence, a comparative aimed at someone else.
+     no quote leads with, a summary that does not lead with its number, a quote under three words,
+     the picture's own files or the detail page as evidence, a summary piece no item says, "met"
+     while an item is undone, a comparative or contrast aimed at someone else.
+  9. evidence found only in an HTML comment, in README's "Where it stands" section, or in the 1.0
+     paragraph does not hold: those are copies of the data, not the page vouching for it.
+ 10. the word lists themselves: comparatives and superlatives aimed past this tool are refused in
+     short text and in prose, and plain description ("more than 200 rules", "rather than") is not.
+What these gates do not see, and a repository adds its own test for: whether a detail-page line
+matches the data word for word, whether a quoted report output is what the tool prints, whether a
+"done" item is true beyond the quoted words.
 
 Per-repo settings: PACKAGE (import name) and, if the repo keeps the generator elsewhere, GENERATOR.
 """
@@ -76,9 +85,11 @@ def test_rendered_files_match_the_data():
 
 def test_every_piece_of_evidence_says_what_it_is_cited_for():
     gen = _gen()
-    for ax in _data()["axes"]:
+    data = _data()
+    for ax in data["axes"]:
         for ev in ax["evidence"]:
-            assert gen.evidence_holds(str(ROOT), ev), f"axis {ax['key']}: {ev['file']} does not say {ev['says']!r}"
+            assert gen.evidence_holds(str(ROOT), ev, data), (
+                f"axis {ax['key']}: {ev['file']} does not say {ev['says']!r} outside the picture's own text")
 
 
 def test_as_of_is_the_package_version():
@@ -101,10 +112,11 @@ def test_readme_links_the_committed_picture_to_the_detail_page():
 
 
 def test_every_condition_on_the_picture_is_in_the_readme():
-    readme = _squash(README.read_text(encoding="utf-8"))
-    for ax in _data()["axes"]:
-        assert _squash(ax["target_text"]) in readme, (
-            f"axis {ax['key']}: the 1.0 condition {ax['target_text']!r} is on the picture but not on the page")
+    gen = _gen()
+    readme = _squash(gen.visible(README.read_text(encoding="utf-8")))       # what a reader sees
+    assert _squash(gen.condition_paragraph(_data())) in readme, (
+        "README must state the 1.0 condition paragraph verbatim (the last paragraph of docs/capabilities.md): "
+        "every axis label followed by its full condition, in the drawn order, outside HTML comments")
 
 
 def test_detail_page_has_one_section_per_axis_in_order_naming_its_items():
@@ -136,10 +148,11 @@ def test_the_prose_around_the_picture_compares_with_nobody():
 def test_evidence_paths_are_posix_even_on_windows(monkeypatch):
     gen = _gen()
     monkeypatch.setattr(gen.os, "path", ntpath)          # what the generator sees on Windows
-    assert gen._evidence("t", {"file": "docs/./scope.md", "says": "eight chars"})["file"] == "docs/scope.md"
+    quote = "three words of quote"
+    assert gen._evidence("t", {"file": "docs/./scope.md", "says": quote}, set())["file"] == "docs/scope.md"
     for escape in ("docs/../../etc/passwd", "..\\etc\\passwd", "/etc/passwd", "C:/etc/passwd"):
         with pytest.raises(SystemExit):
-            gen._evidence("t", {"file": escape, "says": "eight chars"})
+            gen._evidence("t", {"file": escape, "says": quote}, set())
 
 
 def _refused(tmp_path, mutate):
@@ -152,14 +165,62 @@ def _refused(tmp_path, mutate):
 
 
 def test_the_data_gates_refuse_what_a_reader_could_not_verify(tmp_path):
-    axes = json.loads(DATA.read_text(encoding="utf-8"))["axes"]
+    data = json.loads(DATA.read_text(encoding="utf-8"))
+    axes = data["axes"]
     counts = [i for i, ax in enumerate(axes) if "items" not in ax]
     if counts:
         i = counts[0]
-        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("now", d["axes"][i]["now"] + 1))
-        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("target", d["axes"][i]["target"] + 1))
-    done = next((i, j) for i, ax in enumerate(axes) for j, it in enumerate(ax.get("items", [])) if it["done"])
-    i, j = done
-    _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("says", "ok"))
+        now, target = axes[i]["now"], axes[i]["target"]
+        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("now", now + 1))                 # quote says now
+        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("target", target + 1))           # sentence says target
+        _refused(tmp_path, lambda d: d["axes"][i].__setitem__("now_text", f"{now + 1} of {target}"))
+        _refused(tmp_path, lambda d: d["axes"][i]["evidence"].__setitem__(
+            0, {"file": "README.md", "says": f"{target} of {now} {target}"}))                   # a substring is not a token
+    checklists = [i for i, ax in enumerate(axes) if "items" in ax]
+    i = checklists[0]
+    j = next(j for j, it in enumerate(axes[i]["items"]) if it["done"])
+    _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("says", "two words"))
     _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("file", "docs/capabilities.json"))
-    _refused(tmp_path, lambda d: d["axes"][0].__setitem__("now_text", "stricter than any other checker"))
+    _refused(tmp_path, lambda d: d["axes"][i]["items"][j]["evidence"].__setitem__("file", d["detail"].upper()))
+    _refused(tmp_path, lambda d: d["axes"][i].__setitem__("now_text", "something no item says"))
+    partial = [k for k in checklists if any(not it["done"] for it in axes[k]["items"])]
+    if partial:
+        k = partial[0]
+        undone = next(it["text"] for it in axes[k]["items"] if not it["done"])
+        _refused(tmp_path, lambda d: d["axes"][k].__setitem__("target_text", "met"))          # not while undone
+        _refused(tmp_path, lambda d: d["axes"][k].__setitem__("now_text", undone))            # undone is not now
+    # the product name is refused before any structural check, so this reaches the word list itself
+    _refused(tmp_path, lambda d: d.__setitem__("product", "a checker stricter than any other"))
+    _refused(tmp_path, lambda d: d.__setitem__("product", "the most thorough checker"))
+
+
+COMPARING = ("stricter than any other checker", "more rules than any checker", "unlike other validators",
+             "the most thorough validator", "the strictest reading", "outperforms every reader",
+             "second to none", "the widest coverage of any validator", "compared with other tools",
+             "no other checker does this", "better than the reference")
+DESCRIBING = ("more than 200 rules", "re-measured on every release rather than promised",
+              "checked weekly for change", "the section of the specification it enforces",
+              "other than the manifest, nothing is read twice", "the report names the rule")
+
+
+def test_comparisons_and_superlatives_are_refused_and_plain_description_is_not():
+    gen = _gen()
+    for phrase in COMPARING:
+        assert gen.FORBIDDEN.search(phrase), f"short text should refuse {phrase!r}"
+        assert gen.FORBIDDEN_PROSE.search(phrase), f"prose should refuse {phrase!r}"
+    for phrase in DESCRIBING:
+        assert not gen.FORBIDDEN_PROSE.search(phrase), f"prose should allow {phrase!r}"
+
+
+def test_evidence_does_not_count_when_only_the_pictures_own_text_says_it(tmp_path):
+    gen = _gen()
+    data = _data()
+    (tmp_path / "README.md").write_text(
+        "# x\n\nthe plain words here\n\n<!-- the hidden words here -->\n\n"
+        "## Where it stands\n\nthe copied words here\n\n## Next\n\n" + gen.condition_paragraph(data) + "\n",
+        encoding="utf-8")
+    holds = lambda says: gen.evidence_holds(str(tmp_path), {"file": "README.md", "says": says}, data)  # noqa: E731
+    assert holds("the plain words here")
+    assert not holds("the hidden words here"), "an HTML comment is not something a reader sees"
+    assert not holds("the copied words here"), "the picture's own section cannot vouch for the picture"
+    assert not holds(gen.condition_paragraph(data)), "the 1.0 paragraph is a copy of this data"

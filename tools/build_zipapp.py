@@ -103,6 +103,14 @@ def _pip_bookkeeping(name: str) -> bool:
     return head.endswith(".dist-info") and tail in PIP_BOOKKEEPING
 
 
+def in_archive_order(paths):
+    """The order the archive writes its entries in: by path, one component at
+    a time, each compared as case-sensitive text -- the order sorting the paths
+    gives on POSIX. A path's own ordering folds case on Windows, so sorting the
+    paths themselves built a different file there from the same inputs."""
+    return sorted(paths, key=lambda path: path.parts)
+
+
 def create_archive(source: Path, target: Path) -> None:
     """zipapp.create_archive, with the timestamps and order pinned.
 
@@ -114,7 +122,7 @@ def create_archive(source: Path, target: Path) -> None:
     with open(target, "wb") as handle:
         handle.write(SHEBANG)
         with zipfile.ZipFile(handle, "w", zipfile.ZIP_DEFLATED) as archive:
-            for path in sorted(p for p in source.rglob("*") if p.is_file()):
+            for path in in_archive_order(p for p in source.rglob("*") if p.is_file()):
                 entry = path.relative_to(source).as_posix()
                 if _pip_bookkeeping(entry):
                     continue

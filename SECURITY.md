@@ -21,10 +21,21 @@ is not an edge case here; it is the working assumption.
 | Metadata that sends the reader somewhere else: a JSON-LD `@context` can point outside the package, and a package is something a supplier hands you | every context reference is refused, whichever keyword names it and whether or not it carries a scheme. Inside a plant network that is a supplier choosing where a machine behind the firewall goes looking. **The refusal lives in the `iirds` reader and arrives with the release that carries it — this project's declared floor decides which packages of yours are covered.** | `tests/test_offline.py`, gated on the reader's version. The reader's own suite pins each construct and runs with rdflib's single context-fetch function sealed, so a construct nobody has enumerated turns it red too. |
 | Supply-chain drift in what this tool itself bundles | the ontologies and the vendored corpus are verified against recorded SHA-256 digests on every run of the suite; the `.pyz` is byte-identical for one commit and one set of dependency versions, wherever it is built -- timestamps are pinned, the dependencies' console scripts carry the building machine's interpreter path and are dropped, and pip's record of its own installation is left out of the archive -- so the hash on a release page is the hash of the file carried across the air gap, and a rebuild can be compared against it. Two inputs are not pinned and both move the bytes: what the index offers on the day, and `SOURCE_DATE_EPOCH` if the builder sets one | `iirds_validate.ontology --verify`, `tests/test_corpus_integrity.py`, `tests/test_pack.py`, `tests/test_serve.py` |
 | What runs in the jobs that build and publish a release: every `uses:` named a tag or a branch, so whoever owns that action decided, after this repository had been read, what would execute in the job that holds `id-token: write` and uploads under this project's name | every action is pinned to a full commit object, with the release it is written beside it, and the same action carries one commit everywhere it appears. Pins are moved by hand: nothing here rewrites them, because a tool that did would be one more moving reference with write access to the file that decides what runs | `tests/test_workflow_supply_chain.py` |
-| Anything at run time needing a network | there is no network code path at all; validation is pure local computation | `tests/test_offline.py` |
+| Anything at run time needing a network | validation opens no connection and needs no network; it is pure local computation. The one socket in the tool is `iirds serve`'s listener, which binds only to loopback and resolves a host name the operator gives in order to check that | `tests/test_offline.py`, `tests/test_serve.py` |
 
 The tool never executes content, never extracts archives to disk, and reads
 entries one at a time in memory.
+
+The drop page, `iirds serve`, writes one thing to disk: the package it
+receives. The upload is streamed into a file in a directory made for that
+request under the system's temporary directory -- the alternative is holding
+each package in memory for as long as it is checked -- and moved, under a safe
+form of the name it was dropped with, into a second temporary directory while
+it is checked. Both directories are removed before the answer is sent,
+whichever way the request ends short of the process being killed, so by the
+time the page shows a verdict the copy is gone. The other parts of a form are
+read past, not written. `tests/test_drop_leaves_nothing.py` holds the removal,
+which part is read, and the name the copy is kept under.
 
 Every limit in the table above is a limit on **reading**. What a run holds after
 it has read -- the renditions it has parsed, the graph it has built from the
@@ -76,8 +87,12 @@ with priority over everything else. A silent pass on hostile input is the
 most serious bug this project can have; the changelog shows that such reports
 get fixed, tested and credited rather than argued with.
 
-Supported versions: the latest release. There is no backporting; upgrading is
-copying one file.
+Supported versions: the latest release. This project releases no fix for an
+older one; a backport to a version you have frozen is professional support
+(`SUPPORT.md`), not a release here. A fix that has to ship while main holds
+unreleased work is carried to the latest release's own line and shipped as a
+patch there, as 0.6.1 to 0.6.3 were. For the single-file `.pyz`, upgrading
+is copying one file.
 
 ## Advisories
 

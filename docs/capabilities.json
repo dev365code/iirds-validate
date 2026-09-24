@@ -55,7 +55,7 @@
         }
       ],
       "now_text": "what, evidence, remedy",
-      "target_text": "+ every rule says its section or none, and the line"
+      "target_text": "+ every rule names its section, the line"
     },
     {
       "key": "report",
@@ -65,8 +65,8 @@
           "text": "schemaVersion in every report",
           "done": true,
           "evidence": {
-            "file": "docs/golden-report.json",
-            "says": "\"schemaVersion\": 2"
+            "file": "README.md",
+            "says": "The report is a document with a `schemaVersion`"
           }
         },
         {
@@ -82,7 +82,7 @@
           "done": true,
           "evidence": {
             "file": "README.md",
-            "says": "`64` when the command line was the problem"
+            "says": "`64` when the argument parser rejected the command line"
           }
         },
         {
@@ -90,7 +90,7 @@
           "done": false
         }
       ],
-      "now_text": "schemaVersion 2, golden, exit codes",
+      "now_text": "schemaVersion, golden, exit codes",
       "target_text": "+ a field-by-field schema page"
     },
     {
@@ -102,7 +102,7 @@
           "done": true,
           "evidence": {
             "file": "pyproject.toml",
-            "says": "[project.scripts]"
+            "says": "iirds = \"iirds_validate.cli:main\""
           }
         },
         {
@@ -110,7 +110,7 @@
           "done": true,
           "evidence": {
             "file": "README.md",
-            "says": "import iirds"
+            "says": "import iirds, iirds_validate"
           }
         },
         {
@@ -166,8 +166,8 @@
           "done": false
         }
       ],
-      "now_text": "read budgets, advisories, mutation-tested",
-      "target_text": "+ lossless declared encodings"
+      "now_text": "read budgets, advisory, own mutations",
+      "target_text": "+ declared encodings read without loss"
     },
     {
       "key": "upstream",
@@ -198,8 +198,8 @@
           }
         }
       ],
-      "now_text": "pinned, checked weekly, a move shipped",
-      "target_text": "met — a pin move has shipped"
+      "now_text": "pinned, checked weekly, one pin move shipped",
+      "target_text": "met"
     }
   ]
 }

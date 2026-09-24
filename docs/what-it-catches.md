@@ -2,11 +2,13 @@
 
 Written by `tools/gen_what_it_catches.py`; every block is the output of
 the command above it, captured on the run that wrote this file. Build the
-containers and reproduce any of it with the two commands each case names.
+containers and reproduce any of it with the commands each case names: one
+that builds its container and one that checks it, two of each for the pair
+that is not flagged.
 It is arranged by the six things the picture on the front page draws, and
 an axis with no case to show shows none.
 
-Nothing here is a claim about any other validator.
+The cases here are about this tool alone.
 
 ## Coverage
 
@@ -105,8 +107,9 @@ specification's own:
 `M11` states that obligation as: An iirds:Rendition MUST have the property
 iirds:format.
 
-The finding names the subject and how many were found, so a package with
-several renditions says which one.
+The finding names the subject and how many were found. A rendition with an IRI
+of its own is named by it; one written as a blank node, as here, is named by
+the unit that has it, so two of those under one unit read alike.
 
 ### Metadata that points at a file the package does not carry
 
@@ -130,17 +133,27 @@ Exit code 1.
 
 **This tool's own rule** (`L2`), no specification reference.
 
-The graph is well-formed and every stated obligation is met. The package
-simply cannot be read by anyone, because the document it describes is not in
-it. That is the half of the question the standard does not ask.
+The graph is well-formed and no rule but `L2` has anything to say about it.
+The package simply cannot be read by anyone, because the document it describes
+is not in it. That is the half of the question the upstream catalogue has no
+rule for.
 
 ### What it does not flag, and why
 
-    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/description-style.iirds --broken description-style
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/element-style.iirds
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
-    $ iirds check fixtures/what-it-catches/description-style.iirds && iirds check fixtures/what-it-catches/attribute-style.iirds
 
-    description-style.iirds   iiRDS 1.3
+    $ iirds check fixtures/what-it-catches/element-style.iirds
+
+    element-style.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      PASS  0 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+    $ iirds check fixtures/what-it-catches/attribute-style.iirds
+
+    attribute-style.iirds   iiRDS 1.3
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
@@ -148,10 +161,12 @@ it. That is the half of the question the standard does not ask.
 
 Both pass, and the two reports are the same document: every key identical
 apart from the package's own path and digest, which is what a different
-file is. One writes its properties as nested elements and the other as
-attributes on the node; the graph is the same graph, so the answer is the
-same answer. `--broken` names them only because that flag names every
-variant the generator can produce, not because either is a defect.
+file is. One is written with typed elements and nested properties, the
+other with the package's and the topic's literals as attributes, the
+rendition as `rdf:parseType="Resource"` and every type as `rdf:type`;
+the graph is the same graph -- this page is not written unless it is -- so
+the answer is the same answer. `--broken` is only the name of the
+generator's one switch; `attribute-style` is not a defect.
 
 **Now.**
 
@@ -161,14 +176,14 @@ variant the generator can produce, not because either is a defect.
 
 ## Explanation
 
-A finding says where it comes from, and it comes from one of three places.
-Where the standard states the obligation and the rule links to the sentence,
-the report carries the link. Where the rule claims an obligation of the
-standard but has no link to it, the report names the requirement it claims.
-Where the standard says nothing and a package will still be unusable, the rule
-is this tool's own judgement and says so. A section for every rule is
-therefore a condition and not a fact: a rule of the third kind has none to
-give.
+A finding carries a link to the sentence of the standard it enforces when its
+rule has one, and where a case on this page has one it quotes the words the
+link lands on. Some rules claim an obligation of the standard without a link
+to its sentence; a finding does not carry that claim, and `iirds rules <id>
+-v` shows it. Some rules have neither -- this project's interoperability and
+run rules among them, and a few from the upstream catalogue -- and for those
+nothing yet says there is no section to give. Until every rule names its
+section or says it has none, that item is not done.
 
 **Now.**
 
@@ -178,7 +193,7 @@ give.
 - not yet -- every rule names its section, or says it has none
 - not yet -- the line in the file
 
-**Before 1.0.** + every rule says its section or none, and the line
+**Before 1.0.** + every rule names its section, the line
 
 ## Report contract
 
@@ -207,7 +222,7 @@ give.
 
 ### The container is not a container
 
-    $ printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
+    $ mkdir -p fixtures/what-it-catches && printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
     $ iirds check fixtures/what-it-catches/not-a-container.iirds
 
     not-a-container.iirds   iiRDS not declared
@@ -240,7 +255,7 @@ rather than leaving a reader to assume they passed.
 - done -- tests verified against their own mutations
 - not yet -- declared encodings read without loss
 
-**Before 1.0.** + lossless declared encodings
+**Before 1.0.** + declared encodings read without loss
 
 ## Upstream
 
@@ -250,4 +265,4 @@ rather than leaving a reader to assume they passed.
 - done -- checked weekly for change
 - done -- one pin move shipped
 
-**Before 1.0.** met — a pin move has shipped
+**Before 1.0.** met

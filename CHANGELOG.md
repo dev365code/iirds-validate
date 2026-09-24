@@ -6,6 +6,30 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.2 — unreleased
 
+**Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The
+changelog is meant to name every package shape whose verdict moves, and these
+moved unnamed. For a package with nothing else wrong, each takes the
+exit code from `0` to `1`.
+
+- From 0.7.1, where 0.6.3 passed: an `iirds:ClassificationDomain` naming more
+  than one classification type or relating to more than one party (R24, R25;
+  iiRDS 1.2 and 1.3); an `iirds:IdentityDomain` or `iirds:ProductVariant`
+  relating to more than one party (R26, R27); an
+  `iirds:ExternalClassification` carrying more than one classification
+  version (R28; 1.2 and 1.3); a Package declaring more than one format
+  restriction (R29); a Rendition with more than one selector (R30); an Event
+  with more than one event code or event type (R32, R33; 1.2 and 1.3); and,
+  in iiRDS 1.3 outside iiRDS/H, a Document with more than one
+  `iirdsHov:has-document-category` (R31 -- under iiRDS/H, `M15.2` already
+  failed it). Each is a row of appendix A that allows at most one value.
+- From 0.7.1, in an iiRDS/H 1.3 package: a rendition no document owns (R38),
+  and a rendition naming a selector the package does not describe, so that it
+  selects part of a file rather than referencing the whole of it (R39 -- one
+  the package describes already failed, on `M15.11c`).
+- From 0.6.0, where 0.5.0 passed: a party pointing at a vCard the package does
+  not describe, in any package of any edition (R4). Before 0.6.0, R4 asked
+  that only of an iiRDS/H 1.3 package.
+
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that
 builds a package with it, the command that checks that package, and the

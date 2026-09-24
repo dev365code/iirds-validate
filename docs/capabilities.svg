@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="950" height="330" viewBox="0 0 950 330" role="img" aria-labelledby="t d">
 <title id="t">iirds: six capability axes, what is checked now against the 1.0 condition</title>
-<desc id="d">Coverage: 172 of 280 obligations covered (1.0: at least 220 of 280 covered); Explanation: what, evidence, remedy (1.0: + every rule says its section or none, and the line); Report contract: schemaVersion 2, golden, exit codes (1.0: + a field-by-field schema page); Entrances: command line, library, single file (1.0: + GitHub Action, browser); Input safety: read budgets, advisories, mutation-tested (1.0: + lossless declared encodings); Upstream: pinned, checked weekly, a move shipped (1.0: met — a pin move has shipped)</desc>
+<desc id="d">Coverage: 172 of 280 obligations covered (1.0: at least 220 of 280 covered); Explanation: what, evidence, remedy (1.0: + every rule names its section, the line); Report contract: schemaVersion, golden, exit codes (1.0: + a field-by-field schema page); Entrances: command line, library, single file (1.0: + GitHub Action, browser); Input safety: read budgets, advisory, own mutations (1.0: + declared encodings read without loss); Upstream: pinned, checked weekly, one pin move shipped (1.0: met); as of 0.7.1</desc>
 <rect x="0.5" y="0.5" width="949" height="329" rx="10" fill="#0b0f14" stroke="#2a3238"/>
 <polygon points="232.0,136.0 254.5,149.0 254.5,175.0 232.0,188.0 209.5,175.0 209.5,149.0" fill="none" stroke="#2a3238" stroke-width="1" stroke-dasharray="3 3"/>
 <polygon points="232.0,110.0 277.0,136.0 277.0,188.0 232.0,214.0 187.0,188.0 187.0,136.0" fill="none" stroke="#2a3238" stroke-width="1" stroke-dasharray="3 3"/>
@@ -29,6 +29,7 @@
 <text x="50" y="314" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">now</text>
 <line x1="86" y1="310" x2="106" y2="310" stroke="#7d8891" stroke-width="1.5"/>
 <text x="112" y="314" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0 condition</text>
+<text x="926" y="314" text-anchor="end" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">as of 0.7.1</text>
 <text x="450" y="40" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#e6edf3">iirds</text>
 <text x="450" y="62" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9da7b1">Checked now, and what this project asks of itself for 1.0.</text>
 <line x1="450" y1="72" x2="926" y2="72" stroke="#2a3238"/>
@@ -37,17 +38,17 @@
 <text x="600" y="106" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: at least 220 of 280 covered</text>
 <text x="450" y="128" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Explanation</text>
 <text x="600" y="128" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">what, evidence, remedy</text>
-<text x="600" y="142" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + every rule says its section or none, and the line</text>
+<text x="600" y="142" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + every rule names its section, the line</text>
 <text x="450" y="164" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Report contract</text>
-<text x="600" y="164" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">schemaVersion 2, golden, exit codes</text>
+<text x="600" y="164" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">schemaVersion, golden, exit codes</text>
 <text x="600" y="178" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + a field-by-field schema page</text>
 <text x="450" y="200" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Entrances</text>
 <text x="600" y="200" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">command line, library, single file</text>
 <text x="600" y="214" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + GitHub Action, browser</text>
 <text x="450" y="236" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Input safety</text>
-<text x="600" y="236" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">read budgets, advisories, mutation-tested</text>
-<text x="600" y="250" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + lossless declared encodings</text>
+<text x="600" y="236" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">read budgets, advisory, own mutations</text>
+<text x="600" y="250" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: + declared encodings read without loss</text>
 <text x="450" y="272" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">Upstream</text>
-<text x="600" y="272" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">pinned, checked weekly, a move shipped</text>
-<text x="600" y="286" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: met — a pin move has shipped</text>
+<text x="600" y="272" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#e6edf3">pinned, checked weekly, one pin move shipped</text>
+<text x="600" y="286" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#9da7b1">1.0: met</text>
 </svg>

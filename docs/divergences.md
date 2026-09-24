@@ -327,6 +327,14 @@ Transcoding that package -- which is not in this repository -- to UTF-8 and
 nothing else turned the verdict into a pass with no findings, which is the
 measurement that says the markup was never the problem.
 
+The other direction is refused too: a declaration that reads the bytes as other
+text than UTF-8 does -- `windows-1252` over UTF-8 bytes with a letter outside
+ASCII, with or without a byte order mark -- is two readings of one file, and
+this reader holds one of them, so it refuses rather than choose. A document
+whose bytes read the same both ways passes. A declaration naming an encoding
+this reader does not decode -- a multi-byte one, or a name no codec answers
+to -- is refused by name without the document being decoded under it.
+
 ## What this tool refuses to read, and why that is its own decision
 
 **S14 — an entry compressed with anything but stored or deflate is not opened.**

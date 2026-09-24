@@ -104,9 +104,10 @@ def _pip_bookkeeping(name: str) -> bool:
 
 
 def in_archive_order(paths):
-    """The order the archive writes its entries in: by name, compared as
-    text. A path's own ordering folds case on Windows, so sorting the paths
-    themselves built a different file there from the same inputs."""
+    """The order the archive writes its entries in: by path, one component at
+    a time, each compared as case-sensitive text -- the order sorting the paths
+    gives on POSIX. A path's own ordering folds case on Windows, so sorting the
+    paths themselves built a different file there from the same inputs."""
     return sorted(paths, key=lambda path: path.parts)
 
 

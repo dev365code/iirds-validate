@@ -34,7 +34,8 @@ form of the name it was dropped with, into a second temporary directory while
 it is checked. Both directories are removed before the answer is sent,
 whichever way the request ends short of the process being killed, so by the
 time the page shows a verdict the copy is gone. The other parts of a form are
-read past, not written. `tests/test_drop_leaves_nothing.py` holds it.
+read past, not written. `tests/test_drop_leaves_nothing.py` holds the removal,
+which part is read, and the name the copy is kept under.
 
 Every limit in the table above is a limit on **reading**. What a run holds after
 it has read -- the renditions it has parsed, the graph it has built from the
@@ -86,10 +87,12 @@ with priority over everything else. A silent pass on hostile input is the
 most serious bug this project can have; the changelog shows that such reports
 get fixed, tested and credited rather than argued with.
 
-Supported versions: the latest release. Nothing older gets a fix. One that has
-to ship while main holds unreleased work is carried to the latest release's own
-line and shipped as a patch there, as 0.6.1 to 0.6.3 were. Upgrading is copying
-one file.
+Supported versions: the latest release. This project releases no fix for an
+older one; a backport to a version you have frozen is professional support
+(`SUPPORT.md`), not a release here. A fix that has to ship while main holds
+unreleased work is carried to the latest release's own line and shipped as a
+patch there, as 0.6.1 to 0.6.3 were. For the single-file `.pyz`, upgrading
+is copying one file.
 
 ## Advisories
 

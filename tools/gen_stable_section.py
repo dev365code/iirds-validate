@@ -143,8 +143,8 @@ def rows():
         ("`2` when nothing was judged: a path that is not there, or an input it refused",
          "`iirds check no-such-file.iirds; echo $?`", "`%d`" % absent),
         ("`64` when the argument parser rejected the command line: an option that is not one, "
-         "a missing argument, a value outside a fixed list of choices (a value it accepts and "
-         "the command then refuses, such as `serve --host 0.0.0.0`, is `2`)",
+         "a missing argument, a value outside a fixed list of choices (`serve --host 0.0.0.0`, "
+         "which it accepts and the command refuses, is `2`)",
          "`iirds check --iirds-version 9.9 %s; echo $?`" % GOOD, "`%d`" % misused),
         ("Every registered rule is answered for: run, or excused with a reason",
          "the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable`",

@@ -55,7 +55,7 @@ Written down so that none of these gets built by drift.
 | `src/iirds_validate/rules/` | the rules — `container.py` C\*, `schema.py` M\*, `system.py` S\*, `content.py` B\*, `lint.py` L\*, `requirements.py` R\*, `schema_tables.py` generated |
 | `docs/requirements.json` | what the standard requires, enumerated from the specification |
 | `src/iirds_validate/context.py` | parses metadata into **one graph**, which every metadata rule reads instead of the XML; container, system and content rules read the archive and its files |
-| `src/iirds_validate/terms.py` | the iiRDS terms the rules name, checked against the ontology by a test -- a few rules still build theirs where they use them |
+| `src/iirds_validate/terms.py` | the iiRDS terms the hand-written rules name, checked against the ontology by a test; the table-driven rules in `src/iirds_validate/rules/schema_tables.py` name theirs in its tables, which `tests/test_schema_tables.py` checks against the ontology too, and three hand-written rules (R1, R2, L16) build theirs where they use them |
 | `src/iirds_validate/data/` | what ships: the rule catalogue and the vendored ontologies |
 | `src/iirds/` | the container layer the checker is built on — open a package, read its metadata as a graph, write a conformant container — shipped in the same distribution and never importing the checker |
 | `tests/corpus/plusmeta/` | the reference corpus, verbatim and hashed — the one external check that ships with the repository and runs in CI; the Consortium's sample packages are checked by `tests/test_official_samples.py` where they are supplied |
@@ -63,7 +63,7 @@ Written down so that none of these gets built by drift.
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |
 | `docs/silence.json` | why this validator is silent on each pair the reference reports; CI fails if it moves |
 | `docs/divergences.md` | where this project reads a rule both tools have differently from the reference, and why -- and the argument for some of the rules only this project has |
-| `docs/what-it-catches.md` | a set of cases, each showing one finding, each block the output of the command above it — written by `tools/gen_what_it_catches.py`, so a case whose verdict moves stops the build rather than going stale on the page |
+| `docs/what-it-catches.md` | cases that each show the finding they are about, and a pair that draws none; every block is the output of the command above it — written by `tools/gen_what_it_catches.py`, so a case whose verdict moves stops the build rather than going stale on the page |
 
 ## How this project knows it is right
 
@@ -227,13 +227,13 @@ gone wrong.
 2. **Four rule/fixture pairs are unresolved**, each with a row in
    `docs/divergences.md` saying why.
 3. **Two rules rest on readings the specification does not
-   settle**, also recorded there, one name the vocabulary does not define
-   that the reference corpus uses in fifty-one files (L13), and whether a
+   settle**: one name the vocabulary does not define
+   that the reference corpus uses in fifty-one files (L13, recorded there too), and whether a
    name from a later edition than the package declares is a defect or a
    warning (L15 says warning). They are the questions to put to tekom.
    Another used to sit beside them on a false premise -- that iiRDS never
    requires a safety alert symbol in terms. It does, in 1.0 and 1.3 alike, and
-   B10 reports a hazard statement whose symbol is not tagged as one; what remains a reading of ours there is the
+   B10 reports a hazard statement in which no picture is tagged as one; what remains a reading of ours there is the
    exemption for NOTICE, which reports less rather than more.
 4. **The catalogue couples this project to plusmeta.** For the catalogue's rules,
    ids and priorities come from their file, and so do version arrays and spec
@@ -246,7 +246,7 @@ gone wrong.
    fail their own specification, every error verified against the 1.0 text
    ([divergences.md](divergences.md)). Their schemas now feed the version
    inventory too, so no edition's vocabulary is unchecked. **1.0.1 still has
-   not**: no package declaring it has been validated.
+   not**: no real package declaring it has been validated.
 
 6. ~~The archive's own index is taken at its word~~ **Closed**: S10 reads
    every entry's local file header where the central directory says it is

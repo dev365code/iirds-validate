@@ -12,6 +12,34 @@ The cases here are about this tool alone.
 
 ## Coverage
 
+### The container is not a container
+
+    $ mkdir -p fixtures/what-it-catches && printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
+    $ iirds check fixtures/what-it-catches/not-a-container.iirds
+
+    not-a-container.iirds   iiRDS not declared
+
+      ERROR S13       cannot open container
+                          fixtures/what-it-catches/not-a-container.iirds
+                          File is not a zip file
+                        → Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on
+                        → it should list mimetype first. Nothing else here has run, because there
+                        → was nothing to run against.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      1 rule checked, 221 not applicable to this version/variant (221 never put -- the container would not open)
+
+Exit code 1.
+
+**The standard states this obligation**, and `S13` claims it as
+`dfn-iirds-package#1`; the rule carries no link to the sentence, so the page
+has none to quote. `S13` states it as: the container could not be opened at
+all
+
+The standard describes a container, and a file that will not open is not one
+yet. The last line is the point: the run says how many rules it never put,
+rather than leaving a reader to assume they passed.
+
 ### `mimetype` with a trailing newline
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/mimetype.iirds --broken mimetype
@@ -111,6 +139,23 @@ The finding names the subject and how many were found. A rendition with an IRI
 of its own is named by it; one written as a blank node, as here, is named by
 the unit that has it, so two of those under one unit read alike.
 
+**Now.**
+
+- 172 of 280 obligations covered
+
+**Before 1.0.** at least 220 of 280 covered
+
+## Explanation
+
+A finding carries a link to the sentence of the standard it enforces when its
+rule has one, and where a case on this page has one it quotes the words the
+link lands on. Some rules claim an obligation of the standard without a link
+to its sentence; a finding does not carry that claim, and `iirds rules <id>
+-v` shows it. Some rules have neither -- this project's interoperability and
+run rules among them, and a few from the upstream catalogue -- and for those
+nothing in the rule or its report yet says there is no section to give. Until
+every rule names its section or says it has none, that item is not done.
+
 ### Metadata that points at a file the package does not carry
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/missing-content.iirds --broken missing-content
@@ -133,10 +178,21 @@ Exit code 1.
 
 **This tool's own rule** (`L2`), no specification reference.
 
-The graph is well-formed and no rule but `L2` has anything to say about it.
-The package simply cannot be read by anyone, because the document it describes
-is not in it. That is the half of the question the upstream catalogue has no
-rule for.
+The graph is well-formed and no rule but `L2` has anything to say about it. A
+reader of the package finds no document where the metadata points. None of the
+rules taken from the upstream catalogue fires on it.
+
+**Now.**
+
+- done -- what is wrong, in one sentence
+- done -- the evidence as read from the file
+- done -- a remedy, for every rule
+- not yet -- every rule names its section, or says it has none
+- not yet -- the line in the file
+
+**Before 1.0.** + every rule names its section, the line
+
+## Report contract
 
 ### What it does not flag, and why
 
@@ -170,37 +226,8 @@ generator's one switch; `attribute-style` is not a defect.
 
 **Now.**
 
-- 172 of 280 obligations covered
-
-**Before 1.0.** at least 220 of 280 covered
-
-## Explanation
-
-A finding carries a link to the sentence of the standard it enforces when its
-rule has one, and where a case on this page has one it quotes the words the
-link lands on. Some rules claim an obligation of the standard without a link
-to its sentence; a finding does not carry that claim, and `iirds rules <id>
--v` shows it. Some rules have neither -- this project's interoperability and
-run rules among them, and a few from the upstream catalogue -- and for those
-nothing yet says there is no section to give. Until every rule names its
-section or says it has none, that item is not done.
-
-**Now.**
-
-- done -- what is wrong, in one sentence
-- done -- the evidence as read from the file
-- done -- a remedy, for every rule
-- not yet -- every rule names its section, or says it has none
-- not yet -- the line in the file
-
-**Before 1.0.** + every rule names its section, the line
-
-## Report contract
-
-**Now.**
-
 - done -- schemaVersion in every report
-- done -- a golden report held by a test
+- done -- a golden report held by a CI check
 - done -- exit codes 0, 1, 2 and 64 under test
 - not yet -- a field-by-field schema page
 
@@ -212,7 +239,7 @@ section or says it has none, that item is not done.
 
 - done -- command line
 - done -- Python library
-- done -- single file, nothing to install
+- done -- single file, nothing to install but Python
 - not yet -- GitHub Action
 - not yet -- browser, nothing installed
 
@@ -220,39 +247,11 @@ section or says it has none, that item is not done.
 
 ## Input safety
 
-### The container is not a container
-
-    $ mkdir -p fixtures/what-it-catches && printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
-    $ iirds check fixtures/what-it-catches/not-a-container.iirds
-
-    not-a-container.iirds   iiRDS not declared
-
-      ERROR S13       cannot open container
-                          fixtures/what-it-catches/not-a-container.iirds
-                          File is not a zip file
-                        → Rebuild the archive. An iiRDS container is an ordinary ZIP: `unzip -l` on
-                        → it should list mimetype first. Nothing else here has run, because there
-                        → was nothing to run against.
-
-      FAIL  1 error(s), 0 warning(s), 0 informational
-      1 rule checked, 221 not applicable to this version/variant (221 never put -- the container would not open)
-
-Exit code 1.
-
-**The standard states this obligation**, and `S13` claims it as
-`dfn-iirds-package#1`; the rule carries no link to the sentence, so the page
-has none to quote. `S13` states it as: the container could not be opened at
-all
-
-The standard describes a container, and a file that will not open is not one
-yet. The last line is the point: the run says how many rules it never put,
-rather than leaving a reader to assume they passed.
-
 **Now.**
 
-- done -- read budgets, per file and per run
-- done -- from 0.6.1, a security fix ships with an advisory
-- done -- tests verified against their own mutations
+- done -- read budgets per file, and per run for content
+- done -- from 0.6.1, a shipped security fix has an advisory
+- done -- tests of named gates verified against mutations
 - not yet -- declared encodings read without loss
 
 **Before 1.0.** + declared encodings read without loss

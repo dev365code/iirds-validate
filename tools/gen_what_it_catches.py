@@ -24,9 +24,8 @@ hard way, plus one this page needs of its own:
   and both are checked before the output reaches the page.
 * **Paths are relative to the repository root**, so the text a reader sees is
   the text this run produced rather than somebody's home directory.
-* **No claim about any other tool.** This page is the source for a comparison
-  chart elsewhere; a sentence about somebody else's validator would travel with
-  the numbers and could not be checked from here.
+* **No claim about any other tool.** A sentence about somebody else's validator
+  could not be checked from here.
 """
 from __future__ import annotations
 
@@ -86,16 +85,16 @@ def _build(name: str, broken: str) -> str:
     """One container, built where the page can name it by a relative path."""
     (ROOT / BUILT).mkdir(parents=True, exist_ok=True)
     where = BUILT / ("%s.iirds" % name)
-    _must(["tools/make_fixture_package.py", str(where)]
+    _must(["tools/make_fixture_package.py", where.as_posix()]
           + ([] if broken == "none" else ["--broken", broken]))
-    return str(where)
+    return where.as_posix()
 
 
 def _not_a_container() -> str:
     (ROOT / BUILT).mkdir(parents=True, exist_ok=True)
     where = BUILT / "not-a-container.iirds"
     (ROOT / where).write_bytes(b"not a zip at all")
-    return str(where)
+    return where.as_posix()
 
 
 #: Each case: how the container is made, what the finding is, and the two
@@ -119,9 +118,8 @@ CASES = [
     ("missing-content", "Metadata that points at a file the package does not carry",
      "missing-content", "L2", 1,
      "The graph is well-formed and no rule but `L2` has anything to say about it. "
-     "The package simply cannot be read by anyone, because the document it "
-     "describes is not in it. That is the half of the question the upstream "
-     "catalogue has no rule for."),
+     "A reader of the package finds no document where the metadata points. None "
+     "of the rules taken from the upstream catalogue fires on it."),
 ]
 
 
@@ -187,11 +185,11 @@ def _wrapped(prose: str):
 #: goes under the one axis it demonstrates and no other; an axis with no case
 #: here shows none rather than borrowing one.
 AXIS_OF = {
-    "not-a-container": "input",
+    "not-a-container": "coverage",      # S13 claims an obligation the count holds
     "mimetype": "coverage",
     "no-metadata-rdf": "coverage",
     "no-format": "coverage",
-    "missing-content": "coverage",
+    "missing-content": "explanation",   # L2 names no section: the item not done
 }
 
 CAPABILITIES = ROOT / "docs" / "capabilities.json"
@@ -274,9 +272,11 @@ def page() -> str:
            "The cases here are about this tool alone.", ""]
 
     placed = set()
+    said = set()
     for axis in axes:
         out.extend(["## %s" % axis["label"], ""])
         if axis["key"] == "explanation":
+            said.add("explanation")
             out.extend(_wrapped(
                 "A finding carries a link to the sentence of the standard it enforces "
                 "when its rule has one, and where a case on this page has one it quotes "
@@ -284,16 +284,17 @@ def page() -> str:
                 "standard without a link to its sentence; a finding does not carry that "
                 "claim, and `iirds rules <id> -v` shows it. Some rules have neither -- "
                 "this project's interoperability and run rules among them, and a few "
-                "from the upstream catalogue -- and for those nothing yet says there is "
-                "no section to give. Until every rule names its section or says it has "
+                "from the upstream catalogue -- and for those nothing in the rule or its "
+                "report yet says there is no section to give. Until every rule names its section or says it has "
                 "none, that item is not done."))
             out.append("")
         for case in CASES:
             if AXIS_OF.get(case[0]) == axis["key"]:
                 out.extend(_case_block(*case))
                 placed.add(case[0])
-        if axis["key"] == "coverage":
+        if axis["key"] == "report":
             out.extend(_same_graph())
+            said.add("report")
         out.extend(_now_and_after(axis))
 
     # A case is shown under the axis its key names, and only there. Grouping
@@ -305,6 +306,13 @@ def page() -> str:
     if missing:
         raise Failed("these cases name no axis the data has, so the page would "
                      "leave them out: %s" % ", ".join(missing))
+    # The paragraph on where a finding comes from, and the pair that is not
+    # flagged, hang off one axis each: renaming that key would drop them from
+    # the page as quietly as it dropped a case.
+    unsaid = sorted({"explanation", "report"} - said)
+    if unsaid:
+        raise Failed("the page hangs text off axes the data no longer has: %s"
+                     % ", ".join(unsaid))
 
     return "\n".join(out).rstrip() + "\n"
 

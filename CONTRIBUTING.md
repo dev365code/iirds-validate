@@ -135,16 +135,19 @@ reasoning applies to any test you add here: compare reports that say something.
 
 ## Cutting a release
 
-The release is one number in eight places. Seven of them are yours to
+The release is one number in eleven places. Eight of them are yours to
 change: `pyproject.toml`, `src/iirds_validate/__init__.py`,
-`src/iirds/__init__.py`, and the two compatibility packages under `shims/`,
-which carry it twice each -- their `version` and their `iirds>=` floor. The
-eighth is `shapes/MANIFEST.json`, which you do not edit: run `python
-tools/emit_shacl.py` and the manifest follows the version by itself. Give the
-top entry of `CHANGELOG.md` its date in the same commit, then `make check` --
-each of the eight fails a test of its own if it is left behind, and the
-changelog fails one if the date and the number are not in one commit. The tag
-is `v` and the number.
+`src/iirds/__init__.py`, the two compatibility packages under `shims/`,
+which carry it twice each -- their `version` and their `iirds>=` floor
+-- and `as_of` in `docs/capabilities.json`. The other three are
+generated, and you do not edit them: `shapes/MANIFEST.json` follows the
+version when you run `python tools/emit_shacl.py`, and the picture draws
+it twice when you run `python tools/capabilities_svg.py
+docs/capabilities.json`, which also re-stamps README. Give the top entry
+of `CHANGELOG.md` its date in the same commit, then `make check` -- each
+of the eleven fails a test if it is left behind, and the changelog fails
+one if the date and the number are not in one commit. The tag is `v` and
+the number.
 
 Look at the action pins before you tag. Every `uses:` in
 `.github/workflows/` names a commit rather than a tag, which means none

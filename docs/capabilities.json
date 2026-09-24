@@ -70,7 +70,7 @@
           }
         },
         {
-          "text": "a golden report held by a test",
+          "text": "a golden report held by a CI check",
           "done": true,
           "evidence": {
             "file": ".github/workflows/ci.yml",
@@ -114,7 +114,7 @@
           }
         },
         {
-          "text": "single file, nothing to install",
+          "text": "single file, nothing to install but Python",
           "done": true,
           "evidence": {
             "file": "README.md",
@@ -138,15 +138,15 @@
       "label": "Input safety",
       "items": [
         {
-          "text": "read budgets, per file and per run",
+          "text": "read budgets per file, and per run for content",
           "done": true,
           "evidence": {
             "file": "SECURITY.md",
-            "says": "Every limit in the table above is a limit on"
+            "says": "Across one run, what the content rules read is held to a total ceiling"
           }
         },
         {
-          "text": "from 0.6.1, a security fix ships with an advisory",
+          "text": "from 0.6.1, a shipped security fix has an advisory",
           "done": true,
           "evidence": {
             "file": "SECURITY.md",
@@ -154,11 +154,11 @@
           }
         },
         {
-          "text": "tests verified against their own mutations",
+          "text": "tests of named gates verified against mutations",
           "done": true,
           "evidence": {
-            "file": "README.md",
-            "says": "verified against their own mutations"
+            "file": ".github/workflows/ci.yml",
+            "says": "python tools/mutation_table.py --run"
           }
         },
         {
@@ -166,7 +166,7 @@
           "done": false
         }
       ],
-      "now_text": "read budgets, advisory, own mutations",
+      "now_text": "read budgets, advisory, mutations",
       "target_text": "+ declared encodings read without loss"
     },
     {
@@ -194,7 +194,7 @@
           "done": true,
           "evidence": {
             "file": "CHANGELOG.md",
-            "says": "taken from `f1119bea`, retrieved 2026-09-13, instead of `0bcf19dd`"
+            "says": "The vendored rule catalogue and the reference corpus move to a newer upstream commit"
           }
         }
       ],

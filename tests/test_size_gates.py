@@ -54,6 +54,29 @@ def test_oversized_metadata_is_refused_in_a_directory_too(tmp_path):
     assert hits and "byte limit" in hits[0].violation.detail
 
 
+def test_a_fragment_is_staged_within_the_limit(tmp_path, monkeypatch):
+    """`--fragment` copies the file into a container before any gate sees it,
+    and the copy read the whole file first. It stops one byte past the
+    metadata limit now, and the gate refuses what arrives the way it refuses
+    an archive's."""
+    import iirds
+
+    fragment = tmp_path / "big.rdf"
+    fragment.write_bytes(OVER_METADATA + b" " * 1024)
+    staged = []
+    packing = iirds.pack
+
+    def watched(source, output=None, **options):
+        staged.append((Path(source) / METADATA_RDF).stat().st_size)
+        return packing(source, output, **options)
+
+    monkeypatch.setattr(iirds, "pack", watched)
+    report = runner.run_fragment(fragment, runner.CONFORMANCE_KINDS)
+    assert staged == [MAX_METADATA_BYTES + 1]
+    hits = [f for f in report.findings if f.rule.id == "C16.1"]
+    assert hits and "byte limit" in hits[0].violation.detail
+
+
 def test_oversized_content_is_refused_in_an_archive(tmp_path):
     package = build_package(tmp_path, content=(),
                             extra=(("content/topic1.xhtml", OVER_CONTENT),))

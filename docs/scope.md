@@ -63,7 +63,7 @@ Written down so that none of these gets built by drift.
 | `docs/agreement.json` | per-pair agreement with the reference; CI fails if it moves |
 | `docs/silence.json` | why this validator is silent on each pair the reference reports; CI fails if it moves |
 | `docs/divergences.md` | where this project reads a rule both tools have differently from the reference, and why -- and the argument for some of the rules only this project has |
-| `docs/what-it-catches.md` | cases that each show the finding they are about, and a pair that draws none; every block is the output of the command above it — written by `tools/gen_what_it_catches.py`, so a case whose verdict moves stops the build rather than going stale on the page |
+| `docs/what-it-catches.md` | cases that each show the finding they are about, and a pair that draws none; under each `iirds check` is what it printed — written by `tools/gen_what_it_catches.py`, so a case whose verdict moves stops the build rather than going stale on the page |
 
 ## How this project knows it is right
 

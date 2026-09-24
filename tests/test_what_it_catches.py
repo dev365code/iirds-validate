@@ -93,10 +93,49 @@ def test_the_comparison_check_refuses_what_it_is_for():
                  "No other library reads it.",
                  "It finds more than twice as many defects as the reference implementation.",
                  "Unlike other validators, it reads the index.",
-                 "It is unique among iiRDS validators."):
+                 "It is unique among iiRDS validators.",
+                 "Unlike plusmeta's rule, this one names both values.",
+                 "Compared with e.g. the reference validator, this names both values."):
         assert aims(text), text
     for text in ("Rename one of them so the two differ by more than case.",
                  "Without one the element is anonymous, so no other statement can refer to it.",
                  "A rendition larger than this tool will read in one piece has to be split.",
-                 "If it was exported from another tool, export as RDF/XML."):
+                 "If it was exported from another tool, export as RDF/XML.",
+                 "No other product variant may carry the same serial number.",
+                 "Unlike the machinery domain, the software domain has no product type.",
+                 "One passing through more links than a reader will follow."):
         assert aims(text) is None, text
+
+
+def test_a_case_whose_words_would_not_reach_the_page_as_prose_is_refused():
+    """The generator checks a case's heading and note before it builds
+    anything. Deleting those calls left every other test green."""
+    import pytest
+
+    g = _generator()
+    for heading, note, refusal in (
+            ("Heading", "> A note that would render as a quote.", "starts with"),
+            ("Heading", "    A note that would render as code.", "starts with"),
+            ("Heading", "It reads both, as no other iiRDS validator does.", "comparison"),
+            ("Unlike other validators, it reads both", "A plain note.", "comparison")):
+        # Matched by what it says: with the check gone, the case still fails --
+        # later, on a package that passes where it was to fail.
+        with pytest.raises(g.Failed, match=refusal):
+            g._case_block("probe", heading, "none", "C5", 1, note)
+
+
+def test_what_a_case_prints_is_held_to_the_same_words(monkeypatch):
+    """Every block of output on the page comes through `_verdict`, the cases'
+    and the pair that is not flagged alike, and a remedy or a line the report
+    prints reaches the page inside a block the prose check passes over."""
+    import pytest
+
+    g = _generator()
+    said = ("probe.iirds\n  ERROR C5  a title\n    \u2192 Rename it. Unlike other\n"
+            "    \u2192 validators, this names both.\n")
+    monkeypatch.setattr(g, "_run", lambda args, env_extra=None: (1, said))
+    with pytest.raises(g.Failed, match="compares this tool with another"):
+        g._verdict("probe.iirds", exit_code=1, names="C5")
+    assert g._entries(said.replace("\u2192", "->")) == [
+        "probe.iirds", "ERROR C5  a title",
+        "Rename it. Unlike other validators, this names both."]

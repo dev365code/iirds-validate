@@ -1,7 +1,7 @@
 # What this catches, and what it says when it does
 
-Written by `tools/gen_what_it_catches.py`; every block is the output of
-the command above it, captured on the run that wrote this file. Build the
+Written by `tools/gen_what_it_catches.py`; under each `iirds check` is
+what it printed, captured on the run that wrote this file. Build the
 containers and reproduce any of it with the commands each case names: one
 that builds its container and one that checks it, two of each for the pair
 that is not flagged.
@@ -170,8 +170,9 @@ specification's own:
 `M2.3` states that obligation as: iirds:InformationUnit MUST NOT have more
 than one property iirds:dateOfCreation.
 
-Appendix A gives an information unit at most one creation date, and this one
-carries two. The finding names the unit and the values it found.
+Appendix A gives an information unit at most one creation date, and section
+6.11.2 makes the cardinalities there a MUST; this one carries two. The finding
+names the unit and the values it found.
 
 **Now.**
 
@@ -181,7 +182,7 @@ carries two. The finding names the unit and the values it found.
 
 ## Explanation
 
-A finding carries a link to the sentence of the standard it enforces when its
+A finding carries a link to the words of the standard it enforces when its
 rule has one, and where a case on this page has one it quotes the words the
 link lands on. Some rules claim an obligation of the standard without a link
 to its sentence; a finding does not carry that claim, and `iirds rules <id>

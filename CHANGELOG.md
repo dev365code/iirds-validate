@@ -76,6 +76,15 @@ into memory, and only the container's read was bounded. The copy now stops one
 byte past the limit, and the gate refuses the document the way it refuses an
 archive's (C16.1). 0.7.1 does this.
 
+**`SECURITY.md` says where its link handling stops, and when the promise about
+security releases starts.** An absolute link under one of the container's two
+names is walked like a relative one rather than refused; a file swapped after
+the listing for a link that stays inside is read; one bounded read of a bzip2
+or lzma entry could decompress all of it, not always did. A security fix goes
+out ahead of anything else in flight from the release after 0.7.1: the fix for
+GHSA-qwv2-9vgj-vc2w shipped with 0.7.1, and the README and `SECURITY.md` say
+so.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

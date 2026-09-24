@@ -327,9 +327,11 @@ changelog is the file to read before upgrading, whichever number moved.
 **A minor release may add a verdict or move one, and the changelog names every
 package shape whose verdict moved**, with the reading behind it.
 
-**A security fix goes out ahead of anything else in flight**, and from 0.6.1 on
-carries an advisory on this repository's Security tab naming the versions it reaches and
-the release that fixes it. `SECURITY.md` lists them.
+**From the release after 0.7.1, a security fix goes out ahead of anything else in
+flight**, as a patch on the latest release's line. Before that it did not always: the
+fix for GHSA-qwv2-9vgj-vc2w waited for 0.7.1 and shipped with the rest of that release.
+From 0.6.1 on, a security fix carries an advisory on this repository's Security tab
+naming the versions it reaches and the release that fixes it. `SECURITY.md` lists them.
 
 **Pin what you validated against, and pin `iirds`.** `iirds-validate` and
 `iirds-sdk` are aliases that ship no engine of their own, and their dependency

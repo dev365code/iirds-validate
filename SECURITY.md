@@ -49,16 +49,20 @@ name is resolved from the container's root downwards, one component at a time,
 each link replaced by its own text where it stands and never a step outside, so
 nothing out there is looked at to decide -- not `stat`, not `readlink`. Four
 kinds of entry are named by S6 and not opened: one that leads out, one written
-as an absolute path, one passing through more links than a system will follow,
-and one pointing at nothing. An absolute link is judged against the container's
-two names -- the one it was given and the one that resolves -- so one written
-in a third spelling of the same place is reported rather than read. A name the
-listing does not hold is refused as the archive refuses it; each read resolves
-the name again, so a file swapped for a link after the listing is not read
-either; and a directory the check cannot list refuses the container rather than
-leaving part of it unlooked at. Both markers that make a directory a container
-are found by name rather than by what they point at, so whether a file
-somewhere else exists decides nothing about the report.
+as an absolute path under neither of the container's two names -- the one it
+was given and the one that resolves, so a third spelling of the same place is
+reported rather than read -- one passing through more links than a system will
+follow, and one pointing at nothing. An absolute link under one of those names
+is walked like a relative one. A name the listing does not hold is refused as
+the archive refuses it; each read resolves the name again, so a file swapped
+after the listing for a link that leads out is not read either, while one
+swapped for a link that stays inside reads what it points at, as any link there
+does; and a directory the check cannot list, or can list and not search,
+refuses the container rather than leaving part of it unlooked at. Both markers
+that make a directory a container are found by name rather than by what they
+point at -- the directory a marker sits in is walked like any other name, and
+one that leads out counts as the marker being there, for S6 to name -- so
+whether a file somewhere else exists decides nothing about the report.
 
 The same holds one layer up. Pointing at a directory searches it for packages,
 and a `.iirds` name found there that leads out of the directory is refused by
@@ -89,9 +93,11 @@ get fixed, tested and credited rather than argued with.
 
 Supported versions: the latest release. This project releases no fix for an
 older one; a backport to a version you have frozen is professional support
-(`SUPPORT.md`), not a release here. A fix that has to ship while main holds
-unreleased work is carried to the latest release's own line and shipped as a
-patch there, as 0.6.1 to 0.6.3 were. For the single-file `.pyz`, upgrading
+(`SUPPORT.md`), not a release here. From the release after 0.7.1, a fix that
+has to ship while main holds unreleased work is carried to the latest release's
+own line and shipped as a patch there, as 0.6.1 to 0.6.3 were; the fix for
+GHSA-qwv2-9vgj-vc2w was not, and shipped in 0.7.1 with the rest of that
+release. For the single-file `.pyz`, upgrading
 is copying one file.
 
 ## Advisories
@@ -113,7 +119,7 @@ have no advisory.
   `iirds` and `iirds-sdk` 0.5.0 through 0.6.1; fixed in 0.6.2.
 - [GHSA-2p8x-2h66-4j7j](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-2p8x-2h66-4j7j):
   a bzip2- or lzma-compressed entry defeated every read limit. One bounded read
-  decompressed the whole entry in memory, so a package of a few hundred bytes
+  could decompress the whole entry in memory, so a package of a few hundred bytes
   could exhaust the memory of the machine checking it. Same versions; fixed in
   0.6.2, which refuses such entries without opening them (S14).
 - [GHSA-rf68-3wrj-h8jp](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-rf68-3wrj-h8jp):

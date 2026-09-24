@@ -425,6 +425,27 @@ def test_a_container_is_recognised_by_the_names_it_holds(unpacked, tmp_path):
     assert [p.name for p in found] == ["ours"] and refused == []
 
 
+def test_a_marker_behind_a_link_decides_nothing(unpacked, tmp_path):
+    """`META-INF` as a link out of the directory. The marker under it was
+    looked up through the link, so a file somewhere else decided whether this
+    was a container. Walked like every other name now, the answer is the same
+    whatever is at the far end -- a container, whose link S6 then names."""
+    answers = []
+    for far_end_has_it in (True, False):
+        side = tmp_path / ("side-%s" % far_end_has_it)
+        ours = side / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        found, refused = search(side)
+        answers.append(([p.name for p in found], [p.name for p in refused]))
+    assert answers == [(["ours"], [])] * 2, answers
+
+
 def test_a_link_that_leads_nowhere_is_named(unpacked):
     """Not listed -- there is no file to read -- and not silent either. It is
     an entry the container holds and no rule can use, which is the third thing

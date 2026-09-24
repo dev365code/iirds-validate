@@ -4,6 +4,15 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.7.2 — unreleased
+
+**Security. Whether a directory was a container could depend on a file
+outside it.** The markers were looked up as names at the last step only, so a
+`META-INF` that was itself a link out of the directory was followed, and a file
+at the far end decided whether the directory was read as a container. The
+directory a marker sits in is now walked like every other name, and one that
+leads out counts as the marker being there, for S6 to name. 0.7.1 does this.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

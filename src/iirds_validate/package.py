@@ -935,9 +935,22 @@ def looks_like_a_container(path: Path) -> bool:
     `META-INF/metadata.rdf` was a link out of it was a container when the file
     at the far end happened to be there and was not one when it was not. That
     is one bit about a path of the sender's choosing, read off the verdict.
+    `lexists` settled the last step and not the one before it: a `META-INF`
+    that was itself a link was followed to wherever it led. The directory a
+    marker sits in is walked the way every name is, and one that leads out
+    counts as the marker being there -- the container is then opened, and S6
+    names the link.
     """
-    return (os.path.lexists(str(path / MIMETYPE_FILE))
-            or os.path.lexists(str(path / METADATA_RDF)))
+    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
+    return any(_marker_there(roots, name) for name in (MIMETYPE_FILE, METADATA_RDF))
+
+
+def _marker_there(roots: Tuple[str, ...], name: str) -> bool:
+    *above, last = name.split("/")
+    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])
+    if verdict != INSIDE:
+        return True
+    return os.path.lexists(os.path.join(where, last))
 
 
 def open_package(path):

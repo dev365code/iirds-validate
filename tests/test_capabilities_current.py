@@ -235,6 +235,7 @@ def test_evidence_does_not_count_when_only_the_pictures_own_text_says_it(tmp_pat
         encoding="utf-8")
     def holds(says):
         return gen.evidence_holds(str(tmp_path), {"file": "README.md", "says": says}, data)
+
     assert holds("the plain words here")
     assert not holds("the hidden words here"), "an HTML comment is not something a reader sees"
     assert not holds("the copied words here"), "the picture's own section cannot vouch for the picture"

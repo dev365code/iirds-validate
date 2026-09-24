@@ -247,6 +247,51 @@ TABLE = [
      [LINKS],
      "a gate passes while checking less than it was asked to"),
 
+    ("s10/names-compared-as-bytes",
+     SYSTEM,
+     "    if local_name != info.orig_filename:",
+     "    if header.name != _name_bytes(info):",
+     ["tests/test_header_agreement.py"],
+     "one set of bytes that the two records' bit 11 reads as two names passes S10"),
+
+    ("s10/unicode-path-unread",
+     SYSTEM,
+     "        if not _same_name(said, reads):",
+     "        if False:",
+     ["tests/test_header_agreement.py"],
+     "from Python 3.12 an entry is judged under a name its local header does not give"),
+
+    ("s10/spellings-not-compared",
+     SYSTEM,
+     "    elif header.name != spelled:",
+     "    elif False:",
+     ["tests/test_header_agreement.py"],
+     "one name spelled in two encodings passes, and libarchive cannot create the file"),
+
+    ("s10/a-passed-field-ends-the-walk",
+     SYSTEM,
+     "                broken.append(\"a Unicode Path extra field too short to hold a name\")\n"
+     "            continue",
+     "                broken.append(\"a Unicode Path extra field too short to hold a name\")\n"
+     "            break",
+     ["tests/test_header_agreement.py"],
+     "a field readers pass by hides a renaming field behind it"),
+
+    ("s10/names-compared-as-code-points",
+     SYSTEM,
+     "    return unicodedata.normalize(\"NFC\", one) == unicodedata.normalize(\"NFC\", other)",
+     "    return one == other",
+     ["tests/test_header_agreement.py"],
+     "a name a field spells decomposed, as macOS keeps names, is reported as another name"),
+
+    ("s6/local-header-unread",
+     SYSTEM,
+     "        if header is not None:\n            names.append(_local_reading(header))",
+     "        if False:\n            names.append(_local_reading(header))",
+     ["tests/test_header_agreement.py"],
+     "a name libarchive takes from a local header's Unicode Path field leads out, and S6 "
+     "passes it"),
+
     # The canary. It has to survive: if it dies, the harness is reporting red
     # for everything and the rows above prove nothing.
     ("canary/a-comment-nobody-reads",

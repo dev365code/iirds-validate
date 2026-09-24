@@ -128,6 +128,37 @@ own entry now, in both. Every release through 0.7.1 asks; up to 0.6.0 the
 answer also decided what was listed and read (see 0.6.1), and from 0.6.1
 through 0.7.1 it decided nothing.
 
+**Security. An entry could be judged under a name its records do not give it.**
+From Python 3.12, zipfile names an entry by an Info-ZIP Unicode Path extra
+field in the central directory where one holds, and libarchive names it by
+the field in the local header; S10 compared only the names the two records'
+bytes spell. An entry this run judged under one name could reach another
+reader under another -- one that leads out of the package among them, which
+S6, reading zipfile's name, passed. APPNOTE makes the field the same name in
+UTF-8, so S10 now holds every field in each record to the name that record's
+bytes read -- up to a NUL, and composed alike -- whatever its version or
+CRC-32, since readers check those differently: zipfile the whole name's,
+libarchive the name it holds by then, converted to the system's form and
+renamed by any field before it. A field that renames the entry is one
+finding, whose remedy is the writer's -- store names as UTF-8 under bit 11,
+which needs no field; a field one reader refuses and another passes by, or
+local extra data that runs past its end, is another. S10 reads the fields
+itself, so the verdict is the same on every interpreter, and files its
+findings under the name the directory's bytes read. S6 checks every name an
+entry is read as, stopping at a NUL as the readers do. A Latin name in code
+page 437 with a field giving the same name, as Info-ZIP writes, passes; one
+in another code page, where readers disagree, does not. S10 also compares
+the name as each record's bit 11 reads it, beside its bytes, so one set of
+bytes the two flags read as two names draws S10 beside the C1 it drew.
+Every release through 0.7.1 passes a package whose declared files resolve
+under a directory field's name when run on Python 3.12 or later, and one
+whose local header carries a field libarchive follows to another name on any
+interpreter; 0.5.0 is the first with S10. For a package with nothing else
+wrong, such a field takes the exit code from `0` to `1` on every
+interpreter; zipfile already refused a directory field that runs past the
+extra data (`S13`), and from 3.12 one too short or not UTF-8. No verdict
+moves on the vendored corpus or the examples page.
+
 **`SECURITY.md` says where its link handling stops, and when the promise about
 security releases starts.** An absolute link under one of the container's two
 names is walked like a relative one rather than refused; a file swapped after

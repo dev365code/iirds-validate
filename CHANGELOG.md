@@ -61,6 +61,15 @@ at the far end decided whether the directory was read as a container. The
 directory a marker sits in is now walked like every other name, and one that
 leads out counts as the marker being there, for S6 to name. 0.7.1 does this.
 
+**Security. A container holding a directory that could be listed but not
+searched was checked without the files in it.** Each name came back from the
+listing and every question about it failed, so it was neither a file nor a link
+and left the listing without a word. Such a directory now refuses the
+container, as one that cannot be listed already did (S13). An archive has no
+such state: its entries are read from the archive whatever mode bits they
+record, measured on one whose directory entry records a mode that forbids
+searching it. 0.7.1 does this.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

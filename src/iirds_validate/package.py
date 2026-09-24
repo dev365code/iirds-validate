@@ -617,18 +617,28 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
     dangling: List[str] = []
     absolute: List[str] = []
 
-    def refuse(error: OSError) -> None:
+    def refuse(error: OSError, what: str = "listed") -> None:
         where = error.filename or top
         with contextlib.suppress(ValueError):           # another drive: named as given
             where = os.path.relpath(where, top).replace(os.sep, "/")
-        raise Unlistable("a directory in the container could not be listed: %s (%s)"
-                         % (where, error.strerror or error))
+        raise Unlistable("a directory in the container could not be %s: %s (%s)"
+                         % (what, where, error.strerror or error))
+
+    def examinable(here: str, full: str) -> None:
+        # A directory can be listed and not searched: its names come back and
+        # every question about one of them fails, so each was neither a file
+        # nor a link and fell out of the listing without a word.
+        try:
+            os.lstat(full)
+        except OSError as error:
+            refuse(OSError(error.errno, error.strerror, here), "searched")
 
     for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):
         relative = os.path.relpath(here, top)
         prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
         for name in list(directories):
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 directories.remove(name)
                 verdict, _target = _resolve(roots, (prefix + name).split("/"))
@@ -641,6 +651,7 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
         for name in files:
             entry = prefix + name
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 verdict, target = _resolve(roots, entry.split("/"))
                 if verdict == LEAVES:

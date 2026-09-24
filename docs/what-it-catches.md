@@ -96,7 +96,7 @@ Exit code 1.
 specification's own:
 
 > The META-INF directory MUST contain the file metadata.rdf containing all
-metadata in RDF 1.1 XML syntax (see [rdf-syntax-grammar]).
+> metadata in RDF 1.1 XML syntax (see [rdf-syntax-grammar]).
 
 <https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).>
 
@@ -163,7 +163,7 @@ Exit code 1.
 specification's own:
 
 > 0..1  iirds:dateOfCreation property -
-http://www.w3.org/2001/XMLSchema#dateTimeStamp
+> http://www.w3.org/2001/XMLSchema#dateTimeStamp
 
 <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp>
 

@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import zipfile
@@ -184,6 +185,82 @@ def _wrapped(prose: str):
     return textwrap.wrap(prose, width=78, break_on_hyphens=False, break_long_words=False)
 
 
+def _as_quote(words: str):
+    """The standard's words as a quote on every line they wrap onto. With the
+    mark on the first line only, the rest read as this page's own prose --
+    to a reader, and to the check that no prose here compares this tool with
+    another."""
+    import textwrap
+
+    return textwrap.wrap(words, width=78, initial_indent="> ", subsequent_indent="> ",
+                         break_on_hyphens=False, break_long_words=False)
+
+
+#: How a paragraph can start and not be one: a quote, an indented block, a
+#: heading, a fence, or a link definition -- each rendered or skipped as
+#: something other than the page's own words.
+NOT_A_PARAGRAPH = re.compile(r"^(?:\s|>|#|```|~~~|\[[^\]]*\]:)")
+
+
+def _own_words(where: str, text: str, paragraph: bool = True) -> None:
+    """A heading or note in the page's own voice, checked before it is wrapped.
+
+    The check over the finished page reads its prose and passes over quotes
+    and indented blocks, so a note that began with `>` or with spaces would
+    reach the page as one of those, unread. Such a start is refused here for a
+    paragraph -- a heading follows its `###` and cannot become one -- and the
+    words are held to the same list the page is.
+    """
+    from capabilities_svg import FORBIDDEN_PROSE
+
+    if paragraph and NOT_A_PARAGRAPH.match(text):
+        raise Failed("%s starts with %r, which the page would not show as prose"
+                     % (where, text[:3]))
+    hit = FORBIDDEN_PROSE.search(text)
+    if hit:
+        raise Failed("%s: %r turns a self-description into a comparison"
+                     % (where, hit.group(0)))
+
+
+#: How this tool names itself in what it prints ("larger than this tool will
+#: read"); the rest of a sentence is read for a tool that is not this one.
+THIS_TOOL = re.compile(r"\bthis\s+(?:tool|reader|validator|run|project)\b", re.IGNORECASE)
+
+
+def aims_at_a_tool(text: str):
+    """The first sentence of *text* that compares this tool with another, or None.
+
+    The page's prose is held to the whole list, and the check over the page
+    passes over captured output. What the tool prints is ordinary writing, and
+    the list read alone would stop at "more than case" or "no other statement
+    can refer to it"; refused here is a listed word in the same sentence as a
+    tool that is not this one.
+    """
+    from capabilities_svg import FORBIDDEN_PROSE, TOOL
+
+    for sentence in re.split(r"(?<=[.;:!?])\s+", text):
+        if (FORBIDDEN_PROSE.search(sentence)
+                and re.search(r"\b%s\b" % TOOL, THIS_TOOL.sub("", sentence), re.IGNORECASE)):
+            return sentence
+    return None
+
+
+def _entries(said: str):
+    """The output a line at a time, with each wrapped remedy joined back into
+    the line it continues, so a sentence is read whole."""
+    entries = []
+    for line in said.splitlines():
+        text = line.strip()
+        for marker in ("\u2192", "->"):
+            if text.startswith(marker) and entries:
+                entries[-1] += " " + text[len(marker):].strip()
+                break
+        else:
+            if text:
+                entries.append(text)
+    return entries
+
+
 #: Which axis of `docs/capabilities.json` each case is evidence for. A case
 #: goes under the one axis it demonstrates and no other; an axis with no case
 #: here shows none rather than borrowing one.
@@ -200,8 +277,15 @@ CAPABILITIES = ROOT / "docs" / "capabilities.json"
 
 
 def _case_block(slug, heading, broken, rule_id, exit_code, note):
+    _own_words("case %s heading" % slug, heading, paragraph=False)
+    _own_words("case %s note" % slug, note)
     package = _not_a_container() if broken is None else _build(slug, broken)
     said = _verdict(package, exit_code=exit_code, names=rule_id)
+    for entry in _entries(said):
+        compared = aims_at_a_tool(entry)
+        if compared:
+            raise Failed("case %s: the output compares this tool with another: %r"
+                         % (slug, compared))
     title, quotable, spec, claims = spec_of(rule_id)
     out = ["### %s" % heading, ""]
     if broken is None:
@@ -220,7 +304,7 @@ def _case_block(slug, heading, broken, rule_id, exit_code, note):
         out.extend(_wrapped("**The standard says so.** The link below lands "
                             "on these words, which are the specification's own:"))
         out.append("")
-        out.extend(_wrapped("> %s" % quotable) if quotable
+        out.extend(_as_quote(quotable) if quotable
                    else ["> (the link carries no text fragment)"])
         out.append("")
         out.append("<%s>" % spec)

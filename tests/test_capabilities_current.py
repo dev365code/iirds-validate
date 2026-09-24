@@ -25,8 +25,9 @@ What it holds:
  10. the word lists themselves: comparatives and superlatives aimed past this tool are refused in
      short text and in prose, and plain description ("more than 200 rules", "more than one",
      "no other check here has run", "rather than") is not.
- 11. prose pages are read through prose_only(): fenced or indented blocks (captured output, quoted
-     rule text), quotation lines and bare link lines are not the project speaking.
+ 11. the generated detail page is read through prose_only(): fenced or indented blocks (captured
+     output, quoted rule text), quotation lines and bare link lines are not the project speaking;
+     README's hand-written section is read whole, every visible line.
 What these gates do not see, and a repository adds its own test for: whether a detail-page line
 matches the data word for word, whether a quoted report output is what the tool prints, whether a
 "done" item is true beyond the quoted words.
@@ -144,7 +145,7 @@ def test_the_prose_around_the_picture_compares_with_nobody():
     readme = README.read_text(encoding="utf-8")
     block = re.search(r"## Where it stands\n(.*?)(?=\n## |\Z)", readme, flags=re.DOTALL)
     assert block, "README lacks the '## Where it stands' section"
-    m = gen.FORBIDDEN_PROSE.search(gen.prose_only(block.group(1)))
+    m = gen.FORBIDDEN_PROSE.search(gen.visible(block.group(1)))  # hand-written: every visible line
     assert not m, f"README 'Where it stands': {m.group(0)!r} turns a self-description into a comparison"
 
 
@@ -200,12 +201,18 @@ def test_the_data_gates_refuse_what_a_reader_could_not_verify(tmp_path):
 COMPARING = ("stricter than any other checker", "more rules than any checker", "unlike other validators",
              "the most thorough validator", "the strictest reading", "outperforms every reader",
              "second to none", "the widest coverage of any validator", "compared with other tools",
-             "no other checker does this", "better than the reference")
+             "no other checker does this", "better than the reference",
+             "No other iiRDS validator reads both serialisations.", "no other open-source checker does this",
+             "No other library names the line.", "Any other iiRDS tool would pass this package.",
+             "It finds more than twice as many defects as the reference implementation.",
+             "It catches more than ten times the errors the reference misses.",
+             "iirds-validate is unique among iiRDS validators.", "172 of 280, as no other iiRDS tool does")
 DESCRIBING = ("more than 200 rules", "re-measured on every release rather than promised",
               "checked weekly for change", "the section of the specification it enforces",
               "other than the manifest, nothing is read twice", "the report names the rule",
               "no other check here has run", "more than one element", "listed more than once",
-              "the identifier is unique within the package", "MUST be unique")
+              "the identifier MUST be unique within the package", "no other value is used",
+              "listed more than once", "more than 200 rules")
 
 
 def test_comparisons_and_superlatives_are_refused_and_plain_description_is_not():

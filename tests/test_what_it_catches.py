@@ -63,3 +63,40 @@ def test_the_page_says_which_rules_claim_an_obligation_without_a_link():
                 assert claimed in text, (
                     "%s appears on the page, claims %s, and the page does not say so"
                     % (rule_id, claimed))
+
+
+def _generator():
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import gen_what_it_catches
+
+    return gen_what_it_catches
+
+
+def test_no_rule_compares_this_tool_with_another():
+    """A rule's title and remedy reach the page inside captured output, which
+    the check over the page's prose passes over. They are held here instead,
+    for every rule and not only the ones a case shows."""
+    aims = _generator().aims_at_a_tool
+    said = sorted("%s %s: %s" % (rule.id, field, aims(getattr(rule, field)))
+                  for rule in all_rules() for field in ("title", "fix", "diagnosis")
+                  if aims(getattr(rule, field)))
+    assert said == [], "\n".join(said)
+
+
+def test_the_comparison_check_refuses_what_it_is_for():
+    """The test above passes on every rule, which is also what it would do if
+    the check matched nothing."""
+    aims = _generator().aims_at_a_tool
+    for text in ("Coverage is 172 of 280, as no other iiRDS tool does.",
+                 "No other library reads it.",
+                 "It finds more than twice as many defects as the reference implementation.",
+                 "Unlike other validators, it reads the index.",
+                 "It is unique among iiRDS validators."):
+        assert aims(text), text
+    for text in ("Rename one of them so the two differ by more than case.",
+                 "Without one the element is anonymous, so no other statement can refer to it.",
+                 "A rendition larger than this tool will read in one piece has to be split.",
+                 "If it was exported from another tool, export as RDF/XML."):
+        assert aims(text) is None, text

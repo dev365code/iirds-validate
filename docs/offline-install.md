@@ -72,12 +72,13 @@ is the reason to run it at all.
 If you built the `.pyz` yourself with `python tools/build_zipapp.py` instead of
 downloading it, there is no `SHA256SUMS` on the machine and the sum to compare
 against is the one on the release page. A build of the tagged commit is
-expected to match it when the dependency versions and `SOURCE_DATE_EPOCH` match
-and it is built the way the release is, on Linux; what the release workflow
-measures is one runner building it twice, not two kinds of system against each
-other. The versions the release bundled are named by the `*.dist-info`
-directories inside the archive itself, which is a weaker thing to rely on than
-a record published beside it.
+expected to match it when the dependency versions match, `SOURCE_DATE_EPOCH` is
+unset as it is for the release, and it is built the way the release is: on
+Linux, with the zlib the release runner's Python carries. What the release
+workflow measures is one runner building it twice, not two kinds of system
+against each other. The versions the release bundled are named by the
+`*.dist-info` directories inside the archive itself, which is a weaker thing to
+rely on than a record published beside it.
 
 Checks the bundled ontology files against the SHA-256 sums recorded at build
 time. Useful when the files crossed an air gap on removable media, and also the

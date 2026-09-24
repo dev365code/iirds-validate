@@ -369,7 +369,7 @@ class Report:
     #: alarming direction available.
     #:
     #: They arrived one defect at a time, and all of them the same defect:
-    #: silence read as a pass. "unpacked" was the archive requirements a
+    #: silence read as a pass. "unpacked" was the archive rules a
     #: directory cannot answer; "fragment" the four a snippet cannot satisfy,
     #: whose findings `--fragment` withdraws; "raised" a rule that threw;
     #: "unasked" a kind this command did not ask for; "unreadable" the rules

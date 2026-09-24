@@ -20,7 +20,7 @@ LINT_KINDS = ("lint", "system")
 ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
-#: The requirements whose subject is the ZIP archive itself. None can be
+#: The rules whose subject is the ZIP archive itself. None can be
 #: answered by a directory, so the runner is what says they were not assessed
 #: -- in the report, not only in prose.
 #:

@@ -74,8 +74,8 @@ TABLE = [
 
     ("links/a-step-above-the-root-is-allowed",
      PACKAGE,
-     "            if not done:\n                return LEAVES, None",
-     "            if False:\n                return LEAVES, None",
+     "                if not done:\n                    return LEAVES, None",
+     "                if False:\n                    return LEAVES, None",
      [LINKS],
      "`../..` out of the container resolves and the file outside is read"),
 
@@ -93,12 +93,15 @@ TABLE = [
      [LINKS],
      "the tool reads names the system itself refuses with ELOOP"),
 
-    ("links/directory-links-unclassified",
+    ("links/links-unclassified",
      PACKAGE,
-     "            if _is_link(full):\n                directories.remove(name)",
-     "            if False:\n                directories.remove(name)",
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     "            if False:\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
      [LINKS],
-     "a directory link out of the container is walked through"),
+     "a link is taken at its word: one to a file out of the container is read, and "
+     "one to a directory out of it goes unnamed"),
 
     ("links/no-follow-at-the-read",
      PACKAGE,
@@ -141,15 +144,20 @@ TABLE = [
 
     ("links/a-search-that-cannot-read-is-silence",
      PACKAGE,
-     "    _readable_throughout(path, recursive)\n",
-     "    pass\n",
+     "            except OSError as error:\n"
+     "                refuse(OSError(error.errno, error.strerror, full),\n"
+     "                       \"a package name being searched could not be looked up\")",
+     "            except OSError:\n"
+     "                continue",
      [LINKS],
      "a directory search leaves out a subdirectory it cannot read and passes on the rest"),
 
     ("links/a-step-back-erases-a-name-that-is-not-there",
      PACKAGE,
-     "        if pending and not os.path.isdir(here):",
-     "        if False:",
+     "            if done and not os.path.isdir(os.path.join(top, *done)):\n"
+     "                return NOWHERE, None",
+     "            if False:\n"
+     "                return NOWHERE, None",
      [LINKS],
      "a link through a name that is not a directory reads the file beside it"),
 

@@ -435,21 +435,7 @@ MAX_LINK_HOPS = 32
 #: nothing will follow to the end, or it is written as an absolute path -- which
 #: this cannot show to be inside the container without walking out of it, and
 #: which is not how a package names its own files.
-INSIDE, LEAVES, CHAINED, ABSOLUTE = "inside", "leaves", "chained", "absolute"
-
-
-def _under(child: str, top: str) -> bool:
-    """Whether a path is `top` or spelled beneath it -- as text, on purpose.
-
-    Asking the filesystem is the thing being avoided: `os.path.realpath` walks
-    a path to answer, and what it finds out there -- whether a directory
-    exists, whether it may be searched -- would then be readable off the
-    report. Every path compared here is a link's own text against a root this
-    tool was handed.
-    """
-    top = os.path.normcase(os.path.normpath(top))
-    child = os.path.normcase(os.path.normpath(child))
-    return child == top or child.startswith(top + os.sep)
+INSIDE, LEAVES, CHAINED, ABSOLUTE, NOWHERE = "inside", "leaves", "chained", "absolute", "nowhere"
 
 
 def _is_link(path: str) -> bool:
@@ -511,10 +497,19 @@ def _rooted(target: str, roots: Tuple[str, ...]) -> Optional[List[str]]:
         target = target[len(_EXTENDED):]
         if target[:4].upper() == "UNC" + os.sep:
             target = os.sep + os.sep + target[4:]
+    # Component by component and as written: a `..` or a `.` in the target is
+    # the walk's to judge, as it judges them in a relative one. Normalised
+    # first, `/root/missing/../x` read as `/root/x`, which no kernel opens.
+    parts = _split(target)
     for root in roots:
-        if root and _under(target, root):
-            return [part for part in _split(os.path.relpath(target, root))
-                    if part and part != os.curdir]
+        if not root:
+            continue
+        stem = root.rstrip(os.sep)
+        base = _split(stem) if stem else [""]
+        if (len(parts) >= len(base) and
+                [os.path.normcase(p) for p in parts[:len(base)]]
+                == [os.path.normcase(p) for p in base]):
+            return parts[len(base):]
     return None
 
 
@@ -545,12 +540,18 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
     hops = 0
     while pending:
         part = pending.pop()
-        if not part or part == os.curdir:
-            continue
-        if part == os.pardir:
-            if not done:
-                return LEAVES, None                     # a step above the root
-            done.pop()
+        if not part or part in (os.curdir, os.pardir):
+            # Each asks the name reached so far to be a directory: `file/.`,
+            # `file/` and `missing/..` stop the kernel on Linux and macOS, and
+            # Windows, which removes them by their text, would open something
+            # else. One answer on every system -- such a name leads nowhere --
+            # because a verdict that depends on the machine checking is two.
+            if done and not os.path.isdir(os.path.join(top, *done)):
+                return NOWHERE, None
+            if part == os.pardir:
+                if not done:
+                    return LEAVES, None                 # a step above the root
+                done.pop()
             continue
         here = os.path.join(top, *done, part)
         if _is_link(here):
@@ -573,15 +574,8 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
                 done = []
                 pending.extend(reversed(inner))
             else:
-                pending.extend(reversed([p for p in _split(target)
-                                         if p and p != os.curdir] or [os.curdir]))
+                pending.extend(reversed(_split(target)))
             continue
-        if pending and not os.path.isdir(here):
-            # The kernel stops here: a name that is not a directory, or is not
-            # there at all, cannot be walked through, and a `..` after it does
-            # not undo that. Handed back as the kernel would try it, so asking
-            # it anything finds nothing -- it is inside, where nothing is.
-            return INSIDE, os.path.join(here, *reversed(pending))
         done.append(part)
     return INSIDE, os.path.join(top, *done)
 
@@ -617,8 +611,14 @@ def _listing(top: str, refuse) -> Iterator[Tuple[str, List[str], List[str]]]:
         except OSError as error:
             refuse(error)
             continue
-        directories = [e.name for e in entries if e.is_dir(follow_symlinks=False)]
-        files = [e.name for e in entries if not e.is_dir(follow_symlinks=False)]
+        directories: List[str] = []
+        files: List[str] = []
+        for entry in entries:
+            try:
+                directory = entry.is_dir(follow_symlinks=False)
+            except OSError:
+                directory = False       # as os.walk counts one it cannot ask
+            (directories if directory else files).append(entry.name)
         yield here, directories, files
         pending.extend(os.path.join(here, name) for name in reversed(directories))
 
@@ -688,6 +688,8 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
                     chained.append(prefix + name)
                 elif verdict == ABSOLUTE:
                     absolute.append(prefix + name)
+                elif verdict == NOWHERE:
+                    dangling.append(prefix + name)
         for name in files:
             entry = prefix + name
             full = os.path.join(here, name)
@@ -700,6 +702,8 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
                     chained.append(entry)
                 elif verdict == ABSOLUTE:
                     absolute.append(entry)
+                elif verdict == NOWHERE:
+                    dangling.append(entry)
                 elif os.path.isfile(target):
                     names.append(entry)
                 elif not os.path.lexists(target):
@@ -1036,21 +1040,24 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
         return [], []
     if looks_like_a_container(path):
         return [path], []
-    _readable_throughout(path, recursive)
     # Both spellings again, and every candidate judged by the same walk from
     # the root down: a name found under a directory link was judged on its own
     # text before, so `build/x.iirds -> b/theirs.iirds`, with `b` a link out,
     # read somebody else's package and said nothing.
     roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
-    pattern = "**/*.iirds" if recursive else "*.iirds"
     found: List[Path] = []
     leaving: List[Path] = []
-    for candidate in sorted(path.glob(pattern)):
+    for candidate in _candidates(path, recursive):
         verdict, where = _resolve(roots, candidate.relative_to(path).parts)
         if verdict != INSIDE:
             leaving.append(candidate)
         elif os.path.isfile(where):
             found.append(candidate)
+        elif _is_link(str(candidate)) and not os.path.lexists(where):
+            # A link that leads nowhere -- through a name that is not a
+            # directory, say, where the kernel stops -- is refused out loud
+            # like one that leads out, rather than left out without a word.
+            leaving.append(candidate)
     if found or leaving:
         return found, leaving
     # No archives: perhaps a directory of unpacked containers.
@@ -1063,35 +1070,45 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
     return found, leaving
 
 
-def _readable_throughout(top: Path, recursive: bool) -> None:
-    """Refuse a search that could not read every directory it walks.
+def _candidates(top: Path, recursive: bool) -> List[Path]:
+    """The `.iirds` names under `top`, found by the walk that lists a container.
 
-    The glob below says nothing about a directory it cannot list, or can list
-    and not search: the packages in there were left out and the search
-    answered for what remained. Each directory it would walk is read here
-    first, the way the container walk reads one, and the first that cannot be
-    is refused by name. A link is not walked into, here or there.
+    A glob was the search before, and a glob skips a directory it cannot list
+    without a word, returns from one it can list and not search names the file
+    test after it dropped without a word, and on older Pythons asks every link
+    what it points at. This lists each directory once and asks no link
+    anything. A directory it cannot list, and a `.iirds` name it cannot look
+    up, may each hide a package, so either refuses the search, named as the
+    argument was given; a name that is gone by the time it is looked up is
+    gone, and anything not named `.iirds` is not looked up at all. A link is
+    not walked into, and neither is an unpacked container: opened, it refuses
+    what it cannot read on its own (S13), and the containers beside it are
+    still checked.
     """
     def refuse(error: OSError,
                what: str = "a directory being searched could not be listed") -> None:
-        where = error.filename or str(top)
-        with contextlib.suppress(ValueError):           # another drive: named as given
-            where = os.path.relpath(where, str(top)).replace(os.sep, "/")
-        raise Unlistable("%s: %s (%s)" % (what, where, error.strerror or error))
+        raise Unlistable("%s: %s (%s)" % (what, error.filename or top,
+                                          error.strerror or error))
 
+    found: List[Path] = []
     for here, directories, files in _listing(str(top), refuse):
-        for name in directories + files:
+        for name in files:
+            if not name.endswith(".iirds"):
+                continue
             full = os.path.join(here, name)
             try:
                 os.lstat(full)
-            except PermissionError as error:
-                refuse(OSError(error.errno, error.strerror, here),
-                       "a directory being searched could not be searched")
+            except FileNotFoundError:
+                continue                                # gone, not hidden
             except OSError as error:
                 refuse(OSError(error.errno, error.strerror, full),
-                       "an entry being searched could not be looked up")
-        directories[:] = ([d for d in directories if not _is_link(os.path.join(here, d))]
+                       "a package name being searched could not be looked up")
+            found.append(Path(full))
+        directories[:] = ([d for d in directories
+                           if not _is_link(os.path.join(here, d))
+                           and not looks_like_a_container(Path(here, d))]
                           if recursive else [])
+    return sorted(found)
 
 
 def discover(path, recursive: bool = True) -> List[Path]:

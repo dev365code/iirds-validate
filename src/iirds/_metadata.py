@@ -89,7 +89,13 @@ def _raise(exception):
     raise exception()
 
 
-def _declares_entities(raw: bytes) -> bool:
+#: The expat errors that say the encoding, not the markup, stopped it.
+_ENCODINGS_EXPAT_CANNOT_USE = frozenset(
+    expat.errors.codes[error] for error in (expat.errors.XML_ERROR_UNKNOWN_ENCODING,
+                                            expat.errors.XML_ERROR_INCORRECT_ENCODING))
+
+
+def _declares_entities(raw: bytes) -> Optional[bool]:
     """Whether the parser will be handed declarations to expand.
 
     Asked of the parser rather than of the bytes. A pattern over bytes has to
@@ -104,7 +110,8 @@ def _declares_entities(raw: bytes) -> bool:
     handler fires when a declaration is read and before any reference to it is
     expanded. Stopped at the root element: declarations live in the DTD, the
     DTD precedes the root, and an external one is not fetched -- so an
-    external DTD passes, declaring nothing this parser will see.
+    external DTD passes, declaring nothing this parser will see. None where
+    expat cannot read the document at all, which the caller refuses.
     """
     parser = expat.ParserCreate()
     parser.EntityDeclHandler = lambda *_args: _raise(_Declared)
@@ -115,16 +122,18 @@ def _declares_entities(raw: bytes) -> bool:
         return True
     except _RootReached:
         return False
+    except expat.ExpatError as exc:
+        # A syntax error is the document's, and the parser under the graph
+        # meets it and says so in its own words. An encoding expat cannot use
+        # is not: it answers for nothing about such a document.
+        return None if exc.code in _ENCODINGS_EXPAT_CANNOT_USE else False
     except Exception:
-        # Caught broadly, and this is the honest part: what expat cannot read
-        # it cannot answer for, and the parser underneath the graph is not
-        # this one. So a document expat refuses and rdflib accepts would pass
-        # here unexamined. The decode above is what keeps that set empty -- it
-        # hands on bytes whose declaration agrees with them, so the two read
-        # the same document -- and the tests hold that, with and without a
-        # byte order mark, because a mark was how they came apart. Raising is
-        # not an option either: parse_errors promises that reading never does.
-        return False
+        # What expat cannot read it cannot answer for -- a multi-byte
+        # encoding raises `ValueError` -- and the parser under the graph is
+        # not this one. Answering "no declarations" here let a document declare
+        # entities for rdflib to expand. Raising is not an option either:
+        # parse_errors promises that reading never does.
+        return None
     return False
 
 
@@ -218,7 +227,7 @@ _ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
 #: that grows with the square of its input. The double-byte code pages are
 #: taken out; XML's parser here reads none of them.
 _READ_HERE = re.compile(r"utf(?:16|32)(?:le|be)?|(?:us)?ascii|latin\d*|l\d+|iso8859\d+|"
-                        r"(?:cp|windows|ibm)(?!9[3-5]\d\b)\d{3,4}|koi8[ru]|macroman")
+                        r"(?:cp|windows|ibm)(?!9[3-5]\d\b|1361\b)\d{3,4}|koi8[ru]|macroman")
 
 
 def _declared_encoding_name(raw: bytes) -> Optional[str]:
@@ -291,9 +300,9 @@ def _document_element(raw: bytes) -> Optional[str]:
         for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
             return element.tag
     except Exception:
-        # `ParseError`, and whatever a codec the parser was handed raises: a
-        # multi-byte one is refused with `ValueError`. Either way the parser
-        # reports it in its own words.
+        # `ParseError`, which the parser under the graph reports in its own
+        # words. An encoding expat cannot use does not reach here: the entity
+        # guard before this refuses the document.
         return None
     return None
 
@@ -493,8 +502,13 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # are another is refused outright by a parser reading it as it arrived --
     # and a guard that stopped there would answer "no declarations" about a
     # document the decode was about to make readable, entities and all.
-    if fmt == "xml" and _declares_entities(raw):
-        return None, "%s: refused: the document declares XML entities" % name
+    if fmt == "xml":
+        declares = _declares_entities(raw)
+        if declares is None:
+            return None, "%s: %s: %s" % (name, UNREADABLE_ENCODING,
+                                         _shown(_declared_encoding_name(raw) or "its encoding"))
+        if declares:
+            return None, "%s: refused: the document declares XML entities" % name
 
     # Whether the document is RDF/XML at all is decided here, on the decoded
     # bytes, for the reason the entity guard is: a judge that read the stored

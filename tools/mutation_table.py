@@ -107,9 +107,11 @@ TABLE = [
 
     ("links/markers-answered-by-the-far-end",
      PACKAGE,
-     '    return (os.path.lexists(str(path / MIMETYPE_FILE))\n'
-     '            or os.path.lexists(str(path / METADATA_RDF)))',
-     "    return (path / MIMETYPE_FILE).exists() or (path / METADATA_RDF).exists()",
+     "    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])\n"
+     "    if verdict != INSIDE:\n"
+     "        return True\n"
+     "    return os.path.lexists(os.path.join(where, last))",
+     "    return os.path.exists(os.path.join(roots[0], *name.split('/')))",
      [LINKS],
      "whether a file somewhere else exists decides whether a directory is a container"),
 
@@ -136,7 +138,9 @@ TABLE = [
 
     ("links/the-search-roots-unresolved",
      PACKAGE,
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))",
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.abspath(str(path)),)",
      [LINKS],
      "an ordinary alias inside a build directory is refused and nothing is checked"),

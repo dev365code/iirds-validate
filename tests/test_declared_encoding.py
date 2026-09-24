@@ -1,16 +1,16 @@
 """What this tool does with a document's encoding declaration.
 
-Four states, and today it tells two of them apart. A document whose
-declaration and bytes agree on a codec this tool cannot read is refused with
+Four states, and it used to tell two of them apart. A document whose
+declaration and bytes agreed on a codec this tool cannot read was refused with
 the codec's own words -- `can't decode byte 0xfc in position 297` -- which
-names no repair. A document whose declaration is a lie is refused when the
-bytes happen not to be UTF-8 and accepted in silence when they happen to be:
-the asymmetry is the defect, because what is wrong with the file is the same
-in both.
+named no repair. A document whose declaration was a lie was refused when the
+bytes happened not to be UTF-8 and accepted in silence when they happened to
+be: the asymmetry was the defect, because what is wrong with the file is the
+same in both.
 
-The silence is total. A package declaring `windows-1252` over UTF-8 bytes
-produces a report that is byte-identical to the UTF-8 control once the digest
-and the path are set aside -- measured, `difference keys: []`.
+The silence was total. A package declaring `windows-1252` over UTF-8 bytes
+produced a report byte-identical to the UTF-8 control once the digest and the
+path were set aside -- measured, `difference keys: []`.
 
 What decides the ambiguous case is not a round trip. UTF-8 bytes read as
 cp1252 give `fÃ¼r` and encode back to the original bytes exactly, so a round
@@ -18,7 +18,8 @@ trip calls that document consistent and would put mojibake in the graph --
 worse than today, where it is read as UTF-8 and comes out right. What tells
 the three apart is whether the bytes are valid UTF-8 *and* carry a byte over
 127: only then do the two readings differ, which is why an ASCII-only document
-declaring anything at all draws nothing.
+declaring a single-byte code page draws nothing. One declaring UTF-16 or an
+EBCDIC page over those bytes reads as other text, and is refused.
 
 No silent substitution, in any state: `errors="replace"` turns a document
 nobody can read into one that parses and says something else.
@@ -165,3 +166,65 @@ def test_a_declaration_the_reader_reads_differently_is_refused(tmp_path, state):
                     for f in report["findings"])
     assert CONTROLS[state][0] in said, (
         "the refusal does not name the declaration it refused: %s" % said)
+
+
+# ---------------------------------------------------------------------------
+# What a declaration may make this reader do. The first version decoded the
+# whole document under whatever the declaration named, printed the name as
+# written, stopped short of a byte order mark, and took `<?xml-stylesheet` for
+# a declaration.
+# ---------------------------------------------------------------------------
+
+def _parsed(raw):
+    return iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
+
+
+def test_an_encoding_outside_the_ones_read_here_is_refused_unread():
+    """punycode's decoder takes time that grows with the square of its input,
+    and decoding under the declared name put that cost in the sender's hands.
+    A name outside the encodings this reader decodes is refused by name, with
+    nothing decoded."""
+    import time
+
+    body = "<!-- %s -->\n%s" % ("ab" * 200000, BODY % PLAIN)
+    raw = ('<?xml version="1.0" encoding="punycode"?>\n' + body).encode("ascii")
+    started = time.monotonic()
+    graph, error = _parsed(raw)
+    assert time.monotonic() - started < 1.0
+    assert graph is None and "punycode" in error, error
+
+
+@pytest.mark.parametrize("declared", ["shift_jis", "gb18030", "big5", "euc-jp", "utf-7",
+                                      "idna", "undefined", "rot13", "mbcs", "x\x00y"])
+def test_parse_metadata_answers_whatever_is_declared(declared):
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and error, declared
+
+
+def test_the_declared_name_reaches_the_report_as_printable_text():
+    """A name is printed in the report; one that carried a terminal escape or
+    a line break wrote a line of its own there."""
+    declared = "x\x1b[31mRED\x1b[0m\nC16.1 forged"
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None
+    assert "\x1b" not in error and "\n" not in error, repr(error)
+    graph, error = _parsed(('<?xml version="1.0" encoding="%s"?>\n' % ("x" * 100000)
+                            + BODY % PLAIN).encode("ascii"))
+    assert graph is None and len(error) < 200, len(error)
+
+
+def test_a_false_declaration_behind_a_byte_order_mark_is_refused():
+    """An editor saving "UTF-8 with BOM" writes the mark in front of a
+    declaration it did not change; xml.etree follows the declaration."""
+    raw = b"\xef\xbb\xbf" + document("windows-1252", "utf-8", GERMAN)
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNUSED_ENCODING in error, error
+
+
+def test_a_stylesheet_instruction_is_not_a_declaration():
+    raw = ('<?xml-stylesheet type="text/xsl" href="x.xsl" encoding="windows-1252"?>\n'
+           + BODY % GERMAN).encode("utf-8")
+    graph, error = _parsed(raw)
+    assert error is None and graph is not None, error

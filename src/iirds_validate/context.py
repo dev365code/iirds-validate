@@ -29,7 +29,14 @@ from typing import List, Optional, Set
 from rdflib import BNode, Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
-from iirds import MAX_METADATA_BYTES, merge_sources, parse_metadata, subclasses_of
+from iirds import (
+    MAX_METADATA_BYTES,
+    UNREADABLE_ENCODING,
+    UNUSED_ENCODING,
+    merge_sources,
+    parse_metadata,
+    subclasses_of,
+)
 
 from . import ontology as ontology_mod
 from . import terms as T
@@ -565,10 +572,11 @@ def _is_decode_failure(raw, reported) -> bool:
 
     The bytes answer it outright in one direction: bytes that are not UTF-8
     never reached a parser, so nothing else can be what failed. Where they do
-    decode, the failure can still be about the encoding -- a declaration
-    naming a codec Python does not have raises `LookupError`, and one naming a
-    multi-byte codec raises `ValueError` -- and those are asked of the
-    exception by type. The reader returns its third case, the bytes that will
+    decode, the failure can still be about the encoding: the reader refuses
+    by name a declaration it does not read or reads differently, and a codec
+    that raises on the parser's side -- `LookupError` for one Python does not
+    have, `ValueError` for a multi-byte one -- is asked of the exception by
+    type. The reader returns its third case, the bytes that will
     not decode, as text rather than raising, and the test on the bytes covers
     that one without knowing it.
 
@@ -609,6 +617,9 @@ def _declared_encoding(raw, reported) -> str:
     """
     if not isinstance(raw, (bytes, bytearray)) or not _is_decode_failure(raw, reported):
         return ""
+    if isinstance(reported, str) and (UNUSED_ENCODING in reported
+                                      or UNREADABLE_ENCODING in reported):
+        return ""                # the refusal names the declaration already
     found = _DECLARED.search(bytes(raw[:200]))
     if found is None:
         return ""

@@ -135,13 +135,15 @@ def _declares_entities(raw: bytes) -> bool:
 #: document, not the document being damaged.
 NOT_RDFXML = "not an RDF/XML document"
 
-#: A document naming an encoding no codec answers to. Refused, not read: XML
-#: requires the declaration to name a charset the processor can handle, and a
-#: processor that cannot must say so rather than guess. It has its own
-#: category because the alternative was the exception escaping this function
-#: -- `LookupError` out of the reader below, past a contract that promises
-#: `(graph, None)` or `(None, error)`, into a caller told otherwise.
-UNREADABLE_ENCODING = "declares an encoding no codec answers to"
+#: A document naming an encoding this reader does not read: one no codec
+#: answers to, one outside the encodings it decodes, or a name XML does not
+#: allow. Refused, not read: XML requires the declaration to name a charset the
+#: processor can handle, and a processor that cannot must say so rather than
+#: guess. It has its own category because the alternative was the exception
+#: escaping this function -- `LookupError` out of the reader below, past a
+#: contract that promises `(graph, None)` or `(None, error)`, into a caller
+#: told otherwise.
+UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 
 #: A document whose declaration and this reader disagree about what it says.
 #: rdflib decodes as UTF-8 whatever the declaration names, so where the
@@ -198,14 +200,40 @@ def _split(tag: str) -> Tuple[str, str]:
     return "", tag
 
 
-#: The `encoding=` of an XML declaration, which may sit only at the front.
-_DECLARED = re.compile(br'^<\?xml[^>]*?\sencoding\s*=\s*(["\'])([^"\']*)\1')
+#: The `encoding=` of an XML declaration, which may sit only at the front,
+#: behind a UTF-8 byte order mark at most. `<?xml` and then white space: a
+#: processing instruction whose target merely starts with those letters --
+#: `<?xml-stylesheet` -- is not a declaration.
+_DECLARED = re.compile(br'^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])(.*?)\1',
+                       re.DOTALL)
+
+#: A name XML allows for an encoding (XML 1.0, production 81).
+_ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
+
+#: The encodings a document is decoded under to be compared with UTF-8: the
+#: two XML requires and the single-byte families -- ASCII, Latin, ISO 8859,
+#: the Windows, DOS and IBM code pages, KOI8, Mac Roman -- each one pass over
+#: the bytes. Asked of the name with case, `-`, `_` and `.` set aside. Any
+#: other name is refused unread: a codec is code, and punycode's takes time
+#: that grows with the square of its input. The double-byte code pages are
+#: taken out; XML's parser here reads none of them.
+_READ_HERE = re.compile(r"utf(?:16|32)(?:le|be)?|(?:us)?ascii|latin\d*|l\d+|iso8859\d+|"
+                        r"(?:cp|windows|ibm)(?!9[3-5]\d\b)\d{3,4}|koi8[ru]|macroman")
 
 
 def _declared_encoding_name(raw: bytes) -> Optional[str]:
-    """The name the document declares, or None where it declares none."""
-    found = _DECLARED.match(raw.lstrip(b"\xef\xbb\xbf"))
-    return found.group(2).decode("ascii", "replace") if found else None
+    """The name the document declares, as written, or None where it declares
+    none."""
+    found = _DECLARED.match(raw)
+    return found.group(2).decode("latin-1") if found else None
+
+
+def _shown(name: str) -> str:
+    """A declared name as it can be printed: a name carried a terminal escape
+    and a line break into the report, and wrote a line of its own there. Cut
+    to sixty characters, since a name is as long as its sender makes it."""
+    shown = name.encode("unicode_escape").decode("ascii")
+    return shown if len(shown) <= 60 else shown[:57] + "..."
 
 
 def _decoded(raw: bytes, encoding: str):
@@ -219,7 +247,7 @@ def _decoded(raw: bytes, encoding: str):
     """
     try:
         return raw.decode(encoding)
-    except (UnicodeDecodeError, LookupError):
+    except Exception:
         return None
 
 
@@ -262,7 +290,10 @@ def _document_element(raw: bytes) -> Optional[str]:
     try:
         for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
             return element.tag
-    except ElementTree.ParseError:
+    except Exception:
+        # `ParseError`, and whatever a codec the parser was handed raises: a
+        # multi-byte one is refused with `ValueError`. Either way the parser
+        # reports it in its own words.
         return None
     return None
 
@@ -381,6 +412,31 @@ def _oversize(name: str, size: int) -> str:
             % (name, size - 1, MAX_METADATA_BYTES))
 
 
+def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
+    """Why the document's declaration refuses it, or None where it does not.
+
+    rdflib decodes as UTF-8 whatever the declaration names. A name XML does
+    not allow, or one this reader does not decode, is refused by name, with
+    nothing decoded. Any other name is read both ways -- under the name, and
+    as UTF-8 -- and where the two are different text there are two readings
+    of one file, so it is refused rather than one chosen. Where they are the
+    same, as they are for bytes all under 128, nothing is said.
+    """
+    declared = _declared_encoding_name(stored)
+    if declared is None or _is_utf8_name(declared):
+        return None
+    shown = _shown(declared)
+    normal = declared.lower().replace("-", "").replace("_", "").replace(".", "")
+    if (not _ENCODING_NAME.fullmatch(declared) or not _READ_HERE.fullmatch(normal)
+            or not _codec_exists(declared)):
+        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
+    body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
+    theirs, ours = _decoded(body, declared), _decoded(body, "utf-8")
+    if theirs is None or ours is None or theirs != ours:
+        return "%s: %s: %s" % (name, UNUSED_ENCODING, shown)
+    return None
+
+
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:
     """One metadata document, guarded, parsed into its own Graph.
 
@@ -388,9 +444,11 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     parse failure. The error string always leads with the file name --
     ``"<name>: <detail>"`` -- and that shape is an interface, not a habit:
     the validator routes these strings into its per-file findings by
-    partitioning on the first ``": "``. One refusal has a named category
-    after the file name, ``"<name>: <NOT_RDFXML>: <detail>"``, because the
-    validator reports it under a different rule from a damaged file.
+    partitioning on the first ``": "``. Three refusals carry a named
+    category after the file name, ``"<name>: <category>: <detail>"``:
+    NOT_RDFXML, which the validator reports under a different rule from a
+    damaged file, and the two a declaration draws, UNREADABLE_ENCODING and
+    UNUSED_ENCODING.
 
     ``base`` has no default on purpose: a parse needs a base IRI and the
     caller owns that decision (the container reader passes PACKAGE_BASE).
@@ -412,6 +470,15 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # function hands back a string, and Package.parse_errors promises that
     # reading it never raises, so this one does too. Caught broadly like the
     # two below: what escaped here was not a class anybody had enumerated.
+    # The declaration is asked of the bytes as they were stored, before the
+    # mark is taken off: the decode below drops a UTF-8 mark and the
+    # declaration behind it, and a false declaration behind the mark went
+    # unread.
+    if fmt == "xml":
+        refused = _declaration_refused(name, raw)
+        if refused is not None:
+            return None, refused
+
     try:
         raw = _decode(raw)
     except Exception as exc:
@@ -437,14 +504,6 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # document, so nothing was read, and the reader says so rather than
     # handing on a graph nobody wrote.
     if fmt == "xml":
-        declared = _declared_encoding_name(raw)
-        if declared is not None and not _codec_exists(declared):
-            return None, "%s: %s: %s" % (name, UNREADABLE_ENCODING, declared)
-        if declared is not None and not _is_utf8_name(declared):
-            theirs = _decoded(raw, declared)
-            ours = _decoded(raw, "utf-8")
-            if theirs is None or ours is None or theirs != ours:
-                return None, "%s: %s: %s" % (name, UNUSED_ENCODING, declared)
         element = _document_element(raw)
         if element is not None and not is_rdfxml_document_element(element):
             return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))

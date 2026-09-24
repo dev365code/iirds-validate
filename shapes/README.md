@@ -180,8 +180,8 @@ each listed with its reason in `MANIFEST.json`:
 ## Why you can trust the translation
 
 **These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
-43 of them encode a rule that iiRDS 1.3 added or that only the 1.3 text
-carries, so running them against a package that declares an older edition
+43 of them encode a rule that does not apply to every edition -- from 1.1,
+from 1.2, or 1.3 alone -- so running them against a package that declares an older edition
 reports rules that edition does not have. The Python validator gates on the
 declared version and stays silent on those. Gating the shapes themselves would
 put an inference about editions inside an artefact whose point is that a SHACL

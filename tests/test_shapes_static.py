@@ -448,7 +448,7 @@ def test_the_readme_says_how_many_shapes_are_edition_specific():
     assert limited, "no edition-limited shape at all would be surprising"
 
     readme = (SHAPE_DIR.parent / "README.md").read_text("utf-8")
-    assert "%d of them encode a rule that iiRDS 1.3 added" % len(limited) in readme, \
+    assert "%d of them encode a rule that does not apply to every edition" % len(limited) in readme, \
         "shapes/README.md should say %d; it says something else" % len(limited)
 
 

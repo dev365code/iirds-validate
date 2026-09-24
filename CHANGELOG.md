@@ -22,6 +22,12 @@ such state: its entries are read from the archive whatever mode bits they
 record, measured on one whose directory entry records a mode that forbids
 searching it. 0.7.1 does this.
 
+**Security. `--fragment` read the whole file before the metadata limit
+applied.** The file was copied into a throwaway container by reading all of it
+into memory, and only the container's read was bounded. The copy now stops one
+byte past the limit, and the gate refuses the document the way it refuses an
+archive's (C16.1). 0.7.1 does this.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

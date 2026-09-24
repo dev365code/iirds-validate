@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.7.2 — unreleased
+## 0.7.2 — 2026-09-25
 
 Three advisories describe what this release fixes:
 
@@ -119,6 +119,21 @@ wrong, such a field takes the exit code from `0` to `1` on every
 interpreter; zipfile already refused a directory field that runs past the
 extra data (`S13`), and from 3.12 one too short or not UTF-8. No verdict
 moves on the vendored corpus.
+
+**The figures 0.7.1 published, measured again on 0.7.2.**
+Coverage of the standard is 172 of 280, of which 137 are held by a package.
+No rule is added or removed: the rule count goes to 236, as in 0.7.1. A
+directory is checked with nine fewer rules than
+the same package packed -- `194 rules checked` on this build --
+since the rules about the ZIP archive itself have no archive to ask, and the
+report's `notApplicable` names them under `unpacked`:
+the count moves from 194 to 185 when the package is unpacked. A conformance
+run says it for the fourteen lint rules it does not ask -- the
+interoperability rules less the two that are marked conformance, which it
+does ask. The reasons a report can give come to seven. Twenty-six handover
+rules separate an iiRDS/H reading from an iiRDS/A one, and one container rule
+goes the other way. `toolVersion` moves only at a release:
+no commit that changed a rule file has ever moved it.
 
 ## 0.7.1 — 2026-09-23
 

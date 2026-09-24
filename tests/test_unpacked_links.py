@@ -517,6 +517,27 @@ def test_a_container_holding_a_directory_it_cannot_list_is_refused(unpacked, out
         os.chmod(str(hidden), 0o755)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+def test_a_directory_that_cannot_be_searched_refuses_the_container(unpacked):
+    """The other half of the one above: a directory whose names can be listed
+    but not looked up. Every file in it failed the test for being a file, so it
+    was left out of the listing without a word -- the same half-read container,
+    reached from the other mode bit."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root looks up what the mode bits forbid")
+    shut = unpacked / "content" / "shut"
+    shut.mkdir()
+    (shut / "topic.xhtml").write_bytes(b"<html/>")
+    os.chmod(str(shut), 0o444)
+    try:
+        report = runner.run(unpacked, runner.ALL_KINDS)
+        assert not report.ok
+        detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+        assert detail and "content/shut" in detail[0], detail
+    finally:
+        os.chmod(str(shut), 0o755)
+
+
 def test_a_search_does_not_follow_a_name_through_a_directory_that_leads_out(
         make_package, tmp_path, outside):
     """The same one-component-at-a-time question, one layer up."""

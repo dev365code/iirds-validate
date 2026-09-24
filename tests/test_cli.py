@@ -188,6 +188,8 @@ USAGE_ERRORS = [
     ["check", "x.iirds", "--iirds-version", "9.9"],
     ["pack"],                                        # a subcommand of its own
     ["diff", "only-one-argument.json"],
+    ["serve", "--port", "99999", "--no-open"],       # a number, and not a port
+    ["serve", "--port", "-5", "--no-open"],
 ]
 
 

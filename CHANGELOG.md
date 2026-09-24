@@ -37,6 +37,12 @@ report that came back -- captured on the run that wrote the page, so a case
 whose verdict moves stops the build rather than going on to show an error
 above a `PASS`.
 
+**`iirds serve --port` with a number that is not a port exits `64`.**
+`--port 99999` and `--port -5` went past the parser and failed at the bind,
+with a traceback and `1` -- the code that says a package failed. The parser
+now refuses a port outside 0 to 65535, as it already refused one that is not
+a number.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

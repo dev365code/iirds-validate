@@ -38,26 +38,47 @@ through 0.7.1 reads the whole file.
 
 **Security. Pointing at a directory of packages left out the ones in a
 subdirectory it could not read.** The search walked the directory with a glob,
-which says nothing about a subdirectory it cannot list, or can list and not
-search, and the run passed on the packages it did find. Such a subdirectory
-now refuses the search by name, with `2`, as a name that leads out of the
-directory already does; for a directory holding one, that takes the exit code
-from `0` to `2`. Every release through 0.7.1 does this.
+which skips a subdirectory it cannot list without a word; from one it can list
+and not search it returns the names, and the file test after it dropped each of
+them without a word. The run passed on the packages it did find. The search now
+walks the directory the way a container is listed: a subdirectory it cannot
+list, or a `.iirds` name it cannot look up, refuses the search with `2`, named
+as the argument was given, as a name that leads out of the directory already
+does. A name gone by the time it is looked up is left out, and an unpacked
+container found there refuses what it cannot read itself when it is opened
+(S13), with the containers beside it still checked. Where every package found
+beside such a subdirectory passes, that takes the exit code from `0` to `2`;
+where one of them fails, from `1`. Every release through 0.7.1 leaves out a
+subdirectory it cannot list; one it can list and not search, 0.6.1 through
+0.7.1 leave out, and earlier releases stop with `2` on the permission error
+(under Python 3.14 they leave it out too).
 
 **Security. A link through a name that is not a directory read the file beside
-it.** A container's links are resolved one component at a time, and a
-component that was not there, or was a file, was kept as if it were a
-directory, so a `..` after it took it away again: the link read as the file
-beside it, where a consumer opening the same path gets an error. The walk now
-stops where the kernel stops, and such a link is named as pointing at nothing.
-0.6.1 through 0.7.1 do this.
+it.** A container's links are resolved one component at a time, and a component
+that was not there, or was a file, was kept as if it were a directory: a `..`
+after it took it away again, and a `.` or a separator after a file was dropped,
+so the link was listed and read as the file beside it, where a consumer on
+Linux or macOS opening the same path gets an error. The walk now asks a name
+that a `..`, a `.` or a separator follows to be a directory, and a link through
+one that is not leads nowhere: S6 names it, and for a package with nothing else
+wrong that takes the exit code from `0` to `1`. Windows removes those by their
+text and would open the file beside it; the answer here is the same wherever
+the check runs. An absolute target is walked as written rather than tidied
+first, so one that steps above the container on its way is named as leading
+out. When a directory is searched, a `.iirds` name that is a link leading
+nowhere is now refused by name with `2`, where 0.6.1 through 0.7.1 checked one
+of this shape as the file beside it and left a plainly dangling one out without
+a word. 0.6.1 through 0.7.1 resolve such a link as text.
 
-**Security. Listing an unpacked container asked each of its links what it
-points at.** The listing sorted names into directories and files with a
-question that a link answers from its far end. No verdict depended on the
-answer -- every link is resolved from the root afterwards -- but the question
-reached wherever the link points. Each name is sorted by its own entry now.
-0.6.1 through 0.7.1 do this.
+**Security. Listing an unpacked container, and searching a directory, asked
+each link what it points at.** The container listing sorted names into
+directories and files with a question that a link answers from its far end, and
+on Python 3.9 and 3.10 the directory search's glob asked the same. No verdict
+depended on the answer -- every link is resolved from the root afterwards --
+but the question reached wherever the link points. Each name is sorted by its
+own entry now, in both. Every release through 0.7.1 asks; up to 0.6.0 the
+answer also decided what was listed and read (see 0.6.1), and from 0.6.1
+through 0.7.1 it decided nothing.
 
 ## 0.7.1 — 2026-09-23
 

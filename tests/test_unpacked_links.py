@@ -28,7 +28,7 @@ import pytest
 
 from conftest import MINIMAL_RDF
 from iirds_validate import runner
-from iirds_validate.cli import EXIT_ERROR, main
+from iirds_validate.cli import EXIT_ERROR, EXIT_FINDINGS, main
 from iirds_validate.model import MAX_LISTED_PER_RULE
 from iirds_validate.package import MAX_LINK_HOPS, DirectoryPackage, Package, PackageError, search
 
@@ -488,21 +488,31 @@ def test_an_entry_that_cannot_be_looked_up_is_named_as_itself(unpacked, monkeypa
 
 
 def test_a_step_back_from_a_name_that_is_not_a_directory_resolves_to_nothing(unpacked):
-    """`missing/../topic1.xhtml` names nothing a system can open: the kernel
-    stops at `missing`, and `..` after it does not undo that. Resolved as text,
-    the step back erased the name that was not there and the link read as the
-    file beside it -- listed, and read, where a consumer opening the same
-    container gets an error. A link through a file the same way."""
-    link(unpacked / "content" / "through-nothing.xhtml",
-         os.path.join("missing", "..", "topic1.xhtml"))
-    link(unpacked / "content" / "through-a-file.xhtml",
-         os.path.join("topic1.xhtml", "..", "topic1.xhtml"))
-    for name in ("through-nothing.xhtml", "through-a-file.xhtml"):
-        assert not os.path.exists(str(unpacked / "content" / name)), name
+    """`missing/../topic1.xhtml` names nothing Linux or macOS can open: their
+    kernels stop at `missing`, and `..` after it does not undo that; `file/.`
+    and `file/` stop them the same way. Resolved as text, the name that was not
+    a directory was erased and the link read as the file beside it -- listed,
+    and read. Windows removes those by their text and would open that file, so
+    this is one answer for every system rather than each system's own: a
+    verdict that depended on the machine checking would be two verdicts."""
+    content = unpacked / "content"
+    shapes = {
+        "through-nothing.xhtml": os.path.join("missing", "..", "topic1.xhtml"),
+        "through-a-file.xhtml": os.path.join("topic1.xhtml", "..", "topic1.xhtml"),
+        "a-file-as-a-directory.xhtml": "topic1.xhtml" + os.sep + os.curdir,
+        "a-file-with-a-separator.xhtml": "topic1.xhtml" + os.sep,
+        "absolute-through-nothing.xhtml": str(content / "missing" / os.pardir / "topic1.xhtml"),
+    }
+    for name, target in shapes.items():
+        link(content / name, target)
+    if os.name != "nt":
+        for name in shapes:
+            assert not os.path.exists(str(content / name)), name
     package = DirectoryPackage(unpacked)
-    for name in ("content/through-nothing.xhtml", "content/through-a-file.xhtml"):
-        assert name not in package.files, name
-        assert name in package.dangling_links, (name, package.dangling_links)
+    for name in shapes:
+        entry = "content/" + name
+        assert entry not in package.files, entry
+        assert entry in package.dangling_links, (entry, package.dangling_links)
 
 
 def test_the_listing_asks_nothing_of_a_links_far_end(unpacked, outside, monkeypatch):
@@ -661,10 +671,12 @@ def test_a_directory_that_cannot_be_searched_refuses_the_container(unpacked):
 @pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
 @pytest.mark.parametrize("mode", [0o444, 0o111], ids=["listed-not-searched", "searched-not-listed"])
 def test_a_search_refuses_a_subdirectory_it_cannot_read(make_package, tmp_path, capsys, mode):
-    """Pointing at a directory of packages walked it with a glob, and a glob says
-    nothing about a subdirectory it cannot read: the packages in there were left
-    out and the run passed on the rest. Refused by name instead, with 2, as a
-    name that leads out of the directory already is."""
+    """Pointing at a directory of packages walked it with a glob, which skips a
+    subdirectory it cannot list without a word; from one it can list and not
+    search it returns the names, and the file test after it dropped them
+    without a word. Either way the packages in there were left out and the run
+    passed on the rest. Refused by name instead, with 2, as a name that leads
+    out of the directory already is."""
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         pytest.skip("root reads what the mode bits forbid")
     builds = tmp_path / "builds"
@@ -678,6 +690,62 @@ def test_a_search_refuses_a_subdirectory_it_cannot_read(make_package, tmp_path, 
         assert "shut" in capsys.readouterr().err
     finally:
         os.chmod(str(shut), 0o755)
+
+
+def test_a_search_refuses_a_package_name_that_leads_nowhere(make_package, tmp_path, capsys):
+    """A `.iirds` name that is a link through a name that is not there leads
+    nowhere a consumer on Linux or macOS can open. Read as text it was the
+    package beside it and was checked; walked as the kernel walks it, it was
+    left out without a word. Refused by name, with 2, like a link that leads
+    out -- on every system."""
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    link(builds / "odd.iirds", os.path.join("missing", "..", "good.iirds"))
+    assert main(["check", str(builds), "-q"]) == EXIT_ERROR
+    assert "odd.iirds" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+def test_a_container_that_cannot_be_read_fails_alone_in_a_search(unpacked, tmp_path, capsys):
+    """A directory of unpacked containers, one of which holds a directory that
+    cannot be listed. That container refuses itself when it is opened (S13);
+    the search does not refuse the others on its account."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root reads what the mode bits forbid")
+    shelf = tmp_path / "shelf"
+    shelf.mkdir()
+    for name in ("good", "shut"):
+        shutil.copytree(str(unpacked), str(shelf / name), symlinks=True)
+    hidden = shelf / "shut" / "content" / "hidden"
+    hidden.mkdir()
+    os.chmod(str(hidden), 0o111)
+    try:
+        assert main(["check", str(shelf), "-q"]) == EXIT_FINDINGS
+    finally:
+        os.chmod(str(hidden), 0o755)
+
+
+def test_a_package_name_gone_before_it_is_looked_up_is_not_a_refusal(
+        make_package, tmp_path, monkeypatch):
+    """A search that meets a `.iirds` name and then finds it gone -- a build
+    replacing its output, an editor saving -- has lost nothing it could have
+    checked. It is left out, and the rest of the search goes on."""
+    builds = tmp_path / "builds"
+    builds.mkdir()
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    gone = builds / "draft.iirds"
+    gone.write_bytes(b"")
+    looked_up = os.lstat
+
+    def vanished(path, *args, **kwargs):
+        if os.fspath(path) == str(gone):
+            raise FileNotFoundError(2, "No such file or directory", os.fspath(path))
+        return looked_up(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", vanished)
+    found, refused = search(builds)
+    assert [p.name for p in found] == ["good.iirds"] and refused == []
 
 
 def test_a_search_does_not_follow_a_name_through_a_directory_that_leads_out(

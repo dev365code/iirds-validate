@@ -130,7 +130,7 @@ def _run(args, kinds) -> int:
             # that quietly checks less than it was asked to is one that passes
             # for the wrong reason.
             print("%s: not checked: %s is a link that leads out of the directory "
-                  "being searched" % (PROGRAM, path), file=sys.stderr)
+                  "being searched, or to nothing" % (PROGRAM, path), file=sys.stderr)
         for reason in unread:
             # The same refusal as a link out: part of what was pointed at could
             # not be read, and a search that answered for the rest would pass

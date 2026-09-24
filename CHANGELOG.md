@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.7.2 — unreleased
+## 0.8.0 — unreleased
 
 **Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The
 changelog is meant to name every package shape whose verdict moves, and these
@@ -36,6 +36,62 @@ builds a package with it, the command that checks that package, and the
 report that came back -- captured on the run that wrote the page, so a case
 whose verdict moves stops the build rather than going on to show an error
 above a `PASS`.
+
+**`iirds serve --port` with a number that is not a port exits `64`.**
+`--port 99999` and `--port -5` went past the parser and failed at the bind,
+with a traceback and `1` -- the code that says a package failed. The parser
+now refuses a port outside 0 to 65535, as it already refused one that is not
+a number.
+
+**The single-file `.pyz` writes its entry point as bytes.** `__main__.py` was
+written as text, so a build on Windows carried `\r\n` line endings in it and
+was a different file from the same commit. `SECURITY.md` and
+`docs/offline-install.md` said the archive was byte-identical wherever it is
+built; what is measured is one runner building it twice, and they now say
+that.
+
+**A check of an unpacked container calls the archive rules it could not ask
+rules.** Its note said "the 9 requirements about the ZIP archive itself" and
+listed nine rule identifiers; those nine rules cover seven requirements.
+
+**Security. Whether a directory was a container could depend on a file
+outside it.** The markers were looked up as names at the last step only, so a
+`META-INF` that was itself a link out of the directory was followed, and a file
+at the far end decided whether the directory was read as a container. The
+directory a marker sits in is now walked like every other name, where a
+directory is searched and where a container is opened, and one that does not
+resolve inside the container counts as the marker being there, for S6 to name.
+Where the far end held no marker, that takes the exit code from `2` -- no
+package found -- to `1`. Every release through 0.7.1 looks through such a
+link.
+
+**Security. A container holding a directory that could be listed but not
+searched was checked without the files in it.** Each name came back from the
+listing and every question about it failed, so it was neither a file nor a link
+and left the listing without a word. Such a directory now refuses the
+container, as one that cannot be listed already did (S13), and so does an
+entry that cannot be looked up for any other reason -- one removed after the
+listing, or a name the system lists and cannot open -- named as itself. For a
+package with nothing else wrong, that takes the exit code from `0` to `1`. An
+archive has no such state: its entries are read from the archive whatever mode
+bits they record, measured on one whose directory entry records a mode that
+forbids searching it. 0.6.1 through 0.7.1 leave such files out.
+
+**Security. `--fragment` read the whole file before the metadata limit
+applied.** The file was copied into a throwaway container by reading all of it
+into memory, and only the container's read was bounded. The copy now stops one
+byte past the limit, and the gate refuses the document the way it refuses an
+archive's (C16.1). Every release from 0.3.0, the first with `--fragment`,
+through 0.7.1 reads the whole file.
+
+**`SECURITY.md` says where its link handling stops, and when the promise about
+security releases starts.** An absolute link under one of the container's two
+names is walked like a relative one rather than refused; a file swapped after
+the listing for a link that stays inside is read; one bounded read of a bzip2
+or lzma entry could decompress all of it, not always did. A security fix goes
+out ahead of anything else in flight from the release after 0.7.1: the fix for
+GHSA-qwv2-9vgj-vc2w shipped with 0.7.1, and the README and `SECURITY.md` say
+so.
 
 ## 0.7.1 — 2026-09-23
 

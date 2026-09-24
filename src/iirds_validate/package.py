@@ -617,18 +617,35 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
     dangling: List[str] = []
     absolute: List[str] = []
 
-    def refuse(error: OSError) -> None:
+    def refuse(error: OSError,
+               what: str = "a directory in the container could not be listed") -> None:
         where = error.filename or top
         with contextlib.suppress(ValueError):           # another drive: named as given
             where = os.path.relpath(where, top).replace(os.sep, "/")
-        raise Unlistable("a directory in the container could not be listed: %s (%s)"
-                         % (where, error.strerror or error))
+        raise Unlistable("%s: %s (%s)" % (what, where, error.strerror or error))
+
+    def examinable(here: str, full: str) -> None:
+        # A directory can be listed and not searched: its names come back and
+        # every question about one of them fails, so each was neither a file
+        # nor a link and fell out of the listing without a word. Refused
+        # either way; named by what failed -- the directory when it is the
+        # permission, the entry when it is anything else (one removed after
+        # the listing, or a name this system lists and cannot look up).
+        try:
+            os.lstat(full)
+        except PermissionError as error:
+            refuse(OSError(error.errno, error.strerror, here),
+                   "a directory in the container could not be searched")
+        except OSError as error:
+            refuse(OSError(error.errno, error.strerror, full),
+                   "an entry in the container could not be looked up")
 
     for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):
         relative = os.path.relpath(here, top)
         prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
         for name in list(directories):
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 directories.remove(name)
                 verdict, _target = _resolve(roots, (prefix + name).split("/"))
@@ -641,6 +658,7 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
         for name in files:
             entry = prefix + name
             full = os.path.join(here, name)
+            examinable(here, full)
             if _is_link(full):
                 verdict, target = _resolve(roots, entry.split("/"))
                 if verdict == LEAVES:
@@ -674,8 +692,10 @@ class DirectoryPackage:
         self.path = Path(path)
         if not self.path.is_dir():
             raise PackageError("not a directory: %s" % self.path)
-        if not (os.path.lexists(str(self.path / METADATA_RDF))
-                or os.path.lexists(str(self.path / MIMETYPE_FILE))):
+        # The same question the search asks, asked the same way: through a
+        # `META-INF` that is a link the old test here looked at the far end,
+        # so a file somewhere else still decided between two reports.
+        if not looks_like_a_container(self.path):
             raise PackageError(
                 "%s is not an unpacked iiRDS container: no %s and no %s"
                 % (self.path, MIMETYPE_FILE, METADATA_RDF))
@@ -935,9 +955,22 @@ def looks_like_a_container(path: Path) -> bool:
     `META-INF/metadata.rdf` was a link out of it was a container when the file
     at the far end happened to be there and was not one when it was not. That
     is one bit about a path of the sender's choosing, read off the verdict.
+    `lexists` settled the last step and not the one before it: a `META-INF`
+    that was itself a link was followed to wherever it led. The directory a
+    marker sits in is walked the way every name is, and one that does not
+    resolve inside counts as the marker being there -- the container is then
+    opened, and S6 names the link.
     """
-    return (os.path.lexists(str(path / MIMETYPE_FILE))
-            or os.path.lexists(str(path / METADATA_RDF)))
+    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))
+    return any(_marker_there(roots, name) for name in (MIMETYPE_FILE, METADATA_RDF))
+
+
+def _marker_there(roots: Tuple[str, ...], name: str) -> bool:
+    *above, last = name.split("/")
+    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])
+    if verdict != INSIDE:
+        return True
+    return os.path.lexists(os.path.join(where, last))
 
 
 def open_package(path):

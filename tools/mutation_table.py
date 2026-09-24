@@ -50,6 +50,8 @@ CONTAINER = "src/iirds_validate/rules/container.py"
 CLI = "src/iirds_validate/cli.py"
 DIFFERENCE = "src/iirds_validate/difference.py"
 LINKS = "tests/test_unpacked_links.py"
+RUNNER = "src/iirds_validate/runner.py"
+SIZES = "tests/test_size_gates.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
@@ -107,9 +109,11 @@ TABLE = [
 
     ("links/markers-answered-by-the-far-end",
      PACKAGE,
-     '    return (os.path.lexists(str(path / MIMETYPE_FILE))\n'
-     '            or os.path.lexists(str(path / METADATA_RDF)))',
-     "    return (path / MIMETYPE_FILE).exists() or (path / METADATA_RDF).exists()",
+     "    verdict, where = _resolve(roots, above) if above else (INSIDE, roots[0])\n"
+     "    if verdict != INSIDE:\n"
+     "        return True\n"
+     "    return os.path.lexists(os.path.join(where, last))",
+     "    return os.path.exists(os.path.join(roots[0], *name.split('/')))",
      [LINKS],
      "whether a file somewhere else exists decides whether a directory is a container"),
 
@@ -119,6 +123,25 @@ TABLE = [
      "    for here, directories, files in os.walk(top, followlinks=False):",
      [LINKS],
      "a directory the check cannot read is skipped and the package passes on what is left"),
+
+    ("links/an-unsearchable-directory-is-silence",
+     PACKAGE,
+     "            full = os.path.join(here, name)\n"
+     "            examinable(here, full)\n"
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     "            full = os.path.join(here, name)\n"
+     "            if _is_link(full):\n"
+     "                verdict, target = _resolve(roots, entry.split(\"/\"))",
+     [LINKS],
+     "a directory the check can list and not search is left out and the package passes on what is left"),
+
+    ("sizes/a-fragment-read-whole-before-the-gate",
+     RUNNER,
+     "    left = MAX_METADATA_BYTES + 1",
+     "    left = float(\"inf\")",
+     [SIZES],
+     "--fragment reads a file of any size into its staging copy before the metadata limit applies"),
 
     ("links/one-root-spelling-only",
      PACKAGE,
@@ -136,7 +159,9 @@ TABLE = [
 
     ("links/the-search-roots-unresolved",
      PACKAGE,
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.realpath(str(path)), os.path.abspath(str(path)))",
+     "    # read somebody else's package and said nothing.\n"
      "    roots = (os.path.abspath(str(path)),)",
      [LINKS],
      "an ordinary alias inside a build directory is refused and nothing is checked"),

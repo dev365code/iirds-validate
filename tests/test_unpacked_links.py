@@ -425,6 +425,68 @@ def test_a_container_is_recognised_by_the_names_it_holds(unpacked, tmp_path):
     assert [p.name for p in found] == ["ours"] and refused == []
 
 
+def test_a_marker_behind_a_link_decides_nothing(unpacked, tmp_path):
+    """`META-INF` as a link out of the directory. The marker under it was
+    looked up through the link, so a file somewhere else decided whether this
+    was a container. Walked like every other name now, the answer is the same
+    whatever is at the far end -- a container, whose link S6 then names."""
+    answers = []
+    for far_end_has_it in (True, False):
+        side = tmp_path / ("side-%s" % far_end_has_it)
+        ours = side / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        found, refused = search(side)
+        answers.append(([p.name for p in found], [p.name for p in refused]))
+    assert answers == [(["ours"], [])] * 2, answers
+
+
+def test_a_marker_behind_a_link_decides_nothing_in_the_report(unpacked, tmp_path):
+    """The same two directories, checked rather than searched. Opening a
+    container asked its own question about the marker, through the link, so
+    the far end still chose between the container opened with S6 naming the
+    link and a refusal that it was a container at all."""
+    reports = []
+    for far_end_has_it in (True, False):
+        ours = tmp_path / ("side-%s" % far_end_has_it) / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        report = runner.run(ours, runner.ALL_KINDS)
+        reports.append(sorted((f.rule.id, f.violation.subject or "") for f in report.findings))
+    assert reports[0] == reports[1], reports
+    assert ("S6", "META-INF") in reports[0], reports[0]
+
+
+def test_an_entry_that_cannot_be_looked_up_is_named_as_itself(unpacked, monkeypatch):
+    """Listed, then gone before it could be looked up -- an editor's temporary
+    file in the middle of a save, say. Refused like an unsearchable directory,
+    because the check cannot vouch for what it did not see, but named as the
+    entry and by what went wrong: the directory holding it is not at fault."""
+    gone = unpacked / "content" / "topic1.xhtml~"
+    gone.write_bytes(b"draft")
+    looked_up = os.lstat
+
+    def vanished(path, *args, **kwargs):
+        if os.fspath(path) == str(gone):
+            raise FileNotFoundError(2, "No such file or directory", os.fspath(path))
+        return looked_up(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", vanished)
+    report = runner.run(unpacked, runner.ALL_KINDS)
+    detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+    assert detail and "could not be looked up: content/topic1.xhtml~" in detail[0], detail
+
+
 def test_a_link_that_leads_nowhere_is_named(unpacked):
     """Not listed -- there is no file to read -- and not silent either. It is
     an entry the container holds and no rule can use, which is the third thing
@@ -494,6 +556,27 @@ def test_a_container_holding_a_directory_it_cannot_list_is_refused(unpacked, out
         assert MARK not in json.dumps(report.as_dict())
     finally:
         os.chmod(str(hidden), 0o755)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+def test_a_directory_that_cannot_be_searched_refuses_the_container(unpacked):
+    """The other half of the one above: a directory whose names can be listed
+    but not looked up. Every file in it failed the test for being a file, so it
+    was left out of the listing without a word -- the same half-read container,
+    reached from the other mode bit."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root looks up what the mode bits forbid")
+    shut = unpacked / "content" / "shut"
+    shut.mkdir()
+    (shut / "topic.xhtml").write_bytes(b"<html/>")
+    os.chmod(str(shut), 0o444)
+    try:
+        report = runner.run(unpacked, runner.ALL_KINDS)
+        assert not report.ok
+        detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+        assert detail and "content/shut" in detail[0], detail
+    finally:
+        os.chmod(str(shut), 0o755)
 
 
 def test_a_search_does_not_follow_a_name_through_a_directory_that_leads_out(

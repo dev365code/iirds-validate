@@ -20,7 +20,7 @@ LINT_KINDS = ("lint", "system")
 ALL_KINDS = ("container", "schema", "content", "lint", "system")
 
 
-#: The requirements whose subject is the ZIP archive itself. None can be
+#: The rules whose subject is the ZIP archive itself. None can be
 #: answered by a directory, so the runner is what says they were not assessed
 #: -- in the report, not only in prose.
 #:
@@ -127,6 +127,25 @@ def _metadata_findings(ctx: Context, kinds: Sequence[str]):
 FRAGMENT_SUSPENDED = frozenset(("M3", "M4", "L2", "S6"))
 
 
+def _stage_within_the_limit(source: Path, target: Path) -> None:
+    """The fragment, copied to one byte past the metadata limit and no further.
+
+    The copy used to read the whole file first, so the one read the limit
+    exists to bound came before any gate. One byte past it is all the gate
+    needs to refuse the document, exactly as it refuses an archive's.
+    """
+    from iirds import MAX_METADATA_BYTES
+
+    left = MAX_METADATA_BYTES + 1
+    with open(source, "rb") as reading, open(target, "wb") as writing:
+        while left:
+            chunk = reading.read(min(left, 1 << 16))
+            if not chunk:
+                break
+            writing.write(chunk)
+            left -= len(chunk)
+
+
 def run_fragment(path, kinds, version=None):
     """Validate a bare metadata file as if it were a package's metadata.
 
@@ -148,7 +167,7 @@ def run_fragment(path, kinds, version=None):
     try:
         target = staging / "container" / METADATA_RDF
         target.parent.mkdir(parents=True)
-        target.write_bytes(source.read_bytes())
+        _stage_within_the_limit(source, target)
         packed = pack(staging / "container", staging / "fragment.iirds")
         report = run(packed, kinds, version=version)
     finally:
@@ -250,7 +269,7 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                             "validated against %s instead" % (ctx.declared_version, ctx.version))
     if not package.is_archive:
         report.notes.append(
-            "validated as an unpacked container; the %d requirements about the ZIP "
+            "validated as an unpacked container; the %d rules about the ZIP "
             "archive itself (%s) cannot be assessed until it is packed"
             % (len(ARCHIVE_ONLY), ", ".join(ARCHIVE_ONLY)))
     if ctx.ontology.substituted:

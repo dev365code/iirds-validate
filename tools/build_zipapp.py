@@ -130,9 +130,8 @@ def create_archive(source: Path, target: Path) -> None:
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16
                 # `ZipInfo` reads this from `sys.platform`: 0 on Windows and 3
-                # everywhere else. Pinning it is the difference between "the
-                # same bytes wherever it is built" and "wherever it is built on
-                # something that is not Windows".
+                # everywhere else, so unpinned it made a Windows build a
+                # different file from the same inputs.
                 info.create_system = 3
                 archive.writestr(info, path.read_bytes())
     target.chmod(target.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -320,6 +319,13 @@ def refuse_anything_compiled(target: Path) -> None:
             "run the same everywhere: %s" % ", ".join(impure))
 
 
+def write_entry_point(target: Path) -> None:
+    """`__main__.py`, as bytes. Written as text it took the building system's
+    line ending, so a build on Windows was a different file from the same
+    commit -- the one staged file this script writes rather than copies."""
+    (target / "__main__.py").write_bytes(MAIN.encode("utf-8"))
+
+
 def stage(target: Path) -> None:
     copy_sources(target)
     copy_licences(target)
@@ -333,7 +339,7 @@ def stage(target: Path) -> None:
     # The same files under the name a Windows builder's pip uses for them.
     shutil.rmtree(target / "Scripts", ignore_errors=True)
     refuse_anything_compiled(target)
-    (target / "__main__.py").write_text(MAIN, "utf-8")
+    write_entry_point(target)
 
     for cache in target.rglob("__pycache__"):
         shutil.rmtree(cache, ignore_errors=True)

@@ -272,7 +272,7 @@ def test_the_not_applicable_rules_are_listed_by_id_in_the_json_report(make_packa
     listed = result.as_dict()["notApplicable"]
     # Each reason here arrived the same way: rules that were being counted
     # among the ones a run had checked, and came back clean. "unpacked" was
-    # the six requirements about the ZIP archive itself, answered by no
+    # the rules about the ZIP archive itself, answered by no
     # directory. "fragment" is the four a snippet cannot satisfy, whose
     # findings `--fragment` deletes. "raised" is a rule that threw, beside the
     # S3 finding that exists so its silence is not read as a pass. A consumer

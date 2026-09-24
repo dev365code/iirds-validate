@@ -61,6 +61,21 @@ class _Parser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, "%s: error: %s\n" % (self.prog, message))
 
 
+def port(text: str) -> int:
+    """A TCP port: a number from 0 to 65535.
+
+    `int` alone let `--port 99999` and `--port -5` past the parser, and the
+    bind raised an `OverflowError` that no handler here catches -- a traceback
+    and `1`, the code that says a package failed. A number that is not a port
+    is a command line the parser rejects, the way a port that is not a number
+    already was.
+    """
+    number = int(text)
+    if not 0 <= number <= 65535:
+        raise argparse.ArgumentTypeError("%d is not a port: 0 to 65535" % number)
+    return number
+
+
 def _add_target(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("package", nargs="+",
                         help="packages: a .iirds file, an unpacked container directory, "
@@ -165,7 +180,7 @@ def _cmd_pack(args) -> int:
     """Write the archive, then validate the archive.
 
     Validating what was just written rather than the directory is the point:
-    the six requirements about the ZIP that a directory cannot answer are now
+    the rules about the ZIP that a directory cannot answer are now
     answerable, and answered against the file that will actually be delivered.
     """
     try:
@@ -300,7 +315,7 @@ def build_parser():
         "serve", help="a drop page on this machine, for people who do not read terminals")
     p_serve.add_argument("--host", default="127.0.0.1",
                          help="loopback only; anything else is refused")
-    p_serve.add_argument("--port", type=int, default=0,
+    p_serve.add_argument("--port", type=port, default=0,
                          help="0 picks a free one (default)")
     p_serve.add_argument("--no-open", dest="open_browser", action="store_false",
                          help="do not open a browser")

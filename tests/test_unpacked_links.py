@@ -505,11 +505,17 @@ def test_a_step_back_from_a_name_that_is_not_a_directory_resolves_to_nothing(unp
     }
     for name, target in shapes.items():
         link(content / name, target)
+    # Windows stores an absolute target already resolved -- its `..` is gone
+    # before anything reads the link, which then does point at the file -- so
+    # a shape is a case here only where the link keeps its text as written.
+    kept = [name for name, target in shapes.items()
+            if os.readlink(str(content / name)) == target]
+    assert "through-nothing.xhtml" in kept, kept
     if os.name != "nt":
-        for name in shapes:
+        for name in kept:
             assert not os.path.exists(str(content / name)), name
     package = DirectoryPackage(unpacked)
-    for name in shapes:
+    for name in kept:
         entry = "content/" + name
         assert entry not in package.files, entry
         assert entry in package.dangling_links, (entry, package.dangling_links)

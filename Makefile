@@ -95,6 +95,7 @@ generated:
 # `PASS`. Prose that nothing reads goes wrong quietly, which this project has
 # learned on its own release notes; this page is generated so it cannot.
 	$(PYTHON) tools/gen_what_it_catches.py --check
+	$(PYTHON) tools/capabilities_svg.py docs/capabilities.json --check
 
 # The vendored corpus is the only external check this project has, and it is
 # only evidence for as long as it is upstream's bytes. Verified offline.

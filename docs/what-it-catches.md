@@ -4,21 +4,15 @@ Written by `tools/gen_what_it_catches.py`; every block is the output of
 the command above it, captured on the run that wrote this file. Build the
 containers and reproduce any of it with the commands each case names: one
 that builds its container and one that checks it, two of each for the pair
-at the end.
+that is not flagged.
+It is arranged by the six things the picture on the front page draws, and
+an axis with no case to show shows none.
 
-Nothing here is a claim about any other validator.
+The cases here are about this tool alone.
 
-## Where a finding comes from
+## Coverage
 
-A finding carries a link to the sentence of the standard it enforces when
-its rule has one, and the case below it quotes the words the link lands on.
-Some rules claim an obligation of the standard without a link to its
-sentence; a finding does not carry that claim, and `iirds rules <id> -v`
-shows it. Some rules have neither -- this project's interoperability and
-run rules among them, and a few from the upstream catalogue -- and for
-those nothing yet says there is no section to give.
-
-## The container is not a container
+### The container is not a container
 
     $ mkdir -p fixtures/what-it-catches && printf 'not a zip at all' > fixtures/what-it-catches/not-a-container.iirds
     $ iirds check fixtures/what-it-catches/not-a-container.iirds
@@ -46,7 +40,7 @@ The standard describes a container, and a file that will not open is not one
 yet. The last line is the point: the run says how many rules it never put,
 rather than leaving a reader to assume they passed.
 
-## `mimetype` with a trailing newline
+### `mimetype` with a trailing newline
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/mimetype.iirds --broken mimetype
     $ iirds check fixtures/what-it-catches/mimetype.iirds
@@ -80,7 +74,7 @@ LF: application/iirds+zip.
 The finding prints the bytes it read, because an editor shows nothing wrong
 with a file that ends in a newline.
 
-## No `metadata.rdf`
+### No `metadata.rdf`
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-metadata-rdf.iirds --broken jsonld-only
     $ iirds check fixtures/what-it-catches/no-metadata-rdf.iirds
@@ -111,7 +105,7 @@ metadata.rdf.
 
 A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
 
-## A rendition with no format
+### A rendition with no format
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/no-format.iirds --broken missing-format
     $ iirds check fixtures/what-it-catches/no-format.iirds
@@ -145,7 +139,24 @@ The finding names the subject and how many were found. A rendition with an IRI
 of its own is named by it; one written as a blank node, as here, is named by
 the unit that has it, so two of those under one unit read alike.
 
-## Metadata that points at a file the package does not carry
+**Now.**
+
+- 172 of 280 obligations covered
+
+**Before 1.0.** at least 220 of 280 covered
+
+## Explanation
+
+A finding carries a link to the sentence of the standard it enforces when its
+rule has one, and where a case on this page has one it quotes the words the
+link lands on. Some rules claim an obligation of the standard without a link
+to its sentence; a finding does not carry that claim, and `iirds rules <id>
+-v` shows it. Some rules have neither -- this project's interoperability and
+run rules among them, and a few from the upstream catalogue -- and for those
+nothing in the rule or its report yet says there is no section to give. Until
+every rule names its section or says it has none, that item is not done.
+
+### Metadata that points at a file the package does not carry
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/missing-content.iirds --broken missing-content
     $ iirds check fixtures/what-it-catches/missing-content.iirds
@@ -167,12 +178,23 @@ Exit code 1.
 
 **This tool's own rule** (`L2`), no specification reference.
 
-The graph is well-formed and no rule but `L2` has anything to say about it.
-The package simply cannot be read by anyone, because the document it describes
-is not in it. That is the half of the question the upstream catalogue has no
-rule for.
+The graph is well-formed and no rule but `L2` has anything to say about it. A
+reader of the package finds no document where the metadata points. None of the
+rules taken from the upstream catalogue fires on it.
 
-## What it does not flag, and why
+**Now.**
+
+- done -- what is wrong, in one sentence
+- done -- the evidence as read from the file
+- done -- a remedy, for every rule
+- not yet -- every rule names its section, or says it has none
+- not yet -- the line in the file
+
+**Before 1.0.** + every rule names its section, the line
+
+## Report contract
+
+### What it does not flag, and why
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/element-style.iirds
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/attribute-style.iirds --broken attribute-style
@@ -201,3 +223,45 @@ rendition as `rdf:parseType="Resource"` and every type as `rdf:type`;
 the graph is the same graph -- this page is not written unless it is -- so
 the answer is the same answer. `--broken` is only the name of the
 generator's one switch; `attribute-style` is not a defect.
+
+**Now.**
+
+- done -- schemaVersion in every report
+- done -- a golden report held by a CI check
+- done -- exit codes 0, 1, 2 and 64 under test
+- not yet -- a field-by-field schema page
+
+**Before 1.0.** + a field-by-field schema page
+
+## Entrances
+
+**Now.**
+
+- done -- command line
+- done -- Python library
+- done -- single file, nothing to install but Python
+- not yet -- GitHub Action
+- not yet -- browser, nothing installed
+
+**Before 1.0.** + GitHub Action, browser
+
+## Input safety
+
+**Now.**
+
+- done -- read budgets per file, and per run for content
+- done -- from 0.6.1, a shipped security fix has an advisory
+- done -- tests of named gates verified against mutations
+- not yet -- declared encodings read without loss
+
+**Before 1.0.** + declared encodings read without loss
+
+## Upstream
+
+**Now.**
+
+- done -- upstream catalogue pinned by commit
+- done -- checked weekly for change
+- done -- one pin move shipped
+
+**Before 1.0.** met

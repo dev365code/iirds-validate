@@ -117,6 +117,14 @@ conformant package can still be undeliverable:
 
 </details>
 
+## Where it stands
+
+<a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=ad5bae11" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+</a>
+
+*Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
+
 ## The local web door
 
 **For people who do not read terminals** — that is literally what the help says:
@@ -340,8 +348,9 @@ name you install and leaves the rules free to move under it. `iirds==<version>`
 is the pin that holds them still.
 
 **1.0 will mean the report schema stops moving.** Until then it may gain
-fields, and the coverage figure above is re-measured on every release rather
-than promised.
+fields, and the coverage figure above is re-measured on every release.
+
+Before it calls a release 1.0, this project asks of itself — Coverage: at least 220 of 280 covered; Explanation: what is wrong, in one sentence · the evidence as read from the file · a remedy, for every rule · every rule names its section, or says it has none · the line in the file; Report contract: schemaVersion in every report · a golden report held by a CI check · exit codes 0, 1, 2 and 64 under test · a field-by-field schema page; Entrances: command line · Python library · single file, nothing to install but Python · GitHub Action · browser, nothing installed; Input safety: read budgets per file, and per run for content · from 0.6.1, a shipped security fix has an advisory · tests of named gates verified against mutations · declared encodings read without loss; Upstream: upstream catalogue pinned by commit · checked weekly for change · one pin move shipped.
 
 ## Reading and writing packages from Python
 

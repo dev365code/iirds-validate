@@ -639,12 +639,15 @@ def places_that_declare_the_version():
     writes = re.compile(r'(?:version\s*=\s*"%s"'
                         r'|__version__\s*=\s*"%s"'
                         r'|iirds>=%s'
-                        r'|"_shapes_version":\s*"%s")' % ((number,) * 4))
+                        r'|"_shapes_version":\s*"%s"'
+                        r'|"as_of":\s*"%s"'
+                        r'|as of %s<)' % ((number,) * 6))
     by_hand = [ROOT / "pyproject.toml",
                ROOT / "src" / "iirds_validate" / "__init__.py",
-               ROOT / "src" / "iirds" / "__init__.py"]
+               ROOT / "src" / "iirds" / "__init__.py",
+               ROOT / "docs" / "capabilities.json"]
     by_hand += sorted((ROOT / "shims").glob("*/pyproject.toml"))
-    generated = [ROOT / "shapes" / "MANIFEST.json"]
+    generated = [ROOT / "shapes" / "MANIFEST.json", ROOT / "docs" / "capabilities.svg"]
 
     def count(paths):
         return sum(len(writes.findall(p.read_text("utf-8"))) for p in paths)

@@ -119,8 +119,11 @@ TABLE = [
 
     ("links/an-unlistable-directory-is-silence",
      PACKAGE,
-     "    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):",
-     "    for here, directories, files in os.walk(top, followlinks=False):",
+     "        except OSError as error:\n"
+     "            refuse(error)\n"
+     "            continue",
+     "        except OSError:\n"
+     "            continue",
      [LINKS],
      "a directory the check cannot read is skipped and the package passes on what is left"),
 
@@ -135,6 +138,27 @@ TABLE = [
      "                verdict, target = _resolve(roots, entry.split(\"/\"))",
      [LINKS],
      "a directory the check can list and not search is left out and the package passes on what is left"),
+
+    ("links/a-search-that-cannot-read-is-silence",
+     PACKAGE,
+     "    _readable_throughout(path, recursive)\n",
+     "    pass\n",
+     [LINKS],
+     "a directory search leaves out a subdirectory it cannot read and passes on the rest"),
+
+    ("links/a-step-back-erases-a-name-that-is-not-there",
+     PACKAGE,
+     "        if pending and not os.path.isdir(here):",
+     "        if False:",
+     [LINKS],
+     "a link through a name that is not a directory reads the file beside it"),
+
+    ("links/the-listing-looks-through-links",
+     PACKAGE,
+     "    for here, directories, files in _listing(top, refuse):",
+     "    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):",
+     [LINKS],
+     "listing a container puts a question to wherever each of its links points"),
 
     ("sizes/a-fragment-read-whole-before-the-gate",
      RUNNER,
@@ -210,7 +234,7 @@ TABLE = [
 
     ("cli/says-nothing-about-what-it-refused",
      CLI,
-     "        if missing or empty or leaving:",
+     "        if missing or empty or leaving or unread:",
      "        if missing or empty:",
      [LINKS],
      "a gate passes while checking less than it was asked to"),

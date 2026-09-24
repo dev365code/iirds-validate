@@ -25,7 +25,7 @@ from iirds import PackError, pack
 from . import PROGRAM, __version__, runner
 from .banner import banner
 from .model import VERSIONS, WARNINGS_ARE_ERRORS
-from .package import search
+from .package import PackageError, search
 from .registry import CATALOG, all_rules, coverage
 from .report import render
 
@@ -86,18 +86,22 @@ def _targets(paths):
     with packages somewhere underneath. Pointing at a build output directory
     should do the obvious thing rather than require a shell glob.
     """
-    found, missing, empty, leaving = [], [], [], []
+    found, missing, empty, leaving, unread = [], [], [], [], []
     for path in paths:
         if not os.path.exists(path):
             missing.append(path)
             continue
-        expanded, out = search(path)
+        try:
+            expanded, out = search(path)
+        except PackageError as refusal:
+            unread.append(str(refusal))
+            continue
         leaving.extend(out)
         if expanded:
             found.extend(expanded)
         elif not out:
             empty.append(path)
-    return found, missing, empty, leaving
+    return found, missing, empty, leaving, unread
 
 
 def _run(args, kinds) -> int:
@@ -114,7 +118,7 @@ def _run(args, kinds) -> int:
         reports = [runner.run_fragment(path, kinds, version=args.version)
                    for path in args.package]
     else:
-        targets, missing, empty, leaving = _targets(args.package)
+        targets, missing, empty, leaving, unread = _targets(args.package)
         for path in missing:
             print("%s: no such file or directory: %s" % (PROGRAM, path), file=sys.stderr)
         for path in empty:
@@ -127,7 +131,12 @@ def _run(args, kinds) -> int:
             # for the wrong reason.
             print("%s: not checked: %s is a link that leads out of the directory "
                   "being searched" % (PROGRAM, path), file=sys.stderr)
-        if missing or empty or leaving:
+        for reason in unread:
+            # The same refusal as a link out: part of what was pointed at could
+            # not be read, and a search that answered for the rest would pass
+            # on less than it was asked to check.
+            print("%s: not checked: %s" % (PROGRAM, reason), file=sys.stderr)
+        if missing or empty or leaving or unread:
             return EXIT_ERROR
         reports = [runner.run(path, kinds, version=args.version) for path in targets]
 

@@ -487,6 +487,85 @@ def test_an_entry_that_cannot_be_looked_up_is_named_as_itself(unpacked, monkeypa
     assert detail and "could not be looked up: content/topic1.xhtml~" in detail[0], detail
 
 
+def test_a_step_back_from_a_name_that_is_not_a_directory_resolves_to_nothing(unpacked):
+    """`missing/../topic1.xhtml` names nothing a system can open: the kernel
+    stops at `missing`, and `..` after it does not undo that. Resolved as text,
+    the step back erased the name that was not there and the link read as the
+    file beside it -- listed, and read, where a consumer opening the same
+    container gets an error. A link through a file the same way."""
+    link(unpacked / "content" / "through-nothing.xhtml",
+         os.path.join("missing", "..", "topic1.xhtml"))
+    link(unpacked / "content" / "through-a-file.xhtml",
+         os.path.join("topic1.xhtml", "..", "topic1.xhtml"))
+    for name in ("through-nothing.xhtml", "through-a-file.xhtml"):
+        assert not os.path.exists(str(unpacked / "content" / name)), name
+    package = DirectoryPackage(unpacked)
+    for name in ("content/through-nothing.xhtml", "content/through-a-file.xhtml"):
+        assert name not in package.files, name
+        assert name in package.dangling_links, (name, package.dangling_links)
+
+
+def test_the_listing_asks_nothing_of_a_links_far_end(unpacked, outside, monkeypatch):
+    """The listing sorted each name into directories and files by asking what
+    it is -- and for a link, that answer comes from wherever the link points.
+    The verdict never depended on it, since every link is resolved from the
+    root afterwards, but the question itself reached the far end, and a far end
+    can be a place that answers slowly, or keeps a record of being asked. A
+    link is sorted as a link now, by its own entry."""
+    link(unpacked / "content" / "to-a-directory", os.path.join("..", "..", "elsewhere"))
+    link(unpacked / "content" / "to-a-file",
+         os.path.join("..", "..", "elsewhere", outside.name))
+    followed = []
+    scanning = os.scandir
+
+    class Entry:
+        def __init__(self, entry):
+            self.entry = entry
+            self.name, self.path = entry.name, entry.path
+
+        def is_dir(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.is_dir(follow_symlinks=follow_symlinks)
+
+        def is_file(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.is_file(follow_symlinks=follow_symlinks)
+
+        def is_symlink(self):
+            return self.entry.is_symlink()
+
+        def stat(self, *, follow_symlinks=True):
+            if follow_symlinks and self.entry.is_symlink():
+                followed.append(self.name)
+            return self.entry.stat(follow_symlinks=follow_symlinks)
+
+    class Listing:
+        def __init__(self, path):
+            self.listing = scanning(path)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return Entry(next(self.listing))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.listing.close()
+
+        def close(self):
+            self.listing.close()
+
+    monkeypatch.setattr(os, "scandir", Listing)
+    package = DirectoryPackage(unpacked)
+    assert followed == [], followed
+    assert sorted(package.outward_links) == ["content/to-a-directory", "content/to-a-file"]
+
+
 def test_a_link_that_leads_nowhere_is_named(unpacked):
     """Not listed -- there is no file to read -- and not silent either. It is
     an entry the container holds and no rule can use, which is the third thing
@@ -575,6 +654,28 @@ def test_a_directory_that_cannot_be_searched_refuses_the_container(unpacked):
         assert not report.ok
         detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
         assert detail and "content/shut" in detail[0], detail
+    finally:
+        os.chmod(str(shut), 0o755)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the mode bits that hide a directory are POSIX")
+@pytest.mark.parametrize("mode", [0o444, 0o111], ids=["listed-not-searched", "searched-not-listed"])
+def test_a_search_refuses_a_subdirectory_it_cannot_read(make_package, tmp_path, capsys, mode):
+    """Pointing at a directory of packages walked it with a glob, and a glob says
+    nothing about a subdirectory it cannot read: the packages in there were left
+    out and the run passed on the rest. Refused by name instead, with 2, as a
+    name that leads out of the directory already is."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root reads what the mode bits forbid")
+    builds = tmp_path / "builds"
+    shut = builds / "shut"
+    shut.mkdir(parents=True)
+    shutil.copy(str(make_package(name="good.iirds")), str(builds / "good.iirds"))
+    shutil.copy(str(make_package(name="hidden.iirds")), str(shut / "hidden.iirds"))
+    os.chmod(str(shut), mode)
+    try:
+        assert main(["check", str(builds), "-q"]) == EXIT_ERROR
+        assert "shut" in capsys.readouterr().err
     finally:
         os.chmod(str(shut), 0o755)
 

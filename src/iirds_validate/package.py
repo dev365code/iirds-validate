@@ -576,6 +576,12 @@ def _resolve(roots: Tuple[str, ...], parts) -> Tuple[str, Optional[str]]:
                 pending.extend(reversed([p for p in _split(target)
                                          if p and p != os.curdir] or [os.curdir]))
             continue
+        if pending and not os.path.isdir(here):
+            # The kernel stops here: a name that is not a directory, or is not
+            # there at all, cannot be walked through, and a `..` after it does
+            # not undo that. Handed back as the kernel would try it, so asking
+            # it anything finds nothing -- it is inside, where nothing is.
+            return INSIDE, os.path.join(here, *reversed(pending))
         done.append(part)
     return INSIDE, os.path.join(top, *done)
 
@@ -588,6 +594,33 @@ class Unlistable(PackageError):
     this tool must not do. `os.walk` skips such a directory in silence, and a
     package can make one -- so the container is refused instead, by name.
     """
+
+
+def _listing(top: str, refuse) -> Iterator[Tuple[str, List[str], List[str]]]:
+    """Every directory under `top`, top down, as `os.walk` yields it, without
+    asking a link what it points at.
+
+    `os.walk` sorts each name with `is_dir()`, which answers for a link's far
+    end, so listing a container put a question to every place its links point.
+    This sorts by the entry's own type: a symbolic link lands among the files
+    whatever it points at, for the caller to resolve from the root. A name the
+    caller removes from the directories is not descended into, and a directory
+    whose names cannot be read is handed to `refuse`, as `os.walk` hands it to
+    `onerror`.
+    """
+    pending = [top]
+    while pending:
+        here = pending.pop()
+        try:
+            with os.scandir(here) as listing:
+                entries = list(listing)
+        except OSError as error:
+            refuse(error)
+            continue
+        directories = [e.name for e in entries if e.is_dir(follow_symlinks=False)]
+        files = [e.name for e in entries if not e.is_dir(follow_symlinks=False)]
+        yield here, directories, files
+        pending.extend(os.path.join(here, name) for name in reversed(directories))
 
 
 def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str, ...],
@@ -640,7 +673,7 @@ def _walk(roots: Tuple[str, ...]) -> Tuple[List[str], Tuple[str, ...], Tuple[str
             refuse(OSError(error.errno, error.strerror, full),
                    "an entry in the container could not be looked up")
 
-    for here, directories, files in os.walk(top, followlinks=False, onerror=refuse):
+    for here, directories, files in _listing(top, refuse):
         relative = os.path.relpath(here, top)
         prefix = "" if relative == os.curdir else relative.replace(os.sep, "/") + "/"
         for name in list(directories):
@@ -1003,6 +1036,7 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
         return [], []
     if looks_like_a_container(path):
         return [path], []
+    _readable_throughout(path, recursive)
     # Both spellings again, and every candidate judged by the same walk from
     # the root down: a name found under a directory link was judged on its own
     # text before, so `build/x.iirds -> b/theirs.iirds`, with `b` a link out,
@@ -1027,6 +1061,37 @@ def search(path, recursive: bool = True) -> Tuple[List[Path], List[Path]]:
         elif os.path.isdir(where) and looks_like_a_container(candidate):
             found.append(candidate)
     return found, leaving
+
+
+def _readable_throughout(top: Path, recursive: bool) -> None:
+    """Refuse a search that could not read every directory it walks.
+
+    The glob below says nothing about a directory it cannot list, or can list
+    and not search: the packages in there were left out and the search
+    answered for what remained. Each directory it would walk is read here
+    first, the way the container walk reads one, and the first that cannot be
+    is refused by name. A link is not walked into, here or there.
+    """
+    def refuse(error: OSError,
+               what: str = "a directory being searched could not be listed") -> None:
+        where = error.filename or str(top)
+        with contextlib.suppress(ValueError):           # another drive: named as given
+            where = os.path.relpath(where, str(top)).replace(os.sep, "/")
+        raise Unlistable("%s: %s (%s)" % (what, where, error.strerror or error))
+
+    for here, directories, files in _listing(str(top), refuse):
+        for name in directories + files:
+            full = os.path.join(here, name)
+            try:
+                os.lstat(full)
+            except PermissionError as error:
+                refuse(OSError(error.errno, error.strerror, here),
+                       "a directory being searched could not be searched")
+            except OSError as error:
+                refuse(OSError(error.errno, error.strerror, full),
+                       "an entry being searched could not be looked up")
+        directories[:] = ([d for d in directories if not _is_link(os.path.join(here, d))]
+                          if recursive else [])
 
 
 def discover(path, recursive: bool = True) -> List[Path]:

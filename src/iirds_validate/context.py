@@ -559,7 +559,9 @@ def build_graph(package: Package):
 #: The encoding an XML declaration names. Matched on the bytes, because
 #: reaching this at all means they would not decode; the declaration itself is
 #: ASCII by definition (XML 1.0 section 4.3.3).
-_DECLARED = re.compile(rb"""<\?xml[^>]*?encoding\s*=\s*["']([\w.:-]+)["']""")
+#: The declaration's encoding, at the front of the document behind a UTF-8
+#: mark at most; `<?xml-stylesheet` is not a declaration.
+_DECLARED = re.compile(rb"""^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?encoding\s*=\s*["']([\w.:-]+)["']""")
 
 
 def _is_decode_failure(raw, reported) -> bool:
@@ -620,7 +622,7 @@ def _declared_encoding(raw, reported) -> str:
     if isinstance(reported, str) and (UNUSED_ENCODING in reported
                                       or UNREADABLE_ENCODING in reported):
         return ""                # the refusal names the declaration already
-    found = _DECLARED.search(bytes(raw[:200]))
+    found = _DECLARED.match(bytes(raw[:200]))
     if found is None:
         return ""
     declared = found.group(1).decode("ascii", "replace")

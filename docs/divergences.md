@@ -318,21 +318,25 @@ intact, and receives it again unchanged. The finding now names the encoding the
 document declares -- including UTF-8, when that is what it says and the bytes
 are not, which is the commonest of these in the field -- and the remedy answers
 each declaration separately. Written as some other encoding, or as one this
-reader will not use at all, the file is written as UTF-8. Written as UTF-8 and
+reader will not use at all, the file is written as UTF-8 and its declaration
+made to say so, or taken out. Written as UTF-8 and
 not being it, the file was saved in another encoding and the declaration left
 where it was. Written not at all, UTF-8 is what XML assumes, and the file is
 worth looking at before it is asked for again.
 
 Transcoding that package -- which is not in this repository -- to UTF-8 and
 nothing else turned the verdict into a pass with no findings, which is the
-measurement that says the markup was never the problem.
+measurement that says the markup was never the problem. It would not now: its
+declaration still said `windows-1252`, which the check below refuses over UTF-8
+bytes, so the declaration changes with the bytes.
 
 The other direction is refused too: a declaration that reads the bytes as other
 text than UTF-8 does -- `windows-1252` over UTF-8 bytes with a letter outside
 ASCII, with or without a byte order mark -- is two readings of one file, and
 this reader holds one of them, so it refuses rather than choose. A document
 whose bytes read the same both ways passes. A declaration naming an encoding
-this reader does not decode -- a multi-byte one, or a name no codec answers
+this reader does not decode -- anything but UTF-8, UTF-16, UTF-32 and the
+encodings that read one character from each byte, or a name no codec answers
 to -- is refused by name without the document being decoded under it.
 
 ## What this tool refuses to read, and why that is its own decision

@@ -147,3 +147,14 @@ def test_a_syntax_error_in_a_utf8_document_gains_no_note(tmp_path):
     package = _package(tmp_path, body.encode("utf-8"), "syntax.iirds")
     said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
     assert said and "declares" not in (said[0].violation.detail or ""), said
+
+
+def test_a_stylesheet_instruction_is_not_named_as_a_declaration(tmp_path):
+    """The note names a declaration; `<?xml-stylesheet ... encoding=...?>` in a
+    document that declares nothing is not one."""
+    body = ('<?xml-stylesheet type="text/xsl" href="x.xsl" encoding="windows-1252"?>\n'
+            + DECLARED.split("?>", 1)[1])
+    package = _package(tmp_path, body.encode("cp1252"), "pi.iirds")
+    said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
+    assert said, "a document that is not UTF-8 was not refused"
+    assert "declares encoding" not in (said[0].violation.detail or ""), said[0].violation.detail

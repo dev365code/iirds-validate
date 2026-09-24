@@ -60,28 +60,33 @@ said editors add both. The titles of L5, L11 and L12 and the messages of L5
 and L11 change; a consumer matching on their text sees the new wording.
 
 **A metadata document whose encoding declaration reads its bytes as other text
-is refused, and one this reader does not decode is refused by name.**
-`metadata.rdf` is read as UTF-8 whatever its declaration names, so a document
-declaring `windows-1252` over bytes that are UTF-8 was read one way here and
-another by a reader that honours the declaration -- and passed, where the same
-declaration over bytes in that code page was refused with a decode error. The
-two readings are compared now, behind a UTF-8 byte order mark as well: where
-they differ the document is refused, naming the declaration (C16.1, S2); where
-they agree, as they do for a single-byte code page over bytes all under 128,
-it passes as before. A declaration of UTF-16 or of an EBCDIC page over such
-bytes reads as other text and is refused. A declaration naming an encoding
-outside those this reader decodes -- UTF-8, UTF-16, UTF-32, ASCII and the
-single-byte families -- or a name XML does not allow is refused by name, with
-nothing decoded under it; a multi-byte encoding such as Shift_JIS, one no
-codec answers to, and a codec such as punycode, whose decoder takes time that
-grows with the square of its input, are among them. For a package with
-nothing else wrong, each of these takes the exit code from `0` to `1`. The
-name is printed with its control characters escaped and cut to sixty
-characters, and a processing instruction such as `<?xml-stylesheet` is not
-taken for a declaration. `iirds.parse_metadata` returns every one of these as
-an error, as it promises -- it raised `LookupError`, `ValueError` or
-`UnicodeError` for some -- under two new categories, `UNREADABLE_ENCODING` and
-`UNUSED_ENCODING`.
+is refused, and one naming an encoding this reader does not decode is refused
+by name.** `metadata.rdf` is read as UTF-8 whatever its declaration names, so
+a document declaring `windows-1252` over bytes that are UTF-8 was read one way
+here and another by a reader that honours the declaration -- and passed, where
+the same declaration over bytes in that code page was refused with a decode
+error. The two readings are compared now, behind a UTF-8 byte order mark as
+well, and where they differ the document is refused, naming the declaration
+(C16.1, S2). For a package with nothing else wrong, that takes the exit code
+from `0` to `1` for a false declaration over UTF-8 text outside ASCII, with or
+without the mark, and for a document all in ASCII that declares UTF-16, an
+EBCDIC page such as `cp037`, or an encoding with escapes or shift states such
+as `ISO-2022-JP`, `HZ-GB-2312` or `unicode_escape`. A single-byte code page over bytes all in
+ASCII passes as before -- `windows-1252`, `ISO-8859-1`, `macintosh`,
+`TIS-620`, and ASCII under its own name, `ANSI_X3.4-1968` -- as do a UTF-16
+document with its byte order mark and a processing instruction such as
+`<?xml-stylesheet`, which is not taken for a declaration. A declaration naming
+an encoding outside those this reader decodes -- UTF-8, UTF-16, UTF-32 and the
+encodings that read one character from each byte -- or a name XML does not
+allow was refused already, in the codec's words or the parser's; it is refused
+by name now, with nothing decoded under it: `Shift_JIS` and the other
+multi-byte encodings, `UTF-7`, a name no codec answers to, `punycode`, `idna`.
+The name is printed with its control characters escaped and cut to sixty
+characters. C16.1's remedy says to change the declaration with the bytes,
+because bytes rewritten as UTF-8 under the old declaration are refused.
+`iirds.parse_metadata` returns every one of these as an error, as it promises
+-- it raised `LookupError`, `ValueError` or `UnicodeError` for some -- under
+two new categories, `UNREADABLE_ENCODING` and `UNUSED_ENCODING`.
 
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that
@@ -106,6 +111,16 @@ that.
 **A check of an unpacked container calls the archive rules it could not ask
 rules.** Its note said "the 9 requirements about the ZIP archive itself" and
 listed nine rule identifiers; those nine rules cover seven requirements.
+
+**Security. The checks before the metadata parser read a document as other
+text than the parser does.** `metadata.rdf` is parsed as UTF-8 whatever its
+XML declaration names, and the two checks before the parser -- the one that
+refuses a document declaring XML entities, and the one that refuses a document
+that is not RDF/XML -- read it under the encoding it declares. Where the
+declaration made those readings differ, the checks answered for a text the
+parser never saw, and a document they passed could still declare entities for
+the parser to expand. Both checks read what the parser reads now, whatever the
+document declares.
 
 Also released as 0.7.2: the seven entries headed **Security** below, with
 [GHSA-gv27-g2mp-8ghv](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-gv27-g2mp-8ghv),

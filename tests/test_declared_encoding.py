@@ -230,13 +230,71 @@ def test_a_stylesheet_instruction_is_not_a_declaration():
     assert error is None and graph is not None, error
 
 
-@pytest.mark.parametrize("declared", ["cp1361", "cp864"])
-def test_a_document_the_entity_guard_cannot_read_is_refused(declared):
-    """The guard against entity expansion asks expat, and expat cannot read a
-    multi-byte encoding or a code page that moves ASCII's own characters. It
-    answered "no declarations" about such a document, and the parser under the
-    graph, which does not read it that way, expanded them."""
-    raw = ('<?xml version="1.0" encoding="%s"?>\n<!DOCTYPE r [<!ENTITY a "x">]>\n' % declared
-           + BODY % PLAIN).encode("ascii")
+#: Names a document may declare, and what may stand in front of its document
+#: type declaration. The parser under the graph reads every one of these
+#: documents as UTF-8, and the checks before it have to read the same text.
+AS_THE_PARSER_READS = [(declared, prolog)
+                       for declared in ("utf8", "UTF_8", "u-t-f-8", "cp1361", "cp864",
+                                        "windows-1252", "latin-1", "utf-16", "x-nonesuch")
+                       for prolog in ("", "<!-- Gr\u00f6\u00dfe -->\n")]
+
+
+def _declaring(declared, prolog, subset, body):
+    return ('<?xml version="1.0" encoding="%s"?>\n%s<!DOCTYPE rdf:RDF [%s]>\n'
+            % (declared, prolog, subset) + body).encode("utf-8")
+
+
+@pytest.mark.parametrize("declared, prolog", AS_THE_PARSER_READS)
+def test_the_entity_guard_reads_what_the_parser_reads(declared, prolog):
+    """The guard's answer is about the text rdflib parses, whatever the
+    document declares; followed to the declaration, it answered about other
+    text."""
+    from iirds import _metadata
+
+    raw = _declaring(declared, prolog, '<!ENTITY t "Operating instructions">', BODY % "&t;")
+    assert _metadata._declares_entities(_metadata._decode(raw)) is True, (declared, prolog)
     graph, error = _parsed(raw)
-    assert graph is None and error, declared
+    assert graph is None and error, (declared, prolog)
+
+
+@pytest.mark.parametrize("declared, prolog", AS_THE_PARSER_READS)
+def test_the_document_element_is_the_one_the_parser_reads(declared, prolog):
+    from iirds import _metadata
+
+    raw = _declaring(declared, prolog, "", "<manual><title>x</title></manual>\n")
+    assert _metadata._document_element(_metadata._decode(raw)) == "manual", (declared, prolog)
+    graph, error = _parsed(raw)
+    assert graph is None and error, (declared, prolog)
+
+
+def test_a_name_longer_than_any_codecs_is_refused_unread():
+    """Asking for a codec costs time with the length of its name, and one
+    this long can only be refused; it is, before any codec is asked, even
+    where it would come to a codec's name."""
+    declared = "latin" + "-" * 60 + "1"
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+
+
+@pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "cp65001", "macintosh", "TIS-620"])
+def test_a_single_byte_name_over_ascii_passes(declared):
+    """ASCII's own IANA name, UTF-8's Windows one, and two single-byte pages
+    a list of names refused."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert error is None and graph is not None, error
+
+
+def test_the_remedy_followed_passes():
+    """C16.1 says: write the file as UTF-8 and make the declaration say so.
+    Rewriting the bytes and leaving `windows-1252` in front of them is two
+    readings of one file, and stays refused."""
+    from iirds_validate.registry import all_rules
+
+    fix = next(rule.fix for rule in all_rules() if rule.id == "C16.1")
+    assert "declaration say UTF-8" in fix, fix
+    rewritten = document("windows-1252", "utf-8", GERMAN)
+    assert _parsed(rewritten)[0] is None
+    declared_too = rewritten.replace(b'encoding="windows-1252"', b'encoding="UTF-8"')
+    assert _parsed(declared_too)[1] is None

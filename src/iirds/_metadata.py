@@ -9,7 +9,6 @@ from here; there is one copy.
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import re
 import xml.etree.ElementTree as ElementTree
@@ -89,12 +88,6 @@ def _raise(exception):
     raise exception()
 
 
-#: The expat errors that say the encoding, not the markup, stopped it.
-_ENCODINGS_EXPAT_CANNOT_USE = frozenset(
-    expat.errors.codes[error] for error in (expat.errors.XML_ERROR_UNKNOWN_ENCODING,
-                                            expat.errors.XML_ERROR_INCORRECT_ENCODING))
-
-
 def _declares_entities(raw: bytes) -> Optional[bool]:
     """Whether the parser will be handed declarations to expand.
 
@@ -110,10 +103,15 @@ def _declares_entities(raw: bytes) -> Optional[bool]:
     handler fires when a declaration is read and before any reference to it is
     expanded. Stopped at the root element: declarations live in the DTD, the
     DTD precedes the root, and an external one is not fetched -- so an
-    external DTD passes, declaring nothing this parser will see. None where
-    expat cannot read the document at all, which the caller refuses.
+    external DTD passes, declaring nothing this parser will see.
+
+    Read as the parser under the graph reads it: as UTF-8, whatever the
+    document declares, because that is how rdflib reads it. Left to follow the
+    declaration, expat read some documents as other text than rdflib did, and
+    its answer was about that other text. None where expat cannot read the
+    document at all, which the caller refuses.
     """
-    parser = expat.ParserCreate()
+    parser = expat.ParserCreate("UTF-8")
     parser.EntityDeclHandler = lambda *_args: _raise(_Declared)
     parser.StartElementHandler = lambda *_args: _raise(_RootReached)
     try:
@@ -122,17 +120,15 @@ def _declares_entities(raw: bytes) -> Optional[bool]:
         return True
     except _RootReached:
         return False
-    except expat.ExpatError as exc:
-        # A syntax error is the document's, and the parser under the graph
-        # meets it and says so in its own words. An encoding expat cannot use
-        # is not: it answers for nothing about such a document.
-        return None if exc.code in _ENCODINGS_EXPAT_CANNOT_USE else False
+    except expat.ExpatError:
+        # A syntax error is the document's, and the parser under the graph,
+        # reading the same text the same way, meets it and says so in its own
+        # words.
+        return False
     except Exception:
-        # What expat cannot read it cannot answer for -- a multi-byte
-        # encoding raises `ValueError` -- and the parser under the graph is
-        # not this one. Answering "no declarations" here let a document declare
-        # entities for rdflib to expand. Raising is not an option either:
-        # parse_errors promises that reading never does.
+        # Nothing else is expected of a parser told the encoding. What does
+        # arrive is not answered for, and not raised either: parse_errors
+        # promises that reading never raises.
         return None
     return False
 
@@ -157,9 +153,9 @@ UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 #: A document whose declaration and this reader disagree about what it says.
 #: rdflib decodes as UTF-8 whatever the declaration names, so where the
 #: declaration names something else there are two readings of one file. Where
-#: they are the same text -- every byte under 128, which is most of a
-#: conformant package that happens to declare a codepage -- there is nothing
-#: to report and nothing is reported. Where they differ, one of them is what
+#: they are the same text -- every byte under 128 in a code page that keeps
+#: ASCII where ASCII is, which is most of a conformant package that happens to
+#: declare one -- there is nothing to report and nothing is reported. Where they differ, one of them is what
 #: the supplier meant and this reader is holding the other, so it refuses
 #: instead of choosing. That case was silent before: the refusal was rdflib
 #: failing on a high byte, which caught the document written in the codepage
@@ -219,29 +215,60 @@ _DECLARED = re.compile(br'^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?\sencoding\s*=\s*(["\'
 #: A name XML allows for an encoding (XML 1.0, production 81).
 _ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
 
-#: The encodings a document is decoded under to be compared with UTF-8: the
-#: two XML requires and the single-byte families -- ASCII, Latin, ISO 8859,
-#: the Windows, DOS and IBM code pages, KOI8, Mac Roman -- each one pass over
-#: the bytes. Asked of the name with case, `-`, `_` and `.` set aside. Any
-#: other name is refused unread: a codec is code, and punycode's takes time
-#: that grows with the square of its input. The double-byte code pages are
-#: taken out; XML's parser here reads none of them.
-_READ_HERE = re.compile(r"utf(?:16|32)(?:le|be)?|(?:us)?ascii|latin\d*|l\d+|iso8859\d+|"
-                        r"(?:cp|windows|ibm)(?!9[3-5]\d\b|1361\b)\d{3,4}|koi8[ru]|macroman")
+#: The two encodings XML requires beside UTF-8, by name with case, `-`, `_`
+#: and `.` set aside. Every other encoding a document is decoded under, to be
+#: compared with UTF-8, is one that reads a character from each byte.
+_UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
+
+#: Bytes a codec with escapes or shifting states reads as fewer characters
+#: than there are bytes: a backslash escape, HZ's and ISO-2022's shifts, and
+#: UTF-7's. Asked first, so that an escape codec never sees the bytes below.
+_SHIFTS = b"\\u0041~{\x1b$B+-"
+
+#: Every byte once.
+_EVERY_BYTE = bytes(range(256))
+
+
+def _one_character_a_byte(name: str) -> bool:
+    """Whether the named codec reads one character from each byte, as the
+    single-byte families do -- ASCII under any of its names, Latin, ISO 8859,
+    the Windows, DOS, Mac and EBCDIC pages, KOI8, TIS-620.
+
+    Asked of the codec rather than of its name: a list of names refused
+    `ANSI_X3.4-1968`, which is ASCII's own, and let through Johab, which pairs
+    bytes. A byte the codec has no character for is replaced here, and only
+    here, because the question is how many characters come out, not which. A
+    multi-byte codec pairs bytes and gives fewer; one with escapes or states
+    gives fewer on `_SHIFTS`; and one that raises -- punycode, idna, a name no
+    codec answers to -- is not decoded at all. Asked on so few bytes that the
+    answer costs nothing whatever the codec is.
+    """
+    try:
+        return (len(_SHIFTS.decode(name, "replace")) == len(_SHIFTS)
+                and len(_EVERY_BYTE.decode(name, "replace")) == len(_EVERY_BYTE))
+    except Exception:
+        return False
+
+
+#: Longer than the name of any codec there is -- the longest is a third of
+#: this. A name as long is refused before a codec is asked for it: asking
+#: costs time with the length of the name, and the answer is kept.
+_LONGEST_NAME = 60
 
 
 def _declared_encoding_name(raw: bytes) -> Optional[str]:
     """The name the document declares, as written, or None where it declares
-    none."""
+    none. Cut one character past the longest a codec has, which is enough to
+    refuse it by: a name is as long as its sender makes it."""
     found = _DECLARED.match(raw)
-    return found.group(2).decode("latin-1") if found else None
+    return found.group(2)[:_LONGEST_NAME + 1].decode("latin-1") if found else None
 
 
 def _shown(name: str) -> str:
     """A declared name as it can be printed: a name carried a terminal escape
     and a line break into the report, and wrote a line of its own there. Cut
-    to sixty characters, since a name is as long as its sender makes it."""
-    shown = name.encode("unicode_escape").decode("ascii")
+    to sixty characters, before it is escaped as well as after."""
+    shown = name[:_LONGEST_NAME + 1].encode("unicode_escape").decode("ascii")
     return shown if len(shown) <= 60 else shown[:57] + "..."
 
 
@@ -263,46 +290,44 @@ def _decoded(raw: bytes, encoding: str):
 def _is_utf8_name(name: str) -> bool:
     """Whether a declaration names UTF-8, however it is spelled.
 
-    Normalised rather than looked up, for the reason `_codec_exists` gives
-    about this library's import list. XML encoding names are not case
+    Normalised rather than looked up: `codecs.lookup` would be a new import
+    in a library whose import list is itself a gate. XML encoding names are not case
     sensitive and `UTF-8`, `utf8` and `utf_8` are one name; anything else is
     another encoding whatever it decodes to.
     """
     return name.strip().lower().replace("_", "").replace("-", "") == "utf8"
 
 
-def _codec_exists(name: str) -> bool:
-    """Whether anything here can answer to that name.
+class _Element(Exception):
+    """The first element, by its expanded name."""
 
-    Asked by decoding a byte rather than through `codecs.lookup`, which would
-    be a new import in a library whose import list is itself a gate. A byte
-    and not the empty bytes: decoding nothing succeeds for every name at all,
-    because there is nothing to look a codec up for -- measured, `x-nonesuch`
-    included.
 
-    Only `LookupError` answers this question. `b"a"` is not valid UTF-16 and
-    raises while being decoded, which says the codec exists and these bytes
-    are not in it -- the opposite of what is being asked.
-    """
-    try:
-        b"a".decode(name)
-    except LookupError:
-        return False
-    except Exception:                     # a real codec, an invalid byte
-        return True
-    return True
+class _FirstElement:
+    """A tree builder's place, taken by one that stops at the first element."""
+
+    def start(self, tag, _attributes):
+        raise _Element(tag)
+
+    def close(self):
+        return None
 
 
 def _document_element(raw: bytes) -> Optional[str]:
     """The expanded name of the first element, or None where XML itself
-    cannot say -- which the parser then reports in its own words."""
+    cannot say -- which the parser then reports in its own words.
+
+    Read as UTF-8 whatever the document declares, for the reason the entity
+    guard is: that is the text rdflib parses, and a judge that followed the
+    declaration read other text and let a document through."""
+    parser = ElementTree.XMLParser(target=_FirstElement(), encoding="utf-8")
     try:
-        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
-            return element.tag
+        parser.feed(raw)
+        parser.close()
+    except _Element as first:
+        return first.args[0]
     except Exception:
         # `ParseError`, which the parser under the graph reports in its own
-        # words. An encoding expat cannot use does not reach here: the entity
-        # guard before this refuses the document.
+        # words.
         return None
     return None
 
@@ -429,15 +454,16 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
     nothing decoded. Any other name is read both ways -- under the name, and
     as UTF-8 -- and where the two are different text there are two readings
     of one file, so it is refused rather than one chosen. Where they are the
-    same, as they are for bytes all under 128, nothing is said.
+    same, as they are for a code page that keeps ASCII where ASCII is over
+    bytes all under 128, nothing is said.
     """
     declared = _declared_encoding_name(stored)
     if declared is None or _is_utf8_name(declared):
         return None
     shown = _shown(declared)
     normal = declared.lower().replace("-", "").replace("_", "").replace(".", "")
-    if (not _ENCODING_NAME.fullmatch(declared) or not _READ_HERE.fullmatch(normal)
-            or not _codec_exists(declared)):
+    if len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared) or not (
+            normal in _UTF16_OR_32 or _one_character_a_byte(declared)):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
     theirs, ours = _decoded(body, declared), _decoded(body, "utf-8")
@@ -505,8 +531,7 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     if fmt == "xml":
         declares = _declares_entities(raw)
         if declares is None:
-            return None, "%s: %s: %s" % (name, UNREADABLE_ENCODING,
-                                         _shown(_declared_encoding_name(raw) or "its encoding"))
+            return None, "%s: refused: the document could not be read for XML entities" % name
         if declares:
             return None, "%s: refused: the document declares XML entities" % name
 

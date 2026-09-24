@@ -6,6 +6,15 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.2 — unreleased
 
+Three advisories describe what this release fixes:
+
+- [GHSA-gv27-g2mp-8ghv](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-gv27-g2mp-8ghv): an entry's Unicode Path extra
+  field could give it a name other than the one this tool judged.
+- [GHSA-pj7w-78cj-j5h8](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-pj7w-78cj-j5h8): link and path lookups could
+  reach past the container being checked.
+- [GHSA-325m-q3mp-wx43](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-325m-q3mp-wx43): a directory that could not be
+  read was left out without a word, in an unpacked container or a search.
+
 **Security. Whether a directory was a container could depend on a file
 outside it.** The markers were looked up as names at the last step only, so a
 `META-INF` that was itself a link out of the directory was followed, and a file

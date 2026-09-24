@@ -126,3 +126,31 @@ this repository, naming the versions it reaches and the release that fixes it.
   choose. `iirds-validate` up to and including 0.6.3, `iirds` and `iirds-sdk`
   0.5.0 through 0.6.3; fixed in 0.7.1, where the scan stops at eight mebibytes
   and `S12` names the file it stopped on.
+- [GHSA-gv27-g2mp-8ghv](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-gv27-g2mp-8ghv):
+  an entry could be judged under a name its records do not give it. From
+  Python 3.12, zipfile names an entry by an Info-ZIP Unicode Path extra field
+  in the central directory where one holds, and libarchive names it by the one
+  in the local header; the check compared only the names the two records'
+  bytes spell, so an entry it judged under one name could reach another reader
+  under another, one leading out of the package among them. `iirds-validate`
+  0.1.0 through 0.7.1, `iirds` and `iirds-sdk` 0.5.0 through 0.7.1 -- for the
+  directory's field when run on Python 3.12 or later, for the local header's
+  on any interpreter; fixed in 0.7.2, where S10 holds every such field to its
+  record's name and S6 checks every name an entry is read as.
+- [GHSA-pj7w-78cj-j5h8](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-pj7w-78cj-j5h8):
+  checking an unpacked container, or searching a directory, could look past
+  it. The markers a container is recognised by were looked up through a link
+  out of the directory, the listing and the search asked each link what it
+  points at, and a link through a name that is not a directory was read as the
+  file beside it. `iirds-validate` 0.1.0 through 0.7.1, `iirds` and
+  `iirds-sdk` 0.5.0 through 0.7.1; fixed in 0.7.2, where each of these names
+  is resolved inside the container and each entry is judged by itself rather
+  than by what a link leads to.
+- [GHSA-325m-q3mp-wx43](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-325m-q3mp-wx43):
+  a directory that could not be read was left out without a word. A directory
+  in an unpacked container that could be listed but not searched was checked
+  without the files in it, and pointing at a directory of packages left out
+  the ones in a subdirectory it could not read; the run passed on what it did
+  find. `iirds-validate` 0.1.0 through 0.7.1, `iirds` and `iirds-sdk` 0.5.0
+  through 0.7.1; fixed in 0.7.2, which refuses the container (S13) or the
+  search (exit 2) and names what it could not read.

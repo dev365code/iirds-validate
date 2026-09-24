@@ -30,9 +30,9 @@ OLD_DISTRIBUTION_ALLOWED = {
                                           "a reader is upgrading *from*"),
     "CHANGELOG.md": (None, "history"),
     "NOTICE": (1, "the name earlier releases were published under"),
-    "SECURITY.md": (11, "one address per advisory (six), under the repository's address "
+    "SECURITY.md": (17, "one address per advisory (nine), under the repository's address "
                       "until it is renamed, and the distribution an advisory names as "
-                      "affected where it spells the range out (five) -- those releases "
+                      "affected where it spells the range out (eight) -- those releases "
                       "were published under that name, and calling them anything else "
                       "would make the advisory point at versions that never existed"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),

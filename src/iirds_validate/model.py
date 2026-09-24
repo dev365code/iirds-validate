@@ -359,8 +359,8 @@ class Report:
     #: package does not declare the profile the rule is for) or "version". A
     #: count told a reader that twenty-one rules did not run; which ones, and
     #: whether the handover rules were among them, it did not.
-    #: Why a rule did not run, by reason. "unpacked" is the third: the six
-    #: requirements about the ZIP archive itself cannot be answered by a
+    #: Why a rule did not run, by reason. "unpacked" is the third: the rules
+    #: about the ZIP archive itself cannot be answered by a
     #: directory, and were being counted as checked-and-clean.
     #: Why each rule this build has did not answer. Every registered rule is
     #: in exactly one of `ran` and these lists, on every path -- a rule in

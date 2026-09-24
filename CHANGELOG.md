@@ -50,6 +50,10 @@ was a different file from the same commit. `SECURITY.md` and
 built; what is measured is one runner building it twice, and they now say
 that.
 
+**A check of an unpacked container calls the archive rules it could not ask
+rules.** Its note said "the 9 requirements about the ZIP archive itself" and
+listed nine rule identifiers; those nine rules cover seven requirements.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

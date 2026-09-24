@@ -250,7 +250,7 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
                             "validated against %s instead" % (ctx.declared_version, ctx.version))
     if not package.is_archive:
         report.notes.append(
-            "validated as an unpacked container; the %d requirements about the ZIP "
+            "validated as an unpacked container; the %d rules about the ZIP "
             "archive itself (%s) cannot be assessed until it is packed"
             % (len(ARCHIVE_ONLY), ", ".join(ARCHIVE_ONLY)))
     if ctx.ontology.substituted:

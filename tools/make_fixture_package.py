@@ -170,6 +170,13 @@ BREAKAGE = {
     "missing-format": {"metadata": MINIMAL_RDF.replace(
         "        <iirds:format>application/xhtml+xml</iirds:format>\n", "")},
     "missing-content": {"content": ()},
+    "two-dates": {"metadata": MINIMAL_RDF.replace(
+        "    <iirds:title>A topic</iirds:title>\n",
+        "    <iirds:title>A topic</iirds:title>\n"
+        "    <iirds:dateOfCreation rdf:datatype=\"http://www.w3.org/2001/XMLSchema#dateTimeStamp\""
+        ">2020-01-01T00:00:00Z</iirds:dateOfCreation>\n"
+        "    <iirds:dateOfCreation rdf:datatype=\"http://www.w3.org/2001/XMLSchema#dateTimeStamp\""
+        ">2021-01-01T00:00:00Z</iirds:dateOfCreation>\n")},
     "description-style": {"metadata": DESCRIPTION_STYLE_RDF},
     "attribute-style": {"metadata": ATTRIBUTE_STYLE_RDF},
     "jsonld-only": {"metadata": None, "jsonld": MINIMAL_JSONLD},

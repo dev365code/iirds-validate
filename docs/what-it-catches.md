@@ -1,7 +1,7 @@
 # What this catches, and what it says when it does
 
-Written by `tools/gen_what_it_catches.py`; every block is the output of
-the command above it, captured on the run that wrote this file. Build the
+Written by `tools/gen_what_it_catches.py`; under each `iirds check` is
+what it printed, captured on the run that wrote this file. Build the
 containers and reproduce any of it with the commands each case names: one
 that builds its container and one that checks it, two of each for the pair
 that is not flagged.
@@ -96,7 +96,7 @@ Exit code 1.
 specification's own:
 
 > The META-INF directory MUST contain the file metadata.rdf containing all
-metadata in RDF 1.1 XML syntax (see [rdf-syntax-grammar]).
+> metadata in RDF 1.1 XML syntax (see [rdf-syntax-grammar]).
 
 <https://iirds.org/fileadmin/iiRDS_specification/20231110-1.2-release/index.html#:~:text=The%20META%2DINF%20directory%20MUST%20contain%20the%20file%20metadata.rdf%20containing%20all%20metadata%20in%20RDF%201.1%20XML%20syntax%20(see%20%5Brdf%2Dsyntax%2Dgrammar%5D).>
 
@@ -139,6 +139,41 @@ The finding names the subject and how many were found. A rendition with an IRI
 of its own is named by it; one written as a blank node, as here, is named by
 the unit that has it, so two of those under one unit read alike.
 
+### A topic with two creation dates
+
+    $ python3 tools/make_fixture_package.py fixtures/what-it-catches/two-dates.iirds --broken two-dates
+    $ iirds check fixtures/what-it-catches/two-dates.iirds
+
+    two-dates.iirds   iiRDS 1.3
+      note: metadata read from META-INF/metadata.rdf
+
+      ERROR M2.3      more than one iirds:dateOfCreation
+                          urn:test:topic1
+                          2 values: 2020-01-01T00:00:00Z, 2021-01-01T00:00:00Z
+                        → Keep one iirds:dateOfCreation and remove the rest. Two creation dates give
+                        → a consumer no way to choose, and most will silently take whichever they
+                        → read first.
+
+      FAIL  1 error(s), 0 warning(s), 0 informational
+      194 rules checked, 28 not applicable to this version/variant (26 for iiRDS/H, 2 for other editions)
+
+Exit code 1.
+
+**The standard says so.** The link below lands on these words, which are the
+specification's own:
+
+> 0..1  iirds:dateOfCreation property -
+> http://www.w3.org/2001/XMLSchema#dateTimeStamp
+
+<https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#rdfclasses_core_InformationUnit:~:text=0..1%C2%A0%20iirds%3AdateOfCreation%20property%20%2D%20http%3A//www.w3.org/2001/XMLSchema%23dateTimeStamp>
+
+`M2.3` states that obligation as: iirds:InformationUnit MUST NOT have more
+than one property iirds:dateOfCreation.
+
+Appendix A gives an information unit at most one creation date, and section
+6.11.2 makes the cardinalities there a MUST; this one carries two. The finding
+names the unit and the values it found.
+
 **Now.**
 
 - 172 of 280 obligations covered
@@ -147,7 +182,7 @@ the unit that has it, so two of those under one unit read alike.
 
 ## Explanation
 
-A finding carries a link to the sentence of the standard it enforces when its
+A finding carries a link to the words of the standard it enforces when its
 rule has one, and where a case on this page has one it quotes the words the
 link lands on. Some rules claim an obligation of the standard without a link
 to its sentence; a finding does not carry that claim, and `iirds rules <id>

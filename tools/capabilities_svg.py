@@ -70,12 +70,23 @@ OWN_FILES = ("docs/capabilities.json", "docs/capabilities.svg", "docs/capabiliti
 # A self-description, not a comparison. The short texts on the picture refuse these words outright,
 # and so is any comparative or superlative aimed past this tool ("stricter than any other ...",
 # "more rules than X", "unlike other validators", "the most thorough", "second to none").
-# "than" followed by a number ("more than 200 rules") describes this tool and passes.
-COMPARATIVE = (r"(?<!rather )(?<!other )\bthan\b(?!\s+\d)|"
+# "than" followed by a number, in digits or words ("more than 200 rules", "more than one"), describes
+# this tool and passes; so does "no other check here has run" -- only "no other" naming a tool is a
+# comparison. Prose pages are read through prose_only(): captured output and quotations are not the
+# project speaking -- the generated detail page only; README's hand-written section is read as visible()
+# text, every line. (v3.2)
+NUM = (r"(?:\d[\d.,]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|"
+       r"fifty|sixty|seventy|eighty|ninety|hundred|thousand|once|twice|half)")
+TOOL = (r"(?:validators?|tools?|checkers?|readers?|projects?|implementations?|librar(?:y|ies)|linters?|SDKs?|"
+        r"products?|solutions?|software|programs?|engines?)")
+OWN = (r"(?:checks?|rules?|findings?|files?|entr(?:y|ies)|values?|propert(?:y|ies)|elements?|records?|cases?|"
+       r"lines?|items?|packages?|units?)")
+COMPARATIVE = (rf"(?<!rather )(?<!other )\bthan\b(?!\s+{NUM}\b(?!\s+(?:as|times)\b))|"  # "than twice as many" is not a count
                r"\b(?:unlike|versus|vs\.?|compared\s+(?:to|with)|competit\w*|outperform\w*)\b|"
-               r"\b(?:other|any\s+other|no\s+other|none\s+other)\s+(?:validators?|tools?|checkers?|readers?|projects?|implementations?)\b|"
-               r"\bof\s+any\s+(?:validators?|tools?|checkers?|readers?|projects?|implementations?)\b|"
-               r"\b(?:any|no)\s+other\b|\bsecond\s+to\s+none\b|"
+               rf"\bother\s+(?:[\w.+-]+\s+){{0,2}}?{TOOL}\b|"  # "other iiRDS validators"
+               rf"\b(?:any|no|none)\s+other\b(?!\s+{OWN}\b)|"  # "no other check here has run" passes
+               rf"\bof\s+any\s+{TOOL}\b|"
+               r"\bsecond\s+to\s+none\b|"
                r"\bmost\s+(?:thorough|complete|accurate|reliable|strict|precise|comprehensive|rigorous|careful|"
                r"capable|advanced|robust|mature|efficient|powerful|extensive|detailed)\b|"
                r"\b(?:strict|wid|broad|deep|rich|strong|safe|tough|full|tight|great)est\b|"
@@ -83,12 +94,13 @@ COMPARATIVE = (r"(?<!rather )(?<!other )\bthan\b(?!\s+\d)|"
 FORBIDDEN = re.compile(
     r"\b(world|first|only|unique|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
     r"guarantee[sd]?|certif\w*|state[- ]of[- ]the[- ]art|ahead\s+of|no(?:body|\s+one)\s+else)\b|"
-    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.I)
+    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.IGNORECASE)
 # Prose pages (the detail page, the README paragraph) get the same list without the everyday words.
 FORBIDDEN_PROSE = re.compile(
-    r"\b(world|unique|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
+    r"\b(world|best|leading|fastest|unmatched|superior|exhaustive(?:ly)?|"
     r"guarantee[sd]?|certif\w*|state[- ]of[- ]the[- ]art|ahead\s+of|no(?:body|\s+one)\s+else)\b|"
-    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.I)
+    r"(?<!be )\bunique(?:ly)?\b(?!\s+(?:within|in|per|across|to|for)\b)|"  # "MUST be unique within" passes
+    r"\bfalse[\s-]+positives?\b|" + COMPARATIVE, re.IGNORECASE)
 DATED = re.compile(r"\b(?:19|20)\d{2}-\d{2}-\d{2}\b|\bQ[1-4]\b|"
                    r"\b(?:January|February|March|April|June|July|August|September|October|November|December)\b")
 MARKUP = re.compile(r'["<>&|]')      # would break the alt attribute, a markdown table cell, or the picture
@@ -292,12 +304,23 @@ def condition_paragraph(data):
     return "Before it calls a release 1.0, this project asks of itself — " + "; ".join(parts) + "."
 
 
-COMMENT = re.compile(r"<!--.*?-->", re.S)
+COMMENT = re.compile(r"<!--(?:-?>|.*?-->)", re.DOTALL)
 STANDS = re.compile(r"(?ms)^## Where it stands$.*?(?=^## |\Z)")
 
 
 def _squash(text):
     return re.sub(r"\s+", " ", text)
+
+
+FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^`\n]*$.*?^[ \t]*\1[ \t]*$")
+CAPTURED = re.compile(r"(?m)^(?:(?: {4}|\t).*|>.*|\s*<?https?://\S+>?\s*|\[[^\]]+\]:\s*\S+.*)$")
+
+
+def prose_only(text):
+    """A generated page's own words: fenced and indented blocks (captured tool output, quoted rule text),
+    quotation lines and bare link lines are not the project speaking, so the comparison gate does not read
+    them. Hand-written README text is read whole (visible()), since a reader sees every line of it."""
+    return CAPTURED.sub(" ", FENCE.sub(" ", visible(text)))
 
 
 def visible(text):

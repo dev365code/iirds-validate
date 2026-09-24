@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import zipfile
@@ -78,6 +79,13 @@ def _verdict(package: str, *, exit_code: int, names: str):
                      % (package, code, exit_code, said))
     if names and names not in said:
         raise Failed("%s was to show %s and did not:\n%s" % (package, names, said))
+    # Every block of output on the page is one of these, so a remedy or a line
+    # the report prints is read here: the check over the page passes over it.
+    for entry in _entries(said):
+        compared = aims_at_a_tool(entry)
+        if compared:
+            raise Failed("%s: the output compares this tool with another: %r"
+                         % (package, compared))
     return said
 
 
@@ -115,6 +123,10 @@ CASES = [
      "The finding names the subject and how many were found. A rendition with an "
      "IRI of its own is named by it; one written as a blank node, as here, is named "
      "by the unit that has it, so two of those under one unit read alike."),
+    ("two-dates", "A topic with two creation dates", "two-dates", "M2.3", 1,
+     "Appendix A gives an information unit at most one creation date, and section "
+     "6.11.2 makes the cardinalities there a MUST; this one carries two. The "
+     "finding names the unit and the values it found."),
     ("missing-content", "Metadata that points at a file the package does not carry",
      "missing-content", "L2", 1,
      "The graph is well-formed and no rule but `L2` has anything to say about it. "
@@ -181,6 +193,102 @@ def _wrapped(prose: str):
     return textwrap.wrap(prose, width=78, break_on_hyphens=False, break_long_words=False)
 
 
+def _as_quote(words: str):
+    """The standard's words as a quote on every line they wrap onto. With the
+    mark on the first line only, the rest read as this page's own prose --
+    to a reader, and to the check that no prose here compares this tool with
+    another."""
+    import textwrap
+
+    return textwrap.wrap(words, width=78, initial_indent="> ", subsequent_indent="> ",
+                         break_on_hyphens=False, break_long_words=False)
+
+
+#: How a paragraph can start and not be one: a quote, an indented block, a
+#: heading, a fence, or a link definition -- each rendered or skipped as
+#: something other than the page's own words.
+NOT_A_PARAGRAPH = re.compile(r"^(?:\s|>|#|```|~~~|\[[^\]]*\]:)")
+
+
+def _own_words(where: str, text: str, paragraph: bool = True) -> None:
+    """A heading or note in the page's own voice, checked before it is wrapped.
+
+    The check over the finished page reads its prose and passes over quotes
+    and indented blocks, so a note that began with `>` or with spaces would
+    reach the page as one of those, unread. Such a start is refused here for a
+    paragraph -- a heading follows its `###` and cannot become one -- and the
+    words are held to the same list the page is.
+    """
+    from capabilities_svg import FORBIDDEN_PROSE
+
+    if paragraph and NOT_A_PARAGRAPH.match(text):
+        raise Failed("%s starts with %r, which the page would not show as prose"
+                     % (where, text[:3]))
+    hit = FORBIDDEN_PROSE.search(text)
+    if hit:
+        raise Failed("%s: %r turns a self-description into a comparison"
+                     % (where, hit.group(0)))
+
+
+#: How this tool names itself in what it prints ("larger than this tool will
+#: read"); the rest of a sentence is read for a tool that is not this one.
+THIS_TOOL = re.compile(r"\bthis\s+(?:tool|reader|validator|run|project)\b", re.IGNORECASE)
+
+#: A tool that is not this one. Narrower than the picture's list, which also
+#: holds "product", "software" and "reader": the first two are iiRDS
+#: vocabulary and the third the consumer a remedy speaks of, all three in
+#: sentences that compare nothing. plusmeta is the one other iiRDS tool this
+#: repository names.
+OTHER_TOOL = re.compile(r"\b(?:validators?|tools?|checkers?|implementations?|"
+                        r"librar(?:y|ies)|linters?|SDKs?|engines?|projects?|plusmeta)\b",
+                        re.IGNORECASE)
+
+#: Where a sentence ends, except after an abbreviation: split there, "compared
+#: with e.g. the reference validator" is two halves that each compare nothing.
+SENTENCE_END = re.compile(r"(?<=[.;:!?])(?<!e\.g\.)(?<!i\.e\.)(?<!\bvs\.)(?<!\betc\.)"
+                          r"(?<!\bcf\.)\s+")
+
+
+def aims_at_a_tool(text: str):
+    """The first sentence of *text* that compares this tool with another, or None.
+
+    The page's prose is held to the whole list, and the check over the page
+    passes over captured output. What the tool prints is ordinary writing, and
+    the list read alone would stop at "more than case" or "no other statement
+    can refer to it"; refused here is a listed word in the same sentence as a
+    tool that is not this one.
+    """
+    from capabilities_svg import FORBIDDEN_PROSE
+
+    for sentence in SENTENCE_END.split(text):
+        if FORBIDDEN_PROSE.search(sentence) and OTHER_TOOL.search(THIS_TOOL.sub("", sentence)):
+            return sentence
+    return None
+
+
+def _entries(said: str):
+    """The output a line at a time, with the lines of a wrapped remedy joined
+    into one, so a sentence is read whole -- and apart from the finding's
+    title above it, which is not the first half of the remedy's sentence."""
+    entries, continuing = [], False
+    for line in said.splitlines():
+        text = line.strip()
+        for marker in ("\u2192", "->"):
+            if text.startswith(marker):
+                text = text[len(marker):].strip()
+                if continuing:
+                    entries[-1] += " " + text
+                else:
+                    entries.append(text)
+                continuing = True
+                break
+        else:
+            continuing = False
+            if text:
+                entries.append(text)
+    return entries
+
+
 #: Which axis of `docs/capabilities.json` each case is evidence for. A case
 #: goes under the one axis it demonstrates and no other; an axis with no case
 #: here shows none rather than borrowing one.
@@ -189,6 +297,7 @@ AXIS_OF = {
     "mimetype": "coverage",
     "no-metadata-rdf": "coverage",
     "no-format": "coverage",
+    "two-dates": "coverage",
     "missing-content": "explanation",   # L2 names no section: the item not done
 }
 
@@ -196,6 +305,8 @@ CAPABILITIES = ROOT / "docs" / "capabilities.json"
 
 
 def _case_block(slug, heading, broken, rule_id, exit_code, note):
+    _own_words("case %s heading" % slug, heading, paragraph=False)
+    _own_words("case %s note" % slug, note)
     package = _not_a_container() if broken is None else _build(slug, broken)
     said = _verdict(package, exit_code=exit_code, names=rule_id)
     title, quotable, spec, claims = spec_of(rule_id)
@@ -216,7 +327,7 @@ def _case_block(slug, heading, broken, rule_id, exit_code, note):
         out.extend(_wrapped("**The standard says so.** The link below lands "
                             "on these words, which are the specification's own:"))
         out.append("")
-        out.extend(_wrapped("> %s" % quotable) if quotable
+        out.extend(_as_quote(quotable) if quotable
                    else ["> (the link carries no text fragment)"])
         out.append("")
         out.append("<%s>" % spec)
@@ -262,8 +373,8 @@ def page() -> str:
 
     axes = json.loads(CAPABILITIES.read_text("utf-8"))["axes"]
     out = ["# What this catches, and what it says when it does", "",
-           "Written by `tools/gen_what_it_catches.py`; every block is the output of",
-           "the command above it, captured on the run that wrote this file. Build the",
+           "Written by `tools/gen_what_it_catches.py`; under each `iirds check` is",
+           "what it printed, captured on the run that wrote this file. Build the",
            "containers and reproduce any of it with the commands each case names: one",
            "that builds its container and one that checks it, two of each for the pair",
            "that is not flagged.",
@@ -278,7 +389,7 @@ def page() -> str:
         if axis["key"] == "explanation":
             said.add("explanation")
             out.extend(_wrapped(
-                "A finding carries a link to the sentence of the standard it enforces "
+                "A finding carries a link to the words of the standard it enforces "
                 "when its rule has one, and where a case on this page has one it quotes "
                 "the words the link lands on. Some rules claim an obligation of the "
                 "standard without a link to its sentence; a finding does not carry that "
@@ -333,8 +444,7 @@ def _same_graph():
                                         format="xml"))
     if not isomorphic(*graphs):
         raise Failed("the pair that is not flagged is no longer one graph written two ways")
-    for where in (a, b):
-        _verdict(where, exit_code=0, names="PASS")
+    said_of = {where: _verdict(where, exit_code=0, names="PASS") for where in (a, b)}
     reports = []
     for where in (a, b):
         document = json.loads(_must(["-m", "iirds_validate", "check", where, "-f", "json"]))
@@ -344,16 +454,15 @@ def _same_graph():
     if reports[0] != reports[1]:
         raise Failed("the two serialisations no longer report the same document")
     # Each report under its own command. This block showed `iirds check a &&
-    # iirds check b` above a's report alone, on a page whose first line says
-    # every block is the output of the command above it.
+    # iirds check b` above a's report alone, on a page that says what is under
+    # each `iirds check` is what it printed.
     shown = ["### What it does not flag, and why", "",
              "    $ python3 tools/make_fixture_package.py %s" % a,
              "    $ python3 tools/make_fixture_package.py %s --broken attribute-style" % b,
              ""]
     for where in (a, b):
-        said = _run(["-m", "iirds_validate", "check", where])[1]
         shown += ["    $ iirds check %s" % where, ""]
-        shown += ["    " + line if line else "" for line in said.splitlines()]
+        shown += ["    " + line if line else "" for line in said_of[where].splitlines()]
         shown.append("")
     return shown + [
             "Both pass, and the two reports are the same document: every key identical",

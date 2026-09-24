@@ -54,6 +54,8 @@ OLD_DISTRIBUTION_ALLOWED = {
     "src/iirds_validate/cli.py": (1, "the same token, in the rules listing"),
     "src/iirds_validate/model.py": (1, "the `source` token stored reports carry"),
     "src/iirds_validate/rules/system.py": (1, "the issue tracker's address, in a remedy"),
+    "tests/test_capabilities_current.py": (1, "a sample comparison the shared picture test "
+                                               "refuses; the file is a copy kept byte for byte"),
     "tests/test_distribution.py": (2, "the alias console script"),
     "tests/test_registry.py": (1, "pins the `source` token"),
     "tests/test_shims.py": (7, "the compatibility name, and the upgrade advice both pages give"),

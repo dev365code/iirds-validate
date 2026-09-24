@@ -23,7 +23,11 @@ What it holds:
   9. evidence found only in an HTML comment, in README's "Where it stands" section, or in the 1.0
      paragraph does not hold: those are copies of the data, not the page vouching for it.
  10. the word lists themselves: comparatives and superlatives aimed past this tool are refused in
-     short text and in prose, and plain description ("more than 200 rules", "rather than") is not.
+     short text and in prose, and plain description ("more than 200 rules", "more than one",
+     "no other check here has run", "rather than") is not.
+ 11. the generated detail page is read through prose_only(): fenced or indented blocks (captured
+     output, quoted rule text), quotation lines and bare link lines are not the project speaking;
+     README's hand-written section is read whole, every visible line.
 What these gates do not see, and a repository adds its own test for: whether a detail-page line
 matches the data word for word, whether a quoted report output is what the tool prints, whether a
 "done" item is true beyond the quoted words.
@@ -135,13 +139,13 @@ def test_detail_page_has_one_section_per_axis_in_order_naming_its_items():
 
 def test_the_prose_around_the_picture_compares_with_nobody():
     gen = _gen()
-    detail = DETAIL.read_text(encoding="utf-8")
+    detail = gen.prose_only(DETAIL.read_text(encoding="utf-8"))
     m = gen.FORBIDDEN_PROSE.search(detail)
     assert not m, f"detail page: {m.group(0)!r} turns a self-description into a comparison"
     readme = README.read_text(encoding="utf-8")
-    block = re.search(r"## Where it stands\n(.*?)(?=\n## |\Z)", readme, flags=re.S)
+    block = re.search(r"## Where it stands\n(.*?)(?=\n## |\Z)", readme, flags=re.DOTALL)
     assert block, "README lacks the '## Where it stands' section"
-    m = gen.FORBIDDEN_PROSE.search(block.group(1))
+    m = gen.FORBIDDEN_PROSE.search(gen.visible(block.group(1)))  # hand-written: every visible line
     assert not m, f"README 'Where it stands': {m.group(0)!r} turns a self-description into a comparison"
 
 
@@ -197,10 +201,18 @@ def test_the_data_gates_refuse_what_a_reader_could_not_verify(tmp_path):
 COMPARING = ("stricter than any other checker", "more rules than any checker", "unlike other validators",
              "the most thorough validator", "the strictest reading", "outperforms every reader",
              "second to none", "the widest coverage of any validator", "compared with other tools",
-             "no other checker does this", "better than the reference")
+             "no other checker does this", "better than the reference",
+             "No other iiRDS validator reads both serialisations.", "no other open-source checker does this",
+             "No other library names the line.", "Any other iiRDS tool would pass this package.",
+             "It finds more than twice as many defects as the reference implementation.",
+             "It catches more than ten times the errors the reference misses.",
+             "iirds-validate is unique among iiRDS validators.", "172 of 280, as no other iiRDS tool does")
 DESCRIBING = ("more than 200 rules", "re-measured on every release rather than promised",
               "checked weekly for change", "the section of the specification it enforces",
-              "other than the manifest, nothing is read twice", "the report names the rule")
+              "other than the manifest, nothing is read twice", "the report names the rule",
+              "no other check here has run", "more than one element", "listed more than once",
+              "the identifier MUST be unique within the package", "no other value is used",
+              "listed more than once", "more than 200 rules")
 
 
 def test_comparisons_and_superlatives_are_refused_and_plain_description_is_not():
@@ -212,6 +224,15 @@ def test_comparisons_and_superlatives_are_refused_and_plain_description_is_not()
         assert not gen.FORBIDDEN_PROSE.search(phrase), f"prose should allow {phrase!r}"
 
 
+def test_captured_output_and_quotations_are_not_the_projects_prose():
+    gen = _gen()
+    page = ("The report names the rule.\n\n```\nstricter than any other checker\n```\n\n"
+            "    unlike other validators\n\n> the most thorough validator\n\n"
+            "<https://example.org/second-to-none>\n\n[ref]: https://example.org/better-than-the-reference\n")
+    assert not gen.FORBIDDEN_PROSE.search(gen.prose_only(page)), "captured output and quotations are not prose"
+    assert gen.FORBIDDEN_PROSE.search(gen.prose_only(page + "\nIt is stricter than any other checker.\n"))
+
+
 def test_evidence_does_not_count_when_only_the_pictures_own_text_says_it(tmp_path):
     gen = _gen()
     data = _data()
@@ -219,7 +240,9 @@ def test_evidence_does_not_count_when_only_the_pictures_own_text_says_it(tmp_pat
         "# x\n\nthe plain words here\n\n<!-- the hidden words here -->\n\n"
         "## Where it stands\n\nthe copied words here\n\n## Next\n\n" + gen.condition_paragraph(data) + "\n",
         encoding="utf-8")
-    holds = lambda says: gen.evidence_holds(str(tmp_path), {"file": "README.md", "says": says}, data)  # noqa: E731
+    def holds(says):
+        return gen.evidence_holds(str(tmp_path), {"file": "README.md", "says": says}, data)
+
     assert holds("the plain words here")
     assert not holds("the hidden words here"), "an HTML comment is not something a reader sees"
     assert not holds("the copied words here"), "the picture's own section cannot vouch for the picture"

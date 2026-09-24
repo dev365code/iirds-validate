@@ -115,7 +115,7 @@ CASES = [
      "The finding names the subject and how many were found. A rendition with an "
      "IRI of its own is named by it; one written as a blank node, as here, is named "
      "by the unit that has it, so two of those under one unit read alike."),
-    ("two-dates", "A topic created twice", "two-dates", "M2.3", 1,
+    ("two-dates", "A topic with two creation dates", "two-dates", "M2.3", 1,
      "Appendix A gives an information unit at most one creation date, and this "
      "one carries two. The finding names the unit and the values it found."),
     ("missing-content", "Metadata that points at a file the package does not carry",

@@ -139,7 +139,7 @@ The finding names the subject and how many were found. A rendition with an IRI
 of its own is named by it; one written as a blank node, as here, is named by
 the unit that has it, so two of those under one unit read alike.
 
-### A topic created twice
+### A topic with two creation dates
 
     $ python3 tools/make_fixture_package.py fixtures/what-it-catches/two-dates.iirds --broken two-dates
     $ iirds check fixtures/what-it-catches/two-dates.iirds
@@ -149,7 +149,7 @@ the unit that has it, so two of those under one unit read alike.
 
       ERROR M2.3      more than one iirds:dateOfCreation
                           urn:test:topic1
-                          2 values: 2020-01-01, 2021-01-01
+                          2 values: 2020-01-01T00:00:00Z, 2021-01-01T00:00:00Z
                         → Keep one iirds:dateOfCreation and remove the rest. Two creation dates give
                         → a consumer no way to choose, and most will silently take whichever they
                         → read first.

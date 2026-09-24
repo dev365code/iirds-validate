@@ -446,6 +446,47 @@ def test_a_marker_behind_a_link_decides_nothing(unpacked, tmp_path):
     assert answers == [(["ours"], [])] * 2, answers
 
 
+def test_a_marker_behind_a_link_decides_nothing_in_the_report(unpacked, tmp_path):
+    """The same two directories, checked rather than searched. Opening a
+    container asked its own question about the marker, through the link, so
+    the far end still chose between the container opened with S6 naming the
+    link and a refusal that it was a container at all."""
+    reports = []
+    for far_end_has_it in (True, False):
+        ours = tmp_path / ("side-%s" % far_end_has_it) / "ours"
+        shutil.copytree(unpacked, ours, symlinks=True)
+        (ours / "mimetype").unlink()
+        elsewhere = tmp_path / ("meta-%s" % far_end_has_it)
+        shutil.move(str(ours / "META-INF"), str(elsewhere))
+        if not far_end_has_it:
+            (elsewhere / "metadata.rdf").unlink()
+        link(ours / "META-INF", elsewhere)
+        report = runner.run(ours, runner.ALL_KINDS)
+        reports.append(sorted((f.rule.id, f.violation.subject or "") for f in report.findings))
+    assert reports[0] == reports[1], reports
+    assert ("S6", "META-INF") in reports[0], reports[0]
+
+
+def test_an_entry_that_cannot_be_looked_up_is_named_as_itself(unpacked, monkeypatch):
+    """Listed, then gone before it could be looked up -- an editor's temporary
+    file in the middle of a save, say. Refused like an unsearchable directory,
+    because the check cannot vouch for what it did not see, but named as the
+    entry and by what went wrong: the directory holding it is not at fault."""
+    gone = unpacked / "content" / "topic1.xhtml~"
+    gone.write_bytes(b"draft")
+    looked_up = os.lstat
+
+    def vanished(path, *args, **kwargs):
+        if os.fspath(path) == str(gone):
+            raise FileNotFoundError(2, "No such file or directory", os.fspath(path))
+        return looked_up(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", vanished)
+    report = runner.run(unpacked, runner.ALL_KINDS)
+    detail = [f.violation.detail for f in report.findings if f.rule.id == "S13"]
+    assert detail and "could not be looked up: content/topic1.xhtml~" in detail[0], detail
+
+
 def test_a_link_that_leads_nowhere_is_named(unpacked):
     """Not listed -- there is no file to read -- and not silent either. It is
     an entry the container holds and no rule can use, which is the third thing

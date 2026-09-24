@@ -254,7 +254,7 @@ def _cmd_rules(args) -> int:
     labels = {"container": "the ZIP and its layout",
               "schema": "the metadata graph",
               "system": "the run itself",
-              "content": "iiRDS XHTML5 (Appendix B)",
+              "content": "the content files (Appendix B, section 8.2.1)",
               "lint": "will a consumer be able to use it"}
     for kind in ("container", "schema", "system", "content", "lint"):
         c = cov.get(kind)

@@ -94,7 +94,7 @@ def c4_mimetype_present(ctx):
 
 @rule("C5",
        covers=("dfn-iirds-zip-archive#4",),
-       fix="Make the file contain exactly application/iirds+zip, ASCII, with no trailing newline and no byte order mark. Editors add both silently, so write it with a tool that does not.")
+       fix="Make the file contain exactly application/iirds+zip, ASCII, with no trailing newline and no byte order mark. An editor can add either without showing it, so write the file with a tool that does not.")
 def c5_mimetype_content(ctx):
     if not ctx.package.has(MIMETYPE_FILE):
         return

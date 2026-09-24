@@ -1167,8 +1167,8 @@ aspirational:
   a file whose name holds `%`, `#` or `?`, referenced that way, reports as an
   error.
 - ~~The Appendix B entry condition~~ **Corrected**: content findings from the
-  MUST-level B rules now report as errors under iiRDS/A — whose whole point is restricting content to
-  iiRDS XHTML5 — and demote to warnings under every other profile, where the
+  MUST-level B rules now report as errors under iiRDS/A — which restricts content to the
+  formats section 8.2.1 lists, iiRDS XHTML5 for structured text — and demote to warnings under every other profile, where the
   standard permits any content and the entry condition is this project's
   reading. The rule keeps its MUST priority (the sentences are MUSTs); the
   *runner* assigns the severity, because only it knows the profile. B10, a
@@ -1375,7 +1375,9 @@ over the shift key. A package that genuinely uses the wrong extension --
 `.html`, `.htm` -- is still reported, which is the case the sentence is about.
 
 This is a spelling, so the claim on the sentence stands. It is one call to
-`.lower()` if the Consortium reads it the other way.
+`.lower()` if the Consortium reads it the other way. R41, R42, R44 and R45,
+which hold iiRDS/A renditions to `.pdf`, `.svg` or `.svgz`, `.mp4` and `.mp3`
+and claim no sentence, compare the same way.
 
 ### B8 — "only one" is scoped to a hazard statement, not to a file
 

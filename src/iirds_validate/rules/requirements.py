@@ -645,8 +645,9 @@ def vocabulary_classes(ontology) -> frozenset:
     why the claim on section 7.1 was withdrawn.
 
     The distinction the standard does not spell out, its own vocabulary makes:
-    **a class is a vocabulary class when the ontology supplies instances of
-    it.** Twenty document types ship with the standard, eight party roles,
+    **a class is a vocabulary class when the ontology types instances of it
+    directly and its Appendix A row says `IRI: required`.**
+    Twenty document types ship with the standard, eight party roles,
     eight identity types, five classification types; no documents ship, and no
     topics, because those are data. A company adding a term of the first kind
     extends the vocabulary. A company adding a document does not.
@@ -663,8 +664,8 @@ def vocabulary_classes(ontology) -> frozenset:
     The second is Appendix A's, through `requires_an_iri`: a class whose
     instances the standard says need not be named cannot be a vocabulary,
     because a term nobody can refer to is not a term. That excludes
-    `iirds:PlanningTime` and its three siblings, whose instances carry a
-    duration and a frequency and are plainly values.
+    `iirds:PlanningTime` and its subclasses, whose instances carry a duration
+    and a frequency and are plainly values.
 
     Derived rather than listed, so that a class the standard starts supplying
     terms for becomes a vocabulary class without anybody remembering to say

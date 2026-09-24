@@ -83,7 +83,7 @@ def m2_1_information_unit_iri(ctx):
 
 
 @rule("M2.3", covers=("rdfclasses_core_InformationUnit#2",),
-       fix="Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose, and most will silently take whichever they read first.")
+       fix="Keep one iirds:dateOfCreation and remove the rest. Two creation dates give a consumer no way to choose between them.")
 def m2_3(ctx):
     yield from _at_most_one(ctx, T.InformationUnit, T.dateOfCreation, "iirds:dateOfCreation")
 

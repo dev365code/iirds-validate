@@ -119,6 +119,27 @@ def test_the_named_party_rules_do_not_quote_the_document_sentence():
             assert rule.spec and ":~:text=" not in rule.spec, rule.id
 
 
+def test_the_readme_rules_block_is_what_iirds_rules_prints(capsys):
+    """The front page shows the tail of `iirds rules`, in a section that says
+    every number in it is read by a test. The table beside it was read and the
+    block was not: its labels were nobody's, and five content rules arrived
+    under one that named appendix B alone for rules about PDF, SVG, raster,
+    video and audio files."""
+    import pathlib
+    import re
+
+    from iirds_validate.cli import main
+
+    readme = (pathlib.Path(__file__).resolve().parents[1] / "README.md").read_text("utf-8")
+    block = re.search(r"```console\n\$ iirds rules\n(.*?)\n```", readme, re.S)
+    assert block, "README no longer shows `iirds rules` in a console block"
+    assert main(["rules"]) == 0
+    summary = [line for line in capsys.readouterr().out.splitlines()
+               if re.match(r"(?:container|schema|system|content|lint) ", line)]
+    assert summary, "`iirds rules` printed no summary line this test can read"
+    assert block.group(1).splitlines() == summary
+
+
 def test_the_readme_headline_figures_are_the_counts():
     """Every number this project publishes is supposed to be read by a test.
     Four were not: the rule count in the badge line, the shape count, "All N

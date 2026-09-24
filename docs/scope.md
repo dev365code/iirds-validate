@@ -154,7 +154,7 @@ gone wrong.
    because the coverage figure is the sentence a reader is most likely to
    quote out of this page, and "checked" and "enforced" are not the same word.
 
-   The content rules look at the files the metadata declares as XHTML renditions, and —
+   The iiRDS XHTML5 content rules look at the files the metadata declares as XHTML renditions, and —
    in an iiRDS/H package — the content list. The second half of that sentence
    is new. Section 8.3.1.1 forbids referencing the content list in the
    metadata, so in a package that obeys it the content list is never a

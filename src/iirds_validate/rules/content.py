@@ -156,9 +156,30 @@ def _media_type(value) -> str:
 
 def _xhtml_renditions(ctx):
     """Files the package itself declares to be iiRDS XHTML5."""
+    return _renditions_declared_as(ctx, XHTML_FORMAT)
+
+
+def _renditions_declared_as(ctx, media_type=None):
+    """Files the package itself declares to be of `media_type`, present in it;
+    with no type, every file a rendition names.
+
+    One walk for every format a rule asks about. The first two callers were
+    B6 for XHTML and R41 for PDF, and the reason for keeping it one is the
+    comment below: two readers of what a source names is how a file came to
+    be present to one rule and absent to another.
+    """
     seen = set()
     for rendition in ctx.instances_of(T.Rendition):
-        if XHTML_FORMAT not in [_media_type(f) for f in ctx.values(rendition, T.fmt)]:
+        declared = [_media_type(f) for f in ctx.values(rendition, T.fmt)]
+        # A type ending in "/" names the whole family: "video/" is every video
+        # subtype, which is what "video content" means -- `video/webm` is the
+        # case the section's .mp4 sentence exists for.
+        if media_type is None:
+            pass
+        elif media_type.endswith("/"):
+            if not any(d.startswith(media_type) for d in declared):
+                continue
+        elif media_type not in declared:
             continue
         for source in ctx.values(rendition, T.source):
             # The container layer decides what a source names, for every rule
@@ -580,6 +601,193 @@ def b6_file_extension(ctx):
         if not name.lower().endswith(".xhtml"):
             yield Violation("content declared as iiRDS XHTML5 does not use the .xhtml "
                             "file extension", subject=name)
+
+
+PDF_FORMAT = "application/pdf"
+
+
+@rule("R41", covers=(), kind="content", prio="MUST", versions=(),
+      variants=("A",),
+      title="a rendition declared as PDF in an iiRDS/A package must use the .pdf extension",
+      fix="Rename the file to end in .pdf and update every iirds:source that points at it. "
+          "Section 8.2.1.1 names the extension, and a consumer choosing a viewer by it opens "
+          "anything else as a file it does not recognise.")
+def r41_pdf_extension(ctx):
+    """B6's twin for the other text format section 8.2.1.1 names, and like B6
+    it reads the files a rendition declares.
+
+    That is why it claims no sentence: "The file extension MUST be .pdf"
+    binds a PDF a page points at as well, and this does not read those.
+    Whether a file conforms to ISO 19005-3 is a PDF/A validator's question.
+    The extension is compared case-blind, as B6 compares it: `.PDF` names the
+    same extension.
+    """
+    for name in sorted(_renditions_declared_as(ctx, PDF_FORMAT)):
+        if not name.lower().endswith(".pdf"):
+            yield Violation("content declared as PDF does not use the .pdf file extension",
+                            subject=name)
+
+
+SVG_FORMAT = "image/svg+xml"
+GZIP_MAGIC = b"\x1f\x8b"
+
+
+def _head(ctx, name, size, *, rendition):
+    """The first `size` bytes of a file, and why they were not read where
+    that is the caller's to say.
+
+    Bytes `_bytes_of` already holds are used rather than read again, and a
+    file it read and found empty is empty rather than unread. Nothing is read
+    once the run's content budget is spent. A rendition's bytes are charged to
+    that budget and may cross it, as `_bytes_of`'s may, which S9 reports; a
+    file the package does not list is not charged -- C1's damage check reads
+    every entry whole and pays nothing, and a stop charged to such a file
+    would have S9 name something that is not a rendition. A method no bounded
+    read can be made of is S14's to report, and this code's own faults reach
+    the runner. Any other failure comes back as a reason, for the rule that
+    asked to report: the first version caught everything and went on, and a
+    file nobody could read passed as one nothing was wrong with.
+    """
+    memo = ctx.__dict__.get("_content_bytes") or {}
+    if name in memo:
+        raw, why = memo[name]
+        return (None, None) if (why and not raw) else (raw[:size], None)
+    if ctx.__dict__.get("content_budget") is not None:
+        return None, None
+    try:
+        head, _more = ctx.package.read_bounded(name, size)
+        if rendition:
+            ctx.package.charge(len(head))
+    except UnreadableMethod:
+        return None, None
+    except ContentBudgetExceeded as exc:
+        ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
+        return None, None
+    except _OUR_FAULT:
+        raise
+    except Exception as exc:
+        return None, "not read: %s" % (exc if str(exc) else type(exc).__name__)
+    return head[:size], None
+
+
+@rule("R42", covers=(), kind="content", prio="MUST", versions=(),
+      variants=("A",),
+      title="a rendition declared as SVG in an iiRDS/A package must be named .svg, or .svgz "
+            "when gzip-compressed",
+      fix="Name an uncompressed SVG .svg and a gzip-compressed one .svgz, and update every "
+          "iirds:source that points at it. A consumer decides whether to decompress by the "
+          "extension, so a gzip-compressed file named .svg arrives as bytes it cannot parse.")
+def r42_svg_extension(ctx):
+    """The extension depends on the bytes, so this reads the first of them.
+
+    A gzip stream opens with 1f 8b, and two bytes answer the question; the
+    read is three, since a bounded read hands back its limit plus one. It
+    reads the SVGs a rendition declares, and an SVG a page
+    points at with `<img>` -- the way section 8.2.1.2 says SVG is referenced
+    -- is not read, so the sentence is not claimed. A file that is neither
+    gzip nor named .svg is reported as not gzip-compressed, which is all two
+    bytes say: zlib without the gzip wrapper is not gzip either.
+    """
+    for name in sorted(_renditions_declared_as(ctx, SVG_FORMAT)):
+        head, unread = _head(ctx, name, 2, rendition=True)
+        if unread:
+            yield Violation("this SVG could not be read, so whether it is gzip-compressed "
+                            "is not known", subject=name, detail=unread)
+        if head is None:
+            continue
+        compressed = head == GZIP_MAGIC
+        lowered = name.lower()
+        if compressed and not lowered.endswith(".svgz"):
+            yield Violation("a gzip-compressed SVG is not named .svgz", subject=name)
+        elif not compressed and not lowered.endswith(".svg"):
+            yield Violation("an SVG that is not gzip-compressed is not named .svg", subject=name)
+
+
+def _raster_other_than_jpeg_or_png(head: bytes):
+    """The raster format these bytes open with, when it is one section 8.2.1.2
+    does not allow; None when it is JPEG, PNG, or not a format known here.
+
+    Only signatures strong enough not to be met by accident. BMP's is two
+    letters, and a text file beginning "BM" would carry them, so BMP is only
+    recognised with the four reserved header bytes that follow its size, which
+    the format fixes at zero.
+    """
+    if head[:6] in (b"GIF87a", b"GIF89a"):
+        return "GIF"
+    if head[:4] in (b"II*\x00", b"MM\x00*"):
+        return "TIFF"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "WebP"
+    if head[:2] == b"BM" and head[6:10] == b"\x00\x00\x00\x00":
+        return "BMP"
+    return None
+
+
+@rule("R43", covers=(), kind="content", prio="MUST", versions=(),
+      variants=("A",),
+      title="a file in an iiRDS/A package must not be a GIF, TIFF, WebP or BMP graphic",
+      fix="Convert the graphic to PNG, or to JPEG for photographs, and update whatever "
+          "points at it. Section 8.2.1.2 allows JPEG and PNG as raster formats in iiRDS/A, "
+          "so that a consumer needs to render no other.")
+def r43_raster_formats(ctx):
+    """What each file is, rather than what its name or the metadata says: a
+    GIF named .png is a GIF, whether a rendition declares it or a page points
+    at it. It reads twelve bytes of a file.
+
+    It recognises GIF, TIFF, WebP and BMP, and a raster format it has no
+    signature for passes -- which is why it claims no sentence. "Raster
+    graphics MUST be encoded as" JPEG or PNG would need every other raster
+    format recognised, and "Only JPG and PNG graphics according to this
+    section MUST be used" is one of section 8.2.1.2's restrictions on SVG,
+    about the graphics an SVG uses; this does not open SVGs.
+    """
+    renditions = set(_renditions_declared_as(ctx))
+    for name in sorted(ctx.package.files):
+        if name == "mimetype" or name.startswith("META-INF/"):
+            continue
+        head, unread = _head(ctx, name, 12, rendition=name in renditions)
+        if unread:
+            yield Violation("this file could not be read, so whether it is a GIF, TIFF, "
+                            "WebP or BMP graphic is not known", subject=name, detail=unread)
+        if head is None:
+            continue
+        found = _raster_other_than_jpeg_or_png(head)
+        if found:
+            yield Violation("a %s graphic, where iiRDS/A allows JPEG and PNG" % found,
+                            subject=name)
+
+
+def _named_for_its_family(ctx, family, extension, what):
+    """Every present file a rendition declares as `family`, not named `extension`."""
+    for name in sorted(_renditions_declared_as(ctx, family)):
+        if not name.lower().endswith(extension):
+            yield Violation("%s content does not use the %s file extension" % (what, extension),
+                            subject=name)
+
+
+@rule("R44", covers=(), kind="content", prio="MUST", versions=(),
+      variants=("A",),
+      title="a rendition declared as video in an iiRDS/A package must use the .mp4 extension",
+      fix="Name the video file .mp4 and update every iirds:source that points at it. Section "
+          "8.2.1.3 fixes the extension, and a video in another container is the thing the "
+          "section's encoding sentence also rules out.")
+def r44_video_extension(ctx):
+    """Video content is whatever a rendition declares with a video/ media type,
+    any subtype. A video a page points at with `<video>` is not read, so the
+    extension sentence is not claimed; nor is the encoding sentence beside
+    it, which the index holds without the codecs that complete it."""
+    yield from _named_for_its_family(ctx, "video/", ".mp4", "video")
+
+
+@rule("R45", covers=(), kind="content", prio="MUST", versions=(),
+      variants=("A",),
+      title="a rendition declared as audio in an iiRDS/A package must use the .mp3 extension",
+      fix="Name the audio file .mp3 and update every iirds:source that points at it. Section "
+          "8.2.1.4 fixes the extension alongside the encoding.")
+def r45_audio_extension(ctx):
+    """As R44, for audio/, and for `<audio>` on a page. Whether the bytes are
+    MP3 to ISO/IEC 11172-3 is a question for a decoder."""
+    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio")
 
 
 @rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),

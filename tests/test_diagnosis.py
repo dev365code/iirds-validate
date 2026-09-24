@@ -234,21 +234,29 @@ def test_the_footer_says_why_rules_were_not_applicable(make_package):
 
     package = make_package()
     result = runner.run(package, runner.ALL_KINDS)
-    for_variant = {r.id for r in all_rules() if r.variants and not r.applies_to("1.3", "unrestricted")
-                   and r.applies_to("1.3", "H")}
+    rules = {r.id: r for r in all_rules()}
+    for_variant = {r.id for r in rules.values()
+                   if r.variants and not r.applies_to("1.3", "unrestricted")}
+    # Two profiles have rules of their own; each is named with its count.
+    for_h = {rule_id for rule_id in for_variant if rules[rule_id].applies_to("1.3", "H")}
+    for_a = {rule_id for rule_id in for_variant if rules[rule_id].applies_to("1.3", "A")}
+    assert for_h and for_a, (for_h, for_a)
     assert set(result.not_applicable["variant"]) == for_variant
     assert result.skipped == sum(len(v) for v in result.not_applicable.values())
     out = io.StringIO()
     report_module.render_text(result, out, verbose=True)
-    assert "%d for iiRDS/H" % len(for_variant) in out.getvalue()
+    assert "%d for iiRDS/H" % len(for_h) in out.getvalue()
+    assert "%d for iiRDS/A" % len(for_a) in out.getvalue()
     assert "not applicable, for iiRDS/H:" in out.getvalue()
+    assert "not applicable, for iiRDS/A:" in out.getvalue()
 
 
 def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
-    """On an iiRDS/H package the one rule that does not apply is for the
-    other two profiles, which the registry spells ("unrestricted", "A").
-    Joined with a slash that read "for iiRDS/A/unrestricted" -- a profile
-    name nobody published. "unrestricted" is the absence of a restriction."""
+    """On an iiRDS/H package one rule that does not apply is for the other
+    two profiles, which the registry spells ("unrestricted", "A"). Joined
+    with a slash that read "for iiRDS/A/unrestricted" -- a profile name
+    nobody published. "unrestricted" is the absence of a restriction. The
+    rest are iiRDS/A's own, and are named for it."""
     import io
 
     from iirds_validate import report as report_module
@@ -258,11 +266,12 @@ def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
         "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
         "    <iirds:formatRestriction>H</iirds:formatRestriction>")
     result = runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
-    assert result.not_applicable["variant"] == ["C11.1"]
+    assert result.not_applicable["variant"] == ["C11.1", "R41", "R42", "R43", "R44", "R45"]
     out = io.StringIO()
     report_module.render_text(result, out, verbose=True)
     text = out.getvalue()
     assert "1 for packages that are not iiRDS/H" in text
+    assert "5 for iiRDS/A" in text
     assert "not applicable, for packages that are not iiRDS/H: C11.1" in text
     assert "unrestricted" not in text
 

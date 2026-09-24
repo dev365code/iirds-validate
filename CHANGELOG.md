@@ -30,6 +30,35 @@ exit code from `0` to `1`.
   not describe, in any package of any edition (R4). Before 0.6.0, R4 asked
   that only of an iiRDS/H 1.3 package.
 
+**iiRDS/A content formats: five rules, claiming none of the sentences yet.**
+Section 8.2.1 names the formats an iiRDS/A package may carry. R41 asks that a
+rendition declared as PDF be named `.pdf`, R42 that one declared as SVG be
+named `.svg`, or `.svgz` when it is gzip-compressed, R44 that video be named
+`.mp4` and R45 audio `.mp3`; each compares the extension case-blind, as B6
+does. R43 reads the first bytes of each file but `mimetype` and those under
+`META-INF/`, and refuses GIF, TIFF, WebP and BMP; a file R42 or R43 cannot
+read is reported as not judged. None claims its sentence: each sentence binds
+a file a page points at as well, which R41, R42, R44 and R45 do not read, and
+R43 knows four raster formats by their bytes. Coverage stays 172 of 280.
+For an iiRDS/A package with nothing else wrong, each of the five takes the
+exit code from `0` to `1`; no other package is judged by them. `iirds rules`
+labels the content rules "the content files (Appendix B, section 8.2.1)",
+where it named appendix B alone.
+
+**Remedies and messages say what their rule checks.** L3's remedy said a
+node no root reaches is invisible in every viewer; it is invisible to a viewer
+that walks the tree from its roots. L5's message said a proprietary class is
+linked to no iiRDS class, and it reports a class with no `rdfs:subClassOf` or
+`owl:equivalentClass` of its own into iiRDS -- a link through another
+proprietary class is not followed. L11 said no content rule examined the file;
+the iiRDS XHTML5 rules do not read it through the rendition that names it, and
+under iiRDS/A the format rules above may. L12 named Windows and macOS
+filesystems for a case-insensitive one, which macOS uses by default. M2.3 no
+longer says what most consumers do with two creation dates, and C5 says an
+editor can add a newline or a byte order mark without showing it, where it
+said editors add both. The titles of L5, L11 and L12 and the messages of L5
+and L11 change; a consumer matching on their text sees the new wording.
+
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that
 builds a package with it, the command that checks that package, and the

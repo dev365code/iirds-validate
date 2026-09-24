@@ -228,3 +228,15 @@ def test_a_stylesheet_instruction_is_not_a_declaration():
            + BODY % GERMAN).encode("utf-8")
     graph, error = _parsed(raw)
     assert error is None and graph is not None, error
+
+
+@pytest.mark.parametrize("declared", ["cp1361", "cp864"])
+def test_a_document_the_entity_guard_cannot_read_is_refused(declared):
+    """The guard against entity expansion asks expat, and expat cannot read a
+    multi-byte encoding or a code page that moves ASCII's own characters. It
+    answered "no declarations" about such a document, and the parser under the
+    graph, which does not read it that way, expanded them."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n<!DOCTYPE r [<!ENTITY a "x">]>\n' % declared
+           + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and error, declared

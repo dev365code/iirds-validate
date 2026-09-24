@@ -46,31 +46,32 @@ not a guarantee, written here so that it is not inferred from the rows above.
 An unpacked container is a directory, and a directory can hold links, so there
 the question is what this tool itself reads. Only what the container holds. A
 name is resolved from the container's root downwards, one component at a time,
-each link replaced by its own text where it stands and never a step outside, so
-nothing out there is looked at to decide -- not `stat`, not `readlink`. Four
-kinds of entry are named by S6 and not opened: one that leads out, one written
-as an absolute path under neither of the container's two names -- the one it
-was given and the one that resolves, so a third spelling of the same place is
-reported rather than read -- one passing through more links than a system will
-follow, and one pointing at nothing. An absolute link under one of those names
-is walked like a relative one. A name the listing does not hold is refused as
-the archive refuses it; each read resolves the name again, so a file swapped
-after the listing for a link that leads out is not read either, while one
-swapped for a link that stays inside reads what it points at, as any link there
-does; and a directory the check cannot list, or can list and not search,
-refuses the container rather than leaving part of it unlooked at. Both markers
-that make a directory a container are found by name rather than by what they
-point at -- the directory a marker sits in is walked like any other name, and
-one that leads out counts as the marker being there, for S6 to name -- so
+each link replaced by its own text where it stands and never a step outside,
+and a component that is not a directory ends the walk there as it ends the
+kernel's, so nothing out there is looked at to decide -- not `stat`, not
+`readlink`. Four kinds of entry are named by S6 and not opened: one that leads
+out, one written as an absolute path under neither of the container's two names
+-- the one it was given and the one that resolves, so a third spelling of the
+same place is reported rather than read -- one passing through more links than
+a system will follow, and one pointing at nothing. An absolute link under one
+of those names is walked like a relative one. A name the listing does not hold
+is refused as the archive refuses it; each read resolves the name again, so a
+file swapped after the listing for a link that leads out is not read either,
+while one swapped for a link that stays inside reads what it points at, as any
+link there does; and a directory the check cannot list, or can list and not
+search, refuses the container rather than leaving part of it unlooked at. Both
+markers that make a directory a container are found by name rather than by what
+they point at -- the directory a marker sits in is walked like any other name,
+and one that leads out counts as the marker being there, for S6 to name -- so
 whether a file somewhere else exists decides nothing about the report.
 
 The same holds one layer up. Pointing at a directory searches it for packages,
 and a `.iirds` name found there that leads out of the directory is refused by
 name and not read; where the directory holds unpacked containers rather than
-archives, a linked container is refused the same way. The run exits 2 rather
-than checking less than it was asked to in silence. The path named on the
-command line is followed wherever it goes: that one is the operator's own
-choice.
+archives, a linked container is refused the same way. So is any subdirectory
+the search cannot list, or can list and not search. The run exits 2 rather than
+checking less than it was asked to in silence. The path named on the command
+line is followed wherever it goes: that one is the operator's own choice.
 
 Three things are outside what that can see. A hard link is the file itself to
 any directory listing, and is read as one. A directory somebody else is

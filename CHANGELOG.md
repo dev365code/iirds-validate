@@ -84,6 +84,29 @@ byte past the limit, and the gate refuses the document the way it refuses an
 archive's (C16.1). Every release from 0.3.0, the first with `--fragment`,
 through 0.7.1 reads the whole file.
 
+**Security. Pointing at a directory of packages left out the ones in a
+subdirectory it could not read.** The search walked the directory with a glob,
+which says nothing about a subdirectory it cannot list, or can list and not
+search, and the run passed on the packages it did find. Such a subdirectory
+now refuses the search by name, with `2`, as a name that leads out of the
+directory already does; for a directory holding one, that takes the exit code
+from `0` to `2`. Every release through 0.7.1 does this.
+
+**Security. A link through a name that is not a directory read the file beside
+it.** A container's links are resolved one component at a time, and a
+component that was not there, or was a file, was kept as if it were a
+directory, so a `..` after it took it away again: the link read as the file
+beside it, where a consumer opening the same path gets an error. The walk now
+stops where the kernel stops, and such a link is named as pointing at nothing.
+0.6.1 through 0.7.1 do this.
+
+**Security. Listing an unpacked container asked each of its links what it
+points at.** The listing sorted names into directories and files with a
+question that a link answers from its far end. No verdict depended on the
+answer -- every link is resolved from the root afterwards -- but the question
+reached wherever the link points. Each name is sorted by its own entry now.
+0.6.1 through 0.7.1 do this.
+
 **`SECURITY.md` says where its link handling stops, and when the promise about
 security releases starts.** An absolute link under one of the container's two
 names is walked like a relative one rather than refused; a file swapped after

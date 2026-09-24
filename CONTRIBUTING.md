@@ -2,18 +2,21 @@
 
 ## Certify your commits (DCO)
 
-Every commit needs a sign-off line:
+Every non-merge commit in a pull request needs a sign-off line:
 
 ```
 Signed-off-by: Your Name <you@example.com>
 ```
 
 `git commit -s` writes it for you; `git commit --amend -s` repairs a
-forgotten one. The line certifies the [Developer Certificate of
+forgotten one on the last commit, and `git rebase --signoff <base>` on every
+commit after `<base>`. The line certifies the [Developer Certificate of
 Origin 1.1](https://developercertificate.org/) — that you wrote the change
 or otherwise have the right to submit it under this project's licence. That
 is the whole deal: you keep your copyright, your contribution arrives under
-Apache-2.0 like everything here (inbound = outbound), and the project keeps
+Apache-2.0 like the project's own code (inbound = outbound; the bundled
+ontologies and the rule catalogue keep their own licences, as `NOTICE` says),
+and the project keeps
 a provenance trail it can show anyone who asks — which, for a tool courting
 a standards body, someone eventually will. There is no CLA and no paperwork;
 a certificate of origin is a statement of fact, not a transfer of rights.
@@ -61,12 +64,14 @@ By making a contribution to this project, I certify that:
 
 ## Adding a rule
 
-Catalogued rules (`C*`, `M*`) inherit their priority, applicable versions,
-variants and specification link from `data/rule-catalog.json`, so a rule is just
-its implementation:
+Catalogued rules (`C*`, `M*`, and `S1` to `S3`) inherit their priority,
+applicable versions, variants and specification link from
+`src/iirds_validate/data/rule-catalog.json`. The catalogue carries no remedy,
+so every rule still passes its own `fix=`, which `tests/test_remediation.py`
+requires:
 
 ```python
-@rule("M21.5")
+@rule("M21.5", fix="What to change so the package meets it.")
 def m21_5(ctx):
     yield from _at_most_one(ctx, T.ContentLifeCycleStatus, T.purpose, "iirds:purpose")
 ```
@@ -75,37 +80,39 @@ Interoperability rules (`L*`) are not in the catalogue and carry their own
 metadata:
 
 ```python
-@_lint("L9", "what a reader would want to know", prio="RECOMMENDED")
+@_lint("L9", "what a reader would want to know", prio="RECOMMENDED",
+       fix="What to change so the package meets it.")
 def l9_something(ctx):
     ...
 ```
 
 Rules yield `Violation`s and return nothing. A rule that raises is reported as a
-finding rather than taking the run down, so a bug in one rule cannot hide the
-other 60.
+finding rather than taking the run down, so a bug in one rule cannot hide what
+the other rules find.
 
 ## Rules of the road
 
 1. **Never spell a term inline.** Add it to `terms.py` with bracket syntax.
-   `tests/test_terms.py` will confirm it exists in the ontology.
-2. **Ask the graph, not the document.** No string matching on RDF/XML, ever.
+   `tests/test_terms.py` will confirm it exists in the ontology, as long as it
+   is defined above the `TERMS` snapshot at the end of the term list.
+2. **Ask the graph, not the document.** No string matching on RDF/XML in a rule, ever.
    If a rule would behave differently on JSON-LD, it is wrong.
 3. **Add a fixture both ways.** A new rule needs a package that violates it and
    one that does not. `tests/conftest.py` builds containers in memory.
-4. **Do not touch `data/ontologies/`.** Verbatim redistribution is a licence
+4. **Do not touch `src/iirds_validate/data/ontologies/`.** Verbatim redistribution is a licence
    condition; `tests/test_offline.py` checks the hashes.
 
 ## Cross-checking against plusmeta
 
-Rule identifiers match the [iiRDS Validation
-Tool](https://iirds-validation.plusmeta.de/), which is the most useful review
+The catalogued rules' identifiers (`C*`, `M*`, `S1` to `S3`) match the [iiRDS
+Validation Tool](https://iirds-validation.plusmeta.de/)'s -- `B*`, `L*`, `R*`
+and `S4` onward are this project's own -- and it is the most useful review
 available: run a package through both and compare. A disagreement is worth
-understanding before either side is called wrong — the answer has so far been
-interesting every time.
+understanding before either side is called wrong.
 
 ## Read this first
 
-[docs/scope.md](docs/scope.md). One page. It says what belongs here and what
+[docs/scope.md](docs/scope.md). It says what belongs here and what
 does not, which saves proposing something that will be turned down for reasons
 nobody had written anywhere.
 
@@ -116,15 +123,19 @@ pip install -e ".[dev]"
 pytest
 ```
 
-`pytest` is not everything CI runs, and the difference has turned a good commit
-red twice — over import order, which the test suite cannot see. `make check`
-runs the lot: ruff at the version CI pins, the tests, the ontology hashes, and
-the serialisation equivalence proof against a container with a known defect.
+`pytest` is not everything CI runs: import order, for one, is ruff's to see
+and not the test suite's. `make check` runs ruff (the one installed -- `.[dev]`
+and `make dev` install the version CI pins), the tests with the pySHACL
+differential gate required, the ontology hashes, the serialisation equivalence
+proof against a container with a known defect, and the specification checks,
+which fail unless `.spec-cache/` holds the specification (`python
+tools/extract_requirements.py --refresh`; `make check IIRDS_REQUIRE_SPEC_CACHE=`
+skips them, as the release workflow does).
 
 ```sh
-make dev      # ruff and pytest
-make check    # every gate CI's lint and test jobs run
-make fix      # the formatting ruff can correct itself
+make dev      # ruff, pytest and pySHACL: what make check needs
+make check    # CI's lint and test gates except the .pyz build
+make fix      # the lint findings ruff can fix itself (ruff check --fix)
 ```
 
 One thing that check will not let you do is prove the equivalence claim against
@@ -142,17 +153,20 @@ which carry it twice each -- their `version` and their `iirds>=` floor. The
 eighth is `shapes/MANIFEST.json`, which you do not edit: run `python
 tools/emit_shacl.py` and the manifest follows the version by itself. Give the
 top entry of `CHANGELOG.md` its date in the same commit, then `make check` --
-each of the eight fails a test of its own if it is left behind, and the
-changelog fails one if the date and the number are not in one commit. The tag
+each of the eight fails a test if it is left behind (`pyproject.toml` and the
+two `__init__.py` files share one; each shim line and the manifest have their
+own), and the changelog fails one if the date and the number are not in one commit. The tag
 is `v` and the number.
 
 Look at the action pins before you tag. Every `uses:` in
-`.github/workflows/` names a commit rather than a tag, which means none
-of them moves on its own and none of them picks up the fix its owner
-published last month; `tests/test_workflow_supply_chain.py` says why that
-trade was made. Moving a pin is reading the action's releases since the
+`.github/workflows/` names a commit rather than a tag, so no action's code
+moves on its own or picks up the fix its owner published last month -- though
+the PyPI publisher, at that commit, runs a container image pulled from its
+registry by a tag, which its owner could push again;
+`tests/test_workflow_supply_chain.py` says why that trade was made. Moving a pin is reading the action's releases since the
 one in the comment, taking the commit that release resolves to, and
 changing every place that action appears -- a test refuses a pin that
 disagrees with itself across the three files. Do it here, before a tag,
-rather than during one: `release.yml` cannot be exercised without a tag,
-so the first run of a changed publisher is a real release.
+rather than during one: `release.yml`'s build job can be run by hand, but its
+publish jobs run only on a tag push, so the first run of a changed publisher
+is a real release.

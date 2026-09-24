@@ -31,10 +31,12 @@ def subclasses_of(graph: Graph, cls) -> frozenset:
     consumers to treat instances as the parent. This closure walks only
     the data graph: the SDK bundles no ontology (that file is third-party
     material with its own licence apparatus), so its answer is always a
-    subset of a fuller validator's — never a contradiction. Note the
-    standard's 1.3 core declares no subclasses of any concrete class, so
-    for Topic, Document, Rendition and friends this subset is in fact
-    the whole answer.
+    subset of a fuller validator's — never a contradiction. No bundled 1.3
+    vocabulary gives Topic, Document or Rendition a subclass, so for them
+    this subset is the whole answer; for a class the standard does subclass
+    -- InformationUnit, Selector, ProductFeature and DirectoryNode in the
+    core, Supply in the machinery vocabulary, among them -- it misses the
+    standard's own subclasses.
     """
     return frozenset({cls} | set(graph.transitive_subjects(RDFS.subClassOf, cls)))
 

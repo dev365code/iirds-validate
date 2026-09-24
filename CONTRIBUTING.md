@@ -64,9 +64,10 @@ By making a contribution to this project, I certify that:
 
 ## Adding a rule
 
-Catalogued rules (`C*`, `M*`, and `S1` to `S3`) inherit their priority,
-applicable versions, variants and specification link from
-`src/iirds_validate/data/rule-catalog.json`. The catalogue carries no remedy,
+Catalogued rules (`C*`, `M*`, and `S1` to `S3`) inherit from
+`src/iirds_validate/data/rule-catalog.json` whatever priority, applicable
+versions, variants and specification link they do not pass themselves --
+several pass their own where the catalogue's was wrong. The catalogue carries no remedy,
 so every rule still passes its own `fix=`, which `tests/test_remediation.py`
 requires:
 
@@ -92,7 +93,9 @@ the other rules find.
 
 ## Rules of the road
 
-1. **Never spell a term inline.** Add it to `terms.py` with bracket syntax.
+1. **Never spell a term inline** -- R1, R2 and L16 still do, and are the
+   exceptions to remove rather than to follow. Add it to `terms.py` with
+   bracket syntax.
    `tests/test_terms.py` will confirm it exists in the ontology, as long as it
    is defined above the `TERMS` snapshot at the end of the term list.
 2. **Ask the graph, not the document.** No string matching on RDF/XML in a rule, ever.
@@ -124,7 +127,7 @@ pytest
 ```
 
 `pytest` is not everything CI runs: import order, for one, is ruff's to see
-and not the test suite's. `make check` runs ruff (the one installed -- `.[dev]`
+and not the test suite's. `make check` runs, among its other checks, ruff (the one installed -- `.[dev]`
 and `make dev` install the version CI pins), the tests with the pySHACL
 differential gate required, the ontology hashes, the serialisation equivalence
 proof against a container with a known defect, and the specification checks,

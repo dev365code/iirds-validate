@@ -1,7 +1,7 @@
 # Running inside a closed network
 
-Many manufacturing sites run air-gapped networks, and technical documentation
-is the kind of material that is often not allowed out. This tool is built so the
+A manufacturing site may run an air-gapped network, and technical documentation
+is the kind of material that may not be allowed out. This tool is built so the
 data never has to move.
 
 ## What it never does
@@ -48,7 +48,8 @@ pip download iirds -d wheels/
 
 That directory holds this project's wheel — `iirds_validate` and the `iirds`
 library it is built on — plus `rdflib` and the dependencies it declares for the
-Python that ran `pip download` (`isodate` only below 3.11), so download with the
+Python that ran `pip download` (in the rdflib release pip resolves today,
+`isodate` only below 3.11), so download with the
 Python version the closed machine runs. Copy it in by whatever means your site
 allows, then:
 
@@ -119,8 +120,9 @@ L4, a cycle in the directory structure, is one `check` does not run -- so under
 
 ## Why "it runs in your browser" is not the same as "it never leaves"
 
-The hosted validation tool is described as processing files client-side and
-storing nothing on its server. Even where that holds of the code as published,
+The hosted validation tool is described -- in its own help text, at the commit
+this project pins -- as processing files client-side and storing nothing on
+its server. Even where that holds of the code as published,
 it is not the same guarantee as never loading the page at all.
 
 - **The code can change between visits.** A hosted single-page app can be
@@ -131,9 +133,10 @@ it is not the same guarantee as never loading the page at all.
   stands between the two, and see the previous point.
 - **The dependency surface is large.** A Vue application is built from a large
   npm dependency tree. Auditing that before every use is not realistic; auditing
-  a pure-Python package whose one declared dependency, `rdflib`, brings
-  `pyparsing` and, below Python 3.11, `isodate` -- all pure Python -- is.
-- **Many sites will not approve it regardless.** "Open a browser tab to an
+  a pure-Python package whose one declared dependency, `rdflib`, brings -- in
+  the release pip resolves today -- `pyparsing` and, below Python 3.11,
+  `isodate`, all pure Python, is.
+- **A site's review may not approve it regardless.** "Open a browser tab to an
   external domain and feed it engineering documentation" is not a request that
   passes review at a manufacturer, and being technically safe does not make it
   approvable.

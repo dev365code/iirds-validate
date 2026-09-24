@@ -90,10 +90,11 @@ shared code the validator imports as its own next release.
 - Query surface with section-7 semantics: `instances_of` and `label_of`
   (functions and `Package` methods), `subclasses_of` (a function) and
   `Package.is_instance`. The subclass closure walks only the package's own
-  declarations, so it is the whole answer for a class the 1.3 core gives no
-  subclass (`Topic`, `Document`, `Rendition`), and it misses the core's own
-  subclasses for one it does (`InformationUnit`, `Selector`, `ProductFeature`
-  and `DirectoryNode` among them).
+  declarations, so it is the whole answer for a class no bundled 1.3 vocabulary
+  gives a subclass (`Topic`, `Document`, `Rendition`), and it misses the
+  standard's own subclasses for one that has them (`InformationUnit`,
+  `Selector`, `ProductFeature` and `DirectoryNode` in the core, `Supply` in the
+  machinery vocabulary, among them).
 - `META-INF/metadata.jsonld` is read and merged beside `metadata.rdf`;
   isomorphic sources count once (blank nodes double under naive union),
   divergent sources still union. `metadata_sources`, `metadata_graphs`

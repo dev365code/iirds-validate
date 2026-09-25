@@ -29,8 +29,10 @@ from ._metadata import (
     graph_difference,
     is_absolute_name,
     is_rdfxml_document_element,
+    merge_graphs_of,
     merge_sources,
     parse_metadata,
+    parse_metadata_graphs,
     write_metadata,
 )
 from ._pack import PackError, pack
@@ -57,6 +59,6 @@ __all__ = ["CONTRADICTED_ENCODING", "IIRDS", "IirdsError", "MAX_COMPARED_BLANK_N
            "UNREADABLE_ENCODING", "UNUSED_ENCODING", "PACKAGE_BASE", "PackError", "Package",
            "UnreadableMethod", "__version__", "describe_method", "graph_difference", "instances_of",
            "is_absolute_name",
-           "is_rdfxml_document_element", "label_of", "merge_sources", "open", "pack",
-           "parse_metadata", "source_of", "subclasses_of", "unreadable_method",
+           "is_rdfxml_document_element", "label_of", "merge_graphs_of", "merge_sources", "open", "pack",
+           "parse_metadata", "parse_metadata_graphs", "source_of", "subclasses_of", "unreadable_method",
            "write_metadata"]

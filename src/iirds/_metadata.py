@@ -14,7 +14,7 @@ import json
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from rdflib import BNode, Graph, Literal
 
@@ -630,7 +630,38 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     caller owns that decision (the container reader passes PACKAGE_BASE).
     The format follows the file name -- ``.jsonld``/``.json`` parse as
     JSON-LD, everything else as RDF/XML, the two serialisations iiRDS names.
+    The graph is the document's default graph; parse_metadata_graphs hands
+    on a JSON-LD document's named graphs as well.
     """
+    graph, _named, error = parse_metadata_graphs(name, raw, base=base)
+    return graph, error
+
+
+def parse_metadata_graphs(name: str, raw: bytes, *,
+                          base: str) -> Tuple[Optional[Graph], Dict[object, Graph], Optional[str]]:
+    """As parse_metadata, and the named graphs a JSON-LD document puts
+    statements in.
+
+    JSON-LD 1.1 reads a document as a dataset: a default graph and named
+    graphs, and rdflib gives a named graph to every `@graph` that has an `@id`
+    beside it -- a top-level one included, which puts everything in a graph
+    of that name. Returns
+    ``(graph, named, error)``: the default graph, the named graphs that hold
+    statements, keyed by their names as rdflib gives them -- a URIRef, or a
+    BNode where a blank node names the graph -- and the error as
+    parse_metadata gives it. Keyed by the term, not its text: an IRI can be
+    spelled like a blank node's label. RDF/XML names no graph, and a refused
+    document has none.
+    """
+    named: Dict[object, Graph] = {}
+    graph, error = _parse_metadata(name, raw, base, named)
+    return graph, (named if graph is not None else {}), error
+
+
+def _parse_metadata(name: str, raw: bytes, base: str,
+                    named: Dict[object, Graph]) -> Tuple[Optional[Graph], Optional[str]]:
+    """parse_metadata's work; a JSON-LD document's named graphs go into
+    `named`."""
     fmt = "json-ld" if name.endswith((".jsonld", ".json")) else "xml"
 
     # Size first, and on the *stored* bytes: the limit is the validator's,
@@ -709,7 +740,38 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     try:
         graph = Graph()
         graph.parse(data=raw, format=fmt, publicID=base)
+        if fmt == "json-ld":
+            # rdflib files a JSON-LD document's named graphs in the store under
+            # the graph it parsed into, beside that graph's own statements --
+            # the default graph, which is what is handed on, as it was. Read
+            # out of that one parse, so the default graph, its prefixes and
+            # what the parse costs are what they were, on every rdflib: a
+            # Dataset names its default graph after the base before rdflib 7
+            # and after itself from 7, and neither was the graph read here.
+            # Read out in one pass over the store into graphs of their own,
+            # the default graph too where there are named ones: the store keeps
+            # every graph a statement is in with the statement, and reading one
+            # graph after another there, or taking a graph out of it, cost the
+            # square of the graphs a statement repeats in.
+            held = {}
+            for triple, contexts in graph.store.triples((None, None, None), None):
+                for context in contexts:
+                    if context.identifier != graph.identifier:
+                        held.setdefault(context.identifier, []).append(triple)
+            for identifier, triples in held.items():
+                part = Graph()
+                for triple in triples:
+                    part.add(triple)
+                named[identifier] = part
+            if held:
+                alone = Graph()
+                for prefix, namespace in graph.namespaces():
+                    alone.bind(prefix, namespace, override=True, replace=True)
+                for triple in graph:
+                    alone.add(triple)
+                graph = alone
     except Exception as exc:
+        named.clear()
         return None, "%s: %s: %s" % (name, type(exc).__name__, exc)
     return graph, None
 
@@ -822,9 +884,12 @@ def _term(term) -> str:
     a caller can catch by kind, on graphs rdflib still writes.
     """
     kind = "L" if isinstance(term, Literal) else "B" if isinstance(term, BNode) else "U"
+    # A language tag without regard to case, as rdflib compares literals: `de`
+    # and `DE` are one term to it, and were two to this.
+    language = getattr(term, "language", None)
     return "%s %r %r %r" % (kind, str(term),
                             getattr(term, "datatype", None),
-                            getattr(term, "language", None))
+                            language.lower() if language else language)
 
 
 def _digest(text: str) -> str:
@@ -1058,6 +1123,59 @@ def graph_difference(one: Graph, other: Graph):
     counts_one, counts_other = counted(rows_one), counted(rows_other)
     return (only(rows_one, label_one, counts_one, counts_other),
             only(rows_other, label_other, counts_other, counts_one))
+
+
+def merge_graphs_of(graphs):
+    """One document's graphs -- a mapping of name -> Graph, the default graph
+    first -- merged into one, a graph that repeats another counted once.
+
+    A blank node's label names one node across a JSON-LD document, so graphs
+    that share one are about the same node and are joined as they are. A
+    graph with blank nodes of its own that repeats one already joined -- the
+    same triples, its blank nodes aside -- is left out: joined, its copies
+    would be second nodes. A repeat is found by the graph's fingerprint, taken
+    once per graph -- one pass where its blank nodes form trees, a search over
+    the few that do not -- so the cost is the document's size.
+
+    A graph holding more blank nodes outside trees than
+    MAX_COMPARED_BLANK_NODES has no fingerprint, and cannot be told from a
+    repeat where another graph with blank nodes is its size. It is joined as
+    it is and named; the document it is in then holds more than the limit
+    too, so a caller comparing it will not compare it either.
+
+    Returns ``(merged, repeats, uncounted)``: the merged graph, the names of
+    graphs left out as repeats, and the names of graphs that could not be
+    counted.
+    """
+    items = list(graphs.items())
+    blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
+              for _name, graph in items]
+    shared, seen = set(), set()
+    for nodes in blanks:
+        shared |= nodes & seen
+        seen |= nodes
+    sizes = {}
+    for (_name, graph), nodes in zip(items, blanks):
+        if nodes:
+            sizes[len(graph)] = sizes.get(len(graph), 0) + 1
+    merged = Graph()
+    kept = set()
+    repeats, uncounted = [], []
+    for (name, graph), nodes in zip(items, blanks):
+        if nodes and not nodes & shared:
+            try:
+                key = tuple(_fingerprint(graph))
+            except _NotCompared:
+                key = None
+            if key is None and sizes[len(graph)] > 1:
+                uncounted.append(name)
+            elif key is not None:
+                if key in kept:
+                    repeats.append(name)
+                    continue
+                kept.add(key)
+        merged += graph
+    return merged, repeats, uncounted
 
 
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:

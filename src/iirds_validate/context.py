@@ -35,8 +35,9 @@ from iirds import (
     UNDECLARED_ENCODING,
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
+    merge_graphs_of,
     merge_sources,
-    parse_metadata,
+    parse_metadata_graphs,
     subclasses_of,
 )
 
@@ -71,8 +72,22 @@ class Context:
     #: not admitted to `sources`; C9 reports the element, S2 the consequence.
     #: One graph per metadata file, kept alongside the merged `graph` so a rule
     #: can ask whether the serialisations agree. Merging is right for every
-    #: other rule and is exactly what hides a disagreement.
+    #: other rule and is exactly what hides a disagreement. Each holds what
+    #: the file states whatever graph of it holds the statement: JSON-LD 1.1
+    #: reads a document as a dataset, and iiRDS names no graph.
     per_source: dict = field(default_factory=dict)
+
+    #: Each metadata file's graphs by name, None for the default graph. Only
+    #: JSON-LD names any; L17 asks what a reader of the default graph alone
+    #: would miss.
+    graphs_of: dict = field(default_factory=dict)
+
+    #: Per metadata file, the names of graphs merge_graphs_of left out as
+    #: repeats, and of those it could not tell from one. L17 does not name a
+    #: repeat. A file holding an uncounted graph is past the comparison's
+    #: limit, so L9 says it did not compare it.
+    repeats: dict = field(default_factory=dict)
+    uncounted: dict = field(default_factory=dict)
 
     #: Per-class closure over ontology *and* package subclass declarations,
     #: filled lazily. Per-instance, same reasoning as Ontology's caches.
@@ -502,6 +517,9 @@ def build_graph(package: Package):
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
+    defaults = {}
+    graphs_of = {}
+    repeats, uncounted = {}, {}
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -521,7 +539,7 @@ def build_graph(package: Package):
                 errors.append("%s: refused: over the %d byte limit uncompressed"
                               % (name, MAX_METADATA_BYTES))
                 continue
-            single, error = parse_metadata(name, raw, base=PACKAGE_BASE)
+            single, named, error = parse_metadata_graphs(name, raw, base=PACKAGE_BASE)
         except Exception as exc:
             # The reader's contract is (graph, None) or (None, error), and a
             # rule that raises already becomes a finding rather than ending
@@ -552,20 +570,28 @@ def build_graph(package: Package):
             # real package does not take.
             errors.append(error + _declared_encoding(raw, error))
             continue
-        per_source[name] = single
+        defaults[name] = single
+        graphs_of[name] = {None: single}
+        graphs_of[name].update(named)
+        per_source[name], repeats[name], uncounted[name] = (
+            merge_graphs_of(graphs_of[name]) if named else (single, [], []))
         sources.append(name)
 
-    # A document the merge could not compare with the one before it is left
-    # out of the graph. It is reported with the documents that were refused,
-    # and no rule reads it as a source.
+    # The merge is of default graphs, as it was: a statement only a named
+    # graph holds is one no reader of the default graph sees, and admitting
+    # it here would move every rule. The questions about what a file says
+    # are asked of `per_source`, which has it. A document the merge could not
+    # compare with the one before it is left out of the graph, reported with
+    # the documents that were refused, and read by no rule as a source.
     refused: List[str] = []
-    graph = merge_sources(per_source, refused=refused)
+    graph = merge_sources(defaults, refused=refused)
     for error in refused:
         name = error.partition(": ")[0]
         errors.append(error)
-        del per_source[name]
+        for held in (per_source, graphs_of, repeats, uncounted):
+            del held[name]
         sources.remove(name)
-    return graph, errors, sources, per_source
+    return graph, errors, sources, per_source, graphs_of, (repeats, uncounted)
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because
@@ -644,7 +670,8 @@ def _declared_encoding(raw, reported) -> str:
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources, per_source = build_graph(package)
+    graph, errors, sources, per_source, graphs_of, counted = build_graph(package)
+    repeats, uncounted = counted
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -666,4 +693,7 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         parse_errors=errors,
         sources=sources,
         per_source=per_source,
+        graphs_of=graphs_of,
+        repeats=repeats,
+        uncounted=uncounted,
     )

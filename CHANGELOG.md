@@ -122,6 +122,9 @@ that.
 rules.** Its note said "the 9 requirements about the ZIP archive itself" and
 listed nine rule identifiers; those nine rules cover seven requirements.
 
+Also released as 0.7.3: the entry headed **Security** directly below, with
+[GHSA-8289-9w26-5w53](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-8289-9w26-5w53).
+
 **Security. The checks before the metadata parser read a document as other
 text than the parser does.** `metadata.rdf` is parsed as UTF-8 whatever its
 XML declaration names, and the two checks before the parser -- the one that

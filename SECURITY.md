@@ -186,3 +186,10 @@ have no advisory.
   find. `iirds-validate` 0.1.0 through 0.7.1, `iirds` and `iirds-sdk` 0.5.0
   through 0.7.1; fixed in 0.7.2, which refuses the container (S13) or the
   search (exit 2) and names what it could not read.
+- [GHSA-8289-9w26-5w53](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-8289-9w26-5w53):
+  the checks before the metadata parser read a document under the encoding it
+  declared, while the parser reads it as UTF-8 whatever it declares; where the
+  declaration made the two readings differ, a document the checks passed could
+  declare XML entities for the parser to expand. `iirds` 0.3.2 through 0.7.2,
+  `iirds-validate` and `iirds-sdk` 0.5.0 through 0.7.2; fixed in 0.7.3, where
+  both checks also read the document as UTF-8.

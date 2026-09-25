@@ -80,6 +80,11 @@ class Context:
     #: would miss.
     graphs_of: dict = field(default_factory=dict)
 
+    #: Per metadata file, how many of its graphs could not be told from a
+    #: repeat of another (see iirds.merge_graphs_of). Where any could, L9 does
+    #: not compare the files and the report says why.
+    uncounted: dict = field(default_factory=dict)
+
     #: Per-class closure over ontology *and* package subclass declarations,
     #: filled lazily. Per-instance, same reasoning as Ontology's caches.
     _closure: dict = field(default_factory=dict, repr=False)
@@ -510,6 +515,7 @@ def build_graph(package: Package):
     per_source = {}
     defaults = {}
     graphs_of = {}
+    uncounted = {}
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -563,14 +569,15 @@ def build_graph(package: Package):
         defaults[name] = single
         graphs_of[name] = {None: single}
         graphs_of[name].update(named)
-        per_source[name] = merge_graphs_of(graphs_of[name]) if named else single
+        per_source[name], uncounted[name] = (merge_graphs_of(graphs_of[name]) if named
+                                             else (single, 0))
         sources.append(name)
 
     # The merge is of default graphs, as it was: a statement only a named
     # graph holds is one no reader of the default graph sees, and admitting
     # it here would move every rule. The questions about what a file says
     # are asked of `per_source`, which has it.
-    return merge_sources(defaults), errors, sources, per_source, graphs_of
+    return merge_sources(defaults), errors, sources, per_source, graphs_of, uncounted
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because
@@ -649,7 +656,7 @@ def _declared_encoding(raw, reported) -> str:
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources, per_source, graphs_of = build_graph(package)
+    graph, errors, sources, per_source, graphs_of, uncounted = build_graph(package)
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -672,4 +679,5 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         sources=sources,
         per_source=per_source,
         graphs_of=graphs_of,
+        uncounted=uncounted,
     )

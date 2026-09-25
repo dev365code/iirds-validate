@@ -1180,15 +1180,18 @@ of default graphs, as it was: a statement only a named graph holds is one a
 reader of the default graph never sees, and `metadata.rdf` is to contain all
 metadata in any case. A node without a name is a different node in each
 graph that holds it, as in each file, so the reading has two consequences.
-A graph repeating another whole, with nodes of its own, is the other graph
-again -- one that shares a node with another graph is not,
+A graph repeating another whole, with nodes of its own that form a tree no
+deeper than forty, is the other graph again -- where they do not, L9 does not
+compare the files and the report's notes say so, a limit of this tool rather
+than a reading of the standard -- one that shares a node with another graph is not,
 since a blank node's label names one node across the document -- and one
 repeating part of it around such a node makes a second node, which L9
 reports. And where a file's statements are split between its default graph
 and named graphs, and the default graph holds such a node, the merge, which
 reads default graphs, holds that node beside `metadata.rdf`'s: a rule that
 looks at it reports it twice, a count rule as a second value, though L9 finds
-the files alike; L17 names the graphs named by IRIs and counts the rest. rdflib reads
+the files alike; L17 names, among the graphs holding statements the default graph lacks,
+those that IRIs name, and counts the rest. rdflib reads
 a graph container (`@container: @graph`), and a graph object given as a
 property's value, into the default graph, where a JSON-LD 1.1 processor makes
 each a named graph, so L17 does not see those shapes.

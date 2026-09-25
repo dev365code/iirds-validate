@@ -626,9 +626,28 @@ def _parse_metadata(name: str, raw: bytes, base: str,
             # what the parse costs are what they were, on every rdflib: a
             # Dataset names its default graph after the base before rdflib 7
             # and after itself from 7, and neither was the graph read here.
-            for part in graph.store.contexts():
-                if part.identifier != graph.identifier and len(part):
-                    named[part.identifier] = part
+            # Read out in one pass over the store into graphs of their own,
+            # the default graph too where there are named ones: the store keeps
+            # every graph a statement is in with the statement, and reading one
+            # graph after another there, or taking a graph out of it, cost the
+            # square of the graphs a statement repeats in.
+            held = {}
+            for triple, contexts in graph.store.triples((None, None, None), None):
+                for context in contexts:
+                    if context.identifier != graph.identifier:
+                        held.setdefault(context.identifier, []).append(triple)
+            for identifier, triples in held.items():
+                part = Graph()
+                for triple in triples:
+                    part.add(triple)
+                named[identifier] = part
+            if held:
+                alone = Graph()
+                for prefix, namespace in graph.namespaces():
+                    alone.bind(prefix, namespace, override=True, replace=True)
+                for triple in graph:
+                    alone.add(triple)
+                graph = alone
     except Exception as exc:
         named.clear()
         return None, "%s: %s: %s" % (name, type(exc).__name__, exc)
@@ -729,9 +748,12 @@ def _term(term) -> str:
     a caller can catch by kind, on graphs rdflib still writes.
     """
     kind = "L" if isinstance(term, Literal) else "B" if isinstance(term, BNode) else "U"
+    # A language tag without regard to case, as rdflib compares literals: `de`
+    # and `DE` are one term to it, and were two to this.
+    language = getattr(term, "language", None)
     return "%s %r %r %r" % (kind, str(term),
                             getattr(term, "datatype", None),
-                            getattr(term, "language", None))
+                            language.lower() if language else language)
 
 
 def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
@@ -767,9 +789,10 @@ def _fingerprint(graph: Graph):
 _OUR_FAULT = (RecursionError, MemoryError, KeyboardInterrupt, SystemExit)
 
 
-def merge_graphs_of(graphs) -> Graph:
+def merge_graphs_of(graphs) -> Tuple[Graph, int]:
     """One document's graphs -- a mapping of name -> Graph, the default graph
-    first -- merged into one, a graph that repeats another counted once.
+    first -- merged into one, a graph that repeats another counted once; and
+    how many graphs could not be told from a repeat.
 
     A blank node's label names one node across a JSON-LD document, so graphs
     that share one are about the same node and are joined as they are. A
@@ -777,8 +800,10 @@ def merge_graphs_of(graphs) -> Graph:
     same triples, its blank nodes aside -- is left out: joined, its copies
     would be second nodes. A repeat is found by the graph's fingerprint, taken
     once per graph where its blank nodes form a forest, so the cost is the
-    document's size; a graph whose blank nodes do not form one, or that runs
-    deeper than the fingerprint follows, is joined as it is.
+    document's size. A graph whose blank nodes do not form one, or run deeper
+    than the fingerprint follows, is joined as it is; where another graph with
+    blank nodes is its size, so that it could be a repeat, it is counted in the
+    second value, and a caller comparing the result has to say it could not.
     """
     graphs = list(graphs.values())
     blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
@@ -787,20 +812,30 @@ def merge_graphs_of(graphs) -> Graph:
     for nodes in blanks:
         shared |= nodes & seen
         seen |= nodes
+    sizes = {}
+    for graph, nodes in zip(graphs, blanks):
+        if nodes:
+            sizes[len(graph)] = sizes.get(len(graph), 0) + 1
     merged = Graph()
     kept = set()
+    uncounted = 0
     for graph, nodes in zip(graphs, blanks):
-        if nodes and not nodes & shared and _blank_forest(graph):
-            try:
-                key = tuple(_fingerprint(graph))
-            except _TooDeep:
-                key = None
-            if key is not None:
-                if key in kept:
-                    continue
+        if nodes and not nodes & shared:
+            key = None
+            if _blank_forest(graph):
+                try:
+                    key = tuple(_fingerprint(graph))
+                except _TooDeep:
+                    key = None
+            if key is None:
+                if sizes[len(graph)] > 1:
+                    uncounted += 1
+            elif key in kept:
+                continue
+            else:
                 kept.add(key)
         merged += graph
-    return merged
+    return merged, uncounted
 
 
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:

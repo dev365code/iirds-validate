@@ -354,6 +354,11 @@ def l9_serialisations_disagree(ctx):
 
     if len(ctx.per_source) < 2:
         return
+    # A file whose repeats cannot be counted once is not compared: two copies
+    # of a node without a name would read as statements the other file lacks.
+    # The report's notes say so.
+    if any(ctx.uncounted.get(name) for name in ctx.per_source):
+        return
 
     (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
     iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
@@ -1018,7 +1023,12 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     not wrong and the reader it fails is real, so this is a warning.
     """
     graphs = ctx.graphs_of.get(METADATA_JSONLD) or {}
-    named = [name for name, graph in graphs.items() if name is not None and len(graph)]
+    default = graphs.get(None)
+    # Named only where they hold something the default graph does not: a
+    # graph restating the default one hides nothing from its reader.
+    named = [name for name, graph in graphs.items()
+             if name is not None and default is not None
+             and any(triple not in default for triple in graph)]
     if not named:
         return
     stated = len(ctx.per_source[METADATA_JSONLD])

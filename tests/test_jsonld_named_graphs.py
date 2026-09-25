@@ -232,7 +232,7 @@ def test_the_finding_names_the_file_a_named_graph_states_in(make_package):
     assert "metadata.jsonld" in said and "metadata.rdf" in said, said
 
 
-def test_many_named_graphs_cost_one_fingerprint_each_at_most(make_package, monkeypatch):
+def test_graphs_without_nodes_of_their_own_are_not_fingerprinted(make_package, monkeypatch):
     """Each graph is fingerprinted at most once, and not at all where it holds
     no node without a name, since then a plain union is exact."""
     from iirds import _metadata
@@ -295,10 +295,10 @@ def test_a_graph_sharing_a_node_without_a_name_is_not_a_repeat():
     a, b, c = BNode("a"), BNode("b"), BNode("c")
     default = _graph((t1, has, a), (a, fmt, Literal("x")), (t2, has, b), (b, fmt, Literal("y")))
     swapped = _graph((t1, has, b), (b, fmt, Literal("x")), (t2, has, a), (a, fmt, Literal("y")))
-    assert len(merge_graphs_of({None: default, URIRef("urn:g"): swapped})) == 8
+    assert len(merge_graphs_of({None: default, URIRef("urn:g"): swapped})[0]) == 8
     alone = _graph((t1, has, a), (a, fmt, Literal("x")))
     again = _graph((t1, has, c), (c, fmt, Literal("x")))
-    assert len(merge_graphs_of({None: alone, URIRef("urn:g"): again})) == 2
+    assert len(merge_graphs_of({None: alone, URIRef("urn:g"): again})[0]) == 2
 
 
 def test_an_iri_spelled_like_a_blank_node_is_its_own_graph():
@@ -336,6 +336,82 @@ def test_graphs_with_nodes_of_their_own_are_fingerprinted_once_each(monkeypatch)
         node = BNode()
         graphs[URIRef("urn:g%d" % n)] = _graph((URIRef("urn:t%d" % n), has, node),
                                                (node, fmt, Literal("f%d" % n)))
-    merged = merge_graphs_of(graphs)
+    merged, _uncounted = merge_graphs_of(graphs)
     assert len(merged) == 101 and len(asked) == 50, (len(merged), len(asked))
 
+
+def test_named_graphs_are_graphs_of_their_own():
+    """Read out of the parse's store and taken out of it, so that reading one
+    graph does not list every graph a statement repeats in."""
+    graphs = [{"@id": "urn:test:g%d" % n, "@graph": _nodes()[:1]} for n in range(50)]
+    graph, named, error = iirds.parse_metadata_graphs(
+        iirds.METADATA_JSONLD, _document(_nodes() + graphs).encode(), base=iirds.PACKAGE_BASE)
+    assert error is None and len(named) == 50
+    assert all(held.store is not graph.store for held in named.values())
+    for triple in graph:
+        assert [c.identifier for c in graph.store.contexts(triple)] == [graph.identifier]
+
+
+def test_a_repeat_differing_only_in_a_language_tag_case_is_a_repeat(make_package):
+    package, topic, rendition = _nodes()
+    rendition = {k: v for k, v in rendition.items() if k != "@id"}
+    tagged = dict(topic, title={"@value": "A topic", "@language": "de"},
+                  **{"has-rendition": rendition})
+    shouted = dict(tagged, title={"@value": "A topic", "@language": "DE"})
+    graph = _document([package, tagged, {"@id": GRAPH, "@graph": [package, shouted]}])
+    from iirds import merge_graphs_of
+    _default, named, _error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, graph.encode(),
+                                                          base=iirds.PACKAGE_BASE)
+    merged, _uncounted = merge_graphs_of(dict({None: _default}, **{str(k): v for k, v in named.items()}))
+    assert len(merged) == len(_default)
+
+
+def test_the_warning_names_only_graphs_that_hide_something(make_package):
+    first, second, third = _nodes()
+    jsonld = _document([first, second, third,
+                        {"@id": "urn:test:restates", "@graph": [first]},
+                        {"@id": "urn:test:adds", "@graph": [dict(first, title="Else")]}])
+    [finding] = _findings(_lint(make_package, jsonld), "L17")
+    assert "urn:test:adds" in finding.violation.detail
+    assert "urn:test:restates" not in finding.violation.detail, finding.violation.detail
+
+
+def _sibling_chain(length):
+    """A table of contents as iiRDS writes one without names: each directory
+    node leads to the next through has-next-sibling."""
+    node = {"@type": "iirds:DirectoryNode", "title": "entry %d" % length}
+    for n in range(length - 1, 0, -1):
+        node = {"@type": "iirds:DirectoryNode", "title": "entry %d" % n,
+                "iirds:has-next-sibling": node}
+    return {"@id": "urn:test:toc", "@type": "iirds:DirectoryNode", "iirds:has-first-child": node}
+
+
+def test_a_repeat_too_deep_to_count_once_is_not_judged_and_is_said(make_package):
+    """Sixty directory nodes without names, chained, and a named graph that
+    repeats them whole: deeper than the fingerprint follows, so L9 cannot tell
+    the repeat from new statements -- it does not compare, and the report's
+    notes say why."""
+    from rdflib import Graph as RDFGraph
+
+    nodes = _nodes() + [_sibling_chain(60)]
+    default_only = _document(nodes)
+    rdf = RDFGraph()
+    rdf.parse(data=default_only, format="json-ld", publicID=iirds.PACKAGE_BASE)
+    metadata = rdf.serialize(format="xml")
+    repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
+    report = runner.lint(make_package(metadata=metadata, jsonld=repeated))
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    said = [note for note in report.notes if note.startswith("L9 did not compare the metadata files")]
+    assert len(said) == 1 and "metadata.jsonld" in said[0], report.notes
+
+
+def test_a_shallow_repeat_is_still_compared(make_package):
+    from rdflib import Graph as RDFGraph
+
+    nodes = _nodes() + [_sibling_chain(10)]
+    rdf = RDFGraph()
+    rdf.parse(data=_document(nodes), format="json-ld", publicID=iirds.PACKAGE_BASE)
+    repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
+    report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=repeated))
+    assert not _findings(report, "L9")
+    assert not [note for note in report.notes if note.startswith("L9 did not compare")], report.notes

@@ -117,9 +117,15 @@ default graph states that and a named graph states more, or repeats part of
 it around a node without a name, which is a second node (L9). C16.2 no longer
 fires for an iiRDS/H JSON-LD whose iiRDS metadata is in named graphs; where it
 fired, L9 fired too. A new warning, L17, says that a reader asking for one
-graph -- rdflib's `Graph()` is one -- sees none, or only part, of such a file;
-it leaves the exit code where it was unless `-W` counts warnings, and under
-`-W` a package whose L9 error it takes the place of stays at `1`. A finding
+graph -- rdflib's `Graph()` is one -- sees none, or only part, of such a file. It is
+an interoperability rule, so `iirds check` does not run it and the moves above
+hold there with `-W` too; under `iirds lint -W` a package whose L9 error it
+takes the place of stays at `1`, and one with no `metadata.rdf` whose JSON-LD
+is in named graphs goes from `0` to `1`. Where one file's graphs hold nodes
+without names that form no tree, or one deeper than forty, and one graph could
+repeat another, L9 does not compare the files: two copies of such a node would
+read as statements the other file lacks, and the report's notes say it was
+not compared. A finding
 that names the file a statement is in, M30's among them, names
 `metadata.jsonld` too where only a named graph of it holds the statement.
 `iirds.parse_metadata_graphs` hands on the named graphs beside the default

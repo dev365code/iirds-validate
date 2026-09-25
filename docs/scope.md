@@ -47,6 +47,10 @@ Written down so that none of these gets built by drift.
   change would settle it. Naming the remedy is part of reporting. Applying it
   is not.
 - **Not a CCMS integration.** Not now.
+- **Not a counter of every repeat.** Where a JSON-LD file's graphs hold nodes
+  without names that form no tree, or one deeper than forty, and one graph could
+  repeat another, L9 does not compare the metadata files, and the report's
+  notes say so.
 
 ## Where things live
 

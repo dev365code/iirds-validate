@@ -279,6 +279,12 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             % (ctx.version, ctx.ontology.substituted))
     if ctx.sources:
         report.notes.append("metadata read from " + ", ".join(ctx.sources))
+    for name, count in sorted(ctx.uncounted.items()):
+        if count:
+            report.notes.append(
+                "L9 did not compare the metadata files: %s holds %d graph(s) whose nodes "
+                "without names this cannot count once -- they form no tree, or one deeper "
+                "than %d -- so whether one repeats another is not known" % (name, count, 40))
     if not ctx.sources:
         report.notes.append("no usable metadata found; the graph rules had nothing to check")
 

@@ -1223,6 +1223,10 @@ aspirational:
   reading below is this project's choice between two normative sentences, and
   a file whose name holds `%`, `#` or `?`, referenced that way, reports as an
   error.
+- **L9**, where `metadata.jsonld` holds statements in named graphs: the
+  standard says nothing of graphs, and the reading that asks what a file says
+  of all of them (above) is this project's, so an L9 error that rests on a
+  named graph rests on that reading.
 - ~~The Appendix B entry condition~~ **Corrected**: content findings from the
   MUST-level B rules now report as errors under iiRDS/A — which restricts content to the
   formats section 8.2.1 lists, iiRDS XHTML5 for structured text — and demote to warnings under every other profile, where the
@@ -1230,11 +1234,7 @@ aspirational:
   reading. The rule keeps its MUST priority (the sentences are MUSTs); the
   *runner* assigns the severity, because only it knows the profile. B10, a
   recommendation, is a warning in every profile. So the list above names L4,
-  M30, R8 and L2.
-- **L9**, where `metadata.jsonld` holds statements in named graphs: the
-  standard says nothing of graphs, and the reading that asks what a file says
-  of all of them (above) is this project's, so an L9 error that rests on a
-  named graph rests on that reading.
+  M30, R8, L2 and L9.
 
 One more case sits beside these and is not one of them. `ERROR S16` fires where no content rule
 got a parsed document for a file the package lists as content — including two

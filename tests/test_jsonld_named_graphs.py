@@ -320,3 +320,22 @@ def test_two_named_graphs_repeating_each_other_count_once(make_package):
     report = runner.lint(make_package(metadata=MINIMAL_RDF, jsonld=twice))
     assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
     assert _findings(report, "L17")
+
+
+def test_graphs_with_nodes_of_their_own_are_fingerprinted_once_each(monkeypatch):
+    """Where every named graph holds a node without a name of its own, each
+    is fingerprinted, and once."""
+    from iirds import _metadata, merge_graphs_of
+
+    asked = []
+    fingerprint = _metadata._fingerprint
+    monkeypatch.setattr(_metadata, "_fingerprint", lambda graph: asked.append(1) or fingerprint(graph))
+    has, fmt = URIRef("urn:has"), URIRef("urn:fmt")
+    graphs = {None: _graph((URIRef("urn:t"), has, URIRef("urn:r")))}
+    for n in range(50):
+        node = BNode()
+        graphs[URIRef("urn:g%d" % n)] = _graph((URIRef("urn:t%d" % n), has, node),
+                                               (node, fmt, Literal("f%d" % n)))
+    merged = merge_graphs_of(graphs)
+    assert len(merged) == 101 and len(asked) == 50, (len(merged), len(asked))
+

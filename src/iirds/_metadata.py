@@ -125,8 +125,9 @@ def _declares_entities(raw: bytes) -> Optional[bool]:
         # reading the same text the same way, meets it and says so in its own
         # words. So are bytes that are not UTF-8, which older expat hands on
         # unchecked inside a name, where decoding the name raises: rdflib
-        # decodes the document as UTF-8 before its parser reads a byte of it,
-        # and stops at those bytes before any declaration past them is read.
+        # decodes the document as UTF-8, a piece at a time, before its parser
+        # reads those bytes, and stops at them, so nothing at or past them --
+        # a declaration included -- reaches its parser.
         return False
     except Exception:
         # What else arrives is not answered for, and not raised either:

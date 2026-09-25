@@ -343,7 +343,8 @@ say one encoding while its declaration names another is refused, and so is
 UTF-32 that declares nothing: XML 1.0 section 4.3.3 makes both fatal errors
 "in the absence of information provided by an external transport protocol",
 and a ZIP member has none, so the section applies as written -- a note on
-applying it, not a divergence. UTF-16 without a byte order mark, which the
+applying it, not a divergence. Which bytes mark which encoding is read as
+Appendix F reads them, a non-normative table that calls UTF-32 UCS-4. UTF-16 without a byte order mark, which the
 same section says MUST begin with one, is read: that is not a fatal error, and
 a warning for it is a candidate, not a rule.
 

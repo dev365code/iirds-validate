@@ -6,6 +6,11 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.3 — unreleased
 
+One advisory describes what this release fixes:
+
+- [GHSA-8289-9w26-5w53](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-8289-9w26-5w53): the checks before the
+  metadata parser read a document as other text than the parser does.
+
 **Security. The checks before the metadata parser read a document as other
 text than the parser does.** `metadata.rdf` is parsed as UTF-8 whatever its
 XML declaration names, and the two checks before the parser -- the one that

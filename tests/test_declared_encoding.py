@@ -355,3 +355,23 @@ def test_a_document_the_entity_check_cannot_answer_for_is_refused(monkeypatch):
     graph, error = _parsed(document("utf-8", "utf-8", PLAIN))
     assert graph is None and "could not be read for XML entities" in error, error
 
+
+@pytest.mark.parametrize("declared", ["UTF-8", "utf--8"])
+def test_bytes_that_are_not_utf8_are_the_parsers_to_refuse(declared):
+    """A name that is not UTF-8 in the document element, under a declaration
+    Python reads as UTF-8. Older expat hands such a name on unchecked; the
+    entity check and the declaration check leave the refusal to the parser,
+    which names the byte, instead of refusing for a reason the document does
+    not have."""
+    root = ("<iirds:\u00c9l\u00e9ments xmlns:iirds=\"http://iirds.tekom.de/iirds#\" "
+            "xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" rdf:about=\"urn:test:p\"/>\n")
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared).encode("ascii") + root.encode("latin-1")
+    graph, error = _parsed(raw)
+    assert graph is None and "UnicodeDecodeError" in error, (declared, error)
+
+
+def test_a_name_with_space_at_an_end_is_shown_quoted():
+    raw = ('<?xml version="1.0" encoding="utf-8 "?>\n' + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and error.endswith("'utf-8 '"), error
+

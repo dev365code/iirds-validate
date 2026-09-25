@@ -120,15 +120,16 @@ def _declares_entities(raw: bytes) -> Optional[bool]:
         return True
     except _RootReached:
         return False
-    except expat.ExpatError:
+    except (expat.ExpatError, UnicodeDecodeError):
         # A syntax error is the document's, and the parser under the graph,
         # reading the same text the same way, meets it and says so in its own
-        # words.
+        # words. So are bytes that are not UTF-8: older expat hands them on
+        # unchecked inside a name, decoding the name raises, and the parser
+        # refuses the same bytes before it reads a declaration.
         return False
     except Exception:
-        # Nothing else is expected of a parser told the encoding. What does
-        # arrive is not answered for, and not raised either: parse_errors
-        # promises that reading never raises.
+        # What else arrives is not answered for, and not raised either:
+        # parse_errors promises that reading never raises.
         return None
     return False
 
@@ -269,7 +270,10 @@ def _shown(name: str) -> str:
     and a line break into the report, and wrote a line of its own there. Cut
     to sixty characters, before it is escaped as well as after."""
     shown = name[:_LONGEST_NAME + 1].encode("unicode_escape").decode("ascii")
-    return shown if len(shown) <= 60 else shown[:57] + "..."
+    shown = shown if len(shown) <= 60 else shown[:57] + "..."
+    # A space at either end escapes nothing and reads as no space at all:
+    # "utf-8 " refused looked like UTF-8 refused.
+    return "'%s'" % shown if shown != shown.strip(" ") else shown
 
 
 def _decoded(raw: bytes, encoding: str):
@@ -304,6 +308,10 @@ class _Element(Exception):
     """The first element, by its expanded name."""
 
 
+#: How much of a document is handed to the parser at a time.
+_CHUNK = 16384
+
+
 class _FirstElement:
     """A tree builder's place, taken by one that stops at the first element."""
 
@@ -323,7 +331,11 @@ def _document_element(raw: bytes) -> Optional[str]:
     declaration read other text and let a document through."""
     parser = ElementTree.XMLParser(target=_FirstElement(), encoding="utf-8")
     try:
-        parser.feed(raw)
+        # A piece at a time, so that the first element ends the reading: the
+        # parser goes on to the end of what it was handed before the target's
+        # stop reaches it.
+        for at in range(0, len(raw), _CHUNK):
+            parser.feed(raw[at:at + _CHUNK])
         parser.close()
     except _Element as first:
         return first.args[0]
@@ -469,6 +481,8 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
     theirs, ours = _decoded(body, declared), _decoded(body, "utf-8")
+    if theirs is None and ours is None:
+        return None          # neither reads it, and the parser says so itself
     if theirs is None or ours is None or theirs != ours:
         return "%s: %s: %s" % (name, UNUSED_ENCODING, shown)
     return None

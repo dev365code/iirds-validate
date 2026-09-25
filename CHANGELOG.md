@@ -86,8 +86,8 @@ character from each byte -- were refused already, in the codec's words or the
 parser's: `Shift_JIS` and the other multi-byte encodings, `UTF-7`, a name no
 codec answers to, such as `U-T-F-8`, `punycode`, `idna`, and a name XML does
 not allow. They are refused by name now, with nothing decoded under them. The
-name is printed with its control characters escaped and cut to sixty
-characters. C16.1's remedy says to change the declaration with the bytes,
+name is printed with its control characters escaped, quoted where white
+space stands at an end, and cut to sixty characters. C16.1's remedy says to change the declaration with the bytes,
 because bytes rewritten as UTF-8 under the old declaration are refused.
 `iirds.parse_metadata` returns every one of these as an error, as it promises
 -- it raised `LookupError`, `ValueError` or `UnicodeError` for some -- under

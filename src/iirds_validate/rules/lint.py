@@ -19,7 +19,7 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
-from ..model import DCTERMS, IIRDS_NAMESPACES, OWL, VCARD, VERSIONS, Violation
+from ..model import DCTERMS, IIRDS_NAMESPACES, METADATA_JSONLD, OWL, VCARD, VERSIONS, Violation
 from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
 from ..resources import version_terms
@@ -999,3 +999,36 @@ def l16_relation_carries_a_literal(ctx):
                     "%s is empty, so it points at nothing" % _named(predicate),
                     subject=ctx.ref(subject),
                     detail="the element is there and carries neither a reference nor a value")
+
+
+@_lint("L17", "JSON-LD metadata should state its statements in the default graph",
+       prio="RECOMMENDED",
+       fix="Write the statements in the default graph -- a top-level @graph with no @id beside it. A reader that asks a JSON-LD document for one graph is given its default graph, and from a named graph it gets nothing.")
+def l17_jsonld_statements_in_a_named_graph(ctx):
+    """A JSON-LD file whose statements sit in a named graph.
+
+    JSON-LD 1.1, the syntax iiRDS names, reads a document as a dataset: a
+    default graph and named ones, and a top-level object with an `@id` beside
+    its `@graph` puts everything in a graph of that name. iiRDS names no
+    graph and asks only that the two files mean the same, so every question
+    here about what a file says is asked of its statements wherever they
+    sit, and L9 does not fire on a graph's name. A reader that asks for one
+    graph is given the default one, though -- rdflib's `Graph()` is such a
+    reader -- and from such a file it gets less, or nothing. The package is
+    not wrong and the reader it fails is real, so this is a warning.
+    """
+    graphs = ctx.graphs_of.get(METADATA_JSONLD) or {}
+    named = sorted(name for name, graph in graphs.items() if name is not None and len(graph))
+    if not named:
+        return
+    stated = len(ctx.per_source[METADATA_JSONLD])
+    missed = stated - len(graphs[None])
+    if not missed:
+        return
+    where = ", ".join(named[:3]) + (" and %d more" % (len(named) - 3) if len(named) > 3 else "")
+    seen = "none of them" if missed == stated else "the other %d" % (stated - missed)
+    yield Violation("statements of metadata.jsonld are in a named graph, which a reader of the "
+                    "default graph does not see",
+                    subject=METADATA_JSONLD,
+                    detail="%d of its %d statement(s) are only in named graph(s) %s; a reader "
+                           "that asks for one graph sees %s" % (missed, stated, where, seen))

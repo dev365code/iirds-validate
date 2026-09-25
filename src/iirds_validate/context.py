@@ -34,7 +34,7 @@ from iirds import (
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
     merge_sources,
-    parse_metadata,
+    parse_metadata_graphs,
     subclasses_of,
 )
 
@@ -69,8 +69,15 @@ class Context:
     #: not admitted to `sources`; C9 reports the element, S2 the consequence.
     #: One graph per metadata file, kept alongside the merged `graph` so a rule
     #: can ask whether the serialisations agree. Merging is right for every
-    #: other rule and is exactly what hides a disagreement.
+    #: other rule and is exactly what hides a disagreement. Each holds what
+    #: the file states whatever graph of it holds the statement: JSON-LD 1.1
+    #: reads a document as a dataset, and iiRDS names no graph.
     per_source: dict = field(default_factory=dict)
+
+    #: Each metadata file's graphs by name, None for the default graph. Only
+    #: JSON-LD names any; L17 asks what a reader of the default graph alone
+    #: would miss.
+    graphs_of: dict = field(default_factory=dict)
 
     #: Per-class closure over ontology *and* package subclass declarations,
     #: filled lazily. Per-instance, same reasoning as Ontology's caches.
@@ -500,6 +507,8 @@ def build_graph(package: Package):
     errors: List[str] = []
     sources: List[str] = []
     per_source = {}
+    defaults = {}
+    graphs_of = {}
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -519,7 +528,7 @@ def build_graph(package: Package):
                 errors.append("%s: refused: over the %d byte limit uncompressed"
                               % (name, MAX_METADATA_BYTES))
                 continue
-            single, error = parse_metadata(name, raw, base=PACKAGE_BASE)
+            single, named, error = parse_metadata_graphs(name, raw, base=PACKAGE_BASE)
         except Exception as exc:
             # The reader's contract is (graph, None) or (None, error), and a
             # rule that raises already becomes a finding rather than ending
@@ -550,10 +559,29 @@ def build_graph(package: Package):
             # real package does not take.
             errors.append(error + _declared_encoding(raw, error))
             continue
-        per_source[name] = single
+        defaults[name] = single
+        graphs_of[name] = dict({None: single}, **named)
+        per_source[name] = _statements(single, named)
         sources.append(name)
 
-    return merge_sources(per_source), errors, sources, per_source
+    # The merge is of default graphs, as it was: a statement only a named
+    # graph holds is one no reader of the default graph sees, and admitting
+    # it here would move every rule. The questions about what a file says
+    # are asked of `per_source`, which has it.
+    return merge_sources(defaults), errors, sources, per_source, graphs_of
+
+
+def _statements(default: Graph, named: dict) -> Graph:
+    """Everything a metadata file states, whatever graph of it holds it."""
+    if not named:
+        return default
+    union = Graph()
+    for prefix, namespace in default.namespaces():
+        union.bind(prefix, namespace)
+    union += default
+    for held in named.values():
+        union += held
+    return union
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because
@@ -632,7 +660,7 @@ def _declared_encoding(raw, reported) -> str:
 
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
-    graph, errors, sources, per_source = build_graph(package)
+    graph, errors, sources, per_source, graphs_of = build_graph(package)
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -654,4 +682,5 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         parse_errors=errors,
         sources=sources,
         per_source=per_source,
+        graphs_of=graphs_of,
     )

@@ -98,6 +98,26 @@ because bytes rewritten as UTF-8 under the old declaration are refused.
 -- it raised `LookupError`, `ValueError` or `UnicodeError` for some -- under
 two new categories, `UNREADABLE_ENCODING` and `UNUSED_ENCODING`.
 
+**A JSON-LD metadata file is read whatever graph holds its statements, and
+a reader of the default graph alone is warned about.** JSON-LD 1.1, the syntax
+iiRDS names for `metadata.jsonld`, reads a document as a dataset, and a
+top-level object with an `@id` beside its `@graph` puts every statement in a
+named graph. The reader handed on only the default graph, so such a file was
+empty here: L9 reported every statement of `metadata.rdf` as missing from it,
+and C16.2 said an iiRDS/H package's JSON-LD carried no iiRDS metadata. Each
+question about what one file says -- L9's, C16.2's, and which file a finding's
+statement is in -- is now asked of the file's statements whatever graph holds
+them; the merged graph the other rules read is made of default graphs, as
+before. For a package with nothing else wrong, that takes the exit code from
+`1` to `0` where a named graph states what `metadata.rdf` states (L9), and,
+for iiRDS/H, where the JSON-LD's iiRDS metadata is all in named graphs
+(C16.2). A new warning, L17, says that a reader asking for one graph --
+rdflib's `Graph()` is one -- sees none, or only part, of such a file; it
+leaves the exit code where it was. `iirds.parse_metadata_graphs` hands on the
+named graphs beside the default one, and `iirds.parse_metadata` still hands on
+the default graph. The standard says nothing about graph names;
+`docs/divergences.md` records the reading.
+
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that
 builds a package with it, the command that checks that package, and the

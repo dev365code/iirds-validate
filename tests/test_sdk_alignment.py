@@ -28,7 +28,7 @@ def test_the_shared_constants_are_the_same_objects():
 
 
 def test_the_shared_functions_are_the_same_objects():
-    assert context.parse_metadata is iirds.parse_metadata
+    assert context.parse_metadata_graphs is iirds.parse_metadata_graphs
     assert context.merge_sources is iirds.merge_sources
     assert context.subclasses_of is iirds.subclasses_of
 

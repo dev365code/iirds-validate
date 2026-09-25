@@ -13,10 +13,11 @@ import json
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from rdflib import BNode, Graph, Literal
+from rdflib import BNode, Dataset, Graph, Literal
 from rdflib.compare import isomorphic
+from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 
 #: Two cheap guards, applied before the parser sees anything.
 MAX_METADATA_BYTES = 64 * 1024 * 1024
@@ -508,7 +509,34 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     caller owns that decision (the container reader passes PACKAGE_BASE).
     The format follows the file name -- ``.jsonld``/``.json`` parse as
     JSON-LD, everything else as RDF/XML, the two serialisations iiRDS names.
+    The graph is the document's default graph; parse_metadata_graphs hands
+    on a JSON-LD document's named graphs as well.
     """
+    graph, _named, error = parse_metadata_graphs(name, raw, base=base)
+    return graph, error
+
+
+def parse_metadata_graphs(name: str, raw: bytes, *,
+                          base: str) -> Tuple[Optional[Graph], Dict[str, Graph], Optional[str]]:
+    """As parse_metadata, and the named graphs a JSON-LD document puts
+    statements in.
+
+    JSON-LD 1.1 reads a document as a dataset: a default graph, and a named
+    graph for every `@graph` that has an `@id` beside it -- a top-level one
+    included, which puts everything in a graph of that name. Returns
+    ``(graph, named, error)``: the default graph, the named graphs that hold
+    statements by name, and the error as parse_metadata gives it. RDF/XML
+    names no graph, and a refused document has none.
+    """
+    named: Dict[str, Graph] = {}
+    graph, error = _parse_metadata(name, raw, base, named)
+    return graph, (named if graph is not None else {}), error
+
+
+def _parse_metadata(name: str, raw: bytes, base: str,
+                    named: Dict[str, Graph]) -> Tuple[Optional[Graph], Optional[str]]:
+    """parse_metadata's work; a JSON-LD document's named graphs go into
+    `named`."""
     fmt = "json-ld" if name.endswith((".jsonld", ".json")) else "xml"
 
     # Size first, and on the *stored* bytes: the limit is the validator's,
@@ -586,8 +614,24 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
 
     try:
         graph = Graph()
-        graph.parse(data=raw, format=fmt, publicID=base)
+        if fmt == "json-ld":
+            # Read as JSON-LD 1.1 reads a document: a dataset, a default graph
+            # and any named graphs. The default graph is what is handed on, as
+            # it was; the named ones go to a caller who asks for them.
+            dataset = Dataset()
+            dataset.parse(data=raw, format=fmt, publicID=base)
+            for prefix, namespace in dataset.namespaces():
+                graph.bind(prefix, namespace)
+            graph += dataset.graph(DATASET_DEFAULT_GRAPH_ID)
+            for part in dataset.graphs():
+                if part.identifier != DATASET_DEFAULT_GRAPH_ID and len(part):
+                    held = Graph()
+                    held += part
+                    named[str(part.identifier)] = held
+        else:
+            graph.parse(data=raw, format=fmt, publicID=base)
     except Exception as exc:
+        named.clear()
         return None, "%s: %s: %s" % (name, type(exc).__name__, exc)
     return graph, None
 

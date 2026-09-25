@@ -221,6 +221,12 @@ _ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
 #: compared with UTF-8, is one that reads a character from each byte.
 _UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
 
+#: Names Python gives a code page that differs from one Windows machine to
+#: the next, and that no other system has: a declaration of one would be read
+#: one way here, another there, and not at all on Linux. Refused by name
+#: everywhere, so that a verdict does not depend on the machine that gave it.
+_PLATFORM_CODECS = frozenset({"mbcs", "dbcs", "ansi", "oem"})
+
 #: Bytes a codec with escapes or shifting states reads as fewer characters
 #: than there are bytes: a backslash escape, HZ's and ISO-2022's shifts, and
 #: UTF-7's. Asked first, so that an escape codec never sees the bytes below.
@@ -242,7 +248,9 @@ def _one_character_a_byte(name: str) -> bool:
     multi-byte codec pairs bytes and gives fewer; one with escapes or states
     gives fewer on `_SHIFTS`; and one that raises -- punycode, idna, a name no
     codec answers to -- is not decoded at all. Asked on so few bytes that the
-    answer costs nothing whatever the codec is.
+    answer costs nothing whatever the codec is. UTF-8's own names
+    pass too -- no two neighbours in every byte once make a sequence UTF-8
+    pairs -- which is harmless: such a document is compared UTF-8 with UTF-8.
     """
     try:
         return (len(_SHIFTS.decode(name, "replace")) == len(_SHIFTS)
@@ -476,8 +484,9 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
         return None
     shown = _shown(declared)
     normal = declared.lower().replace("-", "").replace("_", "").replace(".", "")
-    if len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared) or not (
-            normal in _UTF16_OR_32 or _one_character_a_byte(declared)):
+    if (len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared)
+            or normal in _PLATFORM_CODECS
+            or not (normal in _UTF16_OR_32 or _one_character_a_byte(declared))):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
     theirs, ours = _decoded(body, declared), _decoded(body, "utf-8")

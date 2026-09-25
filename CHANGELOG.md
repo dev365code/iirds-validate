@@ -77,15 +77,18 @@ no codec's name is, even where Python would read it as one. A single-byte code
 page passes as before over bytes it reads as ASCII does -- `windows-1252`,
 `ISO-8859-1`, `macintosh`, `TIS-620`, and ASCII under its own name,
 `ANSI_X3.4-1968` -- and `cp864`, which reads `%` as another character, passes
-where there is none. A document marked UTF-16 by its byte order mark or its
-first bytes is read as UTF-16 whatever it declares, as before, and a
+where there is none. A document marked UTF-16 or UTF-32 by its byte order
+mark or its first bytes is read as such whatever it declares, as before, and a
 processing instruction such as `<?xml-stylesheet` is not taken for a
 declaration. The other declarations naming an encoding outside those this
 reader decodes -- UTF-8, UTF-16, UTF-32 and the encodings that read one
 character from each byte -- were refused already, in the codec's words or the
 parser's: `Shift_JIS` and the other multi-byte encodings, `UTF-7`, a name no
 codec answers to, such as `U-T-F-8`, `punycode`, `idna`, and a name XML does
-not allow. They are refused by name now, with nothing decoded under them. The
+not allow. They are refused by name now, with nothing decoded under them, and
+so are `mbcs`, `ansi` and `oem`, which Windows reads as a code page that
+differs from one machine to the next and nothing else reads at all -- which
+takes a document declaring one from `0` to `1` on Windows. The
 name is printed with its control characters escaped, quoted where white
 space stands at an end, and cut to sixty characters. C16.1's remedy says to change the declaration with the bytes,
 because bytes rewritten as UTF-8 under the old declaration are refused.

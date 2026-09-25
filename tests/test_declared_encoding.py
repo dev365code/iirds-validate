@@ -281,7 +281,7 @@ def test_a_name_longer_than_any_codecs_is_refused_unread():
 
 
 @pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "cp65001", "macintosh", "TIS-620"])
-def test_a_single_byte_name_over_ascii_passes(declared):
+def test_a_name_that_reads_ascii_as_ascii_passes(declared):
     """ASCII's own IANA name, UTF-8's Windows one, and two single-byte pages
     a list of names refused."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
@@ -312,7 +312,8 @@ def test_a_spelling_of_utf8_no_codec_answers_to_is_refused_by_name(declared):
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 
 
-@pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape", "UTF-7"])
+@pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape",
+                                      "raw_unicode_escape", "UTF-7"])
 def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
     """Each reads one character from each byte of plain ASCII, and fewer from
     its escapes; asked only of every byte once, some of them looked like a
@@ -374,4 +375,13 @@ def test_a_name_with_space_at_an_end_is_shown_quoted():
     raw = ('<?xml version="1.0" encoding="utf-8 "?>\n' + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
     assert graph is None and error.endswith("'utf-8 '"), error
+
+
+@pytest.mark.parametrize("declared", ["mbcs", "dbcs", "ANSI", "oem"])
+def test_a_code_page_that_depends_on_the_machine_is_refused_by_name(declared):
+    """Windows answers to these with its own code page, which differs between
+    machines; nothing else answers at all. Refused everywhere alike."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 

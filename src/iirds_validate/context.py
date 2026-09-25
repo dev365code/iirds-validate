@@ -81,12 +81,11 @@ class Context:
     graphs_of: dict = field(default_factory=dict)
 
     #: Per metadata file, the names of graphs merge_graphs_of left out as
-    #: repeats, of those it could not tell from one, and the second reading
-    #: that leaves those out too. L9 compares both readings; L17 does not name
-    #: a repeat.
+    #: repeats, and of those it could not tell from one. L17 does not name a
+    #: repeat; an L9 finding in a file holding an uncounted graph says its
+    #: difference may be a repeat.
     repeats: dict = field(default_factory=dict)
     uncounted: dict = field(default_factory=dict)
-    as_repeats: dict = field(default_factory=dict)
 
     #: Per-class closure over ontology *and* package subclass declarations,
     #: filled lazily. Per-instance, same reasoning as Ontology's caches.
@@ -518,7 +517,7 @@ def build_graph(package: Package):
     per_source = {}
     defaults = {}
     graphs_of = {}
-    repeats, uncounted, as_repeats = {}, {}, {}
+    repeats, uncounted = {}, {}
 
     for name in (METADATA_RDF, METADATA_JSONLD):
         if not package.has(name):
@@ -572,9 +571,8 @@ def build_graph(package: Package):
         defaults[name] = single
         graphs_of[name] = {None: single}
         graphs_of[name].update(named)
-        (per_source[name], repeats[name], uncounted[name],
-         as_repeats[name]) = (merge_graphs_of(graphs_of[name]) if named
-                              else (single, [], [], single))
+        per_source[name], repeats[name], uncounted[name] = (
+            merge_graphs_of(graphs_of[name]) if named else (single, [], []))
         sources.append(name)
 
     # The merge is of default graphs, as it was: a statement only a named
@@ -582,7 +580,7 @@ def build_graph(package: Package):
     # it here would move every rule. The questions about what a file says
     # are asked of `per_source`, which has it.
     return (merge_sources(defaults), errors, sources, per_source, graphs_of,
-            (repeats, uncounted, as_repeats))
+            (repeats, uncounted))
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because
@@ -662,7 +660,7 @@ def _declared_encoding(raw, reported) -> str:
 
 def load_context(package: Package, version: Optional[str] = None) -> Context:
     graph, errors, sources, per_source, graphs_of, counted = build_graph(package)
-    repeats, uncounted, as_repeats = counted
+    repeats, uncounted = counted
     declared, variant = _detect(graph)
 
     # plusmeta's tool filters its rules by the declared version string, so a
@@ -687,5 +685,4 @@ def load_context(package: Package, version: Optional[str] = None) -> Context:
         graphs_of=graphs_of,
         repeats=repeats,
         uncounted=uncounted,
-        as_repeats=as_repeats,
     )

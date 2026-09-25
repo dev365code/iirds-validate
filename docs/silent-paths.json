@@ -3,14 +3,14 @@
   "branch": 1,
   "finding": 1,
   "other": 1,
-  "silent": 11
+  "silent": 12
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
   "container.py": "21b122b68715865a474180ad18e755dfbd84a7fdddbd4d5aa0f77c59adf22a4c",
   "content.py": "8da51678e83e3bafcda3a00b8bbdd4ab3f97a5580b7c397d0dea197ae68c3c83",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
-  "lint.py": "ab87ff0e126fc02e24898b02e9c29d0531ad872cd3cb5aa1ab634c663baa63a8",
+  "lint.py": "ceda05c4aa31f1ae4055988a7dc73b3bd13f274149ae8751ad8c82848004e7af",
   "requirements.py": "7236153b7b5086558c5e737196b9ce9e257c39c3c4189d4a232c9096d7207e13",
   "schema.py": "65d4c206c9d8e7018b0d3412ff20d98a4f3ca24d1df9aaadcc4bfcc04c963aa5",
   "schema_tables.py": "8a13d6e9362f3f7f4d85bc60a2f5dd42076b0fb8a2d7179c58ff1f951b301cb4",
@@ -27,6 +27,7 @@
    "_suggest :: return None [2]": "silent",
    "_undescribed_references :: continue # a term from the standard vocabulary": "silent",
    "l15_name_from_a_later_edition :: return": "silent",
+   "l17_jsonld_statements_in_a_named_graph :: return [2]": "silent",
    "l5_unmapped_custom_classes :: continue [1]": "silent",
    "l6_unlabelled_concepts :: continue [2]": "silent"
   },

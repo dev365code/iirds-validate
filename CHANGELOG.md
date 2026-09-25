@@ -123,9 +123,10 @@ hold there with `-W` too; under `iirds lint -W` a package whose L9 error it
 takes the place of stays at `1`, and one with no `metadata.rdf` whose JSON-LD
 is in named graphs goes from `0` to `1`. Where one file's graphs hold nodes
 without names that form no tree, or one deeper than forty, and one graph could
-repeat another, the repeat cannot be counted once: L9 compares the files with
-such a graph joined and with it left out, reports a difference only where both
-find one, and the report's notes say the files were compared two ways. A finding
+repeat another, the repeat cannot be counted once, and a whole repeat of such
+a structure can be reported as a difference: an L9 finding in such a file whose
+difference holds a node without a name says the difference may be that repeat,
+not verified. Which structure the node belongs to is not told apart. A finding
 that names the file a statement is in, M30's among them, names
 `metadata.jsonld` too where only a named graph of it holds the statement.
 `iirds.parse_metadata_graphs` hands on the named graphs beside the default

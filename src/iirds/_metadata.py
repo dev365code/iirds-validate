@@ -789,10 +789,9 @@ def _fingerprint(graph: Graph):
 _OUR_FAULT = (RecursionError, MemoryError, KeyboardInterrupt, SystemExit)
 
 
-def merge_graphs_of(graphs) -> Tuple[Graph, int]:
+def merge_graphs_of(graphs):
     """One document's graphs -- a mapping of name -> Graph, the default graph
-    first -- merged into one, a graph that repeats another counted once; and
-    how many graphs could not be told from a repeat.
+    first -- merged into one, a graph that repeats another counted once.
 
     A blank node's label names one node across a JSON-LD document, so graphs
     that share one are about the same node and are joined as they are. A
@@ -800,26 +799,33 @@ def merge_graphs_of(graphs) -> Tuple[Graph, int]:
     same triples, its blank nodes aside -- is left out: joined, its copies
     would be second nodes. A repeat is found by the graph's fingerprint, taken
     once per graph where its blank nodes form a forest, so the cost is the
-    document's size. A graph whose blank nodes do not form one, or run deeper
-    than the fingerprint follows, is joined as it is; where another graph with
-    blank nodes is its size, so that it could be a repeat, it is counted in the
-    second value, and a caller comparing the result has to say it could not.
+    document's size.
+
+    A graph whose blank nodes do not form one, or run deeper than the
+    fingerprint follows, cannot be told from a repeat where another graph
+    with blank nodes is its size. It is joined as it is, and a second reading
+    leaves it out wherever one of its size was joined before it; a caller
+    comparing the result compares both, since which is right is not known.
+
+    Returns ``(merged, repeats, uncounted, as_repeats)``: the merged graph,
+    the names of graphs left out as repeats, the names of graphs that could
+    not be counted, and the second reading.
     """
-    graphs = list(graphs.values())
+    items = list(graphs.items())
     blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
-              for graph in graphs]
+              for _name, graph in items]
     shared, seen = set(), set()
     for nodes in blanks:
         shared |= nodes & seen
         seen |= nodes
     sizes = {}
-    for graph, nodes in zip(graphs, blanks):
+    for (_name, graph), nodes in zip(items, blanks):
         if nodes:
             sizes[len(graph)] = sizes.get(len(graph), 0) + 1
-    merged = Graph()
-    kept = set()
-    uncounted = 0
-    for graph, nodes in zip(graphs, blanks):
+    merged, as_repeats = Graph(), Graph()
+    kept, joined_sizes = set(), set()
+    repeats, uncounted = [], []
+    for (name, graph), nodes in zip(items, blanks):
         if nodes and not nodes & shared:
             key = None
             if _blank_forest(graph):
@@ -827,15 +833,23 @@ def merge_graphs_of(graphs) -> Tuple[Graph, int]:
                     key = tuple(_fingerprint(graph))
                 except _TooDeep:
                     key = None
-            if key is None:
-                if sizes[len(graph)] > 1:
-                    uncounted += 1
-            elif key in kept:
+            if key is None and sizes[len(graph)] > 1:
+                uncounted.append(name)
+                merged += graph
+                if len(graph) not in joined_sizes:
+                    as_repeats += graph
+                joined_sizes.add(len(graph))
                 continue
-            else:
+            if key is not None:
+                if key in kept:
+                    repeats.append(name)
+                    continue
                 kept.add(key)
+        if nodes:
+            joined_sizes.add(len(graph))
         merged += graph
-    return merged, uncounted
+        as_repeats += graph
+    return merged, repeats, uncounted, as_repeats
 
 
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:

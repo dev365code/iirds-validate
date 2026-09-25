@@ -354,18 +354,28 @@ def l9_serialisations_disagree(ctx):
 
     if len(ctx.per_source) < 2:
         return
-    # A file whose repeats cannot be counted once is not compared: two copies
-    # of a node without a name would read as statements the other file lacks.
-    # The report's notes say so.
-    if any(ctx.uncounted.get(name) for name in ctx.per_source):
-        return
 
-    (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
-    iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
-    if iso_a == iso_b:
-        return
+    # A file whose repeats could not all be counted is read both ways -- the
+    # repeat joined, and left out -- and the files differ only if both
+    # readings differ; the smaller difference is the one reported. The
+    # report's notes say where this was so.
+    def readings(name):
+        whole = ctx.per_source[name]
+        if ctx.uncounted.get(name):
+            return (whole, ctx.as_repeats[name])
+        return (whole,)
 
-    _both, only_a, only_b = graph_diff(iso_a, iso_b)
+    (name_a, _graph_a), (name_b, _graph_b) = sorted(ctx.per_source.items())
+    best = None
+    for graph_a in readings(name_a):
+        for graph_b in readings(name_b):
+            iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
+            if iso_a == iso_b:
+                return
+            _both, only_a, only_b = graph_diff(iso_a, iso_b)
+            if best is None or len(only_a) + len(only_b) < len(best[0]) + len(best[1]):
+                best = (only_a, only_b)
+    only_a, only_b = best
 
     def sample(graph, limit=2):
         return "; ".join("%s %s %s" % tuple(str(term).split("#")[-1][:38] for term in triple)
@@ -1026,8 +1036,9 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     default = graphs.get(None)
     # Named only where they hold something the default graph does not: a
     # graph restating the default one hides nothing from its reader.
+    left_out = set(ctx.repeats.get(METADATA_JSONLD) or ())
     named = [name for name, graph in graphs.items()
-             if name is not None and default is not None
+             if name is not None and default is not None and name not in left_out
              and any(triple not in default for triple in graph)]
     if not named:
         return

@@ -336,7 +336,7 @@ def test_graphs_with_nodes_of_their_own_are_fingerprinted_once_each(monkeypatch)
         node = BNode()
         graphs[URIRef("urn:g%d" % n)] = _graph((URIRef("urn:t%d" % n), has, node),
                                                (node, fmt, Literal("f%d" % n)))
-    merged, _uncounted = merge_graphs_of(graphs)
+    merged = merge_graphs_of(graphs)[0]
     assert len(merged) == 101 and len(asked) == 50, (len(merged), len(asked))
 
 
@@ -362,7 +362,7 @@ def test_a_repeat_differing_only_in_a_language_tag_case_is_a_repeat(make_package
     from iirds import merge_graphs_of
     _default, named, _error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, graph.encode(),
                                                           base=iirds.PACKAGE_BASE)
-    merged, _uncounted = merge_graphs_of(dict({None: _default}, **{str(k): v for k, v in named.items()}))
+    merged = merge_graphs_of(dict({None: _default}, **{str(k): v for k, v in named.items()}))[0]
     assert len(merged) == len(_default)
 
 
@@ -401,7 +401,7 @@ def test_a_repeat_too_deep_to_count_once_is_not_judged_and_is_said(make_package)
     repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
     report = runner.lint(make_package(metadata=metadata, jsonld=repeated))
     assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
-    said = [note for note in report.notes if note.startswith("L9 did not compare the metadata files")]
+    said = [note for note in report.notes if note.startswith("L9 compared the metadata files two ways")]
     assert len(said) == 1 and "metadata.jsonld" in said[0], report.notes
 
 
@@ -414,4 +414,37 @@ def test_a_shallow_repeat_is_still_compared(make_package):
     repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
     report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=repeated))
     assert not _findings(report, "L9")
-    assert not [note for note in report.notes if note.startswith("L9 did not compare")], report.notes
+    assert not [note for note in report.notes if note.startswith("L9 compared")], report.notes
+
+
+def test_a_difference_is_reported_however_an_uncountable_repeat_is_counted(make_package):
+    """Two named graphs holding the same chain too deep to count once, and a
+    default graph lacking a statement metadata.rdf has: whichever way the
+    chain is counted, the files differ, and L9 says so."""
+    from rdflib import Graph as RDFGraph
+
+    nodes = _nodes()
+    rdf = RDFGraph()
+    rdf.parse(data=_document(nodes), format="json-ld", publicID=iirds.PACKAGE_BASE)
+    chain = [_sibling_chain(60)]
+    lacking = [dict(nodes[0], title=None)] + nodes[1:]
+    lacking[0] = {k: v for k, v in lacking[0].items() if v is not None}
+    jsonld = _document(lacking + [{"@id": "urn:test:v1", "@graph": chain},
+                                  {"@id": "urn:test:v2", "@graph": chain}])
+    for triple in RDFGraph().parse(data=_document(chain), format="json-ld", publicID=iirds.PACKAGE_BASE):
+        rdf.add(triple)
+    report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=jsonld))
+    [finding] = _findings(report, "L9")
+    assert "Test package" in finding.violation.detail, finding.violation.detail
+
+
+def test_the_warning_does_not_name_a_whole_repeat(make_package):
+    """A named graph repeating the default one, anonymous nodes and all, is
+    left out as a repeat, and hides nothing."""
+    package, topic, rendition = _nodes()
+    rendition = {k: v for k, v in rendition.items() if k != "@id"}
+    single = [package, dict(topic, **{"has-rendition": rendition})]
+    report = runner.lint(make_package(metadata=MINIMAL_RDF,
+                                      jsonld=_document(single + [{"@id": GRAPH, "@graph": single}])))
+    assert not _findings(report, "L17"), [f.violation.detail for f in _findings(report, "L17")]
+

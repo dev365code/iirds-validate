@@ -49,8 +49,8 @@ Written down so that none of these gets built by drift.
 - **Not a CCMS integration.** Not now.
 - **Not a counter of every repeat.** Where a JSON-LD file's graphs hold nodes
   without names that form no tree, or one deeper than forty, and one graph could
-  repeat another, L9 does not compare the metadata files, and the report's
-  notes say so.
+  repeat another, L9 compares the metadata files with the repeat joined and left
+  out, reports only a difference both find, and the report's notes say so.
 
 ## Where things live
 

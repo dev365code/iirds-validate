@@ -1,6 +1,6 @@
 """Offline, graph-based validator and interoperability linter for iiRDS packages."""
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 #: What `from iirds_validate import ...` offers, and the module each name lives
 #: in. Resolved on first use rather than at import: the package used to pull in

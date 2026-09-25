@@ -1181,9 +1181,9 @@ reader of the default graph never sees, and `metadata.rdf` is to contain all
 metadata in any case. A node without a name is a different node in each
 graph that holds it, as in each file, so the reading has two consequences.
 A graph repeating another whole, with nodes of its own that form a tree no
-deeper than forty, is the other graph again -- where they do not, L9 compares
-the files with such a graph joined and left out, reports only a difference both
-find, and the report's notes say so, a limit of this tool rather than a
+deeper than forty, is the other graph again -- where they do not, the repeat
+reads as more statements, and an L9 finding whose difference holds such a node
+says it may be a repeat and is not verified, a limit of this tool rather than a
 reading of the standard -- one that shares a node with another graph is not,
 since a blank node's label names one node across the document -- and one
 repeating part of it around such a node makes a second node, which L9

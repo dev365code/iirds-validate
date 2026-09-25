@@ -355,27 +355,12 @@ def l9_serialisations_disagree(ctx):
     if len(ctx.per_source) < 2:
         return
 
-    # A file whose repeats could not all be counted is read both ways -- the
-    # repeat joined, and left out -- and the files differ only if both
-    # readings differ; the smaller difference is the one reported. The
-    # report's notes say where this was so.
-    def readings(name):
-        whole = ctx.per_source[name]
-        if ctx.uncounted.get(name):
-            return (whole, ctx.as_repeats[name])
-        return (whole,)
+    (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
+    iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
+    if iso_a == iso_b:
+        return
 
-    (name_a, _graph_a), (name_b, _graph_b) = sorted(ctx.per_source.items())
-    best = None
-    for graph_a in readings(name_a):
-        for graph_b in readings(name_b):
-            iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
-            if iso_a == iso_b:
-                return
-            _both, only_a, only_b = graph_diff(iso_a, iso_b)
-            if best is None or len(only_a) + len(only_b) < len(best[0]) + len(best[1]):
-                best = (only_a, only_b)
-    only_a, only_b = best
+    _both, only_a, only_b = graph_diff(iso_a, iso_b)
 
     def sample(graph, limit=2):
         return "; ".join("%s %s %s" % tuple(str(term).split("#")[-1][:38] for term in triple)
@@ -387,6 +372,16 @@ def l9_serialisations_disagree(ctx):
     if len(only_b):
         detail.append("%d statement(s) only in %s (%s)" % (len(only_b), name_b, sample(only_b)))
 
+    # A file holding a graph whose nodes without names could not be counted
+    # once may have repeated it whole, and the repeat reads as more
+    # statements; where the difference holds such a node, the finding says
+    # so. Which structure a node belongs to is not told apart here: every
+    # difference holding a node without a name, in such a file, is marked.
+    uncertain = any(ctx.uncounted.get(name) for name in (name_a, name_b)) and any(
+        isinstance(term, BNode) for graph in (only_a, only_b) for triple in graph for term in triple)
+    if uncertain:
+        detail.append("this difference may be a whole repeat of a structure of nodes without "
+                      "names that this cannot count once, and is not verified")
     yield Violation("the two metadata serialisations describe different graphs",
                     subject="META-INF", detail=" | ".join(detail))
 

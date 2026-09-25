@@ -386,11 +386,11 @@ def _sibling_chain(length):
     return {"@id": "urn:test:toc", "@type": "iirds:DirectoryNode", "iirds:has-first-child": node}
 
 
-def test_a_repeat_too_deep_to_count_once_is_not_judged_and_is_said(make_package):
+def test_a_repeat_too_deep_to_count_once_is_reported_as_unverified(make_package):
     """Sixty directory nodes without names, chained, and a named graph that
-    repeats them whole: deeper than the fingerprint follows, so L9 cannot tell
-    the repeat from new statements -- it does not compare, and the report's
-    notes say why."""
+    repeats them whole: deeper than the fingerprint follows, so the repeat
+    reads as more statements. L9 reports the difference -- a pass it could
+    not stand behind would be silence -- and says it may be a repeat."""
     from rdflib import Graph as RDFGraph
 
     nodes = _nodes() + [_sibling_chain(60)]
@@ -400,9 +400,8 @@ def test_a_repeat_too_deep_to_count_once_is_not_judged_and_is_said(make_package)
     metadata = rdf.serialize(format="xml")
     repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
     report = runner.lint(make_package(metadata=metadata, jsonld=repeated))
-    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
-    said = [note for note in report.notes if note.startswith("L9 compared the metadata files two ways")]
-    assert len(said) == 1 and "metadata.jsonld" in said[0], report.notes
+    [finding] = _findings(report, "L9")
+    assert "may be a whole repeat of a structure of nodes without names" in finding.violation.detail, finding.violation.detail
 
 
 def test_a_shallow_repeat_is_still_compared(make_package):
@@ -413,14 +412,13 @@ def test_a_shallow_repeat_is_still_compared(make_package):
     rdf.parse(data=_document(nodes), format="json-ld", publicID=iirds.PACKAGE_BASE)
     repeated = _document(nodes + [{"@id": GRAPH, "@graph": nodes}])
     report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=repeated))
-    assert not _findings(report, "L9")
-    assert not [note for note in report.notes if note.startswith("L9 compared")], report.notes
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
 
 
 def test_a_difference_is_reported_however_an_uncountable_repeat_is_counted(make_package):
     """Two named graphs holding the same chain too deep to count once, and a
-    default graph lacking a statement metadata.rdf has: whichever way the
-    chain is counted, the files differ, and L9 says so."""
+    default graph lacking a statement metadata.rdf has: the files differ, and
+    L9 says so -- with the chain's repeat unverified -- rather than passing."""
     from rdflib import Graph as RDFGraph
 
     nodes = _nodes()
@@ -435,7 +433,7 @@ def test_a_difference_is_reported_however_an_uncountable_repeat_is_counted(make_
         rdf.add(triple)
     report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=jsonld))
     [finding] = _findings(report, "L9")
-    assert "Test package" in finding.violation.detail, finding.violation.detail
+    assert "may be a whole repeat of a structure of nodes without names" in finding.violation.detail, finding.violation.detail
 
 
 def test_the_warning_does_not_name_a_whole_repeat(make_package):
@@ -448,3 +446,32 @@ def test_the_warning_does_not_name_a_whole_repeat(make_package):
                                       jsonld=_document(single + [{"@id": GRAPH, "@graph": single}])))
     assert not _findings(report, "L17"), [f.violation.detail for f in _findings(report, "L17")]
 
+
+def _shared_node_graph(name, source):
+    """Two topics sharing one rendition without a name: no tree."""
+    node = "_:%s" % name.rsplit(":", 1)[1]
+    return {"@id": name, "@graph": [
+        {"@id": "urn:test:t1", "has-rendition": {"@id": node}},
+        {"@id": "urn:test:t2", "has-rendition": {"@id": node}},
+        {"@id": node, "format": "application/xhtml+xml", "source": source}]}
+
+
+def test_graphs_that_cannot_be_counted_and_differ_are_reported_the_same_every_time(make_package):
+    """Two graphs of one size that are not trees, one of them in metadata.rdf
+    too: the other is more statements, whichever way the store orders them,
+    and the finding says the difference touches what cannot be counted."""
+    from rdflib import Graph as RDFGraph
+
+    nodes = _nodes()
+    first = _shared_node_graph("urn:test:v1", "content/one.xhtml")
+    second = _shared_node_graph("urn:test:v2", "content/two.xhtml")
+    rdf = RDFGraph()
+    rdf.parse(data=_document(nodes + first["@graph"]), format="json-ld", publicID=iirds.PACKAGE_BASE)
+    jsonld = _document(nodes + [first, second])
+    details = set()
+    for _ in range(3):
+        report = runner.lint(make_package(metadata=rdf.serialize(format="xml"), jsonld=jsonld))
+        [finding] = _findings(report, "L9")
+        details.add(finding.violation.detail)
+    [detail] = details
+    assert "may be a whole repeat of a structure of nodes without names" in detail, detail

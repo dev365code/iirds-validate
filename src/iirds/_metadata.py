@@ -803,13 +803,13 @@ def merge_graphs_of(graphs):
 
     A graph whose blank nodes do not form one, or run deeper than the
     fingerprint follows, cannot be told from a repeat where another graph
-    with blank nodes is its size. It is joined as it is, and a second reading
-    leaves it out wherever one of its size was joined before it; a caller
-    comparing the result compares both, since which is right is not known.
+    with blank nodes is its size. It is joined as it is -- a repeat of it then
+    reads as more statements -- and named, so that a caller comparing the
+    result can say so.
 
-    Returns ``(merged, repeats, uncounted, as_repeats)``: the merged graph,
-    the names of graphs left out as repeats, the names of graphs that could
-    not be counted, and the second reading.
+    Returns ``(merged, repeats, uncounted)``: the merged graph, the names of
+    graphs left out as repeats, and the names of graphs that could not be
+    counted.
     """
     items = list(graphs.items())
     blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
@@ -822,8 +822,8 @@ def merge_graphs_of(graphs):
     for (_name, graph), nodes in zip(items, blanks):
         if nodes:
             sizes[len(graph)] = sizes.get(len(graph), 0) + 1
-    merged, as_repeats = Graph(), Graph()
-    kept, joined_sizes = set(), set()
+    merged = Graph()
+    kept = set()
     repeats, uncounted = [], []
     for (name, graph), nodes in zip(items, blanks):
         if nodes and not nodes & shared:
@@ -835,21 +835,13 @@ def merge_graphs_of(graphs):
                     key = None
             if key is None and sizes[len(graph)] > 1:
                 uncounted.append(name)
-                merged += graph
-                if len(graph) not in joined_sizes:
-                    as_repeats += graph
-                joined_sizes.add(len(graph))
-                continue
-            if key is not None:
+            elif key is not None:
                 if key in kept:
                     repeats.append(name)
                     continue
                 kept.add(key)
-        if nodes:
-            joined_sizes.add(len(graph))
         merged += graph
-        as_repeats += graph
-    return merged, repeats, uncounted, as_repeats
+    return merged, repeats, uncounted
 
 
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:

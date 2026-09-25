@@ -515,14 +515,8 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     return graph, error
 
 
-def _graph_name(identifier) -> str:
-    """A graph's name as text: its IRI, or `_:` and rdflib's label where a
-    blank node names it -- a label that differs from one parse to the next."""
-    return "_:%s" % identifier if isinstance(identifier, BNode) else str(identifier)
-
-
 def parse_metadata_graphs(name: str, raw: bytes, *,
-                          base: str) -> Tuple[Optional[Graph], Dict[str, Graph], Optional[str]]:
+                          base: str) -> Tuple[Optional[Graph], Dict[object, Graph], Optional[str]]:
     """As parse_metadata, and the named graphs a JSON-LD document puts
     statements in.
 
@@ -531,17 +525,19 @@ def parse_metadata_graphs(name: str, raw: bytes, *,
     beside it -- a top-level one included, which puts everything in a graph
     of that name. Returns
     ``(graph, named, error)``: the default graph, the named graphs that hold
-    statements by name -- `_:` before a name that is a blank node -- and the
-    error as parse_metadata gives it. RDF/XML names no graph, and a refused
+    statements, keyed by their names as rdflib gives them -- a URIRef, or a
+    BNode where a blank node names the graph -- and the error as
+    parse_metadata gives it. Keyed by the term, not its text: an IRI can be
+    spelled like a blank node's label. RDF/XML names no graph, and a refused
     document has none.
     """
-    named: Dict[str, Graph] = {}
+    named: Dict[object, Graph] = {}
     graph, error = _parse_metadata(name, raw, base, named)
     return graph, (named if graph is not None else {}), error
 
 
 def _parse_metadata(name: str, raw: bytes, base: str,
-                    named: Dict[str, Graph]) -> Tuple[Optional[Graph], Optional[str]]:
+                    named: Dict[object, Graph]) -> Tuple[Optional[Graph], Optional[str]]:
     """parse_metadata's work; a JSON-LD document's named graphs go into
     `named`."""
     fmt = "json-ld" if name.endswith((".jsonld", ".json")) else "xml"
@@ -632,7 +628,7 @@ def _parse_metadata(name: str, raw: bytes, base: str,
             # and after itself from 7, and neither was the graph read here.
             for part in graph.store.contexts():
                 if part.identifier != graph.identifier and len(part):
-                    named[_graph_name(part.identifier)] = part
+                    named[part.identifier] = part
     except Exception as exc:
         named.clear()
         return None, "%s: %s: %s" % (name, type(exc).__name__, exc)

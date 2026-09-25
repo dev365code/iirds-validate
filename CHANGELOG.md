@@ -110,7 +110,9 @@ statement is in -- is now asked of the file's statements whatever graph holds
 them, a graph that repeats another counting once; the merged graph the other
 rules read is made of default graphs, as before. For a package with nothing
 else wrong, that takes the exit code from `1` to `0` where the file's graphs
-together state what `metadata.rdf` states, and from `0` to `1` where its
+together state what `metadata.rdf` states -- unless its default graph, which
+is what the merge reads, holds a node without a name, which the merge then
+holds beside `metadata.rdf`'s -- and from `0` to `1` where its
 default graph states that and a named graph states more, or repeats part of
 it around a node without a name, which is a second node (L9). C16.2 no longer
 fires for an iiRDS/H JSON-LD whose iiRDS metadata is in named graphs; where it

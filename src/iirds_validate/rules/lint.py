@@ -1025,9 +1025,10 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     missed = stated - len(graphs[None])
     if missed <= 0:
         return
-    # By name, and by count where a blank node names a graph: its label is new
-    # with every parse, and a report says the same thing twice or is wrong.
-    iris = sorted(name for name in named if not name.startswith("_:"))
+    # By name, and by count where a blank node names a graph: rdflib invents
+    # a new label for some with every parse, and a report that changed with
+    # it would say two things about one package.
+    iris = sorted(str(name) for name in named if not isinstance(name, BNode))
     parts = iris[:3] + (["%d more" % (len(iris) - 3)] if len(iris) > 3 else [])
     unnamed = len(named) - len(iris)
     if unnamed:

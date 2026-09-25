@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 
+from rdflib import BNode, Graph, Literal, URIRef
+
 import iirds
 from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
 from iirds_validate import runner
@@ -112,7 +114,7 @@ def test_the_reader_hands_on_named_graphs_by_name():
     graph, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, raw,
                                                       base=iirds.PACKAGE_BASE)
     assert error is None and len(graph) == 0, error
-    assert sorted(named) == [GRAPH] and len(named[GRAPH]) > 0
+    assert [str(key) for key in named] == [GRAPH] and len(named[URIRef(GRAPH)]) > 0
     default, error = iirds.parse_metadata(iirds.METADATA_JSONLD, raw, base=iirds.PACKAGE_BASE)
     assert error is None and len(default) == 0, "parse_metadata still hands on the default graph"
 
@@ -231,13 +233,13 @@ def test_the_finding_names_the_file_a_named_graph_states_in(make_package):
 
 
 def test_many_named_graphs_cost_one_comparison_each_at_most(make_package, monkeypatch):
-    """Each named graph is compared with the default graph and nothing else,
-    and not at all where the two differ in size."""
+    """Each named graph is put in canonical form at most once, to be compared
+    with the default graph, and not at all where the two differ in size."""
     from iirds_validate import context
 
     asked = []
-    compare = context.isomorphic
-    monkeypatch.setattr(context, "isomorphic", lambda a, b: asked.append(1) or compare(a, b))
+    canonical = context.to_isomorphic
+    monkeypatch.setattr(context, "to_isomorphic", lambda graph: asked.append(1) or canonical(graph))
     graphs = [{"@id": "urn:test:g%d" % n, "@graph": [{"@id": "urn:test:topic1", "title": "T%d" % n}]}
               for n in range(300)]
     report = _lint(make_package, _document(_nodes() + graphs))
@@ -273,3 +275,37 @@ def test_the_file_a_described_extension_is_in_is_named(make_package):
     [finding] = [f for f in report.findings if f.rule.id == "R18"]
     assert "metadata.jsonld" in (finding.violation.detail or ""), finding.violation.detail
 
+
+
+
+def _graph(*triples):
+    graph = Graph()
+    for triple in triples:
+        graph.add(triple)
+    return graph
+
+
+def test_a_graph_sharing_a_node_without_a_name_is_not_a_repeat():
+    """A blank node's label names one node across a JSON-LD document, so a
+    graph that has the default graph's shape but speaks of its nodes says
+    something of its own; one with nodes of its own repeats it."""
+    from iirds_validate.context import _statements
+
+    t1, t2, has, fmt = (URIRef("urn:t1"), URIRef("urn:t2"), URIRef("urn:has"), URIRef("urn:fmt"))
+    a, b, c = BNode("a"), BNode("b"), BNode("c")
+    default = _graph((t1, has, a), (a, fmt, Literal("x")), (t2, has, b), (b, fmt, Literal("y")))
+    swapped = _graph((t1, has, b), (b, fmt, Literal("x")), (t2, has, a), (a, fmt, Literal("y")))
+    assert len(_statements(default, {URIRef("urn:g"): swapped})) == 8
+    alone = _graph((t1, has, a), (a, fmt, Literal("x")))
+    again = _graph((t1, has, c), (c, fmt, Literal("x")))
+    assert len(_statements(alone, {URIRef("urn:g"): again})) == 2
+
+
+def test_an_iri_spelled_like_a_blank_node_is_its_own_graph():
+    nodes = _nodes()
+    context = dict(json.loads(MINIMAL_JSONLD)["@context"], bn="_:")
+    document = json.dumps({"@context": context, "@graph": [
+        {"@id": "bn:g", "@graph": nodes[:2]}, {"@id": "_:g", "@graph": nodes[2:]}]})
+    graph, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, document.encode(),
+                                                      base=iirds.PACKAGE_BASE)
+    assert error is None and len(named) == 2, named

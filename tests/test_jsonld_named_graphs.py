@@ -232,14 +232,14 @@ def test_the_finding_names_the_file_a_named_graph_states_in(make_package):
     assert "metadata.jsonld" in said and "metadata.rdf" in said, said
 
 
-def test_many_named_graphs_cost_one_comparison_each_at_most(make_package, monkeypatch):
-    """Each named graph is put in canonical form at most once, to be compared
-    with the default graph, and not at all where the two differ in size."""
-    from iirds_validate import context
+def test_many_named_graphs_cost_one_fingerprint_each_at_most(make_package, monkeypatch):
+    """Each graph is fingerprinted at most once, and not at all where it holds
+    no node without a name, since then a plain union is exact."""
+    from iirds import _metadata
 
     asked = []
-    canonical = context.to_isomorphic
-    monkeypatch.setattr(context, "to_isomorphic", lambda graph: asked.append(1) or canonical(graph))
+    fingerprint = _metadata._fingerprint
+    monkeypatch.setattr(_metadata, "_fingerprint", lambda graph: asked.append(1) or fingerprint(graph))
     graphs = [{"@id": "urn:test:g%d" % n, "@graph": [{"@id": "urn:test:topic1", "title": "T%d" % n}]}
               for n in range(300)]
     report = _lint(make_package, _document(_nodes() + graphs))
@@ -289,16 +289,16 @@ def test_a_graph_sharing_a_node_without_a_name_is_not_a_repeat():
     """A blank node's label names one node across a JSON-LD document, so a
     graph that has the default graph's shape but speaks of its nodes says
     something of its own; one with nodes of its own repeats it."""
-    from iirds_validate.context import _statements
+    from iirds import merge_graphs_of
 
     t1, t2, has, fmt = (URIRef("urn:t1"), URIRef("urn:t2"), URIRef("urn:has"), URIRef("urn:fmt"))
     a, b, c = BNode("a"), BNode("b"), BNode("c")
     default = _graph((t1, has, a), (a, fmt, Literal("x")), (t2, has, b), (b, fmt, Literal("y")))
     swapped = _graph((t1, has, b), (b, fmt, Literal("x")), (t2, has, a), (a, fmt, Literal("y")))
-    assert len(_statements(default, {URIRef("urn:g"): swapped})) == 8
+    assert len(merge_graphs_of({None: default, URIRef("urn:g"): swapped})) == 8
     alone = _graph((t1, has, a), (a, fmt, Literal("x")))
     again = _graph((t1, has, c), (c, fmt, Literal("x")))
-    assert len(_statements(alone, {URIRef("urn:g"): again})) == 2
+    assert len(merge_graphs_of({None: alone, URIRef("urn:g"): again})) == 2
 
 
 def test_an_iri_spelled_like_a_blank_node_is_its_own_graph():
@@ -309,3 +309,14 @@ def test_an_iri_spelled_like_a_blank_node_is_its_own_graph():
     graph, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, document.encode(),
                                                       base=iirds.PACKAGE_BASE)
     assert error is None and len(named) == 2, named
+
+
+def test_two_named_graphs_repeating_each_other_count_once(make_package):
+    package, topic, rendition = _nodes()
+    rendition = {k: v for k, v in rendition.items() if k != "@id"}
+    single = [package, dict(topic, **{"has-rendition": rendition})]
+    twice = _document([{"@id": "urn:test:v1", "@graph": single},
+                       {"@id": "urn:test:v2", "@graph": single}])
+    report = runner.lint(make_package(metadata=MINIMAL_RDF, jsonld=twice))
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    assert _findings(report, "L17")

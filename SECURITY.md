@@ -162,3 +162,11 @@ this repository, naming the versions it reaches and the release that fixes it.
   declare XML entities for the parser to expand. `iirds` 0.3.2 through 0.7.2,
   `iirds-validate` and `iirds-sdk` 0.5.0 through 0.7.2; fixed in 0.7.3, where
   both checks also read the document as UTF-8.
+
+- [GHSA-47q4-x239-rj3c](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-47q4-x239-rj3c):
+  comparing a package's two metadata files, where it carries both, was a search
+  whose time grew faster than the files wherever blank nodes looked alike -- a
+  kilobyte of JSON-LD could hold a run for minutes. `iirds` 0.2.0 through 0.7.3,
+  `iirds-validate` 0.1.0 through 0.7.3 and `iirds-sdk` 0.5.0 through 0.7.3; fixed
+  in 0.7.4, where blank nodes that form trees are compared in one pass and the
+  rest only up to eight of them.

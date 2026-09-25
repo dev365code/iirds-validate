@@ -6,6 +6,11 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.7.4 — unreleased
 
+One advisory describes what this release fixes:
+
+- [GHSA-47q4-x239-rj3c](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-47q4-x239-rj3c): comparing a package's
+  two metadata files took time that grew faster than the files.
+
 **Security. Comparing the two metadata files took time that grew faster than
 the files.** Where a package carries both `metadata.rdf` and
 `metadata.jsonld`, the merge asks whether the second is the first again and L9

@@ -24,6 +24,7 @@ from ._metadata import (
     UNUSED_ENCODING,
     is_absolute_name,
     is_rdfxml_document_element,
+    merge_graphs_of,
     merge_sources,
     parse_metadata,
     parse_metadata_graphs,
@@ -51,6 +52,6 @@ __version__ = "0.7.1"
 __all__ = ["IIRDS", "IirdsError", "MAX_METADATA_BYTES", "METADATA_JSONLD",
            "METADATA_RDF", "NOT_RDFXML", "UNREADABLE_ENCODING", "UNUSED_ENCODING", "PACKAGE_BASE", "PackError", "Package",
            "UnreadableMethod", "__version__", "describe_method", "instances_of", "is_absolute_name",
-           "is_rdfxml_document_element", "label_of", "merge_sources", "open", "pack",
+           "is_rdfxml_document_element", "label_of", "merge_graphs_of", "merge_sources", "open", "pack",
            "parse_metadata", "parse_metadata_graphs", "source_of", "subclasses_of", "unreadable_method",
            "write_metadata"]

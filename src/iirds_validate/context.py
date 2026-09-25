@@ -27,13 +27,13 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from rdflib import BNode, Graph, URIRef
-from rdflib.compare import to_isomorphic
 from rdflib.namespace import RDF, RDFS
 
 from iirds import (
     MAX_METADATA_BYTES,
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
+    merge_graphs_of,
     merge_sources,
     parse_metadata_graphs,
     subclasses_of,
@@ -563,7 +563,7 @@ def build_graph(package: Package):
         defaults[name] = single
         graphs_of[name] = {None: single}
         graphs_of[name].update(named)
-        per_source[name] = _statements(single, named)
+        per_source[name] = merge_graphs_of(graphs_of[name]) if named else single
         sources.append(name)
 
     # The merge is of default graphs, as it was: a statement only a named
@@ -571,49 +571,6 @@ def build_graph(package: Package):
     # it here would move every rule. The questions about what a file says
     # are asked of `per_source`, which has it.
     return merge_sources(defaults), errors, sources, per_source, graphs_of
-
-
-def _statements(default: Graph, named: dict) -> Graph:
-    """Everything a metadata file states, whatever graph of it holds it.
-
-    A named graph that repeats the default one is the default one again:
-    joined, two copies of a node without a name are two nodes. A graph is
-    taken for such a repeat only where it is the default graph's size, holds
-    a node without a name, shares none with another graph of the file -- a
-    blank node's label names one node across a JSON-LD document, so a graph
-    that shares one is about the other graph's node -- and reads as the
-    default graph once both are put in canonical form. Each graph is put in
-    that form once, so a file of many graphs costs as much as its size;
-    comparing every graph with every other took a minute for ten kilobytes.
-    A graph repeating part of another around such a node is two nodes here,
-    as it is between two files."""
-    if not named:
-        return default
-    union = Graph()
-    for prefix, namespace in default.namespaces():
-        union.bind(prefix, namespace)
-    union += default
-    blanks = {key: _blank_nodes(graph) for key, graph in named.items()}
-    blanks[None] = _blank_nodes(default)
-    shared = set()
-    seen = set()
-    for nodes in blanks.values():
-        shared |= nodes & seen
-        seen |= nodes
-    canonical = None
-    for key, held in named.items():
-        own = blanks[key]
-        if own and not own & shared and len(held) == len(default):
-            if canonical is None:
-                canonical = to_isomorphic(default).internal_hash()
-            if to_isomorphic(held).internal_hash() == canonical:
-                continue
-        union += held
-    return union
-
-
-def _blank_nodes(graph: Graph) -> set:
-    return {term for triple in graph for term in triple if isinstance(term, BNode)}
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because

@@ -111,8 +111,8 @@ them, a graph that repeats another counting once; the merged graph the other
 rules read is made of default graphs, as before. For a package with nothing
 else wrong, that takes the exit code from `1` to `0` where the file's graphs
 together state what `metadata.rdf` states -- unless its default graph, which
-is what the merge reads, holds a node without a name, which the merge then
-holds beside `metadata.rdf`'s -- and from `0` to `1` where its
+is what the merge reads, holds a node without a name that a rule then finds
+twice, once from each file -- and from `0` to `1` where its
 default graph states that and a named graph states more, or repeats part of
 it around a node without a name, which is a second node (L9). C16.2 no longer
 fires for an iiRDS/H JSON-LD whose iiRDS metadata is in named graphs; where it
@@ -123,8 +123,9 @@ it leaves the exit code where it was unless `-W` counts warnings, and under
 that names the file a statement is in, M30's among them, names
 `metadata.jsonld` too where only a named graph of it holds the statement.
 `iirds.parse_metadata_graphs` hands on the named graphs beside the default
-one, from the same parse; `iirds.parse_metadata` still hands on the default
-graph. The standard says nothing about graph names; `docs/divergences.md`
+one, from the same parse, and `iirds.merge_graphs_of` joins one document's
+graphs as these questions read them; `iirds.parse_metadata` still hands on the
+default graph. The standard says nothing about graph names; `docs/divergences.md`
 records the reading.
 
 **A page of what this catches, generated from what the commands print.**

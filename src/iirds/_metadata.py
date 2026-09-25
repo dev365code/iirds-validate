@@ -767,6 +767,42 @@ def _fingerprint(graph: Graph):
 _OUR_FAULT = (RecursionError, MemoryError, KeyboardInterrupt, SystemExit)
 
 
+def merge_graphs_of(graphs) -> Graph:
+    """One document's graphs -- a mapping of name -> Graph, the default graph
+    first -- merged into one, a graph that repeats another counted once.
+
+    A blank node's label names one node across a JSON-LD document, so graphs
+    that share one are about the same node and are joined as they are. A
+    graph with blank nodes of its own that repeats one already joined -- the
+    same triples, its blank nodes aside -- is left out: joined, its copies
+    would be second nodes. A repeat is found by the graph's fingerprint, taken
+    once per graph where its blank nodes form a forest, so the cost is the
+    document's size; a graph whose blank nodes do not form one, or that runs
+    deeper than the fingerprint follows, is joined as it is.
+    """
+    graphs = list(graphs.values())
+    blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
+              for graph in graphs]
+    shared, seen = set(), set()
+    for nodes in blanks:
+        shared |= nodes & seen
+        seen |= nodes
+    merged = Graph()
+    kept = set()
+    for graph, nodes in zip(graphs, blanks):
+        if nodes and not nodes & shared and _blank_forest(graph):
+            try:
+                key = tuple(_fingerprint(graph))
+            except _TooDeep:
+                key = None
+            if key is not None:
+                if key in kept:
+                    continue
+                kept.add(key)
+        merged += graph
+    return merged
+
+
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:
     """Did the round trip preserve the graph?
 

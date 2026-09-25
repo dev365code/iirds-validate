@@ -86,10 +86,11 @@ member's; which bytes mark which encoding is read as its Appendix F reads
 them. For a document marked UTF-16 or UTF-32, or unmarked UTF-16, that takes
 it from `0` to `1`, and so does a UTF-8 mark over bytes all in ASCII under
 another declaration; a UTF-8 mark over other text under another declaration
-was refused already, and is refused as this now. Under a UTF-16 or UTF-32
-mark, a name this reader does not read -- a multi-byte encoding, a name no
-codec answers to, a platform code page, a spelling IANA does not register --
-is refused by name, as it is without a mark, from `0` to `1` likewise. The
+was refused already, and is refused as a contradiction now. Under any mark, a
+name this reader does not read -- a multi-byte encoding, a name no codec
+answers to, a platform code page, a spelling IANA does not register -- is
+refused by name, as it is without a mark: already so under a UTF-8 mark, from
+`0` to `1` under a UTF-16 or UTF-32 one. The
 refusal names the encoding the bytes are in, the one declared, and the
 section. A declaration agrees with a UTF-16 or UTF-32 mark when it gives the
 family's IANA name, in either byte order, or the byte-order name the mark

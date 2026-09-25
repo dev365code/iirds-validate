@@ -436,3 +436,20 @@ def test_a_spelling_that_is_not_the_iana_name_is_not_read_under_a_mark():
     the name section 4.3.3 asks for."""
     graph, error = _parsed(_marked(b"\xff\xfe", "utf-16-le", "utf16"))
     assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+
+
+def test_a_declaration_pushed_far_along_is_still_read_against_the_mark():
+    """XML allows white space between a declaration's attributes; the check
+    reads as far as the declaration runs."""
+    head = '<?xml version="1.0"%s encoding="utf-8"?>\n' % (" " * 5000)
+    raw = b"\xfe\xff" + (head + BODY % PLAIN).encode("utf-16-be")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+
+
+@pytest.mark.parametrize("declared", ["Shift_JIS", "x-nonesuch", "punycode"])
+def test_a_name_this_reader_does_not_read_is_that_under_a_mark_too(declared):
+    """Saving the file in an encoding this reader refuses is no remedy, so the
+    refusal is the one it gets without a mark."""
+    graph, error = _parsed(_marked(b"\xff\xfe", "utf-16-le", declared))
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)

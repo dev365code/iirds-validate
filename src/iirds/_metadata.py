@@ -553,10 +553,18 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
     where = ("its byte order mark says" if stored[:2] in (b"\xff\xfe", b"\xfe\xff")
              or stored[:3] == b"\xef\xbb\xbf" or stored[:4] == b"\x00\x00\xfe\xff"
              else "its first bytes say")
-    try:
-        head = stored[:4096].decode(codec, "ignore").lstrip("﻿")
-    except Exception:
-        return None
+    # Read as far as the declaration runs, a larger piece each time: XML lets
+    # white space stand between its attributes, and a fixed piece let an
+    # `encoding=` pushed past it go unread.
+    limit = 4096
+    while True:
+        try:
+            head = stored[:limit].decode(codec, "ignore").lstrip("\ufeff")
+        except Exception:
+            return None
+        if "?>" in head or limit >= len(stored):
+            break
+        limit *= 8
     found = _DECLARED_TEXT.match(head)
     if found is None:
         if mark.startswith("UTF-32"):
@@ -572,9 +580,14 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
         return None
     if mark != "UTF-8" and lowered in _AGREEING[mark]:
         return None
+    # A name this reader does not read is refused as that, as it is with no
+    # mark in front of it: saving the file in the encoding it names is no
+    # remedy where that encoding is refused too.
     if (len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared)
             or normal in _PLATFORM_CODECS
-            or (normal in _UNREGISTERED_UTF and lowered not in {n for a in _AGREEING.values() for n in a})):
+            or (normal in _UNREGISTERED_UTF and lowered not in {n for a in _AGREEING.values() for n in a})
+            or not (normal in _UTF16_OR_32 or _is_utf8_name(declared)
+                    or _one_character_a_byte(declared))):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     return ("%s: %s: %s %s and its declaration says %s; XML 1.0 section 4.3.3 makes that "
             "a fatal error -- make the declaration name the encoding the bytes are in, or save "

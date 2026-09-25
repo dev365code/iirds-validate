@@ -288,14 +288,16 @@ def _decoded(raw: bytes, encoding: str):
 
 
 def _is_utf8_name(name: str) -> bool:
-    """Whether a declaration names UTF-8, however it is spelled.
+    """Whether a declaration names UTF-8: `UTF-8`, `utf8` or `utf_8`, in any
+    case, since XML encoding names are not case sensitive.
 
-    Normalised rather than looked up: `codecs.lookup` would be a new import
-    in a library whose import list is itself a gate. XML encoding names are not case
-    sensitive and `UTF-8`, `utf8` and `utf_8` are one name; anything else is
-    another encoding whatever it decodes to.
+    Those spellings exactly. Stripping `-` and `_` first made `U-T-F-8`, a
+    name no codec answers to, into UTF-8 here, and a padded name into one
+    XML does not allow; any other spelling is asked of the codec like every
+    other name. Compared rather than looked up: `codecs.lookup` would be a
+    new import in a library whose import list is itself a gate.
     """
-    return name.strip().lower().replace("_", "").replace("-", "") == "utf8"
+    return name.lower() in ("utf-8", "utf8", "utf_8")
 
 
 class _Element(Exception):

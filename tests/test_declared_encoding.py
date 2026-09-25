@@ -112,9 +112,8 @@ def test_a_document_this_tool_cannot_read_says_what_to_do(tmp_path):
     codec's own sentence about a byte at an offset. A reader is told which
     byte and not what to do."""
     report = report_of(tmp_path, "declared 1252 and written in 1252")
-    said = " ".join(str(f.get("detail", "")) + " " + str(f.get("fix", ""))
-                    for f in report["findings"])
-    assert "position" not in said or "utf-8" in said.lower(), said
+    said = " ".join(str(f.get("detail", "")) for f in report["findings"])
+    assert "position" not in said, said
     assert "windows-1252" in said, (
         "the refusal does not name the encoding the document declares: %s" % said)
 
@@ -179,19 +178,23 @@ def _parsed(raw):
     return iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
 
 
-def test_an_encoding_outside_the_ones_read_here_is_refused_unread():
+def test_an_encoding_outside_the_ones_read_here_is_refused_unread(monkeypatch):
     """punycode's decoder takes time that grows with the square of its input,
     and decoding under the declared name put that cost in the sender's hands.
     A name outside the encodings this reader decodes is refused by name, with
-    nothing decoded."""
-    import time
+    nothing decoded: held by watching what the document is decoded as, since
+    a document punycode gives up on at once would pass any clock."""
+    from iirds import _metadata
 
+    asked = []
+    decoded = _metadata._decoded
+    monkeypatch.setattr(_metadata, "_decoded",
+                        lambda raw, encoding: asked.append(encoding) or decoded(raw, encoding))
     body = "<!-- %s -->\n%s" % ("ab" * 200000, BODY % PLAIN)
     raw = ('<?xml version="1.0" encoding="punycode"?>\n' + body).encode("ascii")
-    started = time.monotonic()
     graph, error = _parsed(raw)
-    assert time.monotonic() - started < 1.0
-    assert graph is None and "punycode" in error, error
+    assert graph is None and iirds.UNREADABLE_ENCODING in error and "punycode" in error, error
+    assert "punycode" not in asked, asked
 
 
 @pytest.mark.parametrize("declared", ["shift_jis", "gb18030", "big5", "euc-jp", "utf-7",
@@ -298,3 +301,57 @@ def test_the_remedy_followed_passes():
     assert _parsed(rewritten)[0] is None
     declared_too = rewritten.replace(b'encoding="windows-1252"', b'encoding="UTF-8"')
     assert _parsed(declared_too)[1] is None
+
+
+@pytest.mark.parametrize("declared", ["U-T-F-8", "U_T_F_8", "u-tf8", " utf-8", "utf-8 ", "_utf8"])
+def test_a_spelling_of_utf8_no_codec_answers_to_is_refused_by_name(declared):
+    """UTF-8 is `UTF-8`, `utf8` or `utf_8`, in any case; a name with its
+    separators moved, or padded, is some other name, and no codec's."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+
+
+@pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape", "UTF-7"])
+def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
+    """Each reads one character from each byte of plain ASCII, and fewer from
+    its escapes; asked only of every byte once, some of them looked like a
+    code page."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+
+
+@pytest.mark.parametrize("declared", ["UTF-16", "UTF-16LE", "cp037"])
+def test_a_declaration_that_reads_ascii_as_other_text_is_refused(declared):
+    """Bytes all under 128 are the same text only under a code page that keeps
+    ASCII where it is; these read them as other characters."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.UNUSED_ENCODING in error, (declared, error)
+
+
+def test_the_byte_order_mark_is_not_compared():
+    """The mark is UTF-8's and not the declared encoding's; an ASCII document
+    behind it reads the same both ways."""
+    raw = b"\xef\xbb\xbf" + ('<?xml version="1.0" encoding="windows-1252"?>\n'
+                              + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert error is None and graph is not None, error
+
+
+def test_a_document_the_entity_check_cannot_answer_for_is_refused(monkeypatch):
+    """Told to read UTF-8, expat raises nothing but its own error; whatever
+    else arrives is not answered for, and not raised either."""
+    from iirds import _metadata
+
+    class Broken:
+        EntityDeclHandler = StartElementHandler = None
+
+        def Parse(self, data, final):
+            raise RuntimeError("not expat's own")
+
+    monkeypatch.setattr(_metadata.expat, "ParserCreate", lambda *args, **kwargs: Broken())
+    graph, error = _parsed(document("utf-8", "utf-8", PLAIN))
+    assert graph is None and "could not be read for XML entities" in error, error
+

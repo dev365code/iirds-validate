@@ -338,6 +338,9 @@ whose bytes read the same both ways passes. A declaration naming an encoding
 this reader does not decode -- anything but UTF-8, UTF-16, UTF-32 and the
 encodings that read one character from each byte, or a name no codec answers
 to -- is refused by name without the document being decoded under it.
+A document marked UTF-16 by its byte order mark or its first bytes is read as
+UTF-16 whatever it declares; XML makes a declaration that contradicts the mark
+an error, and that is not checked yet.
 
 ## What this tool refuses to read, and why that is its own decision
 

@@ -453,3 +453,13 @@ def test_a_name_this_reader_does_not_read_is_that_under_a_mark_too(declared):
     refusal is the one it gets without a mark."""
     graph, error = _parsed(_marked(b"\xff\xfe", "utf-16-le", declared))
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+
+
+def test_a_value_holding_the_end_of_a_declaration_is_read_to_its_quote():
+    """No encoding's name holds `?>`; a value that does is read to its closing
+    quote, and refused by name, however far that quote stands."""
+    head = '<?xml version="1.0" encoding="utf-8?>%s"?>\n' % ("x" * 5000)
+    raw = b"\xfe\xff" + (head + BODY % PLAIN).encode("utf-16-be")
+    graph, error = _parsed(raw)
+    assert graph is None and error, error
+

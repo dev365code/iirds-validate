@@ -525,8 +525,39 @@ _AGREEING = {
 #: not read, not one it can hold against the mark.
 _UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
 
-#: The `encoding=` of a declaration in a document already decoded.
-_DECLARED_TEXT = re.compile(r'<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])(.*?)\1', re.DOTALL)
+#: The `encoding=` of a declaration in a document already decoded, as far as
+#: the quote that opens its value.
+_ENCODING_OPENS = re.compile(r'<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])', re.DOTALL)
+
+
+def _declared_behind_mark(stored: bytes, codec: str) -> Optional[str]:
+    """The encoding a marked document's declaration names, or None where it
+    names none.
+
+    Read as far as the declaration runs, a larger piece each time: XML lets
+    white space stand between its attributes, and a fixed piece let an
+    `encoding=` pushed past it go unread. Once the quote that opens the value
+    is found, the piece grows until the one that closes it is: a value
+    holding `?>` -- which no encoding's name can -- ended the reading there,
+    and the declaration went unread.
+    """
+    limit = 4096
+    while True:
+        try:
+            head = stored[:limit].decode(codec, "ignore").lstrip("\ufeff")
+        except Exception:
+            return None
+        opened = _ENCODING_OPENS.match(head)
+        whole = limit >= len(stored)
+        if opened is not None:
+            closing = head.find(opened.group(1), opened.end())
+            if closing >= 0:
+                return head[opened.end():closing]
+            if whole:
+                return head[opened.end():]
+        elif "?>" in head or whole:
+            return None
+        limit *= 8
 
 
 def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
@@ -553,26 +584,14 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
     where = ("its byte order mark says" if stored[:2] in (b"\xff\xfe", b"\xfe\xff")
              or stored[:3] == b"\xef\xbb\xbf" or stored[:4] == b"\x00\x00\xfe\xff"
              else "its first bytes say")
-    # Read as far as the declaration runs, a larger piece each time: XML lets
-    # white space stand between its attributes, and a fixed piece let an
-    # `encoding=` pushed past it go unread.
-    limit = 4096
-    while True:
-        try:
-            head = stored[:limit].decode(codec, "ignore").lstrip("\ufeff")
-        except Exception:
-            return None
-        if "?>" in head or limit >= len(stored):
-            break
-        limit *= 8
-    found = _DECLARED_TEXT.match(head)
-    if found is None:
+    declared = _declared_behind_mark(stored, codec)
+    if declared is None:
         if mark.startswith("UTF-32"):
             return ("%s: %s: %s %s and it declares no encoding; XML 1.0 section 4.3.3 "
                     "makes an undeclared encoding other than UTF-8 or UTF-16 a fatal error -- "
                     "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, where, mark))
         return None
-    declared = found.group(2)[:_LONGEST_NAME + 1]
+    declared = declared[:_LONGEST_NAME + 1]
     shown = _shown(declared)
     lowered = declared.lower()
     normal = lowered.replace("-", "").replace("_", "").replace(".", "")

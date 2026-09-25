@@ -122,6 +122,9 @@ that.
 rules.** Its note said "the 9 requirements about the ZIP archive itself" and
 listed nine rule identifiers; those nine rules cover seven requirements.
 
+Also released as 0.7.4: the entry headed **Security** directly below, with
+[GHSA-47q4-x239-rj3c](https://github.com/dev365code/iirds-validate/security/advisories/GHSA-47q4-x239-rj3c).
+
 **Security. Comparing the two metadata files took time that grew faster than
 the files.** Where a package carries both `metadata.rdf` and
 `metadata.jsonld`, the merge asks whether the second is the first again and L9

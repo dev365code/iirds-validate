@@ -52,6 +52,9 @@ DIFFERENCE = "src/iirds_validate/difference.py"
 LINKS = "tests/test_unpacked_links.py"
 RUNNER = "src/iirds_validate/runner.py"
 SIZES = "tests/test_size_gates.py"
+METADATA = "src/iirds/_metadata.py"
+BOUNDED = "tests/test_bounded_comparison.py"
+EXACT = "tests/test_fingerprint_exactness.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
@@ -291,6 +294,66 @@ TABLE = [
      ["tests/test_header_agreement.py"],
      "a name libarchive takes from a local header's Unicode Path field leads out, and S6 "
      "passes it"),
+
+    ("compare/a-node-two-blank-nodes-point-at-called-a-tree",
+     METADATA,
+     "        if len(roots) == 1 and all(len(parents.get(node, ())) <= 1 for node in nodes):",
+     "        if len(roots) == 1 and all(len(parents.get(node, ())) <= 2 for node in nodes):",
+     ["tests/library/test_write.py", EXACT],
+     "a blank node two blank nodes point at is named by its subtree, and two graphs that "
+     "differ in which node is shared compare as one"),
+
+    ("compare/named-nodes-pointing-at-a-node-left-out-of-its-name",
+     METADATA,
+     "        if len(pointing) + len(parents.get(node, ())) > 1:",
+     "        if False:",
+     [EXACT],
+     "two graphs that pair named nodes with blank nodes differently compare as one, and the "
+     "merge drops one of them as a repeat"),
+
+    ("compare/what-a-node-says-left-out-of-its-structure",
+     METADATA,
+     "        says[node] = _digest(\"\\n\".join(sorted(parts)))",
+     "        says[node] = \"\"",
+     [EXACT],
+     "two cycles of blank nodes that say different things compare as one"),
+
+    ("compare/one-order-of-the-nodes-taken-as-the-name",
+     METADATA,
+     "        if best is None or encoding < best:",
+     "        if best is None:",
+     [EXACT],
+     "a structure with symmetry is named by whichever order its nodes were minted in, and "
+     "two identical files compare different in some runs"),
+
+    ("compare/the-limit-reached-one-node-early",
+     METADATA,
+     "    if count > MAX_COMPARED_BLANK_NODES:",
+     "    if count >= MAX_COMPARED_BLANK_NODES:",
+     [BOUNDED],
+     "the limit the refusal names is not the one it applies"),
+
+    ("compare/a-refused-source-merged-anyway",
+     METADATA,
+     "                refused.append(reason)\n                continue",
+     "                refused.append(reason)",
+     [BOUNDED],
+     "a document reported as left out is merged, and its repeats counted twice"),
+
+    ("compare/the-refusal-read-as-a-file-that-did-not-parse",
+     CONTAINER,
+     "        if err.startswith(METADATA_JSONLD) and not_compared(err) is not None:",
+     "        if False:",
+     [BOUNDED],
+     "a document nothing found wrong is reported as one that could not be read, with the "
+     "remedy for a broken file"),
+
+    ("compare/the-refusal-read-as-a-file-that-did-not-parse-under-lint",
+     RUNNER,
+     "        if not_compared(error) is not None:",
+     "        if False:",
+     [BOUNDED],
+     "the same, in a run that asks no container question"),
 
     # The canary. It has to survive: if it dies, the harness is reporting red
     # for everything and the rows above prove nothing.

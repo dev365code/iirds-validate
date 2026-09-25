@@ -11,7 +11,7 @@ import re
 import zipfile
 from collections import Counter
 
-from iirds import NOT_RDFXML, unreadable_method
+from iirds import NOT_COMPARED, NOT_RDFXML, unreadable_method
 
 from ..model import (
     META_DIR,
@@ -218,6 +218,32 @@ def c9_violation(detail: str) -> Violation:
                             % detail)
 
 
+def not_compared(error: str):
+    """The reader's reason, when a parse error is the merge leaving a document
+    out because it did not compare it with the one before; None for every
+    other error. Routed on the SDK's exported category, as C9's is."""
+    _name, _, rest = error.partition(": ")
+    category, _, detail = rest.partition(": ")
+    return detail if category == NOT_COMPARED else None
+
+
+def not_compared_violation(name: str, detail: str) -> Violation:
+    """The merge's refusal of a document it did not compare. The metadata is
+    read in a fixed order, metadata.rdf first, so the document it names is
+    metadata.jsonld and this is C16.2's to report."""
+    return Violation("%s was not compared with metadata.rdf, so no rule read it"
+                     % name.rsplit("/", 1)[-1], subject=name, detail=detail,
+                     fix="Nothing in either file is necessarily wrong. Two serialisations of "
+                         "one graph are compared in one pass wherever their blank nodes form "
+                         "trees; a blank node that two blank nodes point at, or a cycle of "
+                         "them, leaves a search whose cost grows faster than the files do, "
+                         "and this reader makes it over at most 8 blank nodes. Give those "
+                         "nodes IRIs, or write each anonymous node under one parent, and the "
+                         "files are compared whatever their size. Until then this file's "
+                         "statements reach no rule here, and a consumer that prefers it reads "
+                         "them unchecked.")
+
+
 @rule("C11.1",
        covers=("x5-1-2-content-location#1",),
        fix="Move the file under a directory rather than leaving it beside mimetype and META-INF. Only those two belong in the root; everything else has to live in a subdirectory.")
@@ -372,7 +398,9 @@ def c16_2_jsonld(ctx):
                                 "no other, so an empty one hands it a package with no metadata "
                                 "at all.")
     for err in ctx.parse_errors:
-        if err.startswith(METADATA_JSONLD):
+        if err.startswith(METADATA_JSONLD) and not_compared(err) is not None:
+            yield not_compared_violation(METADATA_JSONLD, not_compared(err))
+        elif err.startswith(METADATA_JSONLD):
             # Same correction as C16.1 twenty lines up, for the same reason:
             # the reader refuses on size, on a context that names something to
             # fetch, and on an @import, none of which is a syntax error. A

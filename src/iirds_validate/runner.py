@@ -11,7 +11,7 @@ from .context import Context, load_context
 from .model import METADATA_RDF, Finding, Report, Rule, Severity, Violation
 from .package import PackageError, UnreadablePath, file_digest, open_package
 from .registry import CATALOG, all_rules, rule_set_digest, rules_source_digest
-from .rules.container import c9_violation, rdfxml_refusal
+from .rules.container import c9_violation, not_compared, not_compared_violation, rdfxml_refusal
 
 #: "system" is in every set: a container that could not be read has to be
 #: reported whichever question the caller asked.
@@ -113,6 +113,10 @@ def _metadata_findings(ctx: Context, kinds: Sequence[str]):
             continue
         name, _, detail = error.partition(": ")
         rule_id = "C16.1" if name == METADATA_RDF else "C16.2"
+        if not_compared(error) is not None:
+            yield Finding(_emitted(rule_id, "container"),
+                          not_compared_violation(name, not_compared(error)))
+            continue
         yield Finding(_emitted(rule_id, "container"),
                       Violation("metadata could not be parsed", subject=name, detail=detail))
 

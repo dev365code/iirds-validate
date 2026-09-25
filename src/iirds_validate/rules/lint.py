@@ -350,17 +350,15 @@ def l9_serialisations_disagree(ctx):
     the claim rests on: a package whose files agree and are both empty of
     iiRDS metadata is C16.2's, and one whose JSON-LD is thinner is this one's.
     """
-    from rdflib.compare import graph_diff, to_isomorphic
+    from iirds import graph_difference
 
     if len(ctx.per_source) < 2:
         return
 
     (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
-    iso_a, iso_b = to_isomorphic(graph_a), to_isomorphic(graph_b)
-    if iso_a == iso_b:
+    only_a, only_b = graph_difference(graph_a, graph_b)
+    if not only_a and not only_b:
         return
-
-    _both, only_a, only_b = graph_diff(iso_a, iso_b)
 
     def sample(graph, limit=2):
         return "; ".join("%s %s %s" % tuple(str(term).split("#")[-1][:38] for term in triple)

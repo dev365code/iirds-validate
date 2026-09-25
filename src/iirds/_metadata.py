@@ -10,14 +10,14 @@ from __future__ import annotations
 
 import hashlib
 import io
+import itertools
 import json
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from rdflib import BNode, Graph, Literal
-from rdflib.compare import isomorphic
 
 #: Two cheap guards, applied before the parser sees anything.
 MAX_METADATA_BYTES = 64 * 1024 * 1024
@@ -428,7 +428,7 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     return graph, None
 
 
-def merge_sources(graphs) -> Graph:
+def merge_sources(graphs, refused: Optional[List[str]] = None) -> Graph:
     """A mapping of name -> Graph, merged into one graph, in mapping order.
 
     Merge, unless a source is the same graph again. Blank nodes cannot be
@@ -439,59 +439,73 @@ def merge_sources(graphs) -> Graph:
     genuinely divergent sources still union -- their disagreement is the
     validator's finding to report, and hiding either side would hide the
     evidence.
+
+    A source that cannot be compared with one before it -- where either holds
+    more blank nodes outside trees than MAX_COMPARED_BLANK_NODES, see `_rows`
+    -- is neither: merging it could double what it repeats, and leaving it
+    out without a word would hide it. It is left out and said so, as
+    ``"<name>: <NOT_COMPARED>: <detail>"``: appended to `refused` where the
+    caller passes a list, and raised as ValueError where it does not.
     """
     merged = Graph()
-    kept = []
-    for single in graphs.values():
-        if not any(isomorphic(single, seen) for seen in kept):
-            merged += single
-            kept.append(single)
+    kept = []                   # [name, graph, its fingerprint once asked for]
+    for name, single in graphs.items():
+        if kept:
+            holder = name
+            try:
+                mine = _fingerprint(single)
+                for entry in kept:
+                    if entry[2] is None:
+                        holder = entry[0]
+                        entry[2] = _fingerprint(entry[1])
+            except _NotCompared as exc:
+                reason = _not_compared(name, holder, exc.count)
+                if refused is None:
+                    raise ValueError(reason) from None
+                refused.append(reason)
+                continue
+            if any(mine == entry[2] for entry in kept):
+                continue
+        merged += single
+        kept.append([name, single, None])
     return merged
 
 
-#: How deep a chain of blank nodes the fast comparison below will walk before
-#: handing the graph to the general check. Well past anything iiRDS nests --
-#: a rendition inside an information unit is one level -- and low enough that
-#: the recursion cannot reach Python's own limit.
-_MAX_BLANK_DEPTH = 40
+#: The most blank nodes outside trees a graph may hold for the comparison to
+#: be run on it -- see `_rows` for what a tree is here. Every metadata document
+#: in the corpus holds none: an anonymous rendition inside each information
+#: unit is a tree, and so is any chain of them, however long. What is left is a
+#: blank node two blank nodes point at, or a cycle of them, and there the exact
+#: answer tries every order of the nodes that look alike, which is a factorial.
+#: rdflib's search, used first, was no better bounded: sixteen such nodes in one
+#: structure took it twenty-one seconds. At eight, the most orders there can be
+#: is 40,320; measured, the slowest shape tried -- eight nodes each linked to
+#: every other and to itself -- took under half a second, and a whole `check`
+#: of a package carrying it in both files, which names each file twice, under
+#: two.
+MAX_COMPARED_BLANK_NODES = 8
+
+#: The category `merge_sources` reports for a source it did not compare and so
+#: left out. Part of the error string's shape -- ``"<name>: <category>:
+#: <detail>"`` -- and exported for the reason NOT_RDFXML is: the validator
+#: routes on it, because nothing in the document was found wrong.
+NOT_COMPARED = "not compared with the metadata before it, so left out"
 
 
-class _TooDeep(Exception):
-    """A blank-node chain longer than this comparison will follow."""
+class _NotCompared(Exception):
+    """More blank nodes outside trees than MAX_COMPARED_BLANK_NODES."""
+
+    def __init__(self, count: int):
+        super().__init__(count)
+        self.count = count
 
 
-def _blank_forest(graph: Graph) -> bool:
-    """Is every blank node in `graph` referred to at most once, and by nobody
-    it can reach?
-
-    Under that condition -- which every metadata document in the corpus meets
-    -- a blank node's identity is completely determined by the subtree hanging
-    off it, so two graphs are isomorphic exactly when those subtrees match.
-    A shared blank node breaks it (two graphs can agree on every subtree and
-    still differ in which node is shared), and so does a cycle (there is no
-    subtree to hash).
-    """
-    seen = set()
-    for _, _, obj in graph:
-        if isinstance(obj, BNode):
-            if obj in seen:
-                return False          # referred to twice: not a forest
-            seen.add(obj)
-    blanks = {s for s in graph.subjects() if isinstance(s, BNode)} | seen
-    walking = set()
-
-    def acyclic(node, depth):
-        if depth > _MAX_BLANK_DEPTH:
-            return False
-        walking.add(node)
-        for _, obj in graph.predicate_objects(node):
-            if isinstance(obj, BNode) and (
-                    obj in walking or not acyclic(obj, depth + 1)):
-                return False
-        walking.discard(node)
-        return True
-
-    return all(acyclic(node, 0) for node in blanks)
+def _not_compared(name: str, holder: str, count: int) -> str:
+    return ("%s: %s: %s holds %d blank nodes outside trees -- a blank node two "
+            "statements from blank nodes point at, or a cycle of them, and every blank "
+            "node joined to one -- and this compares at most %d"
+            % (name, NOT_COMPARED, "it" if holder == name else holder, count,
+               MAX_COMPARED_BLANK_NODES))
 
 
 def _term(term) -> str:
@@ -527,45 +541,245 @@ def _term(term) -> str:
                             getattr(term, "language", None))
 
 
-def _blank_key(graph: Graph, node, memo, depth: int = 0) -> str:
-    """A blank node named by what hangs off it, not by its label."""
-    if node in memo:
-        return memo[node]
-    if depth > _MAX_BLANK_DEPTH:
-        raise _TooDeep
-    parts = []
-    for predicate, obj in graph.predicate_objects(node):
-        rendered = ("_:" + _blank_key(graph, obj, memo, depth + 1)
-                    if isinstance(obj, BNode) else _term(obj))
-        parts.append("%s %s" % (_term(predicate), rendered))
-    parts.sort()
-    memo[node] = hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
-    return memo[node]
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _rows(graph: Graph):
+    """Every statement of `graph`, rendered so that two graphs are isomorphic
+    exactly when their renderings are the same multiset -- a blank node
+    rendered by its place in the graph, not by the label a parser gave it.
+
+    Returns ``(rows, label)``: `rows` pairs each rendering with the statement
+    it renders, and `label` gives each blank node the name it is rendered by.
+    Raises `_NotCompared` before anything is compared where the blank nodes
+    outside trees number more than MAX_COMPARED_BLANK_NODES.
+
+    Blank nodes are joined into structures by the statements between them. A
+    structure is a tree when exactly one of its nodes has no blank node
+    pointing at it and every other has one statement doing so. A tree's node
+    is named by a digest of what it says -- its statements about everything
+    that is not a blank node, and the names of its children -- worked out
+    from the leaves up, in one pass whatever the depth. Under that condition
+    the names are exact: two trees are the same exactly when their roots are
+    named alike. Statements pointing at a blank node from named nodes join
+    its name when there are two or more statements pointing at it in all:
+    otherwise two graphs could agree on every name and every rendering and
+    still differ in which node was the one pointed at twice.
+
+    A structure that is not a tree has no leaves to start from. Each of its
+    nodes is described by what it says and each pair by the predicates
+    between them, so that what naming it costs depends on the blank nodes
+    alone and not on how much the file says about each one, and
+    `_structure_name` names the whole structure from that -- exactly, and
+    only where there are few of them.
+
+    A blank node standing as a predicate is rendered by its label. No reader
+    here produces one, and RDF/XML cannot write one.
+    """
+    rows = []
+    blanks = set()
+    out = {}          # blank node -> [(predicate, object)]
+    parents = {}      # blank node -> [the blank subject of each statement pointing at it]
+    named_in = {}     # blank node -> [(subject, predicate)] from subjects that are not blank
+    for triple in graph:
+        subject, predicate, obj = triple
+        if isinstance(subject, BNode):
+            blanks.add(subject)
+            out.setdefault(subject, []).append((predicate, obj))
+        if isinstance(obj, BNode):
+            blanks.add(obj)
+            if isinstance(subject, BNode):
+                parents.setdefault(obj, []).append(subject)
+            else:
+                named_in.setdefault(obj, []).append((subject, predicate))
+
+    joined = {node: node for node in blanks}
+
+    def find(node):
+        while joined[node] != node:
+            joined[node] = joined[joined[node]]
+            node = joined[node]
+        return node
+
+    for child, sources in parents.items():
+        for parent in sources:
+            one, other = find(parent), find(child)
+            if one != other:
+                joined[one] = other
+    structures = {}
+    for node in blanks:
+        structures.setdefault(find(node), []).append(node)
+
+    label = {}
+    outside = []
+    for nodes in structures.values():
+        roots = [node for node in nodes if node not in parents]
+        if len(roots) == 1 and all(len(parents.get(node, ())) <= 1 for node in nodes):
+            _name_tree(roots[0], out, parents, named_in, label)
+        else:
+            outside.append(nodes)
+    count = sum(len(nodes) for nodes in outside)
+    if count > MAX_COMPARED_BLANK_NODES:
+        raise _NotCompared(count)
+    for nodes in outside:
+        name = "n" + _structure_name(nodes, out, named_in)
+        for node in nodes:
+            label[node] = name
+
+    def side(term):
+        return "_:" + label[term] if isinstance(term, BNode) else _term(term)
+
+    for triple in graph:
+        subject, predicate, obj = triple
+        rows.append(("%s %s %s" % (side(subject), _term(predicate), side(obj)), triple))
+    return rows, label
+
+
+def _name_tree(root, out, parents, named_in, label) -> None:
+    """Name every node of the tree under `root`, leaves first, without
+    recursion: a chain of anonymous nodes is as deep as the file makes it.
+
+    Each node is entered once whatever the graph is. In a tree that changes
+    nothing; if the condition that sent a structure here were ever wrong, a
+    cycle would otherwise be walked for as long as memory lasts, and a name
+    asked for before it exists is an error rather than that."""
+    stack, entered = [(root, False)], set()
+    while stack:
+        node, ready = stack.pop()
+        if not ready:
+            if node in entered:
+                continue
+            entered.add(node)
+            stack.append((node, True))
+            stack.extend((obj, False) for _, obj in out.get(node, ()) if isinstance(obj, BNode))
+            continue
+        parts = ["%s %s" % (_term(predicate),
+                            "_:" + label[obj] if isinstance(obj, BNode) else _term(obj))
+                 for predicate, obj in out.get(node, ())]
+        pointing = named_in.get(node, ())
+        if len(pointing) + len(parents.get(node, ())) > 1:
+            parts.extend("< %s %s" % (_term(subject), _term(predicate))
+                         for subject, predicate in pointing)
+        parts.sort()
+        label[node] = _digest("\n".join(parts))
+
+
+def _structure_name(nodes, out, named_in) -> str:
+    """A structure of blank nodes that is not a tree, named exactly.
+
+    Each node is described by what it says -- its statements about terms
+    that are not blank nodes, and the named nodes pointing at it -- and each
+    ordered pair of nodes by the predicates from one to the other. Nodes that
+    differ in what they say, or in the links they have, are kept apart; the
+    name is the smallest encoding of the links over every order of the nodes
+    that keeps them so. Two structures are named alike exactly when they are
+    isomorphic, and every run names one structure the same way. rdflib's
+    canonical form, used here first, does not: on a structure with symmetry
+    its search can end on either of two labellings, and two identical files
+    compared different in some runs and the same in others.
+
+    Every order is tried, so the cost is the product of the factorials of the
+    groups kept apart: for at most MAX_COMPARED_BLANK_NODES nodes, at most
+    that many factorial orders, on a structure that is as small as that.
+    """
+    says, links = {}, {}
+    for node in nodes:
+        parts, between = [], {}
+        for predicate, obj in out.get(node, ()):
+            if isinstance(obj, BNode):
+                between.setdefault(obj, []).append(_term(predicate))
+            else:
+                parts.append("> %s %s" % (_term(predicate), _term(obj)))
+        parts.extend("< %s %s" % (_term(subject), _term(predicate))
+                     for subject, predicate in named_in.get(node, ()))
+        says[node] = _digest("\n".join(sorted(parts)))
+        for obj, predicates in between.items():
+            links[node, obj] = _digest("\n".join(sorted(predicates)))
+
+    def kind(node):
+        return repr((says[node],
+                     sorted(name for (one, _), name in links.items() if one == node),
+                     sorted(name for (_, other), name in links.items() if other == node)))
+
+    # Numbered once, before the orders are tried: a blank node is an rdflib
+    # term, and the JSON-LD reader makes a new one for every reference to the
+    # same node, so a lookup by node falls through to a comparison written in
+    # Python -- forty thousand orders' worth of them.
+    number = {node: index for index, node in enumerate(nodes)}
+    edges = [(number[one], number[other], name) for (one, other), name in links.items()]
+    groups = {}
+    for node in nodes:
+        groups.setdefault(kind(node), []).append(number[node])
+    kinds = sorted(groups)
+    place = [0] * len(nodes)
+    best = None
+    for arrangement in itertools.product(*(itertools.permutations(groups[key]) for key in kinds)):
+        position = 0
+        for group in arrangement:
+            for index in group:
+                place[index] = position
+                position += 1
+        encoding = sorted((place[one], place[other], name) for one, other, name in edges)
+        if best is None or encoding < best:
+            best = encoding
+    return _digest(repr(([key for key in kinds for _ in groups[key]], best)))
 
 
 def _fingerprint(graph: Graph):
-    memo = {}
-    rows = []
-    for subject, predicate, obj in graph:
-        left = ("_:" + _blank_key(graph, subject, memo)
-                if isinstance(subject, BNode) else _term(subject))
-        right = ("_:" + _blank_key(graph, obj, memo)
-                 if isinstance(obj, BNode) else _term(obj))
-        rows.append("%s %s %s" % (left, _term(predicate), right))
-    rows.sort()
-    return rows
+    """The renderings of `_rows`, sorted: equal for two graphs exactly when
+    they are isomorphic."""
+    return sorted(rendering for rendering, _ in _rows(graph)[0])
 
 
-#: Failures of the interpreter rather than answers about a graph.
-_OUR_FAULT = (RecursionError, MemoryError, KeyboardInterrupt, SystemExit)
+def graph_difference(one: Graph, other: Graph):
+    """The statements each of two graphs holds and the other lacks, as
+    isomorphism counts them: ``(only_in_one, only_in_other)``.
+
+    Each is a list of statements with every blank node replaced by one named
+    for its place in its graph, so that a difference prints the same way on
+    every run, sorted. Both are empty exactly when the graphs are isomorphic.
+    A structure repeated -- the same anonymous node twice under one subject
+    in one graph and once in the other -- is counted as often as it repeats.
+
+    Raises ValueError, naming MAX_COMPARED_BLANK_NODES, where either graph
+    holds more blank nodes outside trees than that; nothing is compared then.
+    """
+    try:
+        rows_one, label_one = _rows(one)
+        rows_other, label_other = _rows(other)
+    except _NotCompared as exc:
+        raise ValueError("not compared: a graph holds %d blank nodes outside trees, and this "
+                         "compares at most %d" % (exc.count, MAX_COMPARED_BLANK_NODES)) from None
+
+    def counted(rows):
+        counts = {}
+        for rendering, _ in rows:
+            counts[rendering] = counts.get(rendering, 0) + 1
+        return counts
+
+    def only(rows, label, mine, theirs):
+        left = {rendering: number - theirs.get(rendering, 0)
+                for rendering, number in mine.items() if number > theirs.get(rendering, 0)}
+        found = []
+        for rendering, triple in sorted(rows, key=lambda row: row[0]):
+            if left.get(rendering, 0) > 0:
+                left[rendering] -= 1
+                found.append(tuple(BNode(label[term]) if isinstance(term, BNode) and term in label
+                                   else term for term in triple))
+        return found
+
+    counts_one, counts_other = counted(rows_one), counted(rows_other)
+    return (only(rows_one, label_one, counts_one, counts_other),
+            only(rows_other, label_other, counts_other, counts_one))
 
 
 def _reads_back_the_same(written: Graph, original: Graph) -> bool:
     """Did the round trip preserve the graph?
 
-    Raises `ValueError` where neither check can answer -- the comment on the
-    fallback below says when. `write_metadata` passes that on, and it is the
-    one exception either of them documents.
+    Raises `ValueError` where the comparison is not run -- more blank nodes
+    outside trees than MAX_COMPARED_BLANK_NODES. `write_metadata` passes
+    that on, and it is the one exception either of them documents.
 
     rdflib's isomorphism check answers this for any two graphs, and prices
     itself for the general case: it canonicalises, and on a graph whose blank
@@ -576,41 +790,22 @@ def _reads_back_the_same(written: Graph, original: Graph) -> bool:
     six, reaching three quarters of a minute at eight hundred topics, and by
     then the check is ninety-seven per cent of what writing costs.
 
-    Where the blank nodes form a forest the answer is available directly:
-    hash each one by its subtree, and compare the triples with those hashes
-    standing in for the labels. That is not an approximation of the general
-    check -- under the forest condition the two agree by construction, and
-    where the condition does not hold this hands the graph to the general
-    check unchanged.
+    `_rows` answers it in one pass wherever the blank nodes form trees, and
+    names what is left by trying every order of its few nodes; that is not an
+    approximation of the general check -- the two agree by construction, and
+    where rdflib's search could end on either of two labellings, this does
+    not.
     """
     if len(written) != len(original):
         return False
-    if _blank_forest(written) and _blank_forest(original):
-        try:
-            return _fingerprint(written) == _fingerprint(original)
-        except _TooDeep:
-            pass
     try:
-        return isomorphic(written, original)
-    except _OUR_FAULT:
-        # A failure of this process rather than an answer about this graph.
-        # Reported below as "that test refuses a term this graph holds" it
-        # would be a sentence about the caller's data that is not about it.
-        raise
-    except Exception as exc:
-        # The general check canonicalises through N3, so it refuses a graph
-        # holding an IRI N3 cannot write -- a space, a brace, a bar, any of
-        # the characters RFC 3987 leaves out -- and RDF/XML writes those
-        # happily. The refusal is a bare `Exception`, and reaching the caller
-        # as one it is neither the `ValueError` `write_metadata` documents nor
-        # anything catchable by kind. The forest path above answers for these
-        # graphs; this is what is left when the blank nodes are not a forest,
-        # and the honest answer there is that the round trip was not checked,
-        # not that it failed.
-        raise ValueError("this graph cannot be checked after writing: its "
-                         "blank nodes are not a forest, so the general "
-                         "isomorphism test decides, and that test refuses a "
-                         "term this graph holds: %s" % exc) from exc
+        return _fingerprint(written) == _fingerprint(original)
+    except _NotCompared as exc:
+        raise ValueError("this graph cannot be checked after writing: it holds %d blank "
+                         "nodes outside trees -- a blank node two statements from blank nodes "
+                         "point at, or a cycle of them, and every blank node joined to one -- "
+                         "and the check compares at most %d"
+                         % (exc.count, MAX_COMPARED_BLANK_NODES)) from None
 
 
 def write_metadata(graph: Graph, destination=None) -> bytes:
@@ -631,8 +826,8 @@ def write_metadata(graph: Graph, destination=None) -> bytes:
 
     Raises `ValueError`, and nothing else, for a graph this cannot write or
     cannot check: RDF/XML declining to serialise it, the reparse not matching,
-    or -- where the blank nodes are not a forest, so rdflib's isomorphism is
-    what would decide -- a term that check refuses to render.
+    or more blank nodes outside trees than MAX_COMPARED_BLANK_NODES, which the
+    check does not compare.
     """
     # Serialise a base-less copy. graph.serialize inherits graph.base, and
     # for an opaque urn base (iirds.PACKAGE_BASE, which callers naturally

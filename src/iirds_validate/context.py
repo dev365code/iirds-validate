@@ -546,7 +546,17 @@ def build_graph(package: Package):
         per_source[name] = single
         sources.append(name)
 
-    return merge_sources(per_source), errors, sources, per_source
+    # A document the merge could not compare with the one before it is left
+    # out of the graph. It is reported with the documents that were refused,
+    # and no rule reads it as a source.
+    refused: List[str] = []
+    graph = merge_sources(per_source, refused=refused)
+    for error in refused:
+        name = error.partition(": ")[0]
+        errors.append(error)
+        del per_source[name]
+        sources.remove(name)
+    return graph, errors, sources, per_source
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because

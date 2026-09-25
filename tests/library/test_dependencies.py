@@ -39,7 +39,12 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "iirds"
 #: to almost all of what writing cost. Where the blank nodes form a forest
 #: the same answer comes from naming each one by a digest of its subtree.
 #: Standard library, like the three above.
-ALLOWED = {"hashlib", "iirds", "io", "rdflib", "__future__", "json", "os",
+#: `itertools` is here for the same comparison, where blank nodes do not form
+#: trees: a structure of at most eight of them is named by trying every order
+#: of its nodes, and `permutations` is that enumeration. rdflib's canonical
+#: form, which did the job before, named one structure two ways in different
+#: runs. Standard library, like the four above.
+ALLOWED = {"hashlib", "iirds", "io", "itertools", "rdflib", "__future__", "json", "os",
            "pathlib", "posixpath", "re", "time", "typing", "unicodedata",
            "urllib", "xml", "zipfile"}
 

@@ -194,8 +194,10 @@ def unreadable_method(info) -> Optional[str]:
 class Package:
     """An opened iiRDS container. Use as a context manager, like ZipFile.
 
-    Reading is lazy: the ZIP directory is read on open, the metadata graph
-    only when `.graph` is first touched.
+    Reading is lazy: the ZIP directory is read on open, the metadata when a
+    question about it is first asked -- and where there are two documents
+    they are merged then, so that `parse_errors` can say which was left out
+    before `.graph` is touched.
     """
 
     def __init__(self, path):
@@ -298,6 +300,15 @@ class Package:
                 self._errors.append(error)
             else:
                 self._graphs[name] = graph
+        # A document the merge cannot compare with the one before it is left
+        # out of the graph, and said so here with the other refusals -- so
+        # that `parse_errors` holds it before `graph` is ever asked for.
+        if len(self._graphs) > 1:
+            refused: List[str] = []
+            self._graph = _meta.merge_sources(self._graphs, refused=refused)
+            for error in refused:
+                self._errors.append(error)
+                del self._graphs[error.partition(": ")[0]]
 
     @property
     def graph(self) -> Graph:
@@ -314,7 +325,8 @@ class Package:
             self._load()
             if not self._graphs:
                 raise IirdsError("; ".join(self._errors))
-            self._graph = _meta.merge_sources(self._graphs)
+            if self._graph is None:
+                self._graph = _meta.merge_sources(self._graphs)
         return self._graph
 
     @property

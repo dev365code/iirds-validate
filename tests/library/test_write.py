@@ -166,8 +166,10 @@ def relabelled(graph):
 
 
 def shared_blank_node():
-    """One blank node reached from two places -- not a forest, because two
-    graphs can agree on every subtree and still differ in what is shared."""
+    """One blank node two named nodes point at. Still a tree -- only blank
+    nodes pointing at a node make it shared -- because the named nodes join
+    its name: without them, two graphs could agree on every subtree and still
+    differ in which node was pointed at twice."""
     graph = Graph()
     shared = BNode()
     for name in ("urn:test:a", "urn:test:b"):
@@ -186,11 +188,24 @@ def cyclic_blanks():
     return graph
 
 
+def two_blank_parents():
+    """One blank node two blank nodes point at -- not a tree."""
+    graph = Graph()
+    shared = BNode()
+    for name in ("urn:test:a", "urn:test:b"):
+        parent = BNode()
+        graph.add((URIRef(name), IIRDS["has-rendition"], parent))
+        graph.add((parent, IIRDS["relates-to"], shared))
+    graph.add((shared, IIRDS["source"], Literal("content/one.xhtml")))
+    return graph
+
+
 @pytest.mark.parametrize("build", [
     lambda: nested_renditions(6),
     shared_blank_node,
     cyclic_blanks,
-], ids=["forest", "shared-blank", "cycle"])
+    two_blank_parents,
+], ids=["forest", "shared-blank", "cycle", "two-blank-parents"])
 def test_the_fast_comparison_answers_what_the_general_one_answers(build):
     from rdflib.compare import isomorphic
 
@@ -219,20 +234,31 @@ def _one_off(graph):
     yield altered
 
 
-def test_a_shape_the_fast_comparison_cannot_name_goes_to_the_general_one():
+@pytest.mark.parametrize("build, searched", [
+    (lambda: nested_renditions(3), False),
+    (shared_blank_node, False),
+    (cyclic_blanks, True),
+    (two_blank_parents, True),
+], ids=["forest", "shared-blank", "cycle", "two-blank-parents"])
+def test_a_shape_the_fast_comparison_cannot_name_goes_to_the_general_one(
+        monkeypatch, build, searched):
     """White box, on purpose, because neither direction of this shows up in
     an answer. Sending everything down the slow path is correct and only
     slow -- the size gate above would catch it, eventually and rudely.
-    Sending a shared or cyclic blank node down the fast path may well
-    produce the right answer on any particular graph, which is exactly why
-    it cannot be left to a test that compares answers: the condition is
-    what makes the fast path provably the same check, not the outcome on
-    the fixtures that happen to be here."""
-    from iirds._metadata import _blank_forest
+    Sending a blank node two blank nodes point at, or a cycle, down the fast
+    path may well produce the right answer on any particular graph, which is
+    exactly why it cannot be left to a test that compares answers: the
+    condition is what makes the fast path provably the same check, not the
+    outcome on the fixtures that happen to be here. Counted where a
+    structure is searched rather than walked, which is the general one."""
+    import iirds._metadata as metadata
 
-    assert _blank_forest(nested_renditions(3)) is True
-    assert _blank_forest(shared_blank_node()) is False
-    assert _blank_forest(cyclic_blanks()) is False
+    asked = []
+    real = metadata._structure_name
+    monkeypatch.setattr(metadata, "_structure_name",
+                        lambda nodes, *rest: asked.append(len(nodes)) or real(nodes, *rest))
+    metadata._fingerprint(build())
+    assert bool(asked) is searched
 
 
 # ---------------------------------------------------------------------------

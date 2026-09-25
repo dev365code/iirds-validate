@@ -4,6 +4,60 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.7.4 — unreleased
+
+**Security. Comparing the two metadata files took time that grew faster than
+the files.** Where a package carries both `metadata.rdf` and
+`metadata.jsonld`, the merge asks whether the second is the first again and L9
+asks what each holds that the other lacks, and both asked rdflib's canonical
+form -- a search whose cost grows faster than the file wherever blank nodes
+look alike. Measured on 0.7.3 with packages this repository's own builder
+writes, a `metadata.jsonld` of about a kilobyte holding anonymous renditions
+of one shape kept `iirds check` busy for three seconds with twenty-five of
+them, thirty-four with fifty and seven and a half minutes with a hundred.
+Blank nodes that form trees -- every metadata document in the corpus, an
+anonymous rendition inside each information unit, a chain of any length, a
+node that named nodes point at -- are now named by what hangs off them, in one
+pass, and the same packages take a quarter of a second each. What is left -- a
+blank node two blank nodes point at, or a cycle of them -- is named by trying
+every order of those nodes, which is exact and costs a factorial, and is not
+tried past eight of them in a file. Then `metadata.jsonld` is left out of the
+merge, and C16.2 says that it was not compared and names the limit -- for a
+package with nothing else wrong, the exit code goes from `0` to `1`. Where the
+two files are compared the verdict is the one 0.7.3 gave, except where
+rdflib's search named one structure two ways: two files holding the same eight
+blank nodes, each linked both ways to three of the others, failed L9 in five
+of thirty runs of 0.7.3 and pass in every run now. What L9 prints moves: the
+statements it counts as held by one file alone no longer include an anonymous
+structure both files hold alike, which rdflib's labels set apart -- a
+`metadata.jsonld` adding four hundred topics beside a rendition both files
+hold was reported as 2,004 statements in it alone and 4 in `metadata.rdf`
+alone, and is now reported as the 2,000 it adds.
+
+**The library says the same.** A package's `parse_errors` holds the refusal
+under a new category, `iirds.NOT_COMPARED`, and its graph, `metadata_sources`
+and `metadata_graphs` are then `metadata.rdf`'s alone. `iirds.merge_sources`
+reports a source it did not compare into a list passed as `refused=`, and
+raises `ValueError` without one; `iirds.write_metadata` raises `ValueError`,
+naming the limit, where its check on writing would have searched past it.
+`iirds.graph_difference` is the comparison L9 makes, and
+`iirds.MAX_COMPARED_BLANK_NODES` the limit.
+
+**The figures 0.7.3 published, measured again on 0.7.4.**
+Coverage of the standard is 172 of 280, of which 137 are held by a package.
+No rule is added or removed: the rule count goes to 236, as in 0.7.3. A
+directory is checked with nine fewer rules than
+the same package packed -- `194 rules checked` on this build --
+since the rules about the ZIP archive itself have no archive to ask, and the
+report's `notApplicable` names them under `unpacked`:
+the count moves from 194 to 185 when the package is unpacked. A conformance
+run says it for the fourteen lint rules it does not ask -- the
+interoperability rules less the two that are marked conformance, which it
+does ask. The reasons a report can give come to seven. Twenty-six handover
+rules separate an iiRDS/H reading from an iiRDS/A one, and one container rule
+goes the other way. `toolVersion` moves only at a release:
+no commit that changed a rule file has ever moved it.
+
 ## 0.7.3 — 2026-09-25
 
 One advisory describes what this release fixes:

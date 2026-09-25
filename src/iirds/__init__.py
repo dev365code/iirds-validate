@@ -18,8 +18,11 @@ break. `open()` returns a `Package`; `pack()` writes one.
 from __future__ import annotations
 
 from ._metadata import (
+    MAX_COMPARED_BLANK_NODES,
     MAX_METADATA_BYTES,
+    NOT_COMPARED,
     NOT_RDFXML,
+    graph_difference,
     is_absolute_name,
     is_rdfxml_document_element,
     merge_sources,
@@ -45,9 +48,10 @@ from ._package import (
 from ._package import open_package as open  # noqa: A001 - deliberate, like gzip.open
 
 __version__ = "0.7.3"
-__all__ = ["IIRDS", "IirdsError", "MAX_METADATA_BYTES", "METADATA_JSONLD",
-           "METADATA_RDF", "NOT_RDFXML", "PACKAGE_BASE", "PackError", "Package",
-           "UnreadableMethod", "__version__", "describe_method", "instances_of", "is_absolute_name",
+__all__ = ["IIRDS", "IirdsError", "MAX_COMPARED_BLANK_NODES", "MAX_METADATA_BYTES", "METADATA_JSONLD",
+           "METADATA_RDF", "NOT_COMPARED", "NOT_RDFXML", "PACKAGE_BASE", "PackError", "Package",
+           "UnreadableMethod", "__version__", "describe_method", "graph_difference", "instances_of",
+           "is_absolute_name",
            "is_rdfxml_document_element", "label_of", "merge_sources", "open", "pack",
            "parse_metadata", "source_of", "subclasses_of", "unreadable_method",
            "write_metadata"]

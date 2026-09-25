@@ -204,16 +204,13 @@ class _FirstElement:
         return None
 
 
-#: How much of a document is handed to the parser at a time, so that the
-#: first element ends the reading rather than the end of the document.
-_CHUNK = 16384
-
-
 def _document_element_as_utf8(raw: bytes) -> Optional[str]:
     """The first element's expanded name as the parser under the graph reads
     the document -- as UTF-8, whatever it declares -- or None where that
     reading cannot say.
 
+    Fed at once: the target's stop ends the reading at the first element,
+    and fed in pieces a long comment before it cost the square of its length.
     Asked beside _document_element for the reason the entity guard is asked
     twice: a judge that followed only the declaration read other text and let
     a document through. Bytes that are not UTF-8 in a name are the parser's
@@ -222,8 +219,7 @@ def _document_element_as_utf8(raw: bytes) -> Optional[str]:
     """
     parser = ElementTree.XMLParser(target=_FirstElement(), encoding="utf-8")
     try:
-        for at in range(0, len(raw), _CHUNK):
-            parser.feed(raw[at:at + _CHUNK])
+        parser.feed(raw)
         parser.close()
     except _Element as first:
         return first.args[0]

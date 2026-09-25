@@ -123,9 +123,10 @@ def _declares_entities(raw: bytes) -> Optional[bool]:
     except (expat.ExpatError, UnicodeDecodeError):
         # A syntax error is the document's, and the parser under the graph,
         # reading the same text the same way, meets it and says so in its own
-        # words. So are bytes that are not UTF-8: older expat hands them on
-        # unchecked inside a name, decoding the name raises, and the parser
-        # refuses the same bytes before it reads a declaration.
+        # words. So are bytes that are not UTF-8, which older expat hands on
+        # unchecked inside a name, where decoding the name raises: rdflib
+        # decodes the document as UTF-8 before its parser reads a byte of it,
+        # and stops at those bytes before any declaration past them is read.
         return False
     except Exception:
         # What else arrives is not answered for, and not raised either:
@@ -316,10 +317,6 @@ class _Element(Exception):
     """The first element, by its expanded name."""
 
 
-#: How much of a document is handed to the parser at a time.
-_CHUNK = 16384
-
-
 class _FirstElement:
     """A tree builder's place, taken by one that stops at the first element."""
 
@@ -339,11 +336,7 @@ def _document_element(raw: bytes) -> Optional[str]:
     declaration read other text and let a document through."""
     parser = ElementTree.XMLParser(target=_FirstElement(), encoding="utf-8")
     try:
-        # A piece at a time, so that the first element ends the reading: the
-        # parser goes on to the end of what it was handed before the target's
-        # stop reaches it.
-        for at in range(0, len(raw), _CHUNK):
-            parser.feed(raw[at:at + _CHUNK])
+        parser.feed(raw)
         parser.close()
     except _Element as first:
         return first.args[0]

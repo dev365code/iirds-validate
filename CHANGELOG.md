@@ -77,11 +77,17 @@ no codec's name is, even where Python would read it as one. A single-byte code
 page passes as before over bytes it reads as ASCII does -- `windows-1252`,
 `ISO-8859-1`, `macintosh`, `TIS-620`, and ASCII under its own name,
 `ANSI_X3.4-1968` -- and `cp864`, which reads `%` as another character, passes
-where there is none. A document marked UTF-16 by its byte order mark or its
-first bytes, or UTF-32 by its byte order mark, is read as such whatever it
-declares, as before, and a
-processing instruction such as `<?xml-stylesheet` is not taken for a
-declaration. The other declarations naming an encoding outside those this
+where there is none. A document whose declaration its bytes contradict --
+a byte order mark saying UTF-8, UTF-16 or UTF-32, or the first bytes of
+unmarked UTF-16, under a declaration of another encoding -- is refused, and so
+is UTF-32 declaring nothing: XML 1.0 section 4.3.3 makes both fatal errors
+where no transport protocol gives the encoding, and none gives a ZIP
+member's. Both take a document from `0` to `1`; the refusal names the encoding
+the bytes are in, the one declared, and the section. A declaration agrees with
+a UTF-16 or UTF-32 mark when it gives the family's IANA name, in either byte
+order, or the byte-order name the mark has; no declaration agrees with UTF-8
+and UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
+for a declaration. The other declarations naming an encoding outside those this
 reader decodes -- UTF-8, UTF-16, UTF-32 and the encodings that read one
 character from each byte -- were refused already, in the codec's words or the
 parser's: `Shift_JIS` and the other multi-byte encodings, `UTF-7`, a name no

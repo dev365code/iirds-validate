@@ -166,6 +166,18 @@ UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 #: UTF-8 bytes.
 UNUSED_ENCODING = "declares an encoding this reader reads differently"
 
+#: A document whose declaration names one encoding while its byte order mark,
+#: or the first two characters of unmarked UTF-16, say another. XML makes that
+#: a fatal error (section 4.3.3) where no transport protocol gives the
+#: encoding -- and none gives a ZIP member's, so the premise holds for every
+#: file in a package. Not a declaration this reader leaves unused: one the
+#: bytes contradict.
+CONTRADICTED_ENCODING = "declares an encoding its bytes contradict"
+
+#: A UTF-32 document with no declaration: XML makes an entity with none, in an
+#: encoding other than UTF-8 or UTF-16, a fatal error (section 4.3.3).
+UNDECLARED_ENCODING = "declares no encoding where XML requires one"
+
 #: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
 #: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
 #: else that is an absolute IRI names a node element -- the class of a typed
@@ -491,6 +503,81 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
     return None
 
 
+#: What a document's first bytes mark it as: a byte order mark, and the codec
+#: that reads past it. Unmarked UTF-16 is marked by its first two characters,
+#: which `_sniff` reads.
+_MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8-sig"),
+          (b"\xff\xfe\x00\x00", "UTF-32LE", "utf-32"), (b"\x00\x00\xfe\xff", "UTF-32BE", "utf-32"),
+          (b"\xff\xfe", "UTF-16LE", "utf-16"), (b"\xfe\xff", "UTF-16BE", "utf-16"))
+
+#: The IANA names that agree with a UTF-16 or UTF-32 mark, without regard to
+#: case (section 4.3.3 asks for IANA names): a family name in either byte
+#: order, a byte-order name only in its own.
+_AGREEING = {
+    "UTF-16LE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16le"}),
+    "UTF-16BE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16be"}),
+    "UTF-32LE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32le"}),
+    "UTF-32BE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32be"}),
+}
+
+#: Spellings of UTF-16 and UTF-32 that are not their IANA names: Python's
+#: codecs answer to them, and a declaration of one is a name this reader does
+#: not read, not one it can hold against the mark.
+_UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
+
+#: The `encoding=` of a declaration in a document already decoded.
+_DECLARED_TEXT = re.compile(r'<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])(.*?)\1', re.DOTALL)
+
+
+def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
+    """Why a document its first bytes mark as UTF-8, UTF-16 or UTF-32 is
+    refused for its declaration, or None where it is not.
+
+    XML makes it a fatal error for a document to arrive in an encoding other
+    than the one its declaration names, and for one that declares nothing to
+    be in any but UTF-8 or UTF-16 (section 4.3.3). A parser reading the
+    bytes as stored stops at either; the decode below believed the mark,
+    dropped the declaration, and read the document all the same. The mark's
+    encoding and the declaration are both named in the refusal, since the
+    remedy is to make one say what the other does.
+    """
+    sniffed = _sniff(stored)
+    found_mark = next(((mark, codec) for bom, mark, codec in _MARKS if stored.startswith(bom)), None)
+    if found_mark is None and sniffed is not None:
+        found_mark = ("UTF-16LE" if sniffed == "utf-16-le" else "UTF-16BE", sniffed)
+    if found_mark is None:
+        return None
+    mark, codec = found_mark
+    where = "its byte order mark" if stored[:2] in (b"\xff\xfe", b"\xfe\xff") or stored[:3] == b"\xef\xbb\xbf" \
+        or stored[:4] == b"\x00\x00\xfe\xff" else "its first bytes"
+    try:
+        head = stored[:4096].decode(codec, "ignore").lstrip("﻿")
+    except Exception:
+        return None
+    found = _DECLARED_TEXT.match(head)
+    if found is None:
+        if mark.startswith("UTF-32"):
+            return ("%s: %s: %s says %s and it declares no encoding; XML 1.0 section 4.3.3 "
+                    "makes an undeclared encoding other than UTF-8 or UTF-16 a fatal error -- "
+                    "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, where, mark))
+        return None
+    declared = found.group(2)[:_LONGEST_NAME + 1]
+    shown = _shown(declared)
+    lowered = declared.lower()
+    normal = lowered.replace("-", "").replace("_", "").replace(".", "")
+    if mark == "UTF-8" and _is_utf8_name(declared):
+        return None
+    if mark != "UTF-8" and lowered in _AGREEING[mark]:
+        return None
+    if (len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared)
+            or normal in _PLATFORM_CODECS
+            or (normal in _UNREGISTERED_UTF and lowered not in {n for a in _AGREEING.values() for n in a})):
+        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
+    return ("%s: %s: %s says %s and its declaration says %s; XML 1.0 section 4.3.3 makes that "
+            "a fatal error -- make the declaration name the encoding the bytes are in, or save "
+            "the file in the one it names" % (name, CONTRADICTED_ENCODING, where, mark, shown))
+
+
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:
     """One metadata document, guarded, parsed into its own Graph.
 
@@ -529,7 +616,7 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # declaration behind it, and a false declaration behind the mark went
     # unread.
     if fmt == "xml":
-        refused = _declaration_refused(name, raw)
+        refused = _marked_declaration_refused(name, raw) or _declaration_refused(name, raw)
         if refused is not None:
             return None, refused
 

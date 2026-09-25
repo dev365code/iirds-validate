@@ -30,7 +30,9 @@ from rdflib import BNode, Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from iirds import (
+    CONTRADICTED_ENCODING,
     MAX_METADATA_BYTES,
+    UNDECLARED_ENCODING,
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
     merge_sources,
@@ -619,8 +621,8 @@ def _declared_encoding(raw, reported) -> str:
     """
     if not isinstance(raw, (bytes, bytearray)) or not _is_decode_failure(raw, reported):
         return ""
-    if isinstance(reported, str) and (UNUSED_ENCODING in reported
-                                      or UNREADABLE_ENCODING in reported):
+    if isinstance(reported, str) and any(category in reported for category in (
+            UNUSED_ENCODING, UNREADABLE_ENCODING, CONTRADICTED_ENCODING, UNDECLARED_ENCODING)):
         return ""                # the refusal names the declaration already
     found = _DECLARED.match(bytes(raw[:200]))
     if found is None:

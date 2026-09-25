@@ -223,7 +223,7 @@ def test_a_false_declaration_behind_a_byte_order_mark_is_refused():
     declaration it did not change; xml.etree follows the declaration."""
     raw = b"\xef\xbb\xbf" + document("windows-1252", "utf-8", GERMAN)
     graph, error = _parsed(raw)
-    assert graph is None and iirds.UNUSED_ENCODING in error, error
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
 
 
 def test_a_stylesheet_instruction_is_not_a_declaration():
@@ -332,13 +332,14 @@ def test_a_declaration_that_reads_ascii_as_other_text_is_refused(declared):
     assert graph is None and iirds.UNUSED_ENCODING in error, (declared, error)
 
 
-def test_the_byte_order_mark_is_not_compared():
-    """The mark is UTF-8's and not the declared encoding's; an ASCII document
-    behind it reads the same both ways."""
+def test_a_utf8_mark_under_another_declaration_is_refused():
+    """The mark says UTF-8 and the declaration another encoding: XML makes that
+    a fatal error however the bytes after the mark read."""
     raw = b"\xef\xbb\xbf" + ('<?xml version="1.0" encoding="windows-1252"?>\n'
                               + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
-    assert error is None and graph is not None, error
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+    assert "UTF-8" in error and "windows-1252" in error and "4.3.3" in error, error
 
 
 def test_a_document_the_entity_check_cannot_answer_for_is_refused(monkeypatch):
@@ -385,3 +386,53 @@ def test_a_code_page_that_depends_on_the_machine_is_refused_by_name(declared):
     graph, error = _parsed(raw)
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 
+
+def _marked(mark, codec, declared):
+    head = '<?xml version="1.0"%s?>\n' % (' encoding="%s"' % declared if declared else "")
+    return mark + (head + BODY % PLAIN).encode(codec)
+
+
+@pytest.mark.parametrize("mark,codec,declared,said", [
+    (b"\xff\xfe", "utf-16-le", "utf-8", "UTF-16LE"),
+    (b"\xef\xbb\xbf", "utf-8", "utf-16", "UTF-8"),
+    (b"\xff\xfe", "utf-16-le", "UTF-16BE", "UTF-16LE"),
+    (b"\xff\xfe\x00\x00", "utf-32-le", "utf-8", "UTF-32LE"),
+    (b"", "utf-16-le", "windows-1252", "UTF-16LE"),
+])
+def test_a_declaration_its_bytes_contradict_is_refused(mark, codec, declared, said):
+    """XML makes a document arriving in an encoding other than the one it
+    declares a fatal error (section 4.3.3), and a parser reading the stored
+    bytes stops there. The refusal names both, and the section."""
+    graph, error = _parsed(_marked(mark, codec, declared))
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+    assert said in error and declared in error and "4.3.3" in error, error
+
+
+def test_utf32_declaring_nothing_is_refused():
+    """XML makes an entity with no declaration, in any encoding but UTF-8 or
+    UTF-16, a fatal error (section 4.3.3)."""
+    graph, error = _parsed(_marked(b"\xff\xfe\x00\x00", "utf-32-le", None))
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert "UTF-32LE" in error and "4.3.3" in error, error
+
+
+@pytest.mark.parametrize("mark,codec,declared", [
+    (b"\xff\xfe\x00\x00", "utf-32-le", "UTF-32"),
+    (b"\xff\xfe", "utf-16-le", "UTF-16"),
+    (b"\xfe\xff", "utf-16-be", "utf-16be"),
+    (b"\xff\xfe", "utf-16-le", "ISO-10646-UCS-2"),
+    (b"\xff\xfe", "utf-16-le", None),
+    (b"\xef\xbb\xbf", "utf-8", "UTF-8"),
+    (b"\xef\xbb\xbf", "utf-8", None),
+    (b"", "utf-16-le", "UTF-16"),
+])
+def test_a_declaration_agreeing_with_the_mark_is_read(mark, codec, declared):
+    graph, error = _parsed(_marked(mark, codec, declared))
+    assert error is None and graph is not None, (declared, error)
+
+
+def test_a_spelling_that_is_not_the_iana_name_is_not_read_under_a_mark():
+    """Python's codecs answer to `utf16`; IANA registers `UTF-16`, which is
+    the name section 4.3.3 asks for."""
+    graph, error = _parsed(_marked(b"\xff\xfe", "utf-16-le", "utf16"))
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, error

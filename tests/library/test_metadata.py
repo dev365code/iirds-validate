@@ -199,7 +199,11 @@ def test_parse_metadata_is_a_pure_function():
     (b"\xef\xbb\xbf", "utf-8"),
 ])
 def test_every_byte_order_mark_is_honoured(bom, codec):
-    raw = bom + RDF_XML.encode(codec)
+    """Under a declaration naming the marked encoding: one naming another is
+    a fatal error in XML (section 4.3.3), and refused."""
+    family = {"utf-32-le": "UTF-32", "utf-32-be": "UTF-32", "utf-16-le": "UTF-16",
+              "utf-16-be": "UTF-16"}.get(codec, "UTF-8")
+    raw = bom + RDF_XML.replace('encoding="utf-8"', 'encoding="%s"' % family).encode(codec)
     graph, error = iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
     assert error is None and len(graph) == 2
 
@@ -210,16 +214,15 @@ def test_every_byte_order_mark_is_honoured(bom, codec):
 #: triples about an element called manual.
 MANUAL = '<?xml version="1.0"?><manual><title>hello</title></manual>'
 
-#: The same document as a supplier's tool might save it: plain, with each
-#: byte order mark the reader honours, and with a mark that contradicts the
-#: declaration -- the decode believes the mark, and so must every judge.
+#: The same document as a supplier's tool might save it: plain, and with
+#: each byte order mark the reader honours -- UTF-32 declared, as XML requires
+#: of it. A mark the declaration contradicts is refused before any judge.
 MANUAL_ENCODINGS = [
     ("plain", MANUAL.encode("utf-8")),
     ("utf-8 bom", b"\xef\xbb\xbf" + MANUAL.encode("utf-8")),
     ("utf-16 bom", b"\xff\xfe" + MANUAL.encode("utf-16-le")),
-    ("utf-32 bom", b"\xff\xfe\x00\x00" + MANUAL.encode("utf-32-le")),
-    ("utf-16 bom, utf-8 declared",
-     b"\xff\xfe" + MANUAL.replace('version="1.0"', 'version="1.0" encoding="utf-8"').encode("utf-16-le")),
+    ("utf-32 bom", b"\xff\xfe\x00\x00"
+     + MANUAL.replace('version="1.0"', 'version="1.0" encoding="UTF-32"').encode("utf-32-le")),
 ]
 
 
@@ -250,7 +253,8 @@ def test_a_rootless_node_element_is_read_whatever_its_encoding(bom, codec):
     """§2.6 lets the rdf:RDF element go when one node element is all there is.
     The same judge must not turn a legitimate document away for its encoding."""
     assert "<rdf:RDF" not in ROOTLESS and ROOTLESS.startswith("<?xml")
-    raw = bom + ROOTLESS.replace(' encoding="utf-8"', "").encode(codec)
+    declared = ' encoding="UTF-32"' if codec.startswith("utf-32") else ""
+    raw = bom + ROOTLESS.replace(' encoding="utf-8"', declared).encode(codec)
     graph, error = iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
     assert error is None and len(graph) == 2
 
@@ -600,7 +604,9 @@ def test_a_marked_document_declaring_entities_is_refused(bom, codec):
     # rewrite stops firing. A fixture declaring utf-8 in a UTF-16 file is
     # still readable after the broken decode, so it passes either way and
     # proves nothing.
-    named = re.sub(r'encoding="[^"]*"', 'encoding="%s"' % codec, ENTITY_RDF, count=1)
+    iana = {"utf-32-le": "UTF-32LE", "utf-32-be": "UTF-32BE", "utf-16-le": "UTF-16LE",
+            "utf-16-be": "UTF-16BE", "utf-8": "UTF-8"}[codec]
+    named = re.sub(r'encoding="[^"]*"', 'encoding="%s"' % iana, ENTITY_RDF, count=1)
     graph, error = iirds.parse_metadata(iirds.METADATA_RDF, bom + named.encode(codec),
                                         base=iirds.PACKAGE_BASE)
     assert graph is None, "a document declaring XML entities was parsed"

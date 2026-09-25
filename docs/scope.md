@@ -47,6 +47,8 @@ Written down so that none of these gets built by drift.
   change would settle it. Naming the remedy is part of reporting. Applying it
   is not.
 - **Not a CCMS integration.** Not now.
+- **Not every consumer's reader.** UTF-32 is read; XML processors are not
+  required to support it, so a consumer may refuse a package this passes.
 
 ## Where things live
 

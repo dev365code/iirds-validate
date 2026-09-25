@@ -9,6 +9,7 @@ from here; there is one copy.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import re
 import xml.etree.ElementTree as ElementTree
@@ -178,6 +179,17 @@ def _split(tag: str) -> Tuple[str, str]:
     return "", tag
 
 
+def _document_element(raw: bytes) -> Optional[str]:
+    """The expanded name of the first element, or None where XML itself
+    cannot say -- which the parser then reports in its own words."""
+    try:
+        for _event, element in ElementTree.iterparse(io.BytesIO(raw), events=("start",)):
+            return element.tag
+    except ElementTree.ParseError:
+        return None
+    return None
+
+
 class _Element(Exception):
     """The first element, by its expanded name."""
 
@@ -192,21 +204,30 @@ class _FirstElement:
         return None
 
 
-def _document_element(raw: bytes, encoding: Optional[str] = None) -> Optional[str]:
-    """The expanded name of the first element, or None where XML itself
-    cannot say -- which the parser then reports in its own words.
+#: How much of a document is handed to the parser at a time, so that the
+#: first element ends the reading rather than the end of the document.
+_CHUNK = 16384
 
-    `encoding` as for the entity guard, and asked both ways for the same
-    reason: the parser under the graph reads UTF-8, and a judge that
-    followed only the declaration read other text and let a document
-    through."""
-    parser = ElementTree.XMLParser(target=_FirstElement(), encoding=encoding)
+
+def _document_element_as_utf8(raw: bytes) -> Optional[str]:
+    """The first element's expanded name as the parser under the graph reads
+    the document -- as UTF-8, whatever it declares -- or None where that
+    reading cannot say.
+
+    Asked beside _document_element for the reason the entity guard is asked
+    twice: a judge that followed only the declaration read other text and let
+    a document through. Bytes that are not UTF-8 in a name are the parser's
+    to refuse, and it does; older expat hands such a name on unchecked and
+    decoding it raised, which is answered here as nothing to say.
+    """
+    parser = ElementTree.XMLParser(target=_FirstElement(), encoding="utf-8")
     try:
-        parser.feed(raw)
+        for at in range(0, len(raw), _CHUNK):
+            parser.feed(raw[at:at + _CHUNK])
         parser.close()
     except _Element as first:
         return first.args[0]
-    except ElementTree.ParseError:
+    except (ElementTree.ParseError, UnicodeDecodeError):
         return None
     return None
 
@@ -381,8 +402,7 @@ def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph]
     # document, so nothing was read, and the reader says so rather than
     # handing on a graph nobody wrote.
     if fmt == "xml":
-        for encoding in (None, "utf-8"):
-            element = _document_element(raw, encoding)
+        for element in (_document_element(raw), _document_element_as_utf8(raw)):
             if element is not None and not is_rdfxml_document_element(element):
                 return None, "%s: %s: %s" % (name, NOT_RDFXML, _why_not_rdfxml(element))
 

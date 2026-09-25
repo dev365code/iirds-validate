@@ -41,6 +41,8 @@ def _parsed(raw):
     which the validator reports under C16.1 -- so that raise is no graph."""
     try:
         return iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
+    except UnicodeError:
+        raise
     except (LookupError, ValueError) as exc:
         return None, "%s: %s" % (type(exc).__name__, exc)
 
@@ -63,3 +65,15 @@ def test_a_document_that_is_not_rdfxml_is_refused_whatever_it_declares(declared,
 def test_a_document_with_nothing_to_refuse_is_still_read(declared):
     graph, error = _parsed(_declaring(declared, "", "", BODY % "Operating instructions"))
     assert error is None and graph is not None, (declared, error)
+
+
+def test_a_document_whose_names_are_not_utf8_is_refused_not_raised():
+    """Its root element named in the code page it declares. The parser reads
+    UTF-8 and refuses it; the UTF-8 reading before it has to say so rather
+    than raise -- older expat hands such a name on unchecked, and decoding it
+    raised out of parse_metadata, which promises never to."""
+    root = ("<iirds:\u00c9l\u00e9ments xmlns:iirds=\"http://iirds.tekom.de/iirds#\" "
+            "xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" rdf:about=\"urn:test:p\"/>\n")
+    raw = ('<?xml version="1.0" encoding="latin-1"?>\n' + root).encode("latin-1")
+    graph, error = iirds.parse_metadata(iirds.METADATA_RDF, raw, base=iirds.PACKAGE_BASE)
+    assert graph is None and error, error

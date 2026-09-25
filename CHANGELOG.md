@@ -13,9 +13,8 @@ refuses a document declaring XML entities, and the one that refuses a document
 that is not RDF/XML -- read it under the encoding it declares. Where the
 declaration made those readings differ, the checks answered for a text the
 parser never saw, and a document they passed could still declare entities for
-the parser to expand. Both checks now also read the document as the parser
-does, and it is refused where either reading refuses it; nothing they refused
-before passes now.
+the parser to expand. Both checks now also read the document as UTF-8, which
+is how the parser reads it; nothing they refused before passes now.
 
 **The figures 0.7.2 published, measured again on 0.7.3.**
 Coverage of the standard is 172 of 280, of which 137 are held by a package.

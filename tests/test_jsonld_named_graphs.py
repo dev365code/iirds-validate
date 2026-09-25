@@ -228,3 +228,48 @@ def test_the_finding_names_the_file_a_named_graph_states_in(make_package):
                  if f.rule.id == "M30"]
     said = " ".join(str(value) for value in vars(finding.violation).values())
     assert "metadata.jsonld" in said and "metadata.rdf" in said, said
+
+
+def test_many_named_graphs_cost_one_comparison_each_at_most(make_package, monkeypatch):
+    """Each named graph is compared with the default graph and nothing else,
+    and not at all where the two differ in size."""
+    from iirds_validate import context
+
+    asked = []
+    compare = context.isomorphic
+    monkeypatch.setattr(context, "isomorphic", lambda a, b: asked.append(1) or compare(a, b))
+    graphs = [{"@id": "urn:test:g%d" % n, "@graph": [{"@id": "urn:test:topic1", "title": "T%d" % n}]}
+              for n in range(300)]
+    report = _lint(make_package, _document(_nodes() + graphs))
+    assert _findings(report, "L17") and len(asked) == 0, len(asked)
+
+
+def test_the_warning_counts_what_it_does_not_name(make_package):
+    first, second, third = _nodes()
+    graphs = [{"@id": "urn:test:g%d" % n, "@graph": [node]} for n, node in enumerate(_nodes())]
+    graphs += [{"@id": "urn:test:g3", "@graph": [dict(first, title="Other")]},
+               {"@id": "_:a", "@graph": [dict(second, title="A")]},
+               {"@id": "_:b", "@graph": [dict(third, source="content/b.xhtml")]}]
+    [finding] = _findings(_lint(make_package, _document(graphs)), "L17")
+    detail = finding.violation.detail
+    assert "1 more" in detail and "2 without a name" in detail, detail
+
+
+def test_a_graph_named_as_rdflib_names_its_default_is_a_named_graph(make_package):
+    [finding] = _findings(_lint(make_package, _named(name="urn:x-rdflib:default")), "L17")
+    assert "urn:x-rdflib:default" in finding.violation.detail
+
+
+def test_the_file_a_described_extension_is_in_is_named(make_package):
+    """R18 says where a proprietary class is described; a named graph of
+    metadata.jsonld is metadata.jsonld."""
+    document = json.loads(MINIMAL_JSONLD)
+    document["@graph"].append({"@id": "iirds:Topic",
+                               "http://www.w3.org/2002/07/owl#equivalentClass":
+                                   {"@id": "http://example.com/my#Topic"}})
+    document["@graph"].append({"@id": GRAPH, "@graph": [
+        {"@id": "http://example.com/my#Topic", "http://www.w3.org/2000/01/rdf-schema#label": "My topic"}]})
+    report = runner.check(make_package(metadata=DESCRIPTION_STYLE_RDF, jsonld=json.dumps(document)))
+    [finding] = [f for f in report.findings if f.rule.id == "R18"]
+    assert "metadata.jsonld" in (finding.violation.detail or ""), finding.violation.detail
+

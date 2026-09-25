@@ -1178,13 +1178,17 @@ file whose graphs together say what `metadata.rdf` says passes, and one whose
 named graph says more fails. The merged graph every other rule reads is made
 of default graphs, as it was: a statement only a named graph holds is one a
 reader of the default graph never sees, and `metadata.rdf` is to contain all
-metadata in any case. One consequence: where a file's statements are split
-between its default graph and a named graph around a blank node, the merge
-can hold that node's statements twice beside `metadata.rdf`'s, and a count
-rule reports the second copy, though L9 finds the files alike; L17 names the
-named graph. rdflib reads a graph container (`@container: @graph`) into the
-default graph, where a JSON-LD 1.1 processor makes it a named graph, so L17
-does not see that shape.
+metadata in any case. A node without a name is a different node in each
+graph that holds it, as in each file, so the reading has two consequences.
+A named graph repeating the whole default graph is the default graph again;
+one repeating part of it around such a node makes a second node, which L9
+reports. And where a file's statements are split between its default graph
+and a named graph around such a node, the merge can hold that node's
+statements twice beside `metadata.rdf`'s, and a count rule reports the second
+copy, though L9 finds the files alike; L17 names the named graph. rdflib reads
+a graph container (`@container: @graph`), and a graph object given as a
+property's value, into the default graph, where a JSON-LD 1.1 processor makes
+each a named graph, so L17 does not see those shapes.
 
 A reader that asks a JSON-LD document for one graph is given its default
 graph, and from a file whose statements sit in a named graph it gets less, or
@@ -1224,6 +1228,10 @@ aspirational:
   *runner* assigns the severity, because only it knows the profile. B10, a
   recommendation, is a warning in every profile. So the list above names L4,
   M30, R8 and L2.
+- **L9**, where `metadata.jsonld` holds statements in named graphs: the
+  standard says nothing of graphs, and the reading that asks what a file says
+  of all of them (above) is this project's, so an L9 error that rests on a
+  named graph rests on that reading.
 
 One more case sits beside these and is not one of them. `ERROR S16` fires where no content rule
 got a parsed document for a file the package lists as content — including two

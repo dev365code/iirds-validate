@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from rdflib import BNode, Graph, URIRef
+from rdflib.compare import isomorphic
 from rdflib.namespace import RDF, RDFS
 
 from iirds import (
@@ -574,15 +575,31 @@ def build_graph(package: Package):
 def _statements(default: Graph, named: dict) -> Graph:
     """Everything a metadata file states, whatever graph of it holds it.
 
-    Merged as the files are merged: a graph that repeats another is one graph,
-    since a blank node is a different node in each, and joining two copies of
-    an anonymous rendition made two renditions of one."""
+    A named graph that repeats the default one is the default one again:
+    joined, two copies of a node without a name are two nodes. Only that
+    repeat is looked for, and only where the two are one size and there is
+    such a node to double -- a graph is compared once, with the default one,
+    so that a file of many graphs costs as many comparisons as it has graphs;
+    comparing each with every other took a minute for a ten-kilobyte file.
+    A graph repeating part of another around such a node is two nodes here,
+    as it is between two files."""
     if not named:
         return default
-    union = merge_sources(dict([(None, default)] + sorted(named.items())))
+    union = Graph()
     for prefix, namespace in default.namespaces():
         union.bind(prefix, namespace)
+    union += default
+    for key in sorted(named):
+        held = named[key]
+        if (len(held) == len(default) and _has_blank_node(held)
+                and isomorphic(held, default)):
+            continue
+        union += held
     return union
+
+
+def _has_blank_node(graph: Graph) -> bool:
+    return any(isinstance(term, BNode) for triple in graph for term in triple)
 
 
 #: The encoding an XML declaration names. Matched on the bytes, because

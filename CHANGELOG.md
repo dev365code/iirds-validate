@@ -82,11 +82,17 @@ a byte order mark saying UTF-8, UTF-16 or UTF-32, or the first bytes of
 unmarked UTF-16, under a declaration of another encoding -- is refused, and so
 is UTF-32 declaring nothing: XML 1.0 section 4.3.3 makes both fatal errors
 where no transport protocol gives the encoding, and none gives a ZIP
-member's. Both take a document from `0` to `1`; the refusal names the encoding
-the bytes are in, the one declared, and the section. A declaration agrees with
-a UTF-16 or UTF-32 mark when it gives the family's IANA name, in either byte
-order, or the byte-order name the mark has; no declaration agrees with UTF-8
-and UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
+member's; which bytes mark which encoding is read as its Appendix F reads
+them. For a document marked UTF-16 or UTF-32, or unmarked UTF-16, that takes
+it from `0` to `1`, and so does a UTF-8 mark over bytes all in ASCII under
+another declaration; a UTF-8 mark over other text under another declaration
+was refused already, and is refused as this now. Under a UTF-16 or UTF-32
+mark, a name this reader does not read -- a platform code page, a spelling
+IANA does not register -- is refused by name, from `0` to `1` likewise. The
+refusal names the encoding the bytes are in, the one declared, and the
+section. A declaration agrees with a UTF-16 or UTF-32 mark when it gives the
+family's IANA name, in either byte order, or the byte-order name the mark
+has; a document with no declaration at all is read if it is UTF-8 or UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
 for a declaration. The other declarations naming an encoding outside those this
 reader decodes -- UTF-8, UTF-16, UTF-32 and the encodings that read one
 character from each byte -- were refused already, in the codec's words or the

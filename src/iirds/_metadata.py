@@ -511,7 +511,7 @@ _MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8-sig"),
           (b"\xff\xfe", "UTF-16LE", "utf-16"), (b"\xfe\xff", "UTF-16BE", "utf-16"))
 
 #: The IANA names that agree with a UTF-16 or UTF-32 mark, without regard to
-#: case (section 4.3.3 asks for IANA names): a family name in either byte
+#: case (section 4.3.3 recommends IANA names): a family name in either byte
 #: order, a byte-order name only in its own.
 _AGREEING = {
     "UTF-16LE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16le"}),
@@ -539,7 +539,9 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
     bytes as stored stops at either; the decode below believed the mark,
     dropped the declaration, and read the document all the same. The mark's
     encoding and the declaration are both named in the refusal, since the
-    remedy is to make one say what the other does.
+    remedy is to make one say what the other does. Which bytes mark which
+    encoding is read as XML's Appendix F reads it -- a non-normative table,
+    which calls UTF-32 by its older name, UCS-4.
     """
     sniffed = _sniff(stored)
     found_mark = next(((mark, codec) for bom, mark, codec in _MARKS if stored.startswith(bom)), None)
@@ -548,8 +550,9 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
     if found_mark is None:
         return None
     mark, codec = found_mark
-    where = "its byte order mark" if stored[:2] in (b"\xff\xfe", b"\xfe\xff") or stored[:3] == b"\xef\xbb\xbf" \
-        or stored[:4] == b"\x00\x00\xfe\xff" else "its first bytes"
+    where = ("its byte order mark says" if stored[:2] in (b"\xff\xfe", b"\xfe\xff")
+             or stored[:3] == b"\xef\xbb\xbf" or stored[:4] == b"\x00\x00\xfe\xff"
+             else "its first bytes say")
     try:
         head = stored[:4096].decode(codec, "ignore").lstrip("﻿")
     except Exception:
@@ -557,7 +560,7 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
     found = _DECLARED_TEXT.match(head)
     if found is None:
         if mark.startswith("UTF-32"):
-            return ("%s: %s: %s says %s and it declares no encoding; XML 1.0 section 4.3.3 "
+            return ("%s: %s: %s %s and it declares no encoding; XML 1.0 section 4.3.3 "
                     "makes an undeclared encoding other than UTF-8 or UTF-16 a fatal error -- "
                     "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, where, mark))
         return None
@@ -573,7 +576,7 @@ def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
             or normal in _PLATFORM_CODECS
             or (normal in _UNREGISTERED_UTF and lowered not in {n for a in _AGREEING.values() for n in a})):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
-    return ("%s: %s: %s says %s and its declaration says %s; XML 1.0 section 4.3.3 makes that "
+    return ("%s: %s: %s %s and its declaration says %s; XML 1.0 section 4.3.3 makes that "
             "a fatal error -- make the declaration name the encoding the bytes are in, or save "
             "the file in the one it names" % (name, CONTRADICTED_ENCODING, where, mark, shown))
 

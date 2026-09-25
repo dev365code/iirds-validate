@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 
 import iirds
-from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD
+from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
 from iirds_validate import runner
 from iirds_validate.model import Severity
 
@@ -137,3 +137,94 @@ def test_a_named_graph_with_no_iirds_metadata_is_still_c16_2s(make_package):
 
     report = runner.check(make_package(metadata=HANDOVER_RDF, jsonld=_named(NO_IIRDS_JSONLD)))
     assert _findings(report, "C16.2")
+
+
+def _nodes():
+    return json.loads(MINIMAL_JSONLD)["@graph"]
+
+
+def _document(graph):
+    return json.dumps({"@context": json.loads(MINIMAL_JSONLD)["@context"], "@graph": graph})
+
+
+def test_any_number_of_named_graphs_under_any_names_are_one_file(make_package):
+    first, second, third = _nodes()
+    jsonld = _document([{"@id": "urn:a:first", "@graph": [first, second]},
+                        {"@id": "https://example.org/second", "@graph": [third]}])
+    report = _lint(make_package, jsonld)
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    [finding] = _findings(report, "L17")
+    assert finding.violation.subject == iirds.METADATA_JSONLD
+    detail = finding.violation.detail
+    assert "urn:a:first" in detail and "https://example.org/second" in detail, detail
+
+
+def test_a_named_graph_that_says_more_than_the_default_graph_is_reported(make_package):
+    """The default graph is metadata.rdf's; a named graph adds a title.
+    The file says more than metadata.rdf, which L9 reports -- and the merged
+    graph the other rules read does not take the title in."""
+    more = {"@id": GRAPH, "@graph": [{"@id": "urn:test:topic1", "title": "Another title"}]}
+    jsonld = _document(_nodes() + [more])
+    [finding] = _findings(_lint(make_package, jsonld), "L9")
+    assert "1 statement(s) only in META-INF/metadata.jsonld" in finding.violation.detail
+
+    def others(report):
+        return sorted((f.rule.id, f.violation.subject or "", f.violation.detail or "")
+                      for f in report.findings if f.rule.id not in ("L9", "L17"))
+
+    alone = runner.check(make_package(metadata=DESCRIPTION_STYLE_RDF))
+    assert others(runner.check(make_package(metadata=DESCRIPTION_STYLE_RDF,
+                                            jsonld=jsonld))) == others(alone)
+
+
+def test_a_json_ld_file_with_only_named_graphs_gives_the_merge_nothing(make_package):
+    """Without metadata.rdf, the rules that read the merge read what a reader
+    of the default graph reads: nothing, as from an empty file."""
+    def rules(jsonld):
+        report = runner.check(make_package(metadata=None, jsonld=jsonld))
+        return sorted({f.rule.id for f in report.findings} - {"L9", "L17"})
+
+    assert rules(_named()) == rules(_document([]))
+
+
+def test_a_named_graph_repeating_anonymous_nodes_does_not_double_them(make_package):
+    """A rendition with no name is a blank node, a different one in each
+    graph; a named graph repeating the default one is the same statements."""
+    package, topic, rendition = _nodes()
+    rendition = {k: v for k, v in rendition.items() if k != "@id"}
+    topic = dict(topic, **{"has-rendition": rendition})
+    single = [package, topic]
+    alone = runner.lint(make_package(metadata=MINIMAL_RDF, jsonld=_document(single)))
+    assert not _findings(alone, "L9"), "the fixture is not MINIMAL_RDF"
+    repeated = _document(single + [{"@id": GRAPH, "@graph": single}])
+    report = runner.lint(make_package(metadata=MINIMAL_RDF, jsonld=repeated))
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    assert not _findings(report, "L17")
+
+
+def test_a_named_graph_with_nothing_in_it_is_no_graph(make_package):
+    jsonld = _document(_nodes() + [{"@id": GRAPH, "@graph": []}])
+    graph, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, jsonld.encode(),
+                                                      base=iirds.PACKAGE_BASE)
+    assert error is None and named == {}
+    assert not _findings(_lint(make_package, jsonld), "L17")
+
+
+def test_a_graph_named_by_a_blank_node_is_reported_the_same_way_twice(make_package):
+    jsonld = _named(name="_:g")
+    details = {_findings(_lint(make_package, jsonld), "L17")[0].violation.detail for _ in range(2)}
+    assert len(details) == 1 and "1 without a name" in details.pop()
+
+
+def test_the_finding_names_the_file_a_named_graph_states_in(make_package):
+    """M30 says which file redeclares the schema; a statement only a named
+    graph of metadata.jsonld holds is in that file."""
+    declared = ("http://iirds.tekom.de/iirds#Topic", "http://www.w3.org/2000/01/rdf-schema#Class")
+    rdf = DESCRIPTION_STYLE_RDF.replace(
+        "</rdf:RDF>", '  <rdf:Description rdf:about="%s">\n    <rdf:type rdf:resource="%s"/>\n'
+                      '  </rdf:Description>\n</rdf:RDF>' % declared)
+    jsonld = _document(_nodes() + [{"@id": GRAPH, "@graph": [{"@id": declared[0], "@type": declared[1]}]}])
+    [finding] = [f for f in runner.check(make_package(metadata=rdf, jsonld=jsonld)).findings
+                 if f.rule.id == "M30"]
+    said = " ".join(str(value) for value in vars(finding.violation).values())
+    assert "metadata.jsonld" in said and "metadata.rdf" in said, said

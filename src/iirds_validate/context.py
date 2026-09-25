@@ -572,15 +572,16 @@ def build_graph(package: Package):
 
 
 def _statements(default: Graph, named: dict) -> Graph:
-    """Everything a metadata file states, whatever graph of it holds it."""
+    """Everything a metadata file states, whatever graph of it holds it.
+
+    Merged as the files are merged: a graph that repeats another is one graph,
+    since a blank node is a different node in each, and joining two copies of
+    an anonymous rendition made two renditions of one."""
     if not named:
         return default
-    union = Graph()
+    union = merge_sources(dict([(None, default)] + sorted(named.items())))
     for prefix, namespace in default.namespaces():
         union.bind(prefix, namespace)
-    union += default
-    for held in named.values():
-        union += held
     return union
 
 

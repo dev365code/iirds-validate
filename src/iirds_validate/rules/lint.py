@@ -1018,14 +1018,21 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     not wrong and the reader it fails is real, so this is a warning.
     """
     graphs = ctx.graphs_of.get(METADATA_JSONLD) or {}
-    named = sorted(name for name, graph in graphs.items() if name is not None and len(graph))
+    named = [name for name, graph in graphs.items() if name is not None and len(graph)]
     if not named:
         return
     stated = len(ctx.per_source[METADATA_JSONLD])
     missed = stated - len(graphs[None])
-    if not missed:
+    if missed <= 0:
         return
-    where = ", ".join(named[:3]) + (" and %d more" % (len(named) - 3) if len(named) > 3 else "")
+    # By name, and by count where a blank node names a graph: its label is new
+    # with every parse, and a report says the same thing twice or is wrong.
+    iris = sorted(name for name in named if not name.startswith("_:"))
+    parts = iris[:3] + (["%d more" % (len(iris) - 3)] if len(iris) > 3 else [])
+    unnamed = len(named) - len(iris)
+    if unnamed:
+        parts.append("%d without a name" % unnamed)
+    where = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
     seen = "none of them" if missed == stated else "the other %d" % (stated - missed)
     yield Violation("statements of metadata.jsonld are in a named graph, which a reader of the "
                     "default graph does not see",

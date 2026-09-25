@@ -1158,7 +1158,7 @@ inside a literal, not a term of the graph; and a JSON-LD key that no context
 maps is dropped by the processor before any graph exists. Both are the
 parser's, and both are below this rule.
 
-## L9, C16.2 and L17 — statements in a named graph of `metadata.jsonld` (open, warning)
+## L9, C16.2 and L17 — statements in a named graph of `metadata.jsonld` (open)
 
 The standard names JSON-LD 1.1 for the syntax of `metadata.jsonld`, and says of
 the two metadata files, where both exist, that their content "MUST semantically
@@ -1170,12 +1170,21 @@ Every JSON-LD example it gives is a top-level `@graph` with no `@id`, which is
 the default graph; an example is not a requirement.
 
 So each question here about what one file says is asked of that file's
-statements, whatever graph holds them: whether the two files say the same
-thing (L9), whether an iiRDS/H package's JSON-LD contains iiRDS metadata
-(C16.2), and which file a statement is in where a finding names it. The merged
-graph every other rule reads is made of default graphs, as it was: a statement
-only a named graph holds is one a reader of the default graph never sees, and
-`metadata.rdf` is to contain all metadata in any case.
+statements, whatever graph holds them, a graph that repeats another counting
+once: whether the two files say the same thing (L9), whether an iiRDS/H
+package's JSON-LD contains iiRDS metadata (C16.2), and which file a statement
+is in where a finding names it. L9 is an error on this reading both ways: a
+file whose graphs together say what `metadata.rdf` says passes, and one whose
+named graph says more fails. The merged graph every other rule reads is made
+of default graphs, as it was: a statement only a named graph holds is one a
+reader of the default graph never sees, and `metadata.rdf` is to contain all
+metadata in any case. One consequence: where a file's statements are split
+between its default graph and a named graph around a blank node, the merge
+can hold that node's statements twice beside `metadata.rdf`'s, and a count
+rule reports the second copy, though L9 finds the files alike; L17 names the
+named graph. rdflib reads a graph container (`@container: @graph`) into the
+default graph, where a JSON-LD 1.1 processor makes it a named graph, so L17
+does not see that shape.
 
 A reader that asks a JSON-LD document for one graph is given its default
 graph, and from a file whose statements sit in a named graph it gets less, or

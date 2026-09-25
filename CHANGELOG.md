@@ -107,16 +107,22 @@ empty here: L9 reported every statement of `metadata.rdf` as missing from it,
 and C16.2 said an iiRDS/H package's JSON-LD carried no iiRDS metadata. Each
 question about what one file says -- L9's, C16.2's, and which file a finding's
 statement is in -- is now asked of the file's statements whatever graph holds
-them; the merged graph the other rules read is made of default graphs, as
-before. For a package with nothing else wrong, that takes the exit code from
-`1` to `0` where a named graph states what `metadata.rdf` states (L9), and,
-for iiRDS/H, where the JSON-LD's iiRDS metadata is all in named graphs
-(C16.2). A new warning, L17, says that a reader asking for one graph --
-rdflib's `Graph()` is one -- sees none, or only part, of such a file; it
-leaves the exit code where it was. `iirds.parse_metadata_graphs` hands on the
-named graphs beside the default one, and `iirds.parse_metadata` still hands on
-the default graph. The standard says nothing about graph names;
-`docs/divergences.md` records the reading.
+them, a graph that repeats another counting once; the merged graph the other
+rules read is made of default graphs, as before. For a package with nothing
+else wrong, that takes the exit code from `1` to `0` where the file's graphs
+together state what `metadata.rdf` states, and from `0` to `1` where its
+default graph states that and a named graph states more (L9). C16.2 no longer
+fires for an iiRDS/H JSON-LD whose iiRDS metadata is in named graphs; where it
+fired, L9 fired too. A new warning, L17, says that a reader asking for one
+graph -- rdflib's `Graph()` is one -- sees none, or only part, of such a file;
+it leaves the exit code where it was unless `-W` counts warnings, and under
+`-W` a package whose L9 error it takes the place of stays at `1`. A finding
+that names the file a statement is in, M30's among them, names
+`metadata.jsonld` too where only a named graph of it holds the statement.
+`iirds.parse_metadata_graphs` hands on the named graphs beside the default
+one, from the same parse; `iirds.parse_metadata` still hands on the default
+graph. The standard says nothing about graph names; `docs/divergences.md`
+records the reading.
 
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that

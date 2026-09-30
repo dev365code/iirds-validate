@@ -847,6 +847,16 @@ NAMED_CASES = {
     # --- evidence: G metadata graph ---
 
     # --- evidence: H profiles & nesting ---
+    "x5-1-1-metadata-location-and-rdf-serializations#3":
+        "test_obl_h:test_json_ld_metadata_anywhere_but_meta_inf_metadata_jsonld_is_reported",
+    "x6-3-3-metadata-of-nested-iirds-packages#1":
+        "test_obl_h:test_a_nested_container_the_parent_does_not_declare_is_reported",
+    "x6-3-3-metadata-of-nested-iirds-packages#3":
+        "test_obl_h:test_a_declared_child_package_that_is_part_of_no_package_is_reported",
+    "x6-7-3-packages-related-to-component-trees#4":
+        "test_obl_h:test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way",
+    "x8-3-1-2-nesting-of-packages#3":
+        "test_obl_h:test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way",
 
     # --- evidence: C content & formats ---
 
@@ -893,7 +903,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 172, len(CLAIMED)
+    assert len(CLAIMED) == 177, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

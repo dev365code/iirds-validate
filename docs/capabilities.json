@@ -6,14 +6,14 @@
     {
       "key": "coverage",
       "label": "Coverage",
-      "now": 172,
+      "now": 177,
       "target": 220,
-      "now_text": "172 of 280 obligations covered",
+      "now_text": "177 of 280 obligations covered",
       "target_text": "at least 220 of 280 covered",
       "evidence": [
         {
           "file": "docs/scope.md",
-          "says": "Coverage of the standard is 172 of 280"
+          "says": "Coverage of the standard is 177 of 280"
         }
       ]
     },

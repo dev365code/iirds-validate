@@ -707,7 +707,7 @@ for _rid in ("S6", "S7", "S8", "S10", "S14", "S15"):
                              "headers, compression methods, central-directory records")
 NOT_EXPRESSIBLE["R37"] = ("graph\u00d7ZIP join: asks which container entries no iirds:source "
                           "names, and a shapes file has no entry list")
-for _rid in ("L2", "L11", "L12", "R8", "R9", "R41", "R44", "R45"):
+for _rid in ("L2", "L11", "L12", "R8", "R9", "R41", "R44", "R45", "R60"):
     NOT_EXPRESSIBLE[_rid] = "graph×ZIP join: the verdict depends on which files the archive carries"
 for _rid in ("R42", "R43"):
     NOT_EXPRESSIBLE[_rid] = ("content: the verdict is in the first bytes of a file inside the "

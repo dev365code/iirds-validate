@@ -88,9 +88,13 @@ it from `0` to `1`, and so does a UTF-8 mark over bytes all in ASCII under
 another declaration; a UTF-8 mark over other text under another declaration
 was refused already, and is refused as a contradiction now. Under any mark, a
 name this reader does not read -- a multi-byte encoding, a name no codec
-answers to, a platform code page, a spelling IANA does not register -- is
-refused by name, as it is without a mark: already so under a UTF-8 mark, from
-`0` to `1` under a UTF-16 or UTF-32 one. The
+answers to, a platform code page -- is refused by name, as it is without a
+mark: already so under a UTF-8 mark, from `0` to `1` under a UTF-16 or UTF-32
+one. Under a mark, so is a spelling of UTF-16 or UTF-32 that IANA does not
+register, such as `utf16` or `UTF-16-LE`: from `0` to `1` under a UTF-16 or
+UTF-32 mark, and under a UTF-8 one refused by name where it was refused as
+read differently, the exit code staying `1`; without a mark it is read both
+ways, as before. The
 refusal names the encoding the bytes are in, the one declared, and the
 section. A declaration agrees with a UTF-16 or UTF-32 mark when it gives the
 family's IANA name -- `UTF-16` or `ISO-10646-UCS-2`, `UTF-32` or
@@ -111,7 +115,8 @@ stands at an end, and cut to sixty characters. C16.1's remedy says to change the
 because bytes rewritten as UTF-8 under the old declaration are refused.
 `iirds.parse_metadata` returns every one of these as an error, as it promises
 -- it raised `LookupError`, `ValueError` or `UnicodeError` for some -- under
-two new categories, `UNREADABLE_ENCODING` and `UNUSED_ENCODING`.
+four new categories, `UNREADABLE_ENCODING`, `UNUSED_ENCODING`,
+`CONTRADICTED_ENCODING` and `UNDECLARED_ENCODING`.
 
 **A JSON-LD metadata file is read whatever graph holds its statements, and a
 reader of the default graph alone is warned about.** JSON-LD 1.1, the syntax
@@ -122,7 +127,9 @@ empty here: L9 reported every statement of `metadata.rdf` as missing from it,
 and C16.2 said an iiRDS/H package's JSON-LD carried no iiRDS metadata. Each
 question about what one file says -- L9's, C16.2's, and which file a finding's
 statement is in -- is now asked of the file's statements whatever graph holds
-them, a graph that repeats another counting once; the merged graph the other
+them, a graph that repeats another with blank nodes of its own counting once
+(one sharing a blank node's label with another is about the same node, and
+joined as it is); the merged graph the other
 rules read is made of default graphs, as before. For a package with nothing
 else wrong, that takes the exit code from `1` to `0` where the file's graphs
 together state what `metadata.rdf` states -- unless its default graph, which
@@ -147,8 +154,22 @@ statement is in, M30's among them, names `metadata.jsonld` too where only a
 named graph of it holds the statement. `iirds.parse_metadata_graphs` hands on
 the named graphs beside the default one, from the same parse, and
 `iirds.merge_graphs_of` joins one document's graphs as these questions read
-them; `iirds.parse_metadata` still hands on the default graph. The standard
-says nothing about graph names; `docs/divergences.md` records the reading.
+them; `iirds.parse_metadata` still hands on the default graph, in a store of
+its own, which no longer carries the named graphs a caller could reach
+through it. The standard says nothing about graph names;
+`docs/divergences.md` records the reading.
+
+**A language tag is compared without regard to case.** Case carries no
+meaning in a language tag (RFC 5646, section 2.1.1), and RDF lets a reader
+write every tag in lower case, so `de` in `metadata.rdf` and `DE` in
+`metadata.jsonld` are one statement to every comparison of the two files --
+L9's, and the merge's, which reads a file that repeats the one before it
+once. For a package with nothing else wrong whose files differ only there,
+that takes the exit code from `1` to `0`: L9 no longer reports them, and a
+rule that counted what hangs off an anonymous node twice, once from each
+file, counts it once. The name L9 prints for an anonymous node carrying such
+a tag changes. `iirds.graph_difference` and `iirds.merge_sources` read tags
+the same way.
 
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that

@@ -55,6 +55,7 @@ SIZES = "tests/test_size_gates.py"
 METADATA = "src/iirds/_metadata.py"
 BOUNDED = "tests/test_bounded_comparison.py"
 EXACT = "tests/test_fingerprint_exactness.py"
+NAMED = "tests/test_jsonld_named_graphs.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
@@ -354,6 +355,30 @@ TABLE = [
      "        if False:",
      [BOUNDED],
      "the same, in a run that asks no container question"),
+
+    ("compare/the-limit-taken-graph-by-graph",
+     METADATA,
+     "    searched = sum(outside) <= MAX_COMPARED_BLANK_NODES",
+     "    searched = True",
+     [NAMED],
+     "a document of many graphs, each within the limit, costs a search apiece"),
+
+    ("compare/repeats-kept-in-the-order-the-parser-gave",
+     METADATA,
+     "    items = items[:1] + sorted(items[1:], key=lambda item: (isinstance(item[0], BNode),",
+     "    items = items[:1] + (lambda rest, key: rest)(items[1:], key=lambda item: "
+     "(isinstance(item[0], BNode),",
+     [NAMED],
+     "which of two repeating graphs L17 names follows the parser's blank-node labels, and "
+     "changes from one run to the next"),
+
+    ("compare/a-language-tag-read-by-its-case",
+     METADATA,
+     "                            language.lower() if language else language)",
+     "                            language)",
+     [NAMED],
+     "`de` and `DE` are two statements, L9 reports a difference that is none, and the merge "
+     "reads both"),
 
     # The canary. It has to survive: if it dies, the harness is reporting red
     # for everything and the rows above prove nothing.

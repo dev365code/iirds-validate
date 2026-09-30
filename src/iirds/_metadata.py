@@ -502,8 +502,9 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
             or normal in _PLATFORM_CODECS
             or not (normal in _UTF16_OR_32 or _one_character_a_byte(declared))):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
-    body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
-    theirs, ours = _decoded(body, _UCS_CODECS.get(normal, declared)), _decoded(body, "utf-8")
+    # A document behind a byte order mark does not get here with a name that
+    # is not UTF-8's: the mark's own check answers it first.
+    theirs, ours = _decoded(stored, _UCS_CODECS.get(normal, declared)), _decoded(stored, "utf-8")
     if theirs is None and ours is None:
         return None          # neither reads it, and the parser says so itself
     if theirs is None or ours is None or theirs != ours:
@@ -938,7 +939,38 @@ def _rows(graph: Graph):
     A blank node standing as a predicate is rendered by its label. No reader
     here produces one, and RDF/XML cannot write one.
     """
+    out, parents, named_in, trees, outside = _blank_structures(graph)
+    label = {}
+    for root in trees:
+        _name_tree(root, out, parents, named_in, label)
+    count = sum(len(nodes) for nodes in outside)
+    if count > MAX_COMPARED_BLANK_NODES:
+        raise _NotCompared(count)
+    for nodes in outside:
+        name = "n" + _structure_name(nodes, out, named_in)
+        for node in nodes:
+            label[node] = name
+
+    def side(term):
+        return "_:" + label[term] if isinstance(term, BNode) else _term(term)
+
     rows = []
+    for triple in graph:
+        subject, predicate, obj = triple
+        rows.append(("%s %s %s" % (side(subject), _term(predicate), side(obj)), triple))
+    return rows, label
+
+
+def _blank_structures(graph: Graph):
+    """`graph`'s blank nodes, joined into structures by the statements between
+    them, and which structures are trees -- `_rows`' first pass, which reads
+    every statement once and tries no order of anything.
+
+    Returns ``(out, parents, named_in, trees, outside)``: what each blank node
+    says, the blank subjects pointing at each, the named subjects pointing at
+    each, the root of every tree, and the nodes of every structure that is
+    not one.
+    """
     blanks = set()
     out = {}          # blank node -> [(predicate, object)]
     parents = {}      # blank node -> [the blank subject of each statement pointing at it]
@@ -972,29 +1004,20 @@ def _rows(graph: Graph):
     for node in blanks:
         structures.setdefault(find(node), []).append(node)
 
-    label = {}
-    outside = []
+    trees, outside = [], []
     for nodes in structures.values():
         roots = [node for node in nodes if node not in parents]
         if len(roots) == 1 and all(len(parents.get(node, ())) <= 1 for node in nodes):
-            _name_tree(roots[0], out, parents, named_in, label)
+            trees.append(roots[0])
         else:
             outside.append(nodes)
-    count = sum(len(nodes) for nodes in outside)
-    if count > MAX_COMPARED_BLANK_NODES:
-        raise _NotCompared(count)
-    for nodes in outside:
-        name = "n" + _structure_name(nodes, out, named_in)
-        for node in nodes:
-            label[node] = name
+    return out, parents, named_in, trees, outside
 
-    def side(term):
-        return "_:" + label[term] if isinstance(term, BNode) else _term(term)
 
-    for triple in graph:
-        subject, predicate, obj = triple
-        rows.append(("%s %s %s" % (side(subject), _term(predicate), side(obj)), triple))
-    return rows, label
+def _outside_trees(graph: Graph) -> int:
+    """How many of `graph`'s blank nodes are outside trees: the number the
+    limit is asked of, counted without naming anything."""
+    return sum(len(nodes) for nodes in _blank_structures(graph)[4])
 
 
 def _name_tree(root, out, parents, named_in, label) -> None:
@@ -1147,17 +1170,30 @@ def merge_graphs_of(graphs):
     once per graph -- one pass where its blank nodes form trees, a search over
     the few that do not -- so the cost is the document's size.
 
-    A graph holding more blank nodes outside trees than
-    MAX_COMPARED_BLANK_NODES has no fingerprint, and cannot be told from a
-    repeat where another graph with blank nodes is its size. It is joined as
-    it is and named; the document it is in then holds more than the limit
-    too, so a caller comparing it will not compare it either.
+    The limit is the document's, as it is for a comparison of two documents:
+    where the graphs to be fingerprinted hold more blank nodes outside trees
+    than MAX_COMPARED_BLANK_NODES between them, none of those blank nodes is
+    searched -- a graph whose blank nodes form trees is still fingerprinted,
+    in one pass -- and each graph left without a fingerprint cannot be told
+    from a repeat where another graph with blank nodes is its size. It is
+    joined as it is and named; the document it is in then holds more than the
+    limit too, so a caller comparing it will not compare it either. Taken
+    graph by graph, the limit let a document of many graphs cost a search
+    apiece.
+
+    The default graph comes first, then the named graphs in the order of
+    their names, a graph with a name before one without: which of two
+    repeats is left out is what a caller reports, and the order a parser
+    hands graphs over in follows its blank-node labels.
 
     Returns ``(merged, repeats, uncounted)``: the merged graph, the names of
     graphs left out as repeats, and the names of graphs that could not be
     counted.
     """
     items = list(graphs.items())
+    items = items[:1] + sorted(items[1:], key=lambda item: (isinstance(item[0], BNode),
+                                                            "" if isinstance(item[0], BNode)
+                                                            else str(item[0])))
     blanks = [{term for triple in graph for term in triple if isinstance(term, BNode)}
               for _name, graph in items]
     shared, seen = set(), set()
@@ -1168,13 +1204,16 @@ def merge_graphs_of(graphs):
     for (_name, graph), nodes in zip(items, blanks):
         if nodes:
             sizes[len(graph)] = sizes.get(len(graph), 0) + 1
+    outside = [_outside_trees(graph) if nodes and not nodes & shared else 0
+               for (_name, graph), nodes in zip(items, blanks)]
+    searched = sum(outside) <= MAX_COMPARED_BLANK_NODES
     merged = Graph()
     kept = set()
     repeats, uncounted = [], []
-    for (name, graph), nodes in zip(items, blanks):
+    for (name, graph), nodes, apart in zip(items, blanks, outside):
         if nodes and not nodes & shared:
             try:
-                key = tuple(_fingerprint(graph))
+                key = tuple(_fingerprint(graph)) if searched or not apart else None
             except _NotCompared:
                 key = None
             if key is None and sizes[len(graph)] > 1:

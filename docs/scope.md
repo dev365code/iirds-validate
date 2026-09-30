@@ -53,8 +53,8 @@ Written down so that none of these gets built by drift.
   however many there are; past eight blank nodes outside trees in one file --
   a node two blank nodes point at, or a cycle of them -- the two files are not
   compared: the merge leaves `metadata.jsonld` out and C16.2 says so, or, where
-  only a named graph goes past it, L9 says the files were not compared. Either
-  names the limit.
+  its named graphs take the file past it -- the limit is the file's, its graphs
+  together -- L9 says the files were not compared. Either names the limit.
 
 ## Where things live
 

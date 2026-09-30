@@ -220,7 +220,10 @@ def test_the_declared_name_reaches_the_report_as_printable_text():
 
 def test_a_false_declaration_behind_a_byte_order_mark_is_refused():
     """An editor saving "UTF-8 with BOM" writes the mark in front of a
-    declaration it did not change; xml.etree follows the declaration."""
+    declaration it did not change; xml.etree follows the declaration. The mark
+    says UTF-8 and the declaration another encoding, which section 4.3.3 makes
+    a fatal error, so it is refused as a contradiction -- before either reading
+    of the bytes is taken, where it was refused for the two reading apart."""
     raw = b"\xef\xbb\xbf" + document("windows-1252", "utf-8", GERMAN)
     graph, error = _parsed(raw)
     assert graph is None and iirds.CONTRADICTED_ENCODING in error, error

@@ -20,6 +20,7 @@ import json
 from rdflib import BNode, Graph, Literal, URIRef
 
 import iirds
+import iirds._metadata as metadata
 from conftest import DESCRIPTION_STYLE_RDF, MINIMAL_JSONLD, MINIMAL_RDF
 from iirds_validate import runner
 from iirds_validate.model import Severity
@@ -506,3 +507,107 @@ def test_a_named_graph_past_the_comparison_limit_is_not_compared(make_package):
     assert "at most %d blank nodes" % limit in finding.violation.fix
     assert not _findings(report, "C16.2")
     assert not report.ok
+
+
+def _ring_of(name, count, tag):
+    """`_ring_graph` with labels of its own, so that two of them are two
+    structures and not one joined across graphs."""
+    return {"@id": name, "@graph": [
+        {"@id": "_:%s%d" % (tag, index),
+         "urn:test:next": {"@id": "_:%s%d" % (tag, (index + 1) % count)}}
+        for index in range(count)]}
+
+
+def _counting_searches(monkeypatch):
+    asked = []
+    real = metadata._structure_name
+
+    def counted(nodes, *rest):
+        asked.append(len(nodes))
+        return real(nodes, *rest)
+
+    monkeypatch.setattr(metadata, "_structure_name", counted)
+    return asked
+
+
+def test_graphs_that_pass_the_limit_between_them_are_searched_nowhere(make_package, monkeypatch):
+    """The limit is the file's, named graphs included. Three graphs each
+    within it, past it between them: no order of any of them is tried, and
+    L9 says the files were not compared -- where each graph was searched on
+    its own, and a file of many such graphs cost a search apiece."""
+    asked = _counting_searches(monkeypatch)
+    size = iirds.MAX_COMPARED_BLANK_NODES // 2 + 1
+    rings = [_ring_of("urn:test:ring%d" % index, size, "r%d_" % index) for index in range(3)]
+    report = runner.lint(make_package(metadata=DESCRIPTION_STYLE_RDF,
+                                      jsonld=_document(_nodes() + rings)))
+    assert asked == [], asked
+    [finding] = _findings(report, "L9")
+    assert finding.violation.message == "the two metadata serialisations were not compared"
+
+
+def test_graphs_within_the_limit_between_them_are_still_counted_once(monkeypatch):
+    """Two graphs that repeat each other, each a ring, the two together at the
+    limit: searched, and the second is a repeat."""
+    asked = _counting_searches(monkeypatch)
+    size = iirds.MAX_COMPARED_BLANK_NODES // 2
+    graphs = {None: Graph()}
+    for index in range(2):
+        document = json.dumps({"@graph": [_ring_of("urn:test:ring%d" % index, size, "r%d_" % index)]})
+        _default, named, error = iirds.parse_metadata_graphs(
+            iirds.METADATA_JSONLD, document.encode("utf-8"), base=iirds.PACKAGE_BASE)
+        assert error is None, error
+        graphs.update(named)
+    _merged, repeats, uncounted = iirds.merge_graphs_of(graphs)
+    assert repeats == [URIRef("urn:test:ring1")] and uncounted == [], (repeats, uncounted)
+    assert asked == [size, size], asked
+
+
+def _tree_graph():
+    graph = Graph()
+    rendition = BNode()
+    graph.add((URIRef("urn:test:topic1"), URIRef("urn:test:has"), rendition))
+    graph.add((rendition, URIRef("urn:test:source"), Literal("content/topic1.xhtml")))
+    return graph
+
+
+def test_of_two_graphs_that_repeat_each_other_the_first_by_name_is_kept():
+    """Which of two repeats is left out decides what L17 names, and the order
+    the graphs arrive in follows the parser's blank-node labels and the hash
+    seed -- so the same file named one graph on one run and the other on the
+    next. The graph kept is the first by name, and a graph with a name before
+    one without."""
+    for order in ((URIRef("urn:test:v2"), URIRef("urn:test:v1")),
+                  (URIRef("urn:test:v1"), URIRef("urn:test:v2"))):
+        graphs = {None: Graph()}
+        graphs.update((name, _tree_graph()) for name in order)
+        assert iirds.merge_graphs_of(graphs)[1] == [URIRef("urn:test:v2")], order
+    unnamed = BNode()
+    for order in ((unnamed, URIRef("urn:test:z")), (URIRef("urn:test:z"), unnamed)):
+        graphs = {None: Graph()}
+        graphs.update((name, _tree_graph()) for name in order)
+        assert iirds.merge_graphs_of(graphs)[1] == [unnamed], order
+
+
+def test_a_language_tag_is_compared_without_regard_to_case(make_package):
+    """Case carries no meaning in a language tag (RFC 5646, section 2.1.1),
+    and RDF lets a reader write every tag in lower case. `de` in one file and
+    `DE` in the other are one statement: L9 does not report it, and the merge
+    reads it once -- where it read two, and a rule counting what hung off an
+    anonymous node counted twice."""
+    rdf = DESCRIPTION_STYLE_RDF.replace("<ii:title>A topic</ii:title>",
+                                        '<ii:title xml:lang="de">A topic</ii:title>')
+    document = json.loads(MINIMAL_JSONLD)
+    for node in document["@graph"]:
+        if node.get("title") == "A topic":
+            node["title"] = {"@value": "A topic", "@language": "DE"}
+    assert rdf != DESCRIPTION_STYLE_RDF and "DE" in json.dumps(document)
+    report = runner.check(make_package(metadata=rdf, jsonld=json.dumps(document)))
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    one, _error = iirds.parse_metadata(iirds.METADATA_RDF, rdf.encode("utf-8"),
+                                       base=iirds.PACKAGE_BASE)
+    other, _error = iirds.parse_metadata(iirds.METADATA_JSONLD,
+                                         json.dumps(document).encode("utf-8"),
+                                         base=iirds.PACKAGE_BASE)
+    assert iirds.graph_difference(one, other) == ([], [])
+    assert len(iirds.merge_sources({iirds.METADATA_RDF: one,
+                                    iirds.METADATA_JSONLD: other})) == len(one)

@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=ad5bae11" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=12310b7e" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*

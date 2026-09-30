@@ -415,6 +415,7 @@ ALREADY_A_MUST = {
     "has-party-role": "M22.2",
     "has-start-selector": "R20",
     "is-applicable-for-document-type": "R19",
+    "is-translation-of": "R48",
     "relates-to-administrative-metadata": "M94",
     "relates-to-component": "M17",
     "relates-to-product-variant": "M18",
@@ -424,7 +425,7 @@ ALREADY_A_MUST = {
 
 def test_the_relations_a_must_already_covers_are_the_ones_named(tmp_path):
     """"No rule read it" was the first draft's claim and it was false seven
-    times over, and is now false thirteen times over. For thirteen of the
+    times over, and is now false fourteen times over. For fourteen of the
     forty-six a rule already states the obligation at MUST level and L16
     restates it as a warning; only some of those rules rest on a sentence the
     standard states about that relation alone, which is why most of them
@@ -432,8 +433,9 @@ def test_the_relations_a_must_already_covers_are_the_ones_named(tmp_path):
     That overlap is fine -- what is not fine is a docstring that says the
     opposite of it.
 
-    Six of the thirteen arrived after this list did, when the five rules in
-    `test_relation_targets.py` were written. The list moved because it is
+    Seven of the fourteen arrived after this list did: six when the five rules
+    in `test_relation_targets.py` were written, and one with R48, which asks
+    a translation and its original for an information object in common. The list moved because it is
     measured and not written down, which is the whole reason it is measured.
 
     Measured by running one package per relation rather than by reading the

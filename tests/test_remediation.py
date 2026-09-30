@@ -247,13 +247,16 @@ def test_how_much_of_each_gate_is_actually_exercised():
     `iirds:iiRDSVersion` and `iirds:formatRestriction` in their titles all
     along: `UNDECLARED` was skipping both, because the exemption list it reads
     still called those terms undeclared after the ontology began declaring
-    them. The gate did not widen there -- it stopped being narrowed."""
+    them. The gate did not widen there -- it stopped being narrowed.
+
+    Four more with R46 to R49, whose titles name the class and property
+    their sentences name."""
     ours = [r for r in RULES if r.title != CATALOG.get(r.id, {}).get("en")]
     titled = [r for r in ours if list(_named_terms(r.title))]
     remedied = [r for r in RULES if list(_named_terms(r.fix))]
     terms_in_remedies = sum(len(list(_named_terms(r.fix))) for r in RULES)
 
-    assert len(titled) == 29, sorted(r.id for r in titled)
+    assert len(titled) == 33, sorted(r.id for r in titled)
     assert len(remedied) >= 120, len(remedied)
     assert terms_in_remedies >= 140, terms_in_remedies
 

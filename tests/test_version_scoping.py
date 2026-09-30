@@ -62,6 +62,9 @@ SCOPED = {
     "R1":    (("1.2", "1.3"), "iirds:ClassificationType arrives in 1.2 with the rest of "
                               "the external classification vocabulary"),
     "R2":    (("1.3",), "iirdsHov:DocumentCategory is part of iiRDS/H, which arrives in 1.3"),
+    "R48":   (("1.3",),
+              "iirds:is-translation-of arrives in 1.3: the term lists of 1.0 to 1.2 do not "
+              "have it, and the cached 1.0 has no section 6.10.2"),
     "R23":   (("1.2", "1.3"),
               "the half of M96.1's sentence that asks what the domain is; taken from "
               "M96.1 rather than written out, because a rule about the target of a "

@@ -112,6 +112,41 @@ because bytes rewritten as UTF-8 under the old declaration are refused.
 -- it raised `LookupError`, `ValueError` or `UnicodeError` for some -- under
 two new categories, `UNREADABLE_ENCODING` and `UNUSED_ENCODING`.
 
+**A JSON-LD metadata file is read whatever graph holds its statements, and a
+reader of the default graph alone is warned about.** JSON-LD 1.1, the syntax
+iiRDS names for `metadata.jsonld`, reads a document as a dataset, and a
+top-level object with an `@id` beside its `@graph` puts every statement in a
+named graph. The reader handed on only the default graph, so such a file was
+empty here: L9 reported every statement of `metadata.rdf` as missing from it,
+and C16.2 said an iiRDS/H package's JSON-LD carried no iiRDS metadata. Each
+question about what one file says -- L9's, C16.2's, and which file a finding's
+statement is in -- is now asked of the file's statements whatever graph holds
+them, a graph that repeats another counting once; the merged graph the other
+rules read is made of default graphs, as before. For a package with nothing
+else wrong, that takes the exit code from `1` to `0` where the file's graphs
+together state what `metadata.rdf` states -- unless its default graph, which
+is what the merge reads, holds a node without a name that a rule then finds
+twice, once from each file -- and from `0` to `1` where its default graph
+states that and a named graph states more, or repeats part of it around a node
+without a name, which is a second node (L9). C16.2 no longer fires for an
+iiRDS/H JSON-LD whose iiRDS metadata is in named graphs; where it fired, L9
+fired too. A new warning, L17, says that a reader asking for one graph --
+rdflib's `Graph()` is one -- sees none, or only part, of such a file. It is an
+interoperability rule, so `iirds check` does not run it and the moves above
+hold there with `-W` too; under `iirds lint -W` a package whose L9 error it
+takes the place of stays at `1`, and one with no `metadata.rdf` whose JSON-LD
+is in named graphs goes from `0` to `1`. A graph repeating another is counted
+once by the comparison the entry headed **Security** below describes; where a
+file's graphs hold more blank nodes outside trees than it compares -- eight --
+the two files are not compared, and L9 says so and names the limit rather than
+report a difference it has not found. A finding that names the file a
+statement is in, M30's among them, names `metadata.jsonld` too where only a
+named graph of it holds the statement. `iirds.parse_metadata_graphs` hands on
+the named graphs beside the default one, from the same parse, and
+`iirds.merge_graphs_of` joins one document's graphs as these questions read
+them; `iirds.parse_metadata` still hands on the default graph. The standard
+says nothing about graph names; `docs/divergences.md` records the reading.
+
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that
 builds a package with it, the command that checks that package, and the

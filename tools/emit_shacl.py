@@ -717,6 +717,8 @@ NOT_EXPRESSIBLE["R40"] = ("path resolution: whether a source names the content l
                           "dotted segment, a backslash -- and a shape matching the literal "
                           "spelling would pass three of the four ways to write it")
 NOT_EXPRESSIBLE["L9"] = "compares the RDF/XML and JSON-LD graphs before the merge SHACL would validate"
+NOT_EXPRESSIBLE["L17"] = ("asks which graph of the JSON-LD file a statement is in; a shapes file "
+                          "validates one graph, and the graph a statement came from is not in it")
 NOT_EXPRESSIBLE["R11"] = ("asks which metadata file a statement is in; a shapes file validates "
                           "one graph and the file it came from is not in it")
 NOT_EXPRESSIBLE["R18"] = ("asks which metadata file a statement is in; a shapes file "

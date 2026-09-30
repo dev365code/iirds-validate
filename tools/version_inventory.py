@@ -166,6 +166,7 @@ NAMES_NO_TERM = {
     "C16.2": "asks whether any metadata file mentions an iiRDS term at all",
     "L5": "asks whether a class is in an iiRDS namespace, not which class",
     "L9": "compares the two metadata files as graphs",
+    "L17": "asks which graph of metadata.jsonld a statement is in",
     "L13": "reads every name the ontology defines, to spot one it does not",
     "L14": "measures how far a namespace is from an iiRDS one, and reads the "
            "defined-term set to know it is not one",

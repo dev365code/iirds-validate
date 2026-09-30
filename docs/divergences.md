@@ -1164,6 +1164,51 @@ inside a literal, not a term of the graph; and a JSON-LD key that no context
 maps is dropped by the processor before any graph exists. Both are the
 parser's, and both are below this rule.
 
+## L9, C16.2 and L17 — statements in a named graph of `metadata.jsonld` (open)
+
+The standard names JSON-LD 1.1 for the syntax of `metadata.jsonld`, and says of
+the two metadata files, where both exist, that their content "MUST semantically
+match and be consistent with each other". JSON-LD 1.1 reads a document as an
+RDF dataset -- a default graph and any number of named graphs -- and a
+top-level object with an `@id` beside its `@graph` puts every statement in a
+graph of that name. The standard says nothing about graphs, default or named.
+Every JSON-LD example it gives is a top-level `@graph` with no `@id`, which is
+the default graph; an example is not a requirement.
+
+So each question here about what one file says is asked of that file's
+statements, whatever graph holds them, a graph that repeats another counting
+once: whether the two files say the same thing (L9), whether an iiRDS/H
+package's JSON-LD contains iiRDS metadata (C16.2), and which file a statement
+is in where a finding names it. L9 is an error on this reading both ways: a
+file whose graphs together say what `metadata.rdf` says passes, and one whose
+named graph says more fails. The merged graph every other rule reads is made
+of default graphs, as it was: a statement only a named graph holds is one a
+reader of the default graph never sees, and `metadata.rdf` is to contain all
+metadata in any case. A node without a name is a different node in each graph
+that holds it, as in each file, so the reading has two consequences. A graph
+repeating another whole, with nodes of its own, is the other graph again --
+counted once where the comparison can name its nodes, and where it holds more
+than eight blank nodes outside trees the files are not compared and L9 says
+so, a limit of this tool rather than a reading of the standard -- one that
+shares a node with another graph is not, since a blank node's label names one
+node across the document -- and one repeating part of it around such a node
+makes a second node, which L9 reports. And where a file's statements are split
+between its default graph and named graphs, and the default graph holds such a
+node, the merge, which reads default graphs, holds that node beside
+`metadata.rdf`'s: a rule that looks at it reports it twice, a count rule as a
+second value, though L9 finds the files alike; L17 names, among the graphs
+holding statements the default graph lacks, those that IRIs name, and counts
+the rest. rdflib reads a graph container (`@container: @graph`), and a graph
+object given as a property's value, into the default graph, where a JSON-LD
+1.1 processor makes each a named graph, so L17 does not see those shapes.
+
+A reader that asks a JSON-LD document for one graph is given its default
+graph, and from a file whose statements sit in a named graph it gets less, or
+nothing -- rdflib's `Graph()` is such a reader. L17 says so, as a warning,
+whatever L9 finds. Whether the standard means `metadata.jsonld` to state its
+metadata in the default graph, and whether "semantically match" compares
+statements whatever graph holds them, is a question for the Consortium.
+
 ## Where severity currently outruns the reading
 
 The rule here is that anything resting on this project's own reading is a
@@ -1187,6 +1232,10 @@ aspirational:
   reading below is this project's choice between two normative sentences, and
   a file whose name holds `%`, `#` or `?`, referenced that way, reports as an
   error.
+- **L9**, where `metadata.jsonld` holds statements in named graphs: the
+  standard says nothing of graphs, and the reading that asks what a file says
+  of all of them (above) is this project's, so an L9 error that rests on a
+  named graph rests on that reading.
 - ~~The Appendix B entry condition~~ **Corrected**: content findings from the
   MUST-level B rules now report as errors under iiRDS/A — which restricts content to the
   formats section 8.2.1 lists, iiRDS XHTML5 for structured text — and demote to warnings under every other profile, where the
@@ -1194,7 +1243,7 @@ aspirational:
   reading. The rule keeps its MUST priority (the sentences are MUSTs); the
   *runner* assigns the severity, because only it knows the profile. B10, a
   recommendation, is a warning in every profile. So the list above names L4,
-  M30, R8 and L2.
+  M30, R8, L2 and L9.
 
 One more case sits beside these and is not one of them. `ERROR S16` fires where no content rule
 got a parsed document for a file the package lists as content — including two

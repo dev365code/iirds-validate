@@ -232,7 +232,8 @@ def test_the_readme_lists_every_interoperability_rule_in_its_table():
     for rule_id in lint_ids:
         assert re.search(r"^\| %s \| " % re.escape(rule_id), readme, re.M), \
             "README.md's interoperability table has no row for %s" % rule_id
-    words = {12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen", 16: "Sixteen"}
+    words = {12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen", 16: "Sixteen",
+             17: "Seventeen"}
     assert "%s\ninterop" % words[len(lint_ids)] in readme or "%s interop" % words[len(lint_ids)] in readme, \
         "README.md does not say '%s interoperability rules'" % words[len(lint_ids)]
 

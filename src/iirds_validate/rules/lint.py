@@ -19,7 +19,7 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
-from ..model import DCTERMS, IIRDS_NAMESPACES, OWL, VCARD, VERSIONS, Violation
+from ..model import DCTERMS, IIRDS_NAMESPACES, METADATA_JSONLD, OWL, VCARD, VERSIONS, Violation
 from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
 from ..resources import version_terms
@@ -356,7 +356,25 @@ def l9_serialisations_disagree(ctx):
         return
 
     (name_a, graph_a), (name_b, graph_b) = sorted(ctx.per_source.items())
-    only_a, only_b = graph_difference(graph_a, graph_b)
+    try:
+        only_a, only_b = graph_difference(graph_a, graph_b)
+    except ValueError as refusal:
+        # The merge compares default graphs, and a named graph can take a file
+        # past the limit where its default graph is not; a graph the merge of
+        # one file's graphs could not count once always does. Past the limit
+        # the files are not compared, so they are shown neither to differ nor
+        # to agree, and this says so.
+        yield Violation("the two metadata serialisations were not compared",
+                        subject="META-INF", detail=str(refusal),
+                        fix="Nothing in either file is necessarily wrong. Two serialisations "
+                            "of one graph are compared in one pass wherever their blank "
+                            "nodes form trees; a blank node that two blank nodes point at, "
+                            "or a cycle of them, leaves a search whose cost grows faster "
+                            "than the files do, and this reader makes it over at most 8 "
+                            "blank nodes in a file, named graphs included. Give those nodes "
+                            "IRIs, or write each anonymous node under one parent, and the "
+                            "files are compared whatever their size.")
+        return
     if not only_a and not only_b:
         return
 
@@ -997,3 +1015,50 @@ def l16_relation_carries_a_literal(ctx):
                     "%s is empty, so it points at nothing" % _named(predicate),
                     subject=ctx.ref(subject),
                     detail="the element is there and carries neither a reference nor a value")
+
+
+@_lint("L17", "JSON-LD metadata should state its statements in the default graph",
+       prio="RECOMMENDED",
+       fix="Write the statements in the default graph -- a top-level @graph with no @id beside it. A reader that asks a JSON-LD document for one graph is given its default graph, and from a named graph it gets nothing.")
+def l17_jsonld_statements_in_a_named_graph(ctx):
+    """A JSON-LD file whose statements sit in a named graph.
+
+    JSON-LD 1.1, the syntax iiRDS names, reads a document as a dataset: a
+    default graph and named ones, and a top-level object with an `@id` beside
+    its `@graph` puts everything in a graph of that name. iiRDS names no
+    graph and asks only that the two files mean the same, so every question
+    here about what a file says is asked of its statements wherever they
+    sit, and L9 does not fire on a graph's name. A reader that asks for one
+    graph is given the default one, though -- rdflib's `Graph()` is such a
+    reader -- and from such a file it gets less, or nothing. The package is
+    not wrong and the reader it fails is real, so this is a warning.
+    """
+    graphs = ctx.graphs_of.get(METADATA_JSONLD) or {}
+    default = graphs.get(None)
+    # Named only where they hold something the default graph does not: a
+    # graph restating the default one hides nothing from its reader.
+    left_out = set(ctx.repeats.get(METADATA_JSONLD) or ())
+    named = [name for name, graph in graphs.items()
+             if name is not None and default is not None and name not in left_out
+             and any(triple not in default for triple in graph)]
+    if not named:
+        return
+    stated = len(ctx.per_source[METADATA_JSONLD])
+    missed = stated - len(graphs[None])
+    if missed <= 0:
+        return
+    # By name, and by count where a blank node names a graph: rdflib invents
+    # a new label for some with every parse, and a report that changed with
+    # it would say two things about one package.
+    iris = sorted(str(name) for name in named if not isinstance(name, BNode))
+    parts = iris[:3] + (["%d more" % (len(iris) - 3)] if len(iris) > 3 else [])
+    unnamed = len(named) - len(iris)
+    if unnamed:
+        parts.append("%d without a name" % unnamed)
+    where = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+    seen = "none of them" if missed == stated else "the other %d" % (stated - missed)
+    yield Violation("statements of metadata.jsonld are in a named graph, which a reader of the "
+                    "default graph does not see",
+                    subject=METADATA_JSONLD,
+                    detail="%d of its %d statement(s) are only in named graph(s) %s; a reader "
+                           "that asks for one graph sees %s" % (missed, stated, where, seen))

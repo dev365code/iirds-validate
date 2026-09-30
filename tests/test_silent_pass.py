@@ -144,11 +144,13 @@ def test_ordinary_entries_are_not_mistaken_for_escapes(make_package):
 def test_metadata_in_utf16_is_read_not_rejected(make_package):
     """rdflib decodes a bytes payload as UTF-8 unconditionally, so a document
     whose byte order mark says otherwise failed to parse at all. XML says the
-    BOM decides."""
+    BOM decides -- and that a declaration naming another encoding is a fatal
+    error (section 4.3.3), so the UTF-16 document here declares UTF-16."""
     for encoding in ("utf-16", "utf-8-sig"):
         report = runner.check(make_package(
             name="%s.iirds" % encoding,
-            metadata=MINIMAL_RDF.encode(encoding) if encoding != "utf-8-sig"
+            metadata=MINIMAL_RDF.replace('encoding="utf-8"', 'encoding="UTF-16"').encode(encoding)
+            if encoding != "utf-8-sig"
             else ("﻿" + MINIMAL_RDF).encode("utf-8")))
         assert report.ok, (encoding, [f.violation.message for f in report.findings])
 
@@ -160,8 +162,10 @@ def test_lint_does_not_report_clean_on_metadata_that_is_not_rdfxml(make_package,
     The lint path emits C9 the way it emits C16.x, and S2 stands. In every
     encoding: the first judge read the stored bytes, saw no element in a
     UTF-32 document, and passed it."""
+    declared = ' encoding="UTF-32"' if encoding == "utf-32" else ""
     report = runner.lint(make_package(
-        metadata='<?xml version="1.0"?><manual><title>hello</title></manual>'.encode(encoding)))
+        metadata=('<?xml version="1.0"%s?><manual><title>hello</title></manual>'
+                  % declared).encode(encoding)))
     assert not report.ok
     found = {f.rule.id for f in report.findings}
     assert "C9" in found and "S2" in found and "L5" not in found

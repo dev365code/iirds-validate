@@ -53,7 +53,7 @@ from ._package import (
 )
 from ._package import open_package as open  # noqa: A001 - deliberate, like gzip.open
 
-__version__ = "0.7.1"
+__version__ = "0.8.0"
 __all__ = ["CONTRADICTED_ENCODING", "IIRDS", "IirdsError", "MAX_COMPARED_BLANK_NODES", "MAX_METADATA_BYTES",
            "METADATA_JSONLD", "METADATA_RDF", "NOT_COMPARED", "NOT_RDFXML", "UNDECLARED_ENCODING",
            "UNREADABLE_ENCODING", "UNUSED_ENCODING", "PACKAGE_BASE", "PackError", "Package",

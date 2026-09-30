@@ -370,6 +370,23 @@ out ahead of anything else in flight from the release after 0.7.1: the fix for
 GHSA-qwv2-9vgj-vc2w shipped with 0.7.1, and the README and `SECURITY.md` say
 so.
 
+**Figures for this release, measured on this build.**
+Coverage of the standard is 172 of 280, of which 137 are held by a package;
+nothing in this release moves either figure. L17 is the one rule added,
+so the rule count goes to 242. A conformant package is checked by the same
+rules as a directory or an archive but for the archive's nine, which an
+unpacked container names under `notApplicable` as `unpacked`:
+the same package packed -- `194 rules checked` on this build -- and
+unpacked, where the count moves from 194 to 185. A conformance run says it
+for the fifteen lint rules it does not ask -- the interoperability rules less
+the two that are marked conformance, which it does ask. The reasons a report
+can give come to seven. The iiRDS/H reading asks the handover rules the
+iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
+reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
+R45, the iiRDS/A content formats. `toolVersion` still moves only at a
+release: over this project's whole history, no commit that changed
+a rule file has ever moved it.
+
 ## 0.7.1 — 2026-09-23
 
 **A legal package that passed on 0.6.3 can fail on 0.7.1**, and that is the

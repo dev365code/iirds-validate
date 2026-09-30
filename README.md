@@ -3,7 +3,7 @@
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
-[![spec obligations](https://img.shields.io/badge/spec_obligations-172_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
+[![spec obligations](https://img.shields.io/badge/spec_obligations-176_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
 [![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=bb6c2fb9" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 194 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=0a295012" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 198 rules checked" width="100%">
 
 ```console
 $ pip install iirds
@@ -70,7 +70,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  208 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+  212 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 $ echo $?
 1
 ```
@@ -120,7 +120,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=ad5bae11" alt="Coverage: 172 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=662f1dbb" alt="Coverage: 176 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -162,7 +162,7 @@ flowchart LR
 
 ## Honest coverage
 
-> **At a glance** — 241 rules across five editions and three profiles · 169 SHACL shapes
+> **At a glance** — 245 rules across five editions and three profiles · 173 SHACL shapes
 > carrying the language-neutral encoding · one pure-Python dependency (rdflib), zero for
 > the single-file `.pyz` · every number in this section is read by a test that fails the
 > build when it goes stale.
@@ -170,18 +170,18 @@ flowchart LR
 ```console
 $ iirds rules
 container  19/19    the ZIP and its layout  +4 of its own
-schema     135/135  the metadata graph  +35 of its own
+schema     135/135  the metadata graph  +39 of its own
 system     3/3      the run itself  +13 of its own
 content    -        the content files (Appendix B, section 8.2.1)  +16 of its own
 lint       -        will a consumer be able to use it  +16 of its own
 ```
 
-157 of 157 catalogued rules, plus 84 of this project's own.
+157 of 157 catalogued rules, plus 88 of this project's own.
 
 | kind | catalogued | this project |
 |---|---|---|
 | container (C\*) | 19 / 19 | 4 |
-| schema (M\*) | 135 / 135 | 35 |
+| schema (M\*) | 135 / 135 | 39 |
 | system (S\*) | 3 / 3 | 13 |
 | content (B\*) | — | 16 |
 | interoperability (L\*) | — | 16 |
@@ -190,20 +190,20 @@ Coverage of the catalogue is not coverage of the standard. The specification sta
 **280 absolute obligations**, counted by
 [`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
 [docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json); the rules currently cover
-**172 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
+**176 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
 re-measured on every release.
 
 > [!IMPORTANT]
 > A clean run means **nothing wrong in what we check** — never "conformant". Tools silent about this difference are selling a feeling.
 
-- **Every finding says what to do about it.** All 241 rules carry one imperative
+- **Every finding says what to do about it.** All 245 rules carry one imperative
   sentence naming the change. A test refuses a rule whose remedy is missing, shorter
   than a sentence, or opens by restating the requirement, and checks the imperative
   shape itself for a few named rules.
 - **Every rule that can fire has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 240 of the 241 have — the remaining one is a `MAY` with
+  produce a finding, and 244 of the 245 have — the remaining one is a `MAY` with
   nothing to violate.
-- **What is not established.** The 84 rules this project invented have no
+- **What is not established.** The 88 rules this project invented have no
   implementation elsewhere that this project knows of to compare them against. The SHACL shapes that encode
   some of them are this project's own second encoding, checked against the Python
   rule by rule, which catches a slip in translation but cannot confirm the reading; [docs/divergences.md](https://github.com/dev365code/iirds-validate/blob/main/docs/divergences.md)
@@ -297,7 +297,7 @@ written:
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
 | `64` when the argument parser rejected the command line: an option that is not one, a missing argument, a value outside a fixed list of choices (`serve --host 0.0.0.0`, which it accepts and the command refuses, is `2`) | `iirds check --iirds-version 9.9 fixtures/good.iirds; echo $?` | `64` |
-| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 194 run and 47 excused, no overlap, together the whole registry of 241; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
+| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 198 run and 47 excused, no overlap, together the whole registry of 245; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
 | The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
 | The ids that fire are the recorded ones | `make check` — the gate is `tools/rule_coverage.py --check`, which reads what a run observed, so a fresh checkout has nothing for it to read yet | a rule that stops firing stops the build |

@@ -277,6 +277,52 @@ def m13_2_selector_conforms_to(ctx):
                             "one dcterms:conformsTo", subject=ctx.ref(sel))
 
 
+#: The list section 6.3.1 points at: the Web Annotation Data Model's table of
+#: fragment specifications (https://www.w3.org/TR/annotation-model/#fragment-selector),
+#: each by the IRI the table gives it -- HTML, PDF, plain text, XML, RDF/XML,
+#: CSV, media, SVG and EPUB3, in the table's order.
+FRAGMENT_SPECIFICATIONS = (
+    "http://tools.ietf.org/rfc/rfc3236", "http://tools.ietf.org/rfc/rfc3778",
+    "http://tools.ietf.org/rfc/rfc5147", "http://tools.ietf.org/rfc/rfc3023",
+    "http://tools.ietf.org/rfc/rfc3870", "http://tools.ietf.org/rfc/rfc7111",
+    "http://www.w3.org/TR/media-frags/", "http://www.w3.org/TR/SVG/",
+    "http://www.idpf.org/epub/linking/cfi/epub-cfi.html",
+)
+
+
+@rule("R49", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("x6-3-1-reference-part-of-file-by-selector#5",),
+      title="dcterms:conformsTo on an iirds:Selector must name a fragment specification the "
+            "Web Annotation Data Model lists",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x6-3-1-reference-part-of-file-by-selector",
+      fix="Name the specification the selector's rdf:value is written in by the IRI the Web "
+          "Annotation Data Model's table of fragment selectors gives it: "
+          "http://tools.ietf.org/rfc/rfc3778 for a page of a PDF file, "
+          "http://www.w3.org/TR/media-frags/ for a time or region of a media file, and the "
+          "others in that table. A consumer compares the IRI with the table, so a "
+          "specification the table does not list, or one of its IRIs spelled another way, "
+          "leaves the value unreadable.")
+def r49_selector_names_a_listed_specification(ctx):
+    """Section 6.3.1: "Only a standard from the following list of fragment
+    selectors MUST be used: [https://www.w3.org/TR/annotation-model/#fragment-selector]."
+
+    Asked of the selectors that select by a value -- M13.1 and M13.2's
+    population; a range selects by its two ends, which are such selectors.
+    A value written as text is compared by its text, since JSON-LD writes an
+    IRI as a string unless its context says otherwise; anything else is
+    compared as the IRI it is, exactly, because the table names each
+    specification by one IRI and that is what a consumer looks for. A
+    selector with no dcterms:conformsTo at all is M13.2's.
+    """
+    for sel in _value_selectors(ctx):
+        for value in sorted(ctx.values(sel, DCTERMS.conformsTo), key=str):
+            if str(value) not in FRAGMENT_SPECIFICATIONS:
+                yield Violation("dcterms:conformsTo names no fragment specification the Web "
+                                "Annotation Data Model lists",
+                                subject=ctx.ref(sel), detail=ctx.ref(value))
+
+
 @rule("M14.1",
        fix="Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable.")
 def m14_1_range_start(ctx):
@@ -300,7 +346,11 @@ def m14_2_range_end(ctx):
       # other, so the id carries both claimants. This rule is not gated to the
       # handover profile and does not need to be: reporting a document with no
       # type outside iiRDS/H is section 6.5.1, which it was written for.
-      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3",),
+      # And section 6.5.1's sentence, whose other ways of being broken are
+      # R46's: a document with no type at all relates to none of the
+      # standardised ones either.
+      covers=("x8-3-2-1-restrictions-regarding-the-use-of-classes-and-instances#3",
+              "x6-5-1-types-of-documents-and-topics#1"),
        fix="Relate the Document to one of the standardised iiRDS document types. It is what a consumer uses to route a document — installation, maintenance, spare parts — before anyone opens it.")
 def m15_1_document_type(ctx):
     for doc in ctx.instances_of(T.Document):
@@ -460,7 +510,10 @@ def m24_1(ctx):
                             "iirds:has-next-sibling")
 
 
-@rule("M24.2", covers=("rdfclasses_core_DirectoryNode#2",),
+@rule("M24.2", covers=("rdfclasses_core_DirectoryNode#2",
+                        # "one" in section 6.9.1's sentence about a root: R47
+                        # holds the other half.
+                        "x6-9-1-directory-nodes#4"),
        fix="Keep one iirds:has-directory-structure-type and remove the rest. It says what kind of structure this is, and one node cannot be the root of two kinds at once.")
 def m24_2(ctx):
     yield from _at_most_one(ctx, T.DirectoryNode, T.has_directory_structure_type,
@@ -527,6 +580,38 @@ def m24_5_only_root_has_structure_type(ctx):
     for node in ctx.instances_of(T.DirectoryNode):
         if node in linked and ctx.has(node, T.has_directory_structure_type):
             yield Violation("only the root node of a directory structure may have "
+                            "iirds:has-directory-structure-type",
+                            subject=ctx.ref(node), detail=ctx.label_of(node))
+
+
+@rule("R47", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("x6-9-1-directory-nodes#4",),
+      title="every root iirds:DirectoryNode must have iirds:has-directory-structure-type",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x6-9-1-directory-nodes",
+      fix="Give the node iirds:has-directory-structure-type, naming the kind of structure it "
+          "begins -- iirds:TableOfContents, iirds:Index and the others. A node nothing points at "
+          "begins a structure, and a consumer that finds one without a type cannot tell what "
+          "the structure is for. If the node was meant to sit inside another structure, point "
+          "that structure's iirds:has-first-child or iirds:has-next-sibling at it instead.")
+def r47_every_root_has_a_structure_type(ctx):
+    """Section 6.9.1: "The root node of a directory structure MUST have one
+    property iirds:has-directory-structure-type."
+
+    M24.6 asks whether *a* root carries the property, and a second root
+    without one does not change its answer; the sentence binds every root. A
+    root is a node nothing points at by iirds:has-first-child or
+    iirds:has-next-sibling -- `_linked_nodes`, the reading M24.5 and M25 take
+    -- so a node left out of every level is one too, and is reported here
+    beside L3's warning that no root reaches it. A terminator is not a root.
+    M24.2 reports a second type; between them they hold "one".
+    """
+    linked = _linked_nodes(ctx)
+    closers = _closes_a_level(ctx)
+    for node in ctx.instances_of(T.DirectoryNode):
+        if (node not in linked and node not in closers
+                and not ctx.has(node, T.has_directory_structure_type)):
+            yield Violation("a root iirds:DirectoryNode has no "
                             "iirds:has-directory-structure-type",
                             subject=ctx.ref(node), detail=ctx.label_of(node))
 
@@ -970,6 +1055,72 @@ r19 = _target_rule(
     "consumer routing documents by type -- installation, maintenance, spare parts -- "
     "cannot route on a string it has no definition for. Until this rule existed, "
     "naming the type as text passed where leaving it out failed.")
+
+@rule("R46", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
+      variants=(), covers=("x6-5-1-types-of-documents-and-topics#1",),
+      title="iirds:Document must relate to a standardised iirds:DocumentType",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x6-5-1-types-of-documents-and-topics",
+      fix="Relate the Document to one of the document types the standard defines -- "
+          "iirds:OperatingInstructions, iirds:MaintenanceInstructions and the others under "
+          "iirds:DocumentType -- with iirds:has-document-type. A proprietary document type may "
+          "stand beside one of them but not in place of them: a consumer routes documents by "
+          "the standard's types, and a type it has no definition for routes nowhere.")
+def r46_standardised_document_type(ctx):
+    """Section 6.5.1: "Instances of the iirds:Document class MUST have one or
+    more relations to one of the standardized iirds:DocumentTypes defined in
+    iirds:InformationType > iirds:DocumentType", and the next sentence:
+    "Additional proprietary iirds:DocumentType instances MAY be used".
+
+    M15.1 reports a document with no document type at all. This reports one
+    whose document types are none of the standard's -- a proprietary one, an
+    instance of a proprietary subclass, a name the package never describes, a
+    term of the standard that is no document type, or text. R19 says of the
+    last two that the value is the wrong kind of thing; this says what that
+    leaves the document without. The standardised types are the ontology's own
+    instances of iirds:DocumentType, and each of the twenty is defined in
+    every edition. Both properties M15.1 accepts are read, as it reads them.
+    """
+    standard = ctx.ontology.instances_of(T.DocumentType)
+    for doc in ctx.instances_of(T.Document):
+        values = (ctx.values(doc, T.has_document_type)
+                  + ctx.values(doc, T.is_applicable_for_document_type))
+        if values and not any(value in standard for value in values):
+            yield Violation("iirds:Document relates to none of the standardised "
+                            "iirds:DocumentTypes",
+                            subject=ctx.ref(doc),
+                            detail=", ".join(sorted(ctx.ref(value) for value in values)))
+
+
+@rule("R48", kind="schema", prio="MUST", versions=("1.3",), variants=(),
+      covers=("x6-10-2-translation#2",),
+      title="information units related by iirds:is-translation-of must be versions of the "
+            "same iirds:InformationObject",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x6-10-2-translation",
+      fix="Relate both units to the same iirds:InformationObject with iirds:is-version-of. "
+          "The information object is what a translation shares with its original: a consumer "
+          "looking for the German version of a topic finds it through the object both are "
+          "versions of, and a pair with no object in common is two unrelated units that say "
+          "they are one.")
+def r48_translations_share_an_information_object(ctx):
+    """Section 6.10.2: "Information units that are related by
+    iirds:is-translation-of MUST have an iirds:is-version-of relation to the
+    same iirds:InformationObject."
+
+    Each pair the property relates is asked for one object both units are a
+    version of. Whether that object is typed right is the property's range,
+    which is not this sentence. iiRDS 1.3 is the first edition to define
+    iirds:is-translation-of.
+    """
+    pairs = sorted(ctx.graph.subject_objects(T.is_translation_of),
+                   key=lambda pair: (ctx.ref(pair[0]), ctx.ref(pair[1])))
+    for unit, original in pairs:
+        if not set(ctx.values(unit, T.is_version_of)) & set(ctx.values(original, T.is_version_of)):
+            yield Violation("a translation and its original are versions of no "
+                            "iirds:InformationObject in common",
+                            subject=ctx.ref(unit), detail=ctx.ref(original))
+
 
 r20 = _target_rule(
     "R20", (T.has_start_selector,), T.FragmentSelector,

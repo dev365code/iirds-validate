@@ -27,7 +27,7 @@ The cases here are about this tool alone.
                         → was nothing to run against.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      1 rule checked, 226 not applicable to this version/variant (226 never put -- the container would not open)
+      1 rule checked, 230 not applicable to this version/variant (230 never put -- the container would not open)
 
 Exit code 1.
 
@@ -56,7 +56,7 @@ rather than leaving a reader to assume they passed.
                         → showing it, so write the file with a tool that does not.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -88,7 +88,7 @@ with a file that ends in a newline.
                         → no structure or meaning.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -121,7 +121,7 @@ A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
                         → Add one if there is none; remove the extras if there are several.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -154,7 +154,7 @@ the unit that has it, so two of those under one unit read alike.
                         → a consumer no way to choose between them.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -175,7 +175,7 @@ names the unit and the values it found.
 
 **Now.**
 
-- 172 of 280 obligations covered
+- 176 of 280 obligations covered
 
 **Before 1.0.** at least 220 of 280 covered
 
@@ -206,7 +206,7 @@ every rule names its section or says it has none, that item is not done.
                         → case-sensitive, and use forward slashes.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -239,7 +239,7 @@ rules taken from the upstream catalogue fires on it.
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
     $ iirds check fixtures/what-it-catches/attribute-style.iirds
 
@@ -247,7 +247,7 @@ rules taken from the upstream catalogue fires on it.
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
-      194 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      198 rules checked, 33 not applicable to this version/variant (26 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Both pass, and the two reports are the same document: every key identical
 apart from the package's own path and digest, which is what a different

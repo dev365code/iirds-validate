@@ -46,6 +46,7 @@ from iirds_validate.model import ORGANISATION_TYPES, VCARD_KINDS, Severity  # no
 from iirds_validate.ontology import load as load_ontology  # noqa: E402
 from iirds_validate.registry import PROVENANCE, all_rules  # noqa: E402
 from iirds_validate.rules.lint import abstract_terms, relation_properties  # noqa: E402
+from iirds_validate.rules.schema import FRAGMENT_SPECIFICATIONS  # noqa: E402
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
 
 OUT = ROOT / "shapes"
@@ -532,6 +533,40 @@ SPARQL_FORMS = {
             [_points_at_an_instance_of("has-document-type", "DocumentType", "document_types"),
              _points_at_an_instance_of("is-applicable-for-document-type", "DocumentType",
                                        "document_types")]),
+    # Section 6.5.1's standardised clause: of the document types a document
+    # names, one must be the standard's own. The same list R19's shape uses,
+    # generated from the ontology Python reads, and the same two properties
+    # M15.1 accepts; a document naming none is M15.1's, so the target is the
+    # subjects of the two. The ontology declares no subclass of iirds:Document,
+    # so the data graph's closure is the whole of Python's.
+    "R46": ("subjects", "iirds:has-document-type, iirds:is-applicable-for-document-type",
+            ["""SELECT DISTINCT $this WHERE {
+  $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDocument> .
+  FILTER NOT EXISTS {
+    $this <%(ii)shas-document-type>|<%(ii)sis-applicable-for-document-type> ?type .
+    FILTER (?type IN (%(document_types)s)) } }"""]),
+    # Section 6.9.1's sentence about every root: a node nothing points at by
+    # has-first-child or has-next-sibling, carrying no structure type. The
+    # ontology makes iirds:nil a DirectoryNode, and a terminator is no root,
+    # so a node typed nil is left out as Python leaves `_closes_a_level` out.
+    "R47": ("fixed", ["""SELECT $this ?value WHERE {
+  ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDirectoryNode> .
+  FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)snil> }
+  FILTER (?value != <%(ii)snil>)
+  FILTER NOT EXISTS { ?parent <%(ii)shas-first-child>|<%(ii)shas-next-sibling> ?value }
+  FILTER NOT EXISTS { ?value <%(ii)shas-directory-structure-type> ?type } }"""]),
+    # Section 6.10.2: a translation and its original share an object.
+    "R48": ("subjects", "iirds:is-translation-of", ["""SELECT $this ?value WHERE {
+  $this <%(ii)sis-translation-of> ?value .
+  FILTER NOT EXISTS { $this <%(ii)sis-version-of> ?object . ?value <%(ii)sis-version-of> ?object } }"""]),
+    # Section 6.3.1's list, as the text of each value, of the selectors that
+    # select by one: the Selector closure the ontology gives, less ranges.
+    "R49": ("subjects", "dcterms:conformsTo", ["""SELECT DISTINCT $this ?value WHERE {
+  $this <%(dct)sconformsTo> ?value .
+  $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?class .
+  FILTER (?class IN (%(selector_classes)s))
+  FILTER NOT EXISTS { $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sRangeSelector> }
+  FILTER (STR(?value) NOT IN (%(fragment_specifications)s)) }"""]),
     # M19.4 became the family's fourth member instead of a fourth copy of it,
     # so its shape is the family's query rather than the one that used to sit
     # here, which asked `EXISTS { ?value ?p ?o }` and so let a literal and an
@@ -1198,7 +1233,14 @@ def build() -> dict:
                  "classification_domains": _term_list(
                      _ONTOLOGY.instances_of(T.ClassificationDomain)),
                  "vcard_kinds": _term_list(VCARD_KINDS | ORGANISATION_TYPES),
-                 "organisation_types": _term_list(ORGANISATION_TYPES)}
+                 "organisation_types": _term_list(ORGANISATION_TYPES),
+                 "dct": "http://purl.org/dc/terms/",
+                 # R49's two lists: the classes a value selector is typed with,
+                 # from the ontology, and the specifications the rule's own
+                 # table names, as strings -- the values are compared as text.
+                 "selector_classes": _term_list(_ONTOLOGY.subclasses_of(T.Selector)),
+                 "fragment_specifications": ", ".join(
+                     '"%s"' % iri for iri in sorted(FRAGMENT_SPECIFICATIONS))}
         lines = ["%s a sh:NodeShape ;" % sid]
         for item in metadata_lines(rule):
             lines.append("  %s ;" % item)

@@ -420,6 +420,74 @@ ivs:R36 a sh:NodeShape ;
           || !REGEX(STR(?value), "^[A-Za-z][A-Za-z0-9+.-]*:")
           || STR(?value) = "urn:iirds:package:") }""" ] .
 
+ivs:R46 a sh:NodeShape ;
+  rdfs:label "iirds:Document must relate to a standardised iirds:DocumentType" ;
+  sh:severity sh:Violation ;
+  sh:message "iirds:Document must relate to a standardised iirds:DocumentType" ;
+  ivm:ruleId "R46" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Relate the Document to one of the document types the standard defines -- iirds:OperatingInstructions, iirds:MaintenanceInstructions and the others under iirds:DocumentType -- with iirds:has-document-type. A proprietary document type may stand beside one of them but not in place of them: a consumer routes documents by the standard's types, and a type it has no definition for routes nowhere." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-5-1-types-of-documents-and-topics> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-5-1-types-of-documents-and-topics#1" ;
+  sh:targetSubjectsOf iirds:has-document-type, iirds:is-applicable-for-document-type ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this WHERE {
+  $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#Document> .
+  FILTER NOT EXISTS {
+    $this <http://iirds.tekom.de/iirds#has-document-type>|<http://iirds.tekom.de/iirds#is-applicable-for-document-type> ?type .
+    FILTER (?type IN (<http://iirds.tekom.de/iirds#AdministratorGuide>, <http://iirds.tekom.de/iirds#AssemblyInstructions>, <http://iirds.tekom.de/iirds#BillOfMaterials>, <http://iirds.tekom.de/iirds#CEDeclarationOfConformity>, <http://iirds.tekom.de/iirds#Certificate>, <http://iirds.tekom.de/iirds#ContractualDocument>, <http://iirds.tekom.de/iirds#ElectronicIdentificationPlate>, <http://iirds.tekom.de/iirds#IdentificationDocument>, <http://iirds.tekom.de/iirds#InstallationInstructions>, <http://iirds.tekom.de/iirds#MaintenanceInstructions>, <http://iirds.tekom.de/iirds#OperatingInstructions>, <http://iirds.tekom.de/iirds#PartsCatalog>, <http://iirds.tekom.de/iirds#Plan>, <http://iirds.tekom.de/iirds#QuickGuide>, <http://iirds.tekom.de/iirds#RepairInstructions>, <http://iirds.tekom.de/iirds#SafetyInstructions>, <http://iirds.tekom.de/iirds#SalesCatalog>, <http://iirds.tekom.de/iirds#Specification>, <http://iirds.tekom.de/iirds#TechnicalDrawingDiagram>, <http://iirds.tekom.de/iirds#TransportInstructions>)) } }""" ] .
+
+ivs:R47 a sh:NodeShape ;
+  rdfs:label "every root iirds:DirectoryNode must have iirds:has-directory-structure-type" ;
+  sh:severity sh:Violation ;
+  sh:message "every root iirds:DirectoryNode must have iirds:has-directory-structure-type" ;
+  ivm:ruleId "R47" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Give the node iirds:has-directory-structure-type, naming the kind of structure it begins -- iirds:TableOfContents, iirds:Index and the others. A node nothing points at begins a structure, and a consumer that finds one without a type cannot tell what the structure is for. If the node was meant to sit inside another structure, point that structure's iirds:has-first-child or iirds:has-next-sibling at it instead." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-9-1-directory-nodes> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-9-1-directory-nodes#4" ;
+  sh:targetNode ivs:R47 ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#DirectoryNode> .
+  FILTER NOT EXISTS { ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#nil> }
+  FILTER (?value != <http://iirds.tekom.de/iirds#nil>)
+  FILTER NOT EXISTS { ?parent <http://iirds.tekom.de/iirds#has-first-child>|<http://iirds.tekom.de/iirds#has-next-sibling> ?value }
+  FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#has-directory-structure-type> ?type } }""" ] .
+
+ivs:R48 a sh:NodeShape ;
+  rdfs:label "information units related by iirds:is-translation-of must be versions of the same iirds:InformationObject" ;
+  sh:severity sh:Violation ;
+  sh:message "information units related by iirds:is-translation-of must be versions of the same iirds:InformationObject" ;
+  ivm:ruleId "R48" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Relate both units to the same iirds:InformationObject with iirds:is-version-of. The information object is what a translation shares with its original: a consumer looking for the German version of a topic finds it through the object both are versions of, and a pair with no object in common is two unrelated units that say they are one." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-10-2-translation> ;
+  ivm:versions "1.3" ;
+  ivm:covers "x6-10-2-translation#2" ;
+  sh:targetSubjectsOf iirds:is-translation-of ;
+  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  $this <http://iirds.tekom.de/iirds#is-translation-of> ?value .
+  FILTER NOT EXISTS { $this <http://iirds.tekom.de/iirds#is-version-of> ?object . ?value <http://iirds.tekom.de/iirds#is-version-of> ?object } }""" ] .
+
+ivs:R49 a sh:NodeShape ;
+  rdfs:label "dcterms:conformsTo on an iirds:Selector must name a fragment specification the Web Annotation Data Model lists" ;
+  sh:severity sh:Violation ;
+  sh:message "dcterms:conformsTo on an iirds:Selector must name a fragment specification the Web Annotation Data Model lists" ;
+  ivm:ruleId "R49" ;
+  ivm:ruleSource "iirds-validate" ;
+  sh:description "Name the specification the selector's rdf:value is written in by the IRI the Web Annotation Data Model's table of fragment selectors gives it: http://tools.ietf.org/rfc/rfc3778 for a page of a PDF file, http://www.w3.org/TR/media-frags/ for a time or region of a media file, and the others in that table. A consumer compares the IRI with the table, so a specification the table does not list, or one of its IRIs spelled another way, leaves the value unreadable." ;
+  dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-3-1-reference-part-of-file-by-selector> ;
+  ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "x6-3-1-reference-part-of-file-by-selector#5" ;
+  sh:targetSubjectsOf dcterms:conformsTo ;
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
+  $this <http://purl.org/dc/terms/conformsTo> ?value .
+  $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?class .
+  FILTER (?class IN (<http://iirds.tekom.de/iirds#FragmentSelector>, <http://iirds.tekom.de/iirds#RangeSelector>, <http://iirds.tekom.de/iirds#Selector>))
+  FILTER NOT EXISTS { $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#RangeSelector> }
+  FILTER (STR(?value) NOT IN ("http://tools.ietf.org/rfc/rfc3023", "http://tools.ietf.org/rfc/rfc3236", "http://tools.ietf.org/rfc/rfc3778", "http://tools.ietf.org/rfc/rfc3870", "http://tools.ietf.org/rfc/rfc5147", "http://tools.ietf.org/rfc/rfc7111", "http://www.idpf.org/epub/linking/cfi/epub-cfi.html", "http://www.w3.org/TR/SVG/", "http://www.w3.org/TR/media-frags/")) }""" ] .
+
 ivs:S4 a sh:NodeShape ;
   rdfs:label "iirds:iiRDSVersion must name a published version of the standard" ;
   sh:severity sh:Violation ;

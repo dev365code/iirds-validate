@@ -1840,6 +1840,29 @@ def test_the_shape_targets_every_property_its_python_reads():
             assert path in target, (rule_id, path, target.strip())
 
 
+def test_four_sentences_of_chapter_6_are_found_the_same_way_by_both(tmp_path):
+    """R46 to R49 on every package tests/test_obl_G.py builds, breaking their
+    sentences and keeping them: the shapes report what the Python reports,
+    rule for rule, over every emitted rule and not only the four."""
+    import test_obl_G as obligations
+
+    groups = (obligations.DOCUMENTS_THAT_BREAK_IT, obligations.DOCUMENTS_THAT_KEEP_IT,
+              obligations.STRUCTURES_THAT_BREAK_IT, obligations.STRUCTURES_THAT_KEEP_IT,
+              obligations.TRANSLATIONS_THAT_BREAK_IT, obligations.TRANSLATIONS_THAT_KEEP_IT)
+    cases = [obligations.with_nodes(nodes) for group in groups for nodes in group.values()]
+    cases += [obligations._fragment(written)
+              for written in obligations.FRAGMENTS_THAT_BREAK_IT.values()]
+    cases += [obligations._fragment(obligations._standard(iri)) for iri in obligations.LISTED]
+    seen = set()
+    for index, metadata in enumerate(cases):
+        package = build_package(tmp_path, "chapter6_%d.iirds" % index, metadata=metadata)
+        python = {f.rule.id for f in runner.run(package, runner.ALL_KINDS).findings} & EMITTED
+        shacl = shacl_fired(metadata)
+        assert shacl == python, (index, sorted(shacl - python), sorted(python - shacl))
+        seen |= python
+    assert {"R46", "R47", "R48", "R49"} <= seen, sorted(seen)
+
+
 def test_every_emitted_shape_has_fired_somewhere_in_this_file():
     never_fired = EMITTED - SH_FIRED_EVER
     assert len(SH_FIRED_EVER) > 50, (

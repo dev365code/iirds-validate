@@ -94,6 +94,7 @@ classificationIdentifier = IIRDS["classificationIdentifier"]
 classificationVersion = IIRDS["classificationVersion"]
 
 is_version_of = IIRDS["is-version-of"]
+is_translation_of = IIRDS["is-translation-of"]
 is_replacement_of = IIRDS["is-replacement-of"]
 is_applicable_for_document_type = IIRDS["is-applicable-for-document-type"]
 relates_to_information_unit = IIRDS["relates-to-information-unit"]

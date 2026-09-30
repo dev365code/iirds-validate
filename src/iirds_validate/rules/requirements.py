@@ -48,6 +48,18 @@ NOT_ABOUT_THE_PACKAGE = {
     "dfn-iirds-zip-archive#1":
         "\"All processing applications MUST support this implementation\" — the same, "
         "about tools rather than about containers.",
+    "b-4-global-attributes#4":
+        "\"An iiRDS XHTML5 consumer MUST be able to ignore or modify class values without "
+        "loss of meaning\" — what a consumer must be able to do. What a package does about "
+        "it is the sentence before, that class is used only for styling.",
+    "b-5-2-document-metadata#2":
+        "\"Link types are always ASCII case-insensitive and MUST be compared as such\" — "
+        "an obligation on whoever compares them, this reader among them: B5 compares rel "
+        "without regard to case. No package can breach it.",
+    "b-7-styling#4":
+        "\"An additional CSS stylesheet MAY be included, but content processing MUST NOT "
+        "rely on the stylesheet\" — an obligation on the processing, not on the package "
+        "that includes the stylesheet.",
 }
 
 #: Appendix A's vocabulary tables describe each term in a "Definition:" and a
@@ -184,6 +196,11 @@ NOT_DECIDABLE_ALONE = {
         "enclosing package is the subject of no rendition, which is M8 -- and so does "
         "the archive, which is a different question from checking this sentence. The "
         "neighbouring sentence, which needs no such decision, is R6.",
+    "x8-3-1-3-optional-checksums-for-packages#4":
+        "\"The checksum MUST NOT be part of the iiRDS package, but MUST be provided "
+        "separately.\" This id is the second clause: what travels beside the container, "
+        "which nothing holding the container can see. The first clause, that the checksum "
+        "is not inside the package, is #3, and one container decides it.",
 }
 
 HANDOVER = "http://iirds.tekom.de/iirds/domain/handover#"

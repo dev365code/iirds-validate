@@ -845,6 +845,14 @@ NAMED_CASES = {
     # graph, profiles and nesting, content and formats -- each under its own
     # marker, so that branches adding claims at once touch different lines.
     # --- evidence: G metadata graph ---
+    "x6-5-1-types-of-documents-and-topics#1":
+        "test_obl_G:test_a_document_related_to_no_standardised_document_type_is_reported",
+    "x6-9-1-directory-nodes#4":
+        "test_obl_G:test_a_root_directory_node_without_one_structure_type_is_reported",
+    "x6-10-2-translation#2":
+        "test_obl_G:test_translations_that_share_no_information_object_are_reported",
+    "x6-3-1-reference-part-of-file-by-selector#5":
+        "test_obl_G:test_a_fragment_selector_conforming_to_a_specification_off_the_list_is_reported",
 
     # --- evidence: H profiles & nesting ---
 
@@ -893,7 +901,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 172, len(CLAIMED)
+    assert len(CLAIMED) == 176, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

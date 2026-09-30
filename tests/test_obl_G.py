@@ -135,6 +135,14 @@ STRUCTURES_THAT_BREAK_IT = {
                                                     IIRDS + "Index"), FIRST, CLOSED) + CHILD),
     "a node nothing points at, with no type": (_node("root", TOC, FIRST, CLOSED) + CHILD
                                                + _node("stray", CLOSED)),
+    # A topic is not a directory node (section 6.11.1 makes the two disjoint),
+    # so a sibling link from one leaves the node it points at a root.
+    "a second root only a topic points at": (
+        _node("root", TOC, FIRST, CLOSED) + CHILD
+        + _node("second", _to("has-first-child", "urn:test:child2"), CLOSED)
+        + _node("child2", CLOSED)
+        + '\n  <rdf:Description rdf:about="urn:test:topic1">'
+          '<iirds:has-next-sibling rdf:resource="urn:test:second"/></rdf:Description>\n'),
 }
 
 #: The sentence binds roots and says nothing of the nodes inside a level.
@@ -184,13 +192,31 @@ TRANSLATIONS_THAT_BREAK_IT = {
     "only the translation is": OBJECT_A + _unit("en") + _unit("de", TRANSLATES, OF_A),
     "of two different objects": (OBJECT_A + OBJECT_B + _unit("en", OF_A)
                                  + _unit("de", TRANSLATES, OF_B)),
+    "of one topic rather than an object": (_unit("t0") + _unit("en", _to("is-version-of", "urn:test:t0"))
+                                           + _unit("de", TRANSLATES, _to("is-version-of", "urn:test:t0"))),
+    "of one piece of text": (_unit("en", "<iirds:is-version-of>object-a</iirds:is-version-of>")
+                             + _unit("de", TRANSLATES,
+                                     "<iirds:is-version-of>object-a</iirds:is-version-of>")),
+    "of a name the package never describes": (_unit("en", OF_A) + _unit("de", TRANSLATES, OF_A)),
+    "a version of nothing, of an original described elsewhere": _unit(
+        "de", _to("is-translation-of", "http://example.com/child/en")),
 }
 
 #: The sentence asks for one object in common and nothing of units that are
-#: not translations.
+#: not translations. Where the original is not an information unit this
+#: package describes -- one in a nested package, whose metadata the parent
+#: must not carry (section 5.3), or one delivered elsewhere -- a unit that is
+#: a version of an object may share it, and nothing here can say it does
+#: not; and the sentence binds information units, not renditions.
 TRANSLATIONS_THAT_KEEP_IT = {
     "of the same object": OBJECT_A + _unit("en", OF_A) + _unit("de", TRANSLATES, OF_A),
     "no translation at all": OBJECT_A + OBJECT_B + _unit("en", OF_A) + _unit("de", OF_B),
+    "of an original described elsewhere": (OBJECT_A + _unit(
+        "de", _to("is-translation-of", "http://example.com/child/en"), OF_A)),
+    "between two renditions": (
+        '\n  <iirds:Rendition rdf:about="urn:test:r-de"><iirds:is-translation-of '
+        'rdf:resource="urn:test:r-en"/></iirds:Rendition>\n'
+        '  <iirds:Rendition rdf:about="urn:test:r-en"/>\n'),
 }
 
 
@@ -245,6 +271,23 @@ def _standard(iri):
     return '<dcterms:conformsTo rdf:resource="%s"/>' % iri
 
 
+RANGE_TOPIC = FRAGMENT_TOPIC.replace(
+    "<iirds:FragmentSelector>%s<rdf:value>page=10</rdf:value></iirds:FragmentSelector>",
+    "<iirds:RangeSelector>%s<rdf:value>10-17</rdf:value>"
+    "<iirds:has-start-selector><iirds:FragmentSelector>"
+    '<dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>'
+    "<rdf:value>page=10</rdf:value></iirds:FragmentSelector></iirds:has-start-selector>"
+    "<iirds:has-end-selector><iirds:FragmentSelector>"
+    '<dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>'
+    "<rdf:value>page=17</rdf:value></iirds:FragmentSelector></iirds:has-end-selector>"
+    "</iirds:RangeSelector>")
+assert RANGE_TOPIC != FRAGMENT_TOPIC
+
+
+def _range(conforms_to):
+    return SELECTOR_NS.replace("</rdf:RDF>", (RANGE_TOPIC % conforms_to) + "</rdf:RDF>")
+
+
 #: Each names something that is not one of the table's IRIs.
 FRAGMENTS_THAT_BREAK_IT = {
     "a specification the table does not list": _standard("http://www.w3.org/TR/xpath-31/"),
@@ -259,9 +302,17 @@ def test_a_fragment_selector_conforming_to_a_specification_off_the_list_is_repor
     is what a consumer compares against."""
     claiming = claimants("x6-3-1-reference-part-of-file-by-selector#5")
     for iri in LISTED:
-        for written in (_standard(iri), "<dcterms:conformsTo>%s</dcterms:conformsTo>" % iri):
+        for written in (_standard(iri), "<dcterms:conformsTo>%s</dcterms:conformsTo>" % iri,
+                        "<dcterms:conformsTo>\n        %s\n      </dcterms:conformsTo>" % iri):
             found = fired(tmp_path, "fragment_ok.iirds", _fragment(written))
             assert not claiming & found, (written, sorted(claiming & found))
     for shape, written in FRAGMENTS_THAT_BREAK_IT.items():
         found = fired(tmp_path, "fragment_bad.iirds", _fragment(written))
         assert claiming & found, (shape, sorted(found))
+    # A range that names a specification of its own names it as a selector,
+    # and the sentence binds it; a range naming none (Example 13) is left to
+    # its ends, which are fragment selectors.
+    found = fired(tmp_path, "range_bad.iirds", _range(_standard("http://example.org/own-syntax")))
+    assert claiming & found, ("a range naming its own syntax", sorted(found))
+    found = fired(tmp_path, "range_ok.iirds", _range(""))
+    assert not claiming & found, ("a range naming nothing", sorted(claiming & found))

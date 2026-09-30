@@ -546,27 +546,46 @@ SPARQL_FORMS = {
     $this <%(ii)shas-document-type>|<%(ii)sis-applicable-for-document-type> ?type .
     FILTER (?type IN (%(document_types)s)) } }"""]),
     # Section 6.9.1's sentence about every root: a node nothing points at by
-    # has-first-child or has-next-sibling, carrying no structure type. The
+    # has-first-child or has-next-sibling from another directory node that is
+    # not a terminator, carrying no structure type. The
     # ontology makes iirds:nil a DirectoryNode, and a terminator is no root,
     # so a node typed nil is left out as Python leaves `_closes_a_level` out.
     "R47": ("fixed", ["""SELECT $this ?value WHERE {
   ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDirectoryNode> .
   FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)snil> }
   FILTER (?value != <%(ii)snil>)
-  FILTER NOT EXISTS { ?parent <%(ii)shas-first-child>|<%(ii)shas-next-sibling> ?value }
+  FILTER NOT EXISTS {
+    ?parent <%(ii)shas-first-child>|<%(ii)shas-next-sibling> ?value .
+    ?parent <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sDirectoryNode> .
+    FILTER NOT EXISTS { ?parent <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)snil> }
+    FILTER (?parent != ?value && ?parent != <%(ii)snil>) }
   FILTER NOT EXISTS { ?value <%(ii)shas-directory-structure-type> ?type } }"""]),
-    # Section 6.10.2: a translation and its original share an object.
-    "R48": ("subjects", "iirds:is-translation-of", ["""SELECT $this ?value WHERE {
+    # Section 6.10.2: a translation and its original share an object. Asked
+    # where the translation is an information unit; where the original is
+    # not one described here, only of a translation that is a version of no
+    # information object at all.
+    "R48": ("subjects", "iirds:is-translation-of", ["""SELECT DISTINCT $this ?value WHERE {
   $this <%(ii)sis-translation-of> ?value .
-  FILTER NOT EXISTS { $this <%(ii)sis-version-of> ?object . ?value <%(ii)sis-version-of> ?object } }"""]),
-    # Section 6.3.1's list, as the text of each value, of the selectors that
-    # select by one: the Selector closure the ontology gives, less ranges.
+  $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?unit .
+  FILTER (?unit IN (%(information_units)s))
+  { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?other .
+    FILTER (?other IN (%(information_units)s))
+    FILTER NOT EXISTS { $this <%(ii)sis-version-of> ?object . ?value <%(ii)sis-version-of> ?object .
+                        ?object <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sInformationObject> } }
+  UNION
+  { FILTER NOT EXISTS { ?value <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?elsewhere .
+                        FILTER (?elsewhere IN (%(information_units)s)) }
+    FILTER NOT EXISTS { $this <%(ii)sis-version-of> ?any .
+                        ?any <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sInformationObject> } } }"""]),
+    # Section 6.3.1's list, as the text of each value, of every selector: the
+    # Selector closure the ontology gives. A blank node has no text a
+    # conforming engine will give STR, so it is named before STR is asked.
     "R49": ("subjects", "dcterms:conformsTo", ["""SELECT DISTINCT $this ?value WHERE {
   $this <%(dct)sconformsTo> ?value .
   $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* ?class .
   FILTER (?class IN (%(selector_classes)s))
-  FILTER NOT EXISTS { $this <%(rdf)stype>/<%(rdfs)ssubClassOf>* <%(ii)sRangeSelector> }
-  FILTER (STR(?value) NOT IN (%(fragment_specifications)s)) }"""]),
+  FILTER (isBlank(?value)
+          || REPLACE(STR(?value), "^\\\\\\\\s+|\\\\\\\\s+$", "") NOT IN (%(fragment_specifications)s)) }"""]),
     # M19.4 became the family's fourth member instead of a fourth copy of it,
     # so its shape is the family's query rather than the one that used to sit
     # here, which asked `EXISTS { ?value ?p ?o }` and so let a literal and an
@@ -1239,6 +1258,8 @@ def build() -> dict:
                  # from the ontology, and the specifications the rule's own
                  # table names, as strings -- the values are compared as text.
                  "selector_classes": _term_list(_ONTOLOGY.subclasses_of(T.Selector)),
+                 # R48's: the classes an information unit is typed with.
+                 "information_units": _term_list(_ONTOLOGY.subclasses_of(T.InformationUnit)),
                  "fragment_specifications": ", ".join(
                      '"%s"' % iri for iri in sorted(FRAGMENT_SPECIFICATIONS))}
         lines = ["%s a sh:NodeShape ;" % sid]

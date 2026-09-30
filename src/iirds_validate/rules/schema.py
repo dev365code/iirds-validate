@@ -307,17 +307,24 @@ def r49_selector_names_a_listed_specification(ctx):
     """Section 6.3.1: "Only a standard from the following list of fragment
     selectors MUST be used: [https://www.w3.org/TR/annotation-model/#fragment-selector]."
 
-    Asked of the selectors that select by a value -- M13.1 and M13.2's
-    population; a range selects by its two ends, which are such selectors.
-    A value written as text is compared by its text, since JSON-LD writes an
+    Asked of every selector. A range selects by its two ends, and the
+    specification's own Example 13 is a range that names no specification
+    of its own, which gives this nothing to read -- but a range that does
+    name one names it as a selector, and the sentence binds it. M13.1 and
+    M13.2 leave ranges out, since a range need carry neither property.
+    A value written as text is compared by its text, white space at its ends
+    aside, since JSON-LD writes an
     IRI as a string unless its context says otherwise; anything else is
     compared as the IRI it is, exactly, because the table names each
     specification by one IRI and that is what a consumer looks for. A
     selector with no dcterms:conformsTo at all is M13.2's.
     """
-    for sel in _value_selectors(ctx):
+    for sel in ctx.instances_of(T.Selector):
         for value in sorted(ctx.values(sel, DCTERMS.conformsTo), key=str):
-            if str(value) not in FRAGMENT_SPECIFICATIONS:
+            # An element's text keeps the white space a writer indented it
+            # with, and none of it is part of an IRI.
+            text = str(value).strip() if isinstance(value, Literal) else str(value)
+            if text not in FRAGMENT_SPECIFICATIONS:
                 yield Violation("dcterms:conformsTo names no fragment specification the Web "
                                 "Annotation Data Model lists",
                                 subject=ctx.ref(sel), detail=ctx.ref(value))
@@ -600,16 +607,23 @@ def r47_every_root_has_a_structure_type(ctx):
 
     M24.6 asks whether *a* root carries the property, and a second root
     without one does not change its answer; the sentence binds every root. A
-    root is a node nothing points at by iirds:has-first-child or
-    iirds:has-next-sibling -- `_linked_nodes`, the reading M24.5 and M25 take
-    -- so a node left out of every level is one too, and is reported here
-    beside L3's warning that no root reaches it. A terminator is not a root.
+    root is a node no other directory node points at by iirds:has-first-child
+    or iirds:has-next-sibling, so a node left out of every level is one too,
+    and is reported here beside L3's warning that no root reaches it. The
+    pointer has to come from a directory node: `_linked_nodes`, which M24.5
+    and M25 read, counts one from anything, and a topic or the package
+    pointing at a second root -- section 6.11.1 makes neither a directory
+    node -- hid the root from this rule. A terminator is not a root, and it
+    does not make the node it points from one.
     M24.2 reports a second type; between them they hold "one".
     """
-    linked = _linked_nodes(ctx)
     closers = _closes_a_level(ctx)
+    nodes = set(ctx.instances_of(T.DirectoryNode)) - closers
+    pointed = {child for prop in (T.has_first_child, T.has_next_sibling)
+               for parent, child in ctx.graph.subject_objects(prop)
+               if parent in nodes and parent != child}
     for node in ctx.instances_of(T.DirectoryNode):
-        if (node not in linked and node not in closers
+        if (node not in pointed and node not in closers
                 and not ctx.has(node, T.has_directory_structure_type)):
             yield Violation("a root iirds:DirectoryNode has no "
                             "iirds:has-directory-structure-type",
@@ -1079,7 +1093,8 @@ def r46_standardised_document_type(ctx):
     last two that the value is the wrong kind of thing; this says what that
     leaves the document without. The standardised types are the ontology's own
     instances of iirds:DocumentType, and each of the twenty is defined in
-    every edition. Both properties M15.1 accepts are read, as it reads them.
+    every edition. The sentence names no property, so both M15.1 accepts
+    are read, as it reads them.
     """
     standard = ctx.ontology.instances_of(T.DocumentType)
     for doc in ctx.instances_of(T.Document):
@@ -1108,15 +1123,26 @@ def r48_translations_share_an_information_object(ctx):
     iirds:is-translation-of MUST have an iirds:is-version-of relation to the
     same iirds:InformationObject."
 
-    Each pair the property relates is asked for one object both units are a
-    version of. Whether that object is typed right is the property's range,
-    which is not this sentence. iiRDS 1.3 is the first edition to define
-    iirds:is-translation-of.
+    The sentence binds information units, so a pair is asked about where the
+    translation is one. Where the original is one this package describes too,
+    the two are asked for an object both are a version of, and the sentence
+    names its class: a topic, a piece of text or a name the package never
+    describes, shared, is not an information object this package describes.
+    Where the original is not described here -- it sits in a nested package,
+    whose metadata the parent must not carry (section 5.3), or in another
+    delivery -- its object cannot be read, and the translation is reported
+    only where it is a version of no information object at all. iiRDS 1.3 is
+    the first edition to define iirds:is-translation-of.
     """
     pairs = sorted(ctx.graph.subject_objects(T.is_translation_of),
                    key=lambda pair: (ctx.ref(pair[0]), ctx.ref(pair[1])))
     for unit, original in pairs:
-        if not set(ctx.values(unit, T.is_version_of)) & set(ctx.values(original, T.is_version_of)):
+        if not ctx.is_instance(unit, T.InformationUnit):
+            continue
+        versions = set(ctx.values(unit, T.is_version_of))
+        if ctx.is_instance(original, T.InformationUnit):
+            versions &= set(ctx.values(original, T.is_version_of))
+        if not any(ctx.is_instance(obj, T.InformationObject) for obj in versions):
             yield Violation("a translation and its original are versions of no "
                             "iirds:InformationObject in common",
                             subject=ctx.ref(unit), detail=ctx.ref(original))

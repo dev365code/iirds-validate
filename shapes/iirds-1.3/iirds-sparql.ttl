@@ -452,7 +452,11 @@ ivs:R47 a sh:NodeShape ;
   ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#DirectoryNode> .
   FILTER NOT EXISTS { ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#nil> }
   FILTER (?value != <http://iirds.tekom.de/iirds#nil>)
-  FILTER NOT EXISTS { ?parent <http://iirds.tekom.de/iirds#has-first-child>|<http://iirds.tekom.de/iirds#has-next-sibling> ?value }
+  FILTER NOT EXISTS {
+    ?parent <http://iirds.tekom.de/iirds#has-first-child>|<http://iirds.tekom.de/iirds#has-next-sibling> ?value .
+    ?parent <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#DirectoryNode> .
+    FILTER NOT EXISTS { ?parent <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#nil> }
+    FILTER (?parent != ?value && ?parent != <http://iirds.tekom.de/iirds#nil>) }
   FILTER NOT EXISTS { ?value <http://iirds.tekom.de/iirds#has-directory-structure-type> ?type } }""" ] .
 
 ivs:R48 a sh:NodeShape ;
@@ -466,9 +470,19 @@ ivs:R48 a sh:NodeShape ;
   ivm:versions "1.3" ;
   ivm:covers "x6-10-2-translation#2" ;
   sh:targetSubjectsOf iirds:is-translation-of ;
-  sh:sparql [ sh:select """SELECT $this ?value WHERE {
+  sh:sparql [ sh:select """SELECT DISTINCT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#is-translation-of> ?value .
-  FILTER NOT EXISTS { $this <http://iirds.tekom.de/iirds#is-version-of> ?object . ?value <http://iirds.tekom.de/iirds#is-version-of> ?object } }""" ] .
+  $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?unit .
+  FILTER (?unit IN (<http://iirds.tekom.de/iirds#Document>, <http://iirds.tekom.de/iirds#Fragment>, <http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Package>, <http://iirds.tekom.de/iirds#Topic>))
+  { ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?other .
+    FILTER (?other IN (<http://iirds.tekom.de/iirds#Document>, <http://iirds.tekom.de/iirds#Fragment>, <http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Package>, <http://iirds.tekom.de/iirds#Topic>))
+    FILTER NOT EXISTS { $this <http://iirds.tekom.de/iirds#is-version-of> ?object . ?value <http://iirds.tekom.de/iirds#is-version-of> ?object .
+                        ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> } }
+  UNION
+  { FILTER NOT EXISTS { ?value <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?elsewhere .
+                        FILTER (?elsewhere IN (<http://iirds.tekom.de/iirds#Document>, <http://iirds.tekom.de/iirds#Fragment>, <http://iirds.tekom.de/iirds#InformationUnit>, <http://iirds.tekom.de/iirds#Package>, <http://iirds.tekom.de/iirds#Topic>)) }
+    FILTER NOT EXISTS { $this <http://iirds.tekom.de/iirds#is-version-of> ?any .
+                        ?any <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#InformationObject> } } }""" ] .
 
 ivs:R49 a sh:NodeShape ;
   rdfs:label "dcterms:conformsTo on an iirds:Selector must name a fragment specification the Web Annotation Data Model lists" ;
@@ -485,8 +499,8 @@ ivs:R49 a sh:NodeShape ;
   $this <http://purl.org/dc/terms/conformsTo> ?value .
   $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* ?class .
   FILTER (?class IN (<http://iirds.tekom.de/iirds#FragmentSelector>, <http://iirds.tekom.de/iirds#RangeSelector>, <http://iirds.tekom.de/iirds#Selector>))
-  FILTER NOT EXISTS { $this <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>/<http://www.w3.org/2000/01/rdf-schema#subClassOf>* <http://iirds.tekom.de/iirds#RangeSelector> }
-  FILTER (STR(?value) NOT IN ("http://tools.ietf.org/rfc/rfc3023", "http://tools.ietf.org/rfc/rfc3236", "http://tools.ietf.org/rfc/rfc3778", "http://tools.ietf.org/rfc/rfc3870", "http://tools.ietf.org/rfc/rfc5147", "http://tools.ietf.org/rfc/rfc7111", "http://www.idpf.org/epub/linking/cfi/epub-cfi.html", "http://www.w3.org/TR/SVG/", "http://www.w3.org/TR/media-frags/")) }""" ] .
+  FILTER (isBlank(?value)
+          || REPLACE(STR(?value), "^\\\\s+|\\\\s+$", "") NOT IN ("http://tools.ietf.org/rfc/rfc3023", "http://tools.ietf.org/rfc/rfc3236", "http://tools.ietf.org/rfc/rfc3778", "http://tools.ietf.org/rfc/rfc3870", "http://tools.ietf.org/rfc/rfc5147", "http://tools.ietf.org/rfc/rfc7111", "http://www.idpf.org/epub/linking/cfi/epub-cfi.html", "http://www.w3.org/TR/SVG/", "http://www.w3.org/TR/media-frags/")) }""" ] .
 
 ivs:S4 a sh:NodeShape ;
   rdfs:label "iirds:iiRDSVersion must name a published version of the standard" ;

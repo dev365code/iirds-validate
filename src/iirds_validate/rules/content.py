@@ -742,8 +742,15 @@ SVG_NAMESPACE = b"http://www.w3.org/2000/svg"
 #: declaration, a comment or two and a document type declaration.
 SNIFF = 4096
 
-_PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->|<!DOCTYPE(?:[^\[>]|\[.*?\])*>", re.S)
+#: No quantifier inside a repeated alternation: `<!DOCTYPE(?:[^[>]|\[.*?\])*>`
+#: backtracked exponentially over an internal subset left open, and some ninety
+#: bytes of `[][][]...` held a whole run. An internal subset is one bracketed
+#: run with no `]` inside it; one that does contain one ends the match early,
+#: and the file is then not known to be anything, which is the safe answer.
+_PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->|<!DOCTYPE[^\[>]*(?:\[[^\]]*\])?[^>]*>", re.S)
 _START = re.compile(rb"<(?:([A-Za-z_][\w.-]*):)?([A-Za-z_][\w.-]*)([^>]*)>", re.S)
+_ENTITY = re.compile(rb"<!ENTITY\s+([A-Za-z_][\w.-]*)\s+([\"'])(.*?)\2\s*>", re.S)
+_ENTITY_REFERENCE = re.compile(rb"&([A-Za-z_][\w.-]*);")
 
 
 def _first_element(head: bytes):
@@ -757,10 +764,13 @@ def _first_element(head: bytes):
     """
     text = head[3:] if head.startswith(b"\xef\xbb\xbf") else head
     position = 0
+    entities = {}
     while True:
         prolog = _PROLOG.match(text, position)
         if not prolog or prolog.end() == position:
             break
+        if prolog.group(0).startswith(b"<!DOCTYPE"):
+            entities.update((m.group(1), m.group(3)) for m in _ENTITY.finditer(prolog.group(0)))
         position = prolog.end()
     start = _START.match(text, position)
     if not start:
@@ -768,7 +778,15 @@ def _first_element(head: bytes):
     prefix, local, attributes = start.groups()
     declared = b"xmlns:" + prefix if prefix else b"xmlns"
     bound = re.search(rb"(?:^|\s)" + re.escape(declared) + rb"\s*=\s*([\"'])(.*?)\1", attributes, re.S)
-    return (bound.group(2) if bound else b"", local)
+    namespace = bound.group(2) if bound else b""
+    # Older Illustrator writes it through an entity its document type
+    # declaration defines -- `xmlns="&ns_svg;"`. A value that is exactly one
+    # such reference is that entity's text, taken as written: one level, the
+    # way the file itself says it, and nothing expanded inside it.
+    whole = _ENTITY_REFERENCE.fullmatch(namespace)
+    if whole and whole.group(1) in entities:
+        namespace = entities[whole.group(1)]
+    return (namespace, local)
 
 
 def _gunzipped(head: bytes):
@@ -940,6 +958,15 @@ def _is_mp4_video(head: bytes) -> bool:
             and head[8:12] not in _AUDIO_BRANDS | _IMAGE_BRANDS)
 
 
+def _is_mp4_audio(head: bytes) -> bool:
+    """An ISO base media file whose brand says audio-only MPEG-4."""
+    return len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in _AUDIO_BRANDS
+
+
+def _is_audio_by_bytes(head: bytes) -> bool:
+    return _is_mp3(head) or _is_mp4_audio(head)
+
+
 def _is_mp3(head: bytes) -> bool:
     """An ID3v2 tag, or an MPEG audio Layer III frame header: eleven sync
     bits, layer 01, a bitrate index that is neither free nor bad, and a
@@ -951,17 +978,24 @@ def _is_mp3(head: bytes) -> bool:
             and (head[2] >> 2) & 3 != 3)
 
 
-def _media(ctx, family, element, recognised, others, other_element):
+def _media(ctx, family, element, recognised, others, other_element, other_recognised):
     """Every file that is `family` content: declared so, played by a page's
     `element` -- its `src`, or a `<source>` inside it -- or recognised by its
-    first bytes. A file the package or a page gives to another family is left
-    to that family: an audio-only MPEG-4 declared as audio is not a video for
+    first bytes. A file the package or its bytes give to another family is left
+    to that family, whatever element plays it: `<video src="narration.mp3">`
+    with a caption track is how a page shows captioned audio, and a file the
+    metadata declares as audio and that is MP3 is not a video that failed to be
+    an MPEG-4. Nor is an audio-only MPEG-4 declared as audio a video for
     carrying the boxes a video does."""
     found = set(_renditions_declared_as(ctx, family))
-    found |= {name for kind, attribute, name in _pointed_at(ctx)
-              if kind == element and attribute == "src"}
-    elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
-    elsewhere |= {name for kind, _attribute, name in _pointed_at(ctx) if kind == other_element}
+    declared_elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
+    for kind, attribute, name in _pointed_at(ctx):
+        if kind == element and attribute == "src" and name not in declared_elsewhere:
+            head = _sniff(ctx, name)
+            if head is None or not other_recognised(head):
+                found.add(name)
+    elsewhere = declared_elsewhere | {name for kind, _attribute, name in _pointed_at(ctx)
+                                      if kind == other_element}
     for name in _content_files(ctx):
         if name in found or name in elsewhere:
             continue
@@ -971,15 +1005,17 @@ def _media(ctx, family, element, recognised, others, other_element):
     return found
 
 
-def _named_for_its_family(ctx, family, extension, what, element, recognised, others, other_element):
+def _named_for_its_family(ctx, family, extension, what, element, recognised, others, other_element,
+                          other_recognised):
     """Every file that is `family` content, not named `extension`."""
-    for name in sorted(_media(ctx, family, element, recognised, others, other_element)):
+    for name in sorted(_media(ctx, family, element, recognised, others, other_element,
+                              other_recognised)):
         if not name.lower().endswith(extension):
             yield Violation("%s content does not use the %s file extension" % (what, extension),
                             subject=name)
 
 
-@rule("R44", covers=("x8-2-1-3-video-formats#2",), kind="content", prio="MUST", versions=(),
+@rule("R44", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as video in an iiRDS/A package must use the .mp4 extension",
       fix="Name the video file .mp4 and update every iirds:source that points at it. Section "
@@ -988,25 +1024,32 @@ def _named_for_its_family(ctx, family, extension, what, element, recognised, oth
 def r44_video_extension(ctx):
     """Video content is what a rendition declares with a video/ media type,
     any subtype; what a page plays with `<video>`; and a file whose first box
-    is an MPEG-4 file type that is not audio-only or a still image. The
-    sentence binds all three, and reading only the first passed every video a
-    page played. Not the encoding sentence beside it, which the index holds
-    without the codecs that complete it."""
+    is an MPEG-4 file type that is not audio-only or a still image.
+
+    It claims no sentence. "The file extension MUST be .mp4" binds every
+    video, and a video in a format with no signature here -- WebM, Ogg --
+    that the metadata declares as something else and no page plays is not
+    recognised, the same reason R43 claims none. Not the encoding sentence
+    beside it either, which the index holds without the codecs that complete
+    it."""
     yield from _named_for_its_family(ctx, "video/", ".mp4", "video", "video", _is_mp4_video,
-                                     ("audio/", "image/"), "audio")
+                                     ("audio/", "image/"), "audio", _is_audio_by_bytes)
 
 
-@rule("R45", covers=("x8-2-1-4-audio-formats#2",), kind="content", prio="MUST", versions=(),
+@rule("R45", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as audio in an iiRDS/A package must use the .mp3 extension",
       fix="Name the audio file .mp3 and update every iirds:source that points at it. Section "
           "8.2.1.4 fixes the extension alongside the encoding.")
 def r45_audio_extension(ctx):
     """As R44, for audio/, for `<audio>` on a page, and for a file that opens
-    with an ID3 tag or an MPEG audio Layer III frame. Whether the bytes are
-    MP3 to ISO/IEC 11172-3 throughout is a question for a decoder."""
+    with an ID3 tag or an MPEG audio Layer III frame -- and for R44's reason
+    it claims no sentence: audio in a format with no signature here, declared
+    as something else and played by no page, is not recognised. Whether the
+    bytes are MP3 to ISO/IEC 11172-3 throughout is a question for a
+    decoder."""
     yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_mp3,
-                                     ("video/", "image/"), "video")
+                                     ("video/", "image/"), "video", _is_mp4_video)
 
 
 @rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),

@@ -148,6 +148,11 @@ def test_outside_iirds_a_a_linked_page_is_not_held_to_the_iirds_a_sentence(make_
 # ---------------------------------------------------------------------------
 # x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
 # x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+#
+# Read further than before -- what a page plays, MPEG-4 and MP3 by their
+# bytes -- and still not claimed: a video or audio file in a format with no
+# signature here, declared as something else and played by no page, is not
+# recognised. These cases hold what the rules do read.
 # ---------------------------------------------------------------------------
 
 MP4 = b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00isomiso2" + b"\x00" * 16
@@ -216,3 +221,59 @@ def test_a_reference_to_another_host_is_not_a_file_in_the_package(make_package):
     report = _linked(make_package, '<video src="//cdn/clip.webm"></video>',
                      (("content/cdn/clip.webm", b"\x00" * 32), ("cdn/clip.webm", b"\x00" * 32)), "v4.iirds")
     assert not _subjects(report, "R44"), sorted(f.rule.id for f in report.findings)
+
+
+def test_an_svg_whose_namespace_is_an_entity_is_an_svg(make_package):
+    """Older Illustrator writes the namespace through an entity its document
+    type declaration defines -- `xmlns="&ns_svg;"` -- and the file is an SVG
+    all the same."""
+    illustrator = (b'<?xml version="1.0" encoding="utf-8"?>\n'
+                   b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+                   b'"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [\n'
+                   b'\t<!ENTITY ns_svg "http://www.w3.org/2000/svg">\n'
+                   b'\t<!ENTITY ns_xlink "http://www.w3.org/1999/xlink">\n]>\n'
+                   b'<svg version="1.1" xmlns="&ns_svg;" xmlns:xlink="&ns_xlink;" width="1" height="1"/>\n')
+    report = _linked(make_package, '<img src="figure.xml" alt=""/>',
+                     (("content/figure.xml", illustrator),), "s6.iirds")
+    assert _subjects(report, "R42") == ["content/figure.xml"], sorted(f.rule.id for f in report.findings)
+
+
+def _with_media(make_package, media_type, source, body, markup, name, *extra):
+    """The fixture's page carrying `markup`, and one more rendition: `source`,
+    declared as `media_type`."""
+    metadata = A_PROFILE.replace(
+        "</rdf:RDF>",
+        '  <iirds:Topic rdf:about="urn:test:t1"><iirds:title>t</iirds:title><iirds:has-rendition>'
+        '<iirds:Rendition><iirds:format>%s</iirds:format><iirds:source>%s</iirds:source>'
+        '</iirds:Rendition></iirds:has-rendition></iirds:Topic>\n</rdf:RDF>' % (media_type, source))
+    return runner.check(make_package(name=name, metadata=metadata, content=(),
+                                     extra=(("content/topic1.xhtml", PAGE.format(markup)),
+                                            (source, body)) + tuple(extra)))
+
+
+def test_audio_a_page_presents_through_video_is_audio(make_package):
+    """`<video src="narration.mp3">` with a caption track is how a page shows
+    captioned audio. The file is declared as audio and is MP3: the page's
+    element does not make it a video that failed to be an MP4."""
+    report = _with_media(make_package, "audio/mpeg", "content/narration.mp3", MP3,
+                         '<video src="narration.mp3"><track kind="captions" src="n.vtt"/></video>',
+                         "a4.iirds", ("content/n.vtt", b"WEBVTT\n"))
+    assert not _subjects(report, "R44") and not _subjects(report, "R45"), \
+        sorted(f.rule.id for f in report.findings)
+    video = _with_media(make_package, "video/mp4", "content/clip.mp4", MP4,
+                        '<audio src="clip.mp4"></audio>', "a5.iirds")
+    assert not _subjects(video, "R44") and not _subjects(video, "R45"), \
+        sorted(f.rule.id for f in video.findings)
+
+
+def test_a_document_type_declaration_left_open_is_read_in_bounded_time():
+    """A file opening `<!DOCTYPE [][][]...` with its internal subset never closed
+    made the sniff backtrack exponentially: some ninety bytes held a whole run."""
+    import time
+
+    from iirds_validate.rules.content import SNIFF, _first_element
+
+    started = time.perf_counter()
+    _first_element((b"<!DOCTYPE " + b"[]" * SNIFF)[:SNIFF])
+    _first_element(b"<!DOCTYPE " + b"[]" * 28)
+    assert time.perf_counter() - started < 1.0

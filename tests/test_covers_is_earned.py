@@ -855,10 +855,6 @@ NAMED_CASES = {
         "test_obl_c:test_an_svg_a_page_shows_under_another_name_is_refused",
     "x8-2-1-1-text-formats#2":
         "test_obl_c:test_an_xhtml_page_a_page_links_to_is_named_xhtml",
-    "x8-2-1-3-video-formats#2":
-        "test_obl_c:test_a_video_a_page_plays_is_named_mp4",
-    "x8-2-1-4-audio-formats#2":
-        "test_obl_c:test_audio_a_page_plays_is_named_mp3",
 
 }
 
@@ -903,7 +899,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 177, len(CLAIMED)
+    assert len(CLAIMED) == 175, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

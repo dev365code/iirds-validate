@@ -93,8 +93,9 @@ refused by name, as it is without a mark: already so under a UTF-8 mark, from
 `0` to `1` under a UTF-16 or UTF-32 one. The
 refusal names the encoding the bytes are in, the one declared, and the
 section. A declaration agrees with a UTF-16 or UTF-32 mark when it gives the
-family's IANA name, in either byte order, or the byte-order name the mark
-has; a document with no declaration at all is read if it is UTF-8 or UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
+family's IANA name -- `UTF-16` or `ISO-10646-UCS-2`, `UTF-32` or
+`ISO-10646-UCS-4`, the names section 4.3.3 gives -- in either byte order, or
+the byte-order name the mark has, and contradicts any other mark; a document with no declaration at all is read if it is UTF-8 or UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
 for a declaration. The other declarations naming an encoding outside those this
 reader decodes -- UTF-8, UTF-16, UTF-32 and the encodings that read one
 character from each byte -- were refused already, in the codec's words or the

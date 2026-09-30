@@ -323,7 +323,8 @@ def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 
 
-@pytest.mark.parametrize("declared", ["UTF-16", "UTF-16LE", "cp037"])
+@pytest.mark.parametrize("declared", ["UTF-16", "UTF-16LE", "cp037", "ISO-10646-UCS-2",
+                                      "ISO-10646-UCS-4"])
 def test_a_declaration_that_reads_ascii_as_other_text_is_refused(declared):
     """Bytes all under 128 are the same text only under a code page that keeps
     ASCII where it is; these read them as other characters."""
@@ -398,6 +399,13 @@ def _marked(mark, codec, declared):
     (b"\xff\xfe", "utf-16-le", "UTF-16BE", "UTF-16LE"),
     (b"\xff\xfe\x00\x00", "utf-32-le", "utf-8", "UTF-32LE"),
     (b"", "utf-16-le", "windows-1252", "UTF-16LE"),
+    # The names section 4.3.3 gives beside UTF-16 and UTF-32, behind the
+    # other family's mark: a contradiction, as the family name is.
+    (b"\xff\xfe", "utf-16-le", "ISO-10646-UCS-4", "UTF-16LE"),
+    (b"\xff\xfe\x00\x00", "utf-32-le", "ISO-10646-UCS-2", "UTF-32LE"),
+    (b"\xef\xbb\xbf", "utf-8", "ISO-10646-UCS-2", "UTF-8"),
+    (b"\xef\xbb\xbf", "utf-8", "ISO-10646-UCS-4", "UTF-8"),
+    (b"", "utf-16-be", "ISO-10646-UCS-4", "UTF-16BE"),
 ])
 def test_a_declaration_its_bytes_contradict_is_refused(mark, codec, declared, said):
     """XML makes a document arriving in an encoding other than the one it
@@ -436,6 +444,19 @@ def test_a_spelling_that_is_not_the_iana_name_is_not_read_under_a_mark():
     the name section 4.3.3 asks for."""
     graph, error = _parsed(_marked(b"\xff\xfe", "utf-16-le", "utf16"))
     assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+
+
+@pytest.mark.parametrize("mark,codec,declared", [
+    (b"\xff\xfe", "utf-16-le", "ISO_10646_UCS_2"),
+    (b"\xff\xfe\x00\x00", "utf-32-le", "iso10646ucs4"),
+    (b"\xff\xfe", "utf-16-le", "utf_16"),
+])
+def test_another_spelling_of_a_family_name_is_not_read_under_its_own_mark(mark, codec, declared):
+    """IANA registers `ISO-10646-UCS-2` and `UTF-16`; a spelling that differs
+    by its separators is a name this reader does not read, and not a
+    contradiction of a mark it would agree with if spelled right."""
+    graph, error = _parsed(_marked(mark, codec, declared))
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 
 
 def test_a_declaration_pushed_far_along_is_still_read_against_the_mark():

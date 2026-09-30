@@ -231,9 +231,17 @@ _DECLARED = re.compile(br'^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?\sencoding\s*=\s*(["\'
 _ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
 
 #: The two encodings XML requires beside UTF-8, by name with case, `-`, `_`
-#: and `.` set aside. Every other encoding a document is decoded under, to be
-#: compared with UTF-8, is one that reads a character from each byte.
-_UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
+#: and `.` set aside -- with ISO-10646-UCS-2 and ISO-10646-UCS-4, the names
+#: section 4.3.3 gives beside them for the same encodings of Unicode. Every
+#: other encoding a document is decoded under, to be compared with UTF-8, is
+#: one that reads a character from each byte.
+_UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
+                          "iso10646ucs2", "iso10646ucs4"})
+
+#: The codec each of the two UCS names is read with. Python answers to
+#: neither name, and a name read under no codec at all was a document read
+#: under nothing.
+_UCS_CODECS = {"iso10646ucs2": "utf-16", "iso10646ucs4": "utf-32"}
 
 #: Names Python gives a code page that differs from one Windows machine to
 #: the next, and that no other system has: a declaration of one would be read
@@ -495,7 +503,7 @@ def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
             or not (normal in _UTF16_OR_32 or _one_character_a_byte(declared))):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     body = stored[3:] if stored.startswith(b"\xef\xbb\xbf") else stored
-    theirs, ours = _decoded(body, declared), _decoded(body, "utf-8")
+    theirs, ours = _decoded(body, _UCS_CODECS.get(normal, declared)), _decoded(body, "utf-8")
     if theirs is None and ours is None:
         return None          # neither reads it, and the parser says so itself
     if theirs is None or ours is None or theirs != ours:
@@ -520,10 +528,12 @@ _AGREEING = {
     "UTF-32BE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32be"}),
 }
 
-#: Spellings of UTF-16 and UTF-32 that are not their IANA names: Python's
-#: codecs answer to them, and a declaration of one is a name this reader does
-#: not read, not one it can hold against the mark.
-_UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be"})
+#: Spellings of UTF-16 and UTF-32, and of the two UCS names, that are not
+#: their IANA names: `utf16` and `ISO_10646_UCS_2` among them, whether or not
+#: Python's codecs answer to them. A declaration of one is a name this reader
+#: does not read, not one it can hold against the mark.
+_UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
+                               "iso10646ucs2", "iso10646ucs4"})
 
 #: The `encoding=` of a declaration in a document already decoded, as far as
 #: the quote that opens its value.

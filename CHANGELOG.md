@@ -139,7 +139,9 @@ is in named graphs goes from `0` to `1`. A graph repeating another is counted
 once by the comparison the entry headed **Security** below describes; where a
 file's graphs hold more blank nodes outside trees than it compares -- eight --
 the two files are not compared, and L9 says so and names the limit rather than
-report a difference it has not found. A finding that names the file a
+report a difference it has not found. Where the default graphs agree and a
+named graph takes the file past the limit, a package with nothing else wrong
+goes from `0` to `1`. A finding that names the file a
 statement is in, M30's among them, names `metadata.jsonld` too where only a
 named graph of it holds the statement. `iirds.parse_metadata_graphs` hands on
 the named graphs beside the default one, from the same parse, and

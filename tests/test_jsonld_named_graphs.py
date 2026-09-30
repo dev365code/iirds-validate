@@ -611,3 +611,63 @@ def test_a_language_tag_is_compared_without_regard_to_case(make_package):
     assert iirds.graph_difference(one, other) == ([], [])
     assert len(iirds.merge_sources({iirds.METADATA_RDF: one,
                                     iirds.METADATA_JSONLD: other})) == len(one)
+
+
+_TOC_RDF = """<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:iirds="http://iirds.tekom.de/iirds#">
+  <iirds:Package rdf:about="urn:test:package">
+    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>
+    <iirds:title>Test package</iirds:title>
+  </iirds:Package>
+  <iirds:Topic rdf:about="urn:test:topic1">
+    <iirds:title xml:lang="de">Ein Thema</iirds:title>
+    <iirds:has-rendition rdf:resource="urn:test:rendition1"/>
+  </iirds:Topic>
+  <iirds:Rendition rdf:about="urn:test:rendition1">
+    <iirds:format>application/xhtml+xml</iirds:format>
+    <iirds:source>content/topic1.xhtml</iirds:source>
+  </iirds:Rendition>
+  <iirds:DirectoryNode rdf:about="urn:test:toc">
+    <iirds:has-directory-structure-type rdf:resource="http://iirds.tekom.de/iirds#TableOfContents"/>
+    <iirds:has-next-sibling rdf:resource="http://iirds.tekom.de/iirds#nil"/>
+    <iirds:has-first-child>
+      <iirds:DirectoryNode>
+        <iirds:relates-to-information-unit rdf:resource="urn:test:topic1"/>
+        <iirds:has-next-sibling rdf:resource="http://iirds.tekom.de/iirds#nil"/>
+      </iirds:DirectoryNode>
+    </iirds:has-first-child>
+  </iirds:DirectoryNode>
+</rdf:RDF>
+"""
+
+
+def _toc_jsonld(language):
+    ii = "http://iirds.tekom.de/iirds#"
+    return json.dumps({"@graph": [
+        {"@id": "urn:test:package", "@type": ii + "Package",
+         ii + "iiRDSVersion": "1.3", ii + "title": "Test package"},
+        {"@id": "urn:test:topic1", "@type": ii + "Topic",
+         ii + "title": {"@value": "Ein Thema", "@language": language},
+         ii + "has-rendition": {"@id": "urn:test:rendition1"}},
+        {"@id": "urn:test:rendition1", "@type": ii + "Rendition",
+         ii + "format": "application/xhtml+xml", ii + "source": "content/topic1.xhtml"},
+        {"@id": "urn:test:toc", "@type": ii + "DirectoryNode",
+         ii + "has-directory-structure-type": {"@id": ii + "TableOfContents"},
+         ii + "has-next-sibling": {"@id": ii + "nil"},
+         ii + "has-first-child": {"@type": ii + "DirectoryNode",
+                                  ii + "relates-to-information-unit": {"@id": "urn:test:topic1"},
+                                  ii + "has-next-sibling": {"@id": ii + "nil"}}}]})
+
+
+def test_a_language_tag_case_does_not_double_what_hangs_off_an_anonymous_node(make_package):
+    """The merge reads a file that repeats the one before it once. Read as two
+    files, the anonymous node under the table of contents was two nodes, and
+    M24.3 counted two first children where each file has one."""
+    same = runner.check(make_package(metadata=_TOC_RDF, jsonld=_toc_jsonld("de")))
+    assert same.ok, [(f.rule.id, f.violation.message) for f in same.findings]
+    upper = runner.check(make_package(metadata=_TOC_RDF, jsonld=_toc_jsonld("DE")))
+    assert upper.ok, [(f.rule.id, f.violation.message) for f in upper.findings]
+    package = iirds.open(make_package(metadata=_TOC_RDF, jsonld=_toc_jsonld("DE")))
+    alone = iirds.open(make_package(name="alone.iirds", metadata=_TOC_RDF))
+    assert len(package.graph) == len(alone.graph), (len(package.graph), len(alone.graph))

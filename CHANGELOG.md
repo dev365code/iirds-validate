@@ -99,7 +99,10 @@ refusal names the encoding the bytes are in, the one declared, and the
 section. A declaration agrees with a UTF-16 or UTF-32 mark when it gives the
 family's IANA name -- `UTF-16` or `ISO-10646-UCS-2`, `UTF-32` or
 `ISO-10646-UCS-4`, the names section 4.3.3 gives -- in either byte order, or
-the byte-order name the mark has, and contradicts any other mark; a document with no declaration at all is read if it is UTF-8 or UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
+the byte-order name the mark has, and contradicts any other mark; without a
+mark, a declaration of either UCS name is read as that family and refused as
+reading differently, where it was refused by name, the exit code staying
+`1`; a document with no declaration at all is read if it is UTF-8 or UTF-16. A processing instruction such as `<?xml-stylesheet` is not taken
 for a declaration. The other declarations naming an encoding outside those this
 reader decodes -- UTF-8, UTF-16, UTF-32 and the encodings that read one
 character from each byte -- were refused already, in the codec's words or the
@@ -168,8 +171,8 @@ once. For a package with nothing else wrong whose files differ only there,
 that takes the exit code from `1` to `0`: L9 no longer reports them, and a
 rule that counted what hangs off an anonymous node twice, once from each
 file, counts it once. The name L9 prints for an anonymous node carrying such
-a tag changes. `iirds.graph_difference` and `iirds.merge_sources` read tags
-the same way.
+a tag changes. `iirds.graph_difference`, `iirds.merge_sources` and the graph
+`iirds.open` hands on read tags the same way.
 
 **A page of what this catches, generated from what the commands print.**
 `docs/what-it-catches.md` shows each kind of defect as the command that

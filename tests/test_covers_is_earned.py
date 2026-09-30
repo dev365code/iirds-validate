@@ -840,6 +840,16 @@ NAMED_CASES = {
         "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
     "rdfclasses_core_Rendition#2":
         "test_cardinality_rules_fire:test_the_row_is_answered_by_a_rule_that_claims_it",
+
+    # Claims added from here on are grouped by what they read -- the metadata
+    # graph, profiles and nesting, content and formats -- each under its own
+    # marker, so that branches adding claims at once touch different lines.
+    # --- evidence: G metadata graph ---
+
+    # --- evidence: H profiles & nesting ---
+
+    # --- evidence: C content & formats ---
+
 }
 
 

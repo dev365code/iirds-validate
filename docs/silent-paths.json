@@ -1,14 +1,14 @@
 {
  "counts": {
-  "branch": 1,
+  "branch": 2,
   "finding": 1,
-  "other": 1,
-  "silent": 10
+  "other": 2,
+  "silent": 12
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
   "container.py": "3a3fba813cb7815aa2ce9b5c8741877a57c5b837d25573bb89a7fd9fe7965937",
-  "content.py": "8da51678e83e3bafcda3a00b8bbdd4ab3f97a5580b7c397d0dea197ae68c3c83",
+  "content.py": "5628363cf6ce36514fd727fd9c7ed4170afa612f19df4580d0194ea2818a7e7f",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
   "lint.py": "2fe90c426073c2845d85fffbce0980f2bdcd6cf4e7f95d67d58fabceb8797b94",
   "requirements.py": "7236153b7b5086558c5e737196b9ce9e257c39c3c4189d4a232c9096d7207e13",
@@ -20,6 +20,10 @@
   "content.py": {
    "_bytes_of :: raise": "other",
    "_declares_entities :: return False [3]": "silent",
+   "_first_element :: break": "other",
+   "_first_element :: while True:": "branch",
+   "_gunzipped :: return None": "silent",
+   "_pointed_at :: continue": "silent",
    "b3_only_listed_elements :: continue": "silent"
   },
   "lint.py": {

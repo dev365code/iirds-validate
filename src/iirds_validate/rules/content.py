@@ -17,9 +17,11 @@ package itself claims is iiRDS XHTML5.
 """
 from __future__ import annotations
 
+import posixpath
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
+import zlib
 
 from iirds import UnreadableMethod
 
@@ -30,6 +32,7 @@ from ..registry import rule
 from .container import CONTENT_LIST
 
 XHTML_FORMAT = "application/xhtml+xml"
+XHTML_NAMESPACE = b"http://www.w3.org/1999/xhtml"
 
 #: Content arrives from a supplier just as metadata does, and the guard that
 #: refuses entity declarations was only ever applied to metadata. A few hundred
@@ -400,6 +403,74 @@ def _local(tag) -> str:
     return tag.split("}")[-1] if isinstance(tag, str) else ""
 
 
+#: The attributes by which a page loads or links a file: an image, a video and
+#: its poster, an audio track, a stylesheet, an object, a document it links to.
+#: Forms and scripting are appendix B's to forbid, and a URL that only
+#: describes (`cite`, `longdesc`) delivers nothing a consumer renders.
+_RESOURCE_ATTRIBUTES = ("src", "href", "data", "poster")
+
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def _pointed_at(ctx):
+    """`(element, attribute, entry)` for every file in the package a page points at --
+    once per run, from the trees `_walk` parsed.
+
+    The element is the one carrying the reference, except that a `<source>`
+    answers for the `<video>` or `<audio>` it sits in: that is what its file
+    is. A reference is resolved against the page's own folder, or the
+    package's root where it begins with `/`, and then as a source is: the
+    container layer decides what a name means, here as for L2. A reference
+    that leaves the package -- another scheme, or `//` and another host --
+    names no file in it, or names the page itself, points at nothing here.
+    """
+    cache = ctx.__dict__.get("_pointed_at")
+    if cache is None:
+        found = []
+        for page, root in _walk(ctx):
+            base = posixpath.dirname(page)
+            for parent in root.iter():
+                for element in parent:
+                    kind = _local(element.tag)
+                    if kind == "source":
+                        kind = _local(parent.tag)
+                    for attribute in _RESOURCE_ATTRIBUTES:
+                        value = (element.get(attribute) or "").strip()
+                        if (not value or value.startswith(("#", "//"))
+                                or _SCHEME.match(value)):
+                            continue
+                        path = value[1:] if value.startswith("/") else posixpath.join(base, value)
+                        name = entry_named(path)
+                        if name and name != page and ctx.package.has(name):
+                            found.append((kind, attribute, name))
+        cache = ctx.__dict__["_pointed_at"] = tuple(found)
+    return cache
+
+
+def _content_files(ctx):
+    """What section 8.2.1's sentences bind: every file in the package but the
+    `mimetype` entry and what is under `META-INF/`, as R43 reads them. A
+    rendition names some, a page points at others, and a stylesheet the page
+    loads reaches more -- an icon in `url()` -- so a population built from who
+    points at what misses files the sentences bind. What a file is, is in its
+    first bytes, whoever points at it."""
+    return sorted(name for name in ctx.package.files
+                  if name != "mimetype" and not name.startswith("META-INF/"))
+
+
+def _sniff(ctx, name):
+    """The first `SNIFF` bytes of a content file, read once a run for every
+    rule that asks what the file is -- charged as `_head` charges, once -- or
+    None where they could not be read."""
+    cache = ctx.__dict__.setdefault("_sniffed", {})
+    if name not in cache:
+        renditions = ctx.__dict__.get("_rendition_names")
+        if renditions is None:
+            renditions = ctx.__dict__["_rendition_names"] = frozenset(_renditions_declared_as(ctx))
+        cache[name] = _head(ctx, name, SNIFF, rendition=name in renditions)[0]
+    return cache[name]
+
+
 @rule("B1", covers=("b-3-conformance-criteria#2",), kind="content", prio="MUST", versions=(), variants=(),
       title="iiRDS XHTML5 content must be a well-formed XML document",
        fix="Open the file in an XML parser and fix the syntax it rejects. iiRDS XHTML5 is XML, not HTML: every element needs a closing tag, `<br>` must be `<br/>`, and a bare `&` must be written `&amp;`.")
@@ -593,43 +664,120 @@ def b5_link_rel(ctx):
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
 
 
-@rule("B6", covers=("b-3-conformance-criteria#5",), kind="content", prio="MUST", versions=(), variants=(),
+@rule("B6", covers=("b-3-conformance-criteria#5", "x8-2-1-1-text-formats#2"), kind="content", prio="MUST", versions=(), variants=(),
       title="iiRDS XHTML5 files must use the .xhtml extension",
        fix="Rename the file to end in .xhtml and update every iirds:source that points at it. Consumers select renditions by extension as well as by declared media type.")
 def b6_file_extension(ctx):
-    for name in sorted(_xhtml_renditions(ctx)):
+    """Appendix B's sentence and section 8.2.1.1's, which says it again for
+    iiRDS/A: "The file extension MUST be .xhtml."
+
+    Appendix B's is read as it always was, over what the metadata declares to
+    be iiRDS XHTML5. Section 8.2.1.1's binds structured text however the
+    package reaches it, so in an iiRDS/A package a page another page links
+    to, and a rendition declared as something else, is XHTML when its first
+    element is `html` in the XHTML namespace. Only there: outside iiRDS/A a
+    file called `.html` that happens to be XHTML breaks nothing the section
+    says, and in an iiRDS/H package the content list is named `index.html`
+    by the profile itself.
+    """
+    declared = set(_xhtml_renditions(ctx))
+    for name in sorted(declared):
         if not name.lower().endswith(".xhtml"):
             yield Violation("content declared as iiRDS XHTML5 does not use the .xhtml "
                             "file extension", subject=name)
+    if ctx.variant != "A":
+        return
+    for name in _content_files(ctx):
+        if name in declared or name.lower().endswith(".xhtml"):
+            continue
+        head = _sniff(ctx, name)
+        if head is not None and _first_element(head) == (XHTML_NAMESPACE, b"html"):
+            yield Violation("content in iiRDS XHTML5 does not use the .xhtml file extension",
+                            subject=name)
 
 
 PDF_FORMAT = "application/pdf"
+PDF_MAGIC = b"%PDF-"
 
 
-@rule("R41", covers=(), kind="content", prio="MUST", versions=(),
+@rule("R41", covers=("x8-2-1-1-text-formats#5",), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as PDF in an iiRDS/A package must use the .pdf extension",
       fix="Rename the file to end in .pdf and update every iirds:source that points at it. "
           "Section 8.2.1.1 names the extension, and a consumer choosing a viewer by it opens "
           "anything else as a file it does not recognise.")
 def r41_pdf_extension(ctx):
-    """B6's twin for the other text format section 8.2.1.1 names, and like B6
-    it reads the files a rendition declares.
+    """B6's twin for the other text format section 8.2.1.1 names.
 
-    That is why it claims no sentence: "The file extension MUST be .pdf"
-    binds a PDF a page points at as well, and this does not read those.
+    "The file extension MUST be .pdf" binds a PDF however the package reaches
+    it: a rendition declared as PDF, and a file that is a PDF -- by its first
+    bytes, `%PDF-` -- whether a rendition names it under another media type or
+    a page links to it. Reading only the declared ones passed a PDF the
+    metadata called `application/octet-stream`, and every PDF a page pointed
+    at, which is why the sentence went unclaimed until both were read. A file
+    whose first bytes could not be read is not known to be a PDF; what stopped
+    the read is reported by the rule whose business that is.
     Whether a file conforms to ISO 19005-3 is a PDF/A validator's question.
     The extension is compared case-blind, as B6 compares it: `.PDF` names the
     same extension.
     """
-    for name in sorted(_renditions_declared_as(ctx, PDF_FORMAT)):
+    declared = set(_renditions_declared_as(ctx, PDF_FORMAT))
+    for name in sorted(declared):
         if not name.lower().endswith(".pdf"):
             yield Violation("content declared as PDF does not use the .pdf file extension",
                             subject=name)
+    for name in _content_files(ctx):
+        if name in declared or name.lower().endswith(".pdf"):
+            continue
+        head = _sniff(ctx, name)
+        if head is not None and head.startswith(PDF_MAGIC):
+            yield Violation("a PDF does not use the .pdf file extension", subject=name,
+                            detail="its first bytes are a PDF header")
 
 
 SVG_FORMAT = "image/svg+xml"
 GZIP_MAGIC = b"\x1f\x8b"
+SVG_NAMESPACE = b"http://www.w3.org/2000/svg"
+#: How much of a file is read to find its first element: enough for an XML
+#: declaration, a comment or two and a document type declaration.
+SNIFF = 4096
+
+_PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->|<!DOCTYPE(?:[^\[>]|\[.*?\])*>", re.S)
+_START = re.compile(rb"<(?:([A-Za-z_][\w.-]*):)?([A-Za-z_][\w.-]*)([^>]*)>", re.S)
+
+
+def _first_element(head: bytes):
+    """`(namespace, local name)` of the first element in `head`, or None.
+
+    Past a byte order mark, the XML declaration, processing instructions,
+    comments and a document type declaration; the namespace is the one the
+    element's own start tag binds for its prefix, or the default. That is the
+    whole of what deciding "this file is an SVG" or "this file is XHTML" needs,
+    and a parse of the whole file would read far more than a first element.
+    """
+    text = head[3:] if head.startswith(b"\xef\xbb\xbf") else head
+    position = 0
+    while True:
+        prolog = _PROLOG.match(text, position)
+        if not prolog or prolog.end() == position:
+            break
+        position = prolog.end()
+    start = _START.match(text, position)
+    if not start:
+        return None
+    prefix, local, attributes = start.groups()
+    declared = b"xmlns:" + prefix if prefix else b"xmlns"
+    bound = re.search(rb"(?:^|\s)" + re.escape(declared) + rb"\s*=\s*([\"'])(.*?)\1", attributes, re.S)
+    return (bound.group(2) if bound else b"", local)
+
+
+def _gunzipped(head: bytes):
+    """The start of what a gzip stream holds, as far as `head` carries it;
+    None where it is not a gzip stream this can inflate."""
+    try:
+        return zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(head, SNIFF)
+    except zlib.error:
+        return None
 
 
 def _head(ctx, name, size, *, rendition):
@@ -670,7 +818,7 @@ def _head(ctx, name, size, *, rendition):
     return head[:size], None
 
 
-@rule("R42", covers=(), kind="content", prio="MUST", versions=(),
+@rule("R42", covers=("x8-2-1-2-graphics-formats#3",), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as SVG in an iiRDS/A package must be named .svg, or .svgz "
             "when gzip-compressed",
@@ -680,15 +828,36 @@ def _head(ctx, name, size, *, rendition):
 def r42_svg_extension(ctx):
     """The extension depends on the bytes, so this reads the first of them.
 
-    A gzip stream opens with 1f 8b, and two bytes answer the question; the
-    read is three, since a bounded read hands back its limit plus one. It
-    reads the SVGs a rendition declares, and an SVG a page
-    points at with `<img>` -- the way section 8.2.1.2 says SVG is referenced
-    -- is not read, so the sentence is not claimed. A file that is neither
-    gzip nor named .svg is reported as not gzip-compressed, which is all two
-    bytes say: zlib without the gzip wrapper is not gzip either.
+    A gzip stream opens with 1f 8b, and two bytes answer the question for an
+    SVG a rendition declares; the read is three, since a bounded read hands
+    back its limit plus one. A file that is neither gzip nor named .svg is
+    reported as not gzip-compressed, which is all two bytes say: zlib without
+    the gzip wrapper is not gzip either.
+
+    The sentence binds every SVG, and section 8.2.1.2 has pages reference SVG
+    with `<img>`: so a file a page points at, or a rendition declared as
+    something else, is an SVG when its first element is `svg` in the SVG
+    namespace -- read from the file, or from the start of the gzip stream it
+    is. Reading only the declared ones passed all of those, which is why the
+    sentence went unclaimed until they were read.
     """
-    for name in sorted(_renditions_declared_as(ctx, SVG_FORMAT)):
+    declared = set(_renditions_declared_as(ctx, SVG_FORMAT))
+    for name in _content_files(ctx):
+        if name in declared:
+            continue
+        head = _sniff(ctx, name)
+        if head is None:
+            continue
+        compressed = head[:2] == GZIP_MAGIC
+        body = _gunzipped(head) if compressed else head
+        if not body or _first_element(body) != (SVG_NAMESPACE, b"svg"):
+            continue
+        lowered = name.lower()
+        if compressed and not lowered.endswith(".svgz"):
+            yield Violation("a gzip-compressed SVG is not named .svgz", subject=name)
+        elif not compressed and not lowered.endswith(".svg"):
+            yield Violation("an SVG that is not gzip-compressed is not named .svg", subject=name)
+    for name in sorted(declared):
         head, unread = _head(ctx, name, 2, rendition=True)
         if unread:
             yield Violation("this SVG could not be read, so whether it is gzip-compressed "
@@ -757,37 +926,87 @@ def r43_raster_formats(ctx):
                             subject=name)
 
 
-def _named_for_its_family(ctx, family, extension, what):
-    """Every present file a rendition declares as `family`, not named `extension`."""
-    for name in sorted(_renditions_declared_as(ctx, family)):
+#: ISO base media files whose major brand says they hold something other than
+#: video: audio-only MPEG-4, and the still-image formats built on the same boxes.
+_AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P ", b"F4A ", b"F4B "))
+_IMAGE_BRANDS = frozenset((b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm",
+                           b"hevs", b"mif1", b"msf1", b"avif", b"avis"))
+
+
+def _is_mp4_video(head: bytes) -> bool:
+    """An ISO base media file -- `ftyp` in its first box -- whose brand is
+    neither audio-only nor a still image."""
+    return (len(head) >= 12 and head[4:8] == b"ftyp"
+            and head[8:12] not in _AUDIO_BRANDS | _IMAGE_BRANDS)
+
+
+def _is_mp3(head: bytes) -> bool:
+    """An ID3v2 tag, or an MPEG audio Layer III frame header: eleven sync
+    bits, layer 01, a bitrate index that is neither free nor bad, and a
+    sampling rate that is not reserved."""
+    if head[:3] == b"ID3":
+        return True
+    return (len(head) >= 3 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0
+            and (head[1] >> 1) & 3 == 1 and (head[2] >> 4) not in (0, 15)
+            and (head[2] >> 2) & 3 != 3)
+
+
+def _media(ctx, family, element, recognised, others, other_element):
+    """Every file that is `family` content: declared so, played by a page's
+    `element` -- its `src`, or a `<source>` inside it -- or recognised by its
+    first bytes. A file the package or a page gives to another family is left
+    to that family: an audio-only MPEG-4 declared as audio is not a video for
+    carrying the boxes a video does."""
+    found = set(_renditions_declared_as(ctx, family))
+    found |= {name for kind, attribute, name in _pointed_at(ctx)
+              if kind == element and attribute == "src"}
+    elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
+    elsewhere |= {name for kind, _attribute, name in _pointed_at(ctx) if kind == other_element}
+    for name in _content_files(ctx):
+        if name in found or name in elsewhere:
+            continue
+        head = _sniff(ctx, name)
+        if head is not None and recognised(head):
+            found.add(name)
+    return found
+
+
+def _named_for_its_family(ctx, family, extension, what, element, recognised, others, other_element):
+    """Every file that is `family` content, not named `extension`."""
+    for name in sorted(_media(ctx, family, element, recognised, others, other_element)):
         if not name.lower().endswith(extension):
             yield Violation("%s content does not use the %s file extension" % (what, extension),
                             subject=name)
 
 
-@rule("R44", covers=(), kind="content", prio="MUST", versions=(),
+@rule("R44", covers=("x8-2-1-3-video-formats#2",), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as video in an iiRDS/A package must use the .mp4 extension",
       fix="Name the video file .mp4 and update every iirds:source that points at it. Section "
           "8.2.1.3 fixes the extension, and a video in another container is the thing the "
           "section's encoding sentence also rules out.")
 def r44_video_extension(ctx):
-    """Video content is whatever a rendition declares with a video/ media type,
-    any subtype. A video a page points at with `<video>` is not read, so the
-    extension sentence is not claimed; nor is the encoding sentence beside
-    it, which the index holds without the codecs that complete it."""
-    yield from _named_for_its_family(ctx, "video/", ".mp4", "video")
+    """Video content is what a rendition declares with a video/ media type,
+    any subtype; what a page plays with `<video>`; and a file whose first box
+    is an MPEG-4 file type that is not audio-only or a still image. The
+    sentence binds all three, and reading only the first passed every video a
+    page played. Not the encoding sentence beside it, which the index holds
+    without the codecs that complete it."""
+    yield from _named_for_its_family(ctx, "video/", ".mp4", "video", "video", _is_mp4_video,
+                                     ("audio/", "image/"), "audio")
 
 
-@rule("R45", covers=(), kind="content", prio="MUST", versions=(),
+@rule("R45", covers=("x8-2-1-4-audio-formats#2",), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a rendition declared as audio in an iiRDS/A package must use the .mp3 extension",
       fix="Name the audio file .mp3 and update every iirds:source that points at it. Section "
           "8.2.1.4 fixes the extension alongside the encoding.")
 def r45_audio_extension(ctx):
-    """As R44, for audio/, and for `<audio>` on a page. Whether the bytes are
-    MP3 to ISO/IEC 11172-3 is a question for a decoder."""
-    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio")
+    """As R44, for audio/, for `<audio>` on a page, and for a file that opens
+    with an ID3 tag or an MPEG audio Layer III frame. Whether the bytes are
+    MP3 to ISO/IEC 11172-3 throughout is a question for a decoder."""
+    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_mp3,
+                                     ("video/", "image/"), "video")
 
 
 @rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),

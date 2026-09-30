@@ -839,8 +839,14 @@ def figures_the_notes_state(package):
     # other, so "the handover rules" was true of most of the difference and
     # false of all of it. Both directions are read, because the one that was
     # wrong is the small one.
+    #
+    # And the small one grew: one container rule, C11.1, until R41 to R45
+    # arrived for iiRDS/A alone, when "one container rule goes the other way"
+    # stopped being a sentence the count could be written into. The pattern
+    # reads the count whatever kind of rule it is.
     spelled("rules the A reading asks and the handover reading does not",
-            r"and (\w+)(?!\s+(?:hundred|thousand)) container rule goes the other way",
+            r"the iiRDS/A reading asks (\w+)(?!\s+(?:hundred|thousand)) rules? the "
+            r"iiRDS/H reading does not",
             sum(1 for rule in rules if rule.variants and "H" not in rule.variants))
     return found
 

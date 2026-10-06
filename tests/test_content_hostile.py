@@ -516,6 +516,22 @@ def _one_rendition(tmp_path, name, count=1):
                          extra=[(source, body) for source in sources])
 
 
+def _root_still_reads(path):
+    """Whether this process runs with effective uid 0 and reads `path` all the
+    same. Root does -- on Linux through CAP_DAC_OVERRIDE or CAP_DAC_READ_SEARCH;
+    root with both dropped does not, and there the test below can do its job.
+    Asked of the file the test took the permission from, when it runs: a file
+    made anywhere else need not be on the same filesystem or answer to the
+    same owner. A read that raises OSError, whatever the errno, answers no."""
+    if not (hasattr(os, "geteuid") and os.geteuid() == 0):
+        return False
+    try:
+        path.read_bytes()
+    except OSError:
+        return False
+    return True
+
+
 @pytest.mark.skipif(os.name == "nt", reason="chmod(0o000) leaves a file readable on "
                                             "Windows, so the fault this builds is not one "
                                             "there; the zipped case above covers S16 on "
@@ -547,6 +563,11 @@ def test_a_rendition_nobody_can_read_still_fails_the_package(tmp_path):
         archive.extractall(unpacked)
     (unpacked / "content" / "r.xhtml").chmod(0o000)
     try:
+        if _root_still_reads(unpacked / "content" / "r.xhtml"):
+            pytest.skip("chmod(0o000) leaves this file readable to this process, which runs "
+                        "with effective uid 0, so the fault this builds is not one there; "
+                        "for every user, the zipped case above covers S16 and the ceiling "
+                        "case below the verdict S16 gives")
         report = runner.run(unpacked, runner.ALL_KINDS)
         ids = sorted({f.rule.id for f in report.findings})
         assert not report.ok, (

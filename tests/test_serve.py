@@ -14,6 +14,7 @@ disagree, so the tests below assert byte-identity rather than similarity.
 """
 from __future__ import annotations
 
+import errno
 import io
 import json
 import os
@@ -611,6 +612,24 @@ def test_the_address_it_prints_is_one_a_browser_can_open():
     assert serve.origin_of("::1", 8080) == "http://[::1]:8080"
 
 
+def _ipv6_family_unsupported():
+    """Whether creating an IPv6 stream socket, or binding it to ::1, raises
+    EAFNOSUPPORT -- what a kernel without IPv6 answers from socket(), and what
+    a sandbox refusing the family answers too. Asked of the socket layer, not
+    of `serve`, so a fault in the server cannot skip the test that would find
+    it; success, or an OSError with any other errno, leaves the test to run."""
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as probe:
+            probe.bind(("::1", 0))
+    except OSError as exc:
+        return exc.errno == errno.EAFNOSUPPORT
+    return False
+
+
+@pytest.mark.skipif(_ipv6_family_unsupported(),
+                    reason="opening an IPv6 socket on ::1 fails with EAFNOSUPPORT (a kernel "
+                           "without IPv6, or a sandbox refusing the family), so this process "
+                           "cannot serve on the IPv6 loopback")
 def test_the_ipv6_loopback_is_served_not_refused():
     """It was accepted by the check and then failed to bind, because the
     server class asks for IPv4 unless told otherwise -- so the one flag that

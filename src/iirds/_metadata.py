@@ -1412,6 +1412,48 @@ def graph_difference(one: Graph, other: Graph):
             only(rows_other, label_other, counts_other, counts_one))
 
 
+def _lent(items, blanks, shared):
+    """The fingerprints of the graphs that share labels, taken together.
+
+    A label names one node across a document, so the graphs that share one
+    are one description of the nodes they share, and each set of graphs
+    joined by labels is fingerprinted as the one graph it is: a graph is a
+    repeat of them only by repeating all they say of those nodes. Taken graph
+    by graph, a graph saying only a rendition's format of a node the default
+    graph says more of had the shape of any rendition with that format and
+    nothing else, and one such, a second node, was left out as its repeat.
+    And taken as the loop below reached them, a repeat the parser handed over
+    first was kept and one it handed over later left out -- an order that
+    follows the hash seed where graphs have no names.
+
+    Only where the union's blank nodes form trees, in the one pass that
+    costs. Where they do not, naming them would take a search, kept for the
+    graphs that can be left out, and nothing is fingerprinted, as nothing
+    sharing a label was.
+    """
+    joined = list(range(len(items)))
+
+    def find(index):
+        while joined[index] != index:
+            joined[index] = joined[joined[index]]
+            index = joined[index]
+        return index
+
+    holder = {}
+    for index, nodes in enumerate(blanks):
+        for node in nodes & shared:
+            if node in holder:
+                joined[find(index)] = find(holder[node])
+            else:
+                holder[node] = index
+    together = {}
+    for index, nodes in enumerate(blanks):
+        if nodes & shared:
+            together.setdefault(find(index), Graph())
+            together[find(index)] += items[index][1]
+    return {tuple(_fingerprint(whole)) for whole in together.values() if not _outside_trees(whole)}
+
+
 def merge_graphs_of(graphs):
     """One document's graphs -- a mapping of name -> Graph, the default graph
     first -- merged into one, a graph that repeats another counted once.
@@ -1425,14 +1467,11 @@ def merge_graphs_of(graphs):
     trees, a search over the few that do not -- so the cost is the document's
     size.
 
-    A graph that shares a label is still a graph another can repeat, and its
-    blank nodes are named by their place in it, whatever their labels, as
-    every graph's are. Where they form trees its fingerprint is taken, in the
-    one pass that costs. Where they do not, naming them would take a search,
-    and the limit below keeps searches for the graphs that can be left out:
-    it is joined unfingerprinted, as every graph sharing a label was. The
-    default graph lending its rendition's label to a named graph was one
-    never fingerprinted, and a graph repeating it whole was joined, a second
+    Graphs that share labels are one description of the nodes they share,
+    and a graph repeating that whole is a repeat of them all: `_lent` takes
+    their fingerprints together, before any graph is merged. The default
+    graph lending its rendition's label to a named graph was in no
+    fingerprint at all, and a graph repeating it whole was joined, a second
     rendition beside the first.
 
     The limit is the document's, as it is for a comparison of two documents:
@@ -1473,13 +1512,10 @@ def merge_graphs_of(graphs):
                for (_name, graph), nodes in zip(items, blanks)]
     searched = sum(outside) <= MAX_COMPARED_BLANK_NODES
     merged = Graph()
-    kept = set()
+    kept = _lent(items, blanks, shared)
     repeats, uncounted = [], []
     for (name, graph), nodes, apart in zip(items, blanks, outside):
-        if nodes & shared:
-            if not _outside_trees(graph):
-                kept.add(tuple(_fingerprint(graph)))
-        elif nodes:
+        if nodes and not nodes & shared:
             try:
                 key = tuple(_fingerprint(graph)) if searched or not apart else None
             except _NotCompared:

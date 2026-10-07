@@ -57,6 +57,10 @@ _WIDE = {(False, True, True, True): ("UTF-32LE", "utf-32-le"),
 _NARROW = {(False, True): ("UTF-16LE", "utf-16-le"), (True, False): ("UTF-16BE", "utf-16-be")}
 
 
+_UNUSUAL_ORDERS = {b"\x00\x00\xff\xfe": "2143", b"\xfe\xff\x00\x00": "3412",
+                   b"\x00\x00\x3c\x00": "2143", b"\x00\x3c\x00\x00": "3412"}
+
+
 class _Start(NamedTuple):
     """What a document's first bytes say it is.
 
@@ -73,6 +77,8 @@ class _Start(NamedTuple):
 
 
 def _start(raw: bytes) -> _Start:
+    if raw[:4] in _UNUSUAL_ORDERS:
+        return _Start(None, "latin-1", 0, False)
     for bom, encoding, codec in _MARKS:
         if raw.startswith(bom):
             return _Start(encoding, codec, len(bom), True)
@@ -80,7 +86,9 @@ def _start(raw: bytes) -> _Start:
     if shape is None and len(raw) >= 2:
         shape = _NARROW.get(tuple(byte == 0 for byte in raw[:2]))
     if shape is not None:
-        return _Start(shape[0], shape[1], 0, False)
+        first = raw[:4 if shape[0].startswith("UTF-32") else 2].decode(shape[1])
+        if first in "< \t\r\n":
+            return _Start(shape[0], shape[1], 0, False)
     return _Start(None, "latin-1", 0, False)
 
 
@@ -684,7 +692,17 @@ def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]
     whatever the declaration names, and a name read differently is refused
     rather than one reading chosen.
     """
+    order = _UNUSUAL_ORDERS.get(stored[:4])
+    if order is not None:
+        return "%s: %s: UCS-4 unusual byte order %s, not supported (XML 1.0 Appendix F.1)" % (
+            name, UNREADABLE_ENCODING, order)
     start, found = prolog if prolog is not None else _prolog(stored)
+    if start.encoding is None and b"\x00" in stored[:4]:
+        try:
+            stored.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            return "%s: UnicodeDecodeError: no Appendix F byte pattern; read as UTF-8; %s" % (
+                name, exc)
     if isinstance(found, _Malformed):
         return "%s: %s: at character %d, %s" % (name, MALFORMED_DECLARATION, found.at + 1,
                                                  found.why)

@@ -254,3 +254,26 @@ def test_ucs2_cannot_declare_a_supplementary_character(order, declared, tmp_path
     assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
     assert "BMP" in error and declared in error
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+def test_first_bytes_outside_appendix_f_are_not_named_utf16():
+    """XML 1.0 Appendix F.1 does not identify FE 00 3C 00 as UTF-16."""
+    raw = b"\xfe\x00\x3c\x00" + BODY.encode("utf-16-le")
+    assert iirds.first_bytes_encoding(raw) is None
+    graph, error = parsed(raw)
+    assert graph is None and "no Appendix F byte pattern" in error
+    assert "read as UTF-8" in error and "UTF-16LE" not in error
+
+
+@pytest.mark.parametrize("order", ["2143", "3412"])
+def test_unusual_ucs4_byte_orders_are_named_as_unsupported(order):
+    """XML 1.0 Appendix F.1 identifies the two unusual UCS-4 octet orders;
+    this reader refuses them instead of claiming a conventional codec.
+    """
+    raw = b"\x00\x00\xfe\xff" + ('<?xml version="1.0" encoding="ISO-10646-UCS-4"?>\n'
+                                      + BODY).encode("utf-32-be")
+    indices = [int(n) - 1 for n in order]
+    raw = b"".join(bytes(raw[i + k] for k in indices) for i in range(0, len(raw), 4))
+    graph, error = parsed(raw)
+    assert graph is None and "unusual byte order" in error
+    assert order in error and "not supported" in error

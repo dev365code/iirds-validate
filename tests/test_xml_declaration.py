@@ -205,6 +205,35 @@ def test_a_declaration_out_of_order_behind_a_utf32_mark_is_refused_as_that():
     assert "declares no encoding" not in error, error
 
 
+@pytest.mark.parametrize("form", ["utf-32le marked", "utf-32be marked"])
+@pytest.mark.parametrize("declaration", ["", '<?xml version="1.0"?>'])
+def test_utf32_behind_a_mark_declaring_nothing_breaks_a_must(form, declaration):
+    """E20. Section 4.3.3 says an entity in an encoding other than UTF-8 or
+    UTF-16 MUST begin with an encoding declaration -- an error, by section
+    1.2 -- and makes a fatal error only of one that begins with neither a byte
+    order mark nor a declaration. Refused still; said as the sentence that
+    applies."""
+    graph, error = parsed(stored(form, declaration))
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert "MUST" in error and "1.2" in error and "fatal" not in error, error
+
+
+@pytest.mark.parametrize("codec, said", [("utf-32-le", "UTF-32LE"), ("utf-32-be", "UTF-32BE")])
+def test_unmarked_utf32_declaring_nothing_is_refused_for_its_encoding(codec, said):
+    """E24: refused before, by the parser, as an invalid token. With neither a
+    mark nor a declaration, section 4.3.3 makes an encoding other than UTF-8 a
+    fatal error, and that is the reason given."""
+    graph, error = parsed(BODY.encode(codec))
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert said in error and "fatal error" in error and "4.3.3" in error, error
+
+
+def test_unmarked_utf32_declaring_another_encoding_is_contradicted():
+    raw = ('<?xml version="1.0" encoding="UTF-8"?>\n' + BODY).encode("utf-32-le")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error and "UTF-32LE" in error, error
+
+
 def test_the_note_on_a_decode_failure_names_the_declaration_the_grammar_reads(tmp_path):
     """The C16.1 note names what the document declares, read by the same
     reading the checks use, single quotes and white space around Eq

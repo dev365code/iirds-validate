@@ -49,7 +49,9 @@ _MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8"),
 #: comment, a processing instruction -- and may carry no declaration at all.
 #: Whitespace was the lead that got through.
 _SHAPES = {(False, True, False, True): ("UTF-16LE", "utf-16-le"),
-           (True, False, True, False): ("UTF-16BE", "utf-16-be")}
+           (True, False, True, False): ("UTF-16BE", "utf-16-be"),
+           (False, True, True, True): ("UTF-32LE", "utf-32-le"),
+           (True, True, True, False): ("UTF-32BE", "utf-32-be")}
 
 
 class _Start(NamedTuple):
@@ -86,9 +88,10 @@ def _read_here(start: _Start) -> bool:
     and opaque bytes to every guard below, which is how `<!ENTITY` in UTF-16
     was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32
     is refused by expat, so nothing can be smuggled in it, and claiming to read
-    it here would admit documents the parser will not.
+    it here would admit documents the parser will not: its declaration is
+    read, and held against its bytes, and the document left to the parser.
     """
-    return start.encoding is not None
+    return start.encoding is not None and (start.marked or not start.encoding.startswith("UTF-32"))
 
 
 class _Declared(Exception):
@@ -189,8 +192,11 @@ UNUSED_ENCODING = "declares an encoding this reader reads differently"
 #: bytes contradict.
 CONTRADICTED_ENCODING = "declares an encoding its bytes contradict"
 
-#: A UTF-32 document with no declaration: XML makes an entity with none, in an
-#: encoding other than UTF-8 or UTF-16, a fatal error (section 4.3.3).
+#: A UTF-32 document with no declaration. Section 4.3.3 says an entity in an
+#: encoding other than UTF-8 or UTF-16 MUST begin with one -- an error, by
+#: section 1.2 -- and makes it a fatal error only where the entity begins
+#: with neither a byte order mark nor an encoding declaration. Refused either
+#: way; the reason says which of the two sentences it is.
 UNDECLARED_ENCODING = "declares no encoding where XML requires one"
 
 #: A document whose XML declaration is not one production [23] allows:
@@ -769,11 +775,21 @@ def _contradicted(name: str, where: str, said: str, declared: str) -> str:
 
 
 def _undeclared(name: str, start: _Start) -> str:
-    """A UTF-32 document with no declaration: XML makes an entity with none,
-    in an encoding other than UTF-8 or UTF-16, a fatal error (section 4.3.3)."""
-    return ("%s: %s: its byte order mark says %s and it declares no encoding; XML 1.0 section "
-            "4.3.3 makes an undeclared encoding other than UTF-8 or UTF-16 a fatal error -- "
-            "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, start.encoding))
+    """A UTF-32 document that declares nothing. Section 4.3.3 says an entity
+    in an encoding other than UTF-8 or UTF-16 MUST begin with a declaration of
+    it -- an error, by section 1.2 -- and makes one that begins with neither a
+    byte order mark nor an encoding declaration a fatal error; the reason
+    gives the sentence that applies."""
+    if start.marked:
+        return ("%s: %s: its byte order mark says %s and it declares no encoding; XML 1.0 "
+                "section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16 MUST "
+                "begin with an encoding declaration, an error under section 1.2 -- declare "
+                "UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, start.encoding))
+    return ("%s: %s: its first bytes say %s and it declares no encoding; XML 1.0 section "
+            "4.3.3 makes it a fatal error for an entity that begins with neither a byte order "
+            "mark nor an encoding declaration to use an encoding other than UTF-8 -- save it "
+            "with a byte order mark and declare UTF-32, or save the file as UTF-8"
+            % (name, UNDECLARED_ENCODING, start.encoding))
 
 
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:

@@ -337,3 +337,15 @@ def test_identification_charges_unreferenced_bytes_and_gzip_output(make_package,
     assert _subjects(report, "S9"), [(f.rule.id, f.violation.detail) for f in report.findings]
     assert not report.ok
     assert not _subjects(report, "S3")
+
+
+@pytest.mark.parametrize("version", [b"1.0", b"2.0"])
+def test_pdf_version_extremes_have_the_pdf_extension(make_package, version):
+    """iiRDS 1.3 §8.2.1.1: "The file extension MUST be .pdf."
+    The PDF signature applies across versions, including PDF 2.0.
+    """
+    body = b"%PDF-" + version + b"\n%%EOF\n"
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/document.bin", body),)))
+    assert _subjects(report, "R41") == ["content/document.bin"]
+    assert not report.ok

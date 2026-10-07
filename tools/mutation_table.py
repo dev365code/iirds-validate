@@ -60,6 +60,13 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("content/pdf-signature-limited-to-one-major-version",
+     "src/iirds_validate/rules/content.py",
+     'PDF_MAGIC = b"%PDF-"',
+     'PDF_MAGIC = b"%PDF-1."',
+     ["tests/test_obl_c.py"],
+     "a PDF 2.0 file named .bin escapes the extension rule in iiRDS 1.3 section 8.2.1.1"),
+
     ("difference/a-stored-digest-of-the-wrong-shape-is-let-through",
      DIFFERENCE,
      '        if not isinstance(digest, dict):',

@@ -349,3 +349,11 @@ def test_pdf_version_extremes_have_the_pdf_extension(make_package, version):
                                       extra=(("content/document.bin", body),)))
     assert _subjects(report, "R41") == ["content/document.bin"]
     assert not report.ok
+
+
+def test_xml_identification_refuses_an_uppercase_hex_reference(make_package):
+    """XML 1.0 §4.1 [66] uses lowercase x in a hexadecimal CharRef."""
+    body = b'<svg xmlns="http://www.w3.or&#X67;/2000/svg"/>'
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/figure.bin", body),)))
+    assert not _subjects(report, "R42")

@@ -804,7 +804,7 @@ def _unescape_attribute(value, entities):
             return None
         reference = value[position + 1:end]
         if reference.startswith("#"):
-            hexadecimal = reference.startswith(("#x", "#X"))
+            hexadecimal = reference.startswith("#x")
             digits = reference[2:] if hexadecimal else reference[1:]
             alphabet = "0123456789abcdefABCDEF" if hexadecimal else "0123456789"
             if not digits or any(char not in alphabet for char in digits):

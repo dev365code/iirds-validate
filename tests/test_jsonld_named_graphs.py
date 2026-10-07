@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from rdflib import BNode, Graph, Literal, URIRef
 
 import iirds
@@ -671,3 +672,96 @@ def test_a_language_tag_case_does_not_double_what_hangs_off_an_anonymous_node(ma
     package = iirds.open(make_package(metadata=_TOC_RDF, jsonld=_toc_jsonld("DE")))
     alone = iirds.open(make_package(name="alone.iirds", metadata=_TOC_RDF))
     assert len(package.graph) == len(alone.graph), (len(package.graph), len(alone.graph))
+
+
+def _anonymous():
+    """The package, a topic, and a rendition with no name: MINIMAL_RDF's
+    statements, its rendition a blank node."""
+    package, topic, rendition = _nodes()
+    return package, topic, {k: v for k, v in rendition.items() if k != "@id"}
+
+
+def _labelled(label="_:r"):
+    """The same, the rendition given a blank-node label a graph can share."""
+    package, topic, rendition = _anonymous()
+    return [package, dict(topic, **{"has-rendition": dict(rendition, **{"@id": label})})]
+
+
+#: What a graph beside the default one says of the default graph's labelled
+#: rendition: a statement the default graph makes too, held from the topic's
+#: side, the rendition's, or both.
+SHARING = {
+    "the topic's side": [{"@id": "urn:test:topic1", "has-rendition": "_:r"}],
+    "the rendition's side": [{"@id": "_:r", "format": "application/xhtml+xml"}],
+    "both sides": [{"@id": "urn:test:topic1",
+                    "has-rendition": {"@id": "_:r", "format": "application/xhtml+xml"}}],
+}
+
+
+@pytest.mark.parametrize("side", list(SHARING))
+def test_a_whole_repeat_counts_once_where_the_default_graph_shares_a_label(make_package, side):
+    """J05 and its twins. The default graph's rendition label is used in
+    another graph too, which made the default graph one never fingerprinted,
+    so a third graph repeating it whole -- a rendition without a name of its
+    own -- was taken for more statements, a second rendition, and L9 failed
+    the package. A label names one node across the document, so the graph
+    sharing it is joined as it is; the default graph is still the graph it
+    is, and a graph repeating it is left out."""
+    package, topic, rendition = _anonymous()
+    repeat = {"@id": "urn:test:g2", "@graph": [package, dict(topic, **{"has-rendition": rendition})]}
+    jsonld = _document(_labelled() + [{"@id": "urn:test:g1", "@graph": SHARING[side]}, repeat])
+    package = make_package(metadata=MINIMAL_RDF, jsonld=jsonld)
+    checked, linted = runner.check(package), runner.lint(package)
+    assert checked.ok, [(f.rule.id, f.violation.detail) for f in checked.findings]
+    assert not _findings(linted, "L9"), [f.violation.detail for f in _findings(linted, "L9")]
+    assert not _findings(linted, "L17"), [f.violation.detail for f in _findings(linted, "L17")]
+
+
+def _j(extra, labelled=False):
+    """A document after jl's J cases: the default graph, then `extra`."""
+    package, topic, rendition = _anonymous()
+    default = _labelled() if labelled else [package, dict(topic, **{"has-rendition": rendition})]
+    return _document(default + extra)
+
+
+def _repeat(**changed):
+    package, topic, rendition = _anonymous()
+    return [package, dict(topic, **dict({"has-rendition": rendition}, **changed))]
+
+
+#: (the named graphs, whether the default graph's rendition is labelled,
+#: whether the package passes)
+J_CASES = {
+    "J02 a named graph that says another title": (
+        [{"@id": "urn:test:g", "@graph": _repeat(title="Other")}], False, False),
+    "J03 a whole repeat": ([{"@id": "urn:test:g", "@graph": _repeat()}], False, True),
+    "J04 a partial repeat, its rendition a second one": (
+        [{"@id": "urn:test:g", "@graph": _repeat()[1:]}], False, False),
+    "J05 a whole repeat, the default graph's label shared": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat()}], True, True),
+    "J05c the same without the graph that shares it": (
+        [{"@id": "urn:test:g2", "@graph": _repeat()}], True, True),
+    "J05 with the repeat saying another title": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat(title="Other")}], True, False),
+    "J05 with the repeat holding a second rendition": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat(**{"has-rendition": [
+             _anonymous()[2], dict(_anonymous()[2], source="content/topic2.xhtml")]})}],
+        True, False),
+    "J05 with the shared label saying something only it says": (
+        [{"@id": "urn:test:g1", "@graph": [{"@id": "_:r", "source": "content/other.xhtml"}]},
+         {"@id": "urn:test:g2", "@graph": _repeat()}], True, False),
+}
+
+
+@pytest.mark.parametrize("case", list(J_CASES))
+def test_what_only_one_file_says_is_still_l9s(make_package, case):
+    """A repeat is left out only where it is the same statements; a value
+    changed, a node more, or a statement only the shared label's graph makes
+    is in metadata.jsonld and not metadata.rdf, and L9 says so."""
+    extra, labelled, passes = J_CASES[case]
+    report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=_j(extra, labelled)))
+    assert report.ok is passes, (case, [(f.rule.id, f.violation.detail) for f in report.findings])
+    assert bool(_findings(report, "L9")) is not passes, case

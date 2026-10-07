@@ -1417,12 +1417,23 @@ def merge_graphs_of(graphs):
     first -- merged into one, a graph that repeats another counted once.
 
     A blank node's label names one node across a JSON-LD document, so graphs
-    that share one are about the same node and are joined as they are. A
-    graph with blank nodes of its own that repeats one already joined -- the
-    same triples, its blank nodes aside -- is left out: joined, its copies
-    would be second nodes. A repeat is found by the graph's fingerprint, taken
-    once per graph -- one pass where its blank nodes form trees, a search over
-    the few that do not -- so the cost is the document's size.
+    that share one are about the same node and are joined as they are, never
+    left out. A graph with blank nodes of its own that repeats one already
+    joined -- the same triples, its blank nodes aside -- is left out: joined,
+    its copies would be second nodes. A repeat is found by the graph's
+    fingerprint, taken once per graph -- one pass where its blank nodes form
+    trees, a search over the few that do not -- so the cost is the document's
+    size.
+
+    A graph that shares a label is still a graph another can repeat, and its
+    blank nodes are named by their place in it, whatever their labels, as
+    every graph's are. Where they form trees its fingerprint is taken, in the
+    one pass that costs. Where they do not, naming them would take a search,
+    and the limit below keeps searches for the graphs that can be left out:
+    it is joined unfingerprinted, as every graph sharing a label was. The
+    default graph lending its rendition's label to a named graph was one
+    never fingerprinted, and a graph repeating it whole was joined, a second
+    rendition beside the first.
 
     The limit is the document's, as it is for a comparison of two documents:
     where the graphs to be fingerprinted hold more blank nodes outside trees
@@ -1465,7 +1476,10 @@ def merge_graphs_of(graphs):
     kept = set()
     repeats, uncounted = [], []
     for (name, graph), nodes, apart in zip(items, blanks, outside):
-        if nodes and not nodes & shared:
+        if nodes & shared:
+            if not _outside_trees(graph):
+                kept.add(tuple(_fingerprint(graph)))
+        elif nodes:
             try:
                 key = tuple(_fingerprint(graph)) if searched or not apart else None
             except _NotCompared:

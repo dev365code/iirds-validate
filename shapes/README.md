@@ -143,10 +143,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-73 of the 246 rules have no shape, in four honest categories,
+74 of the 247 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **61 not expressible** — 61 of the 246 rules are about ZIP bytes, content
+- **62 not expressible** — 62 of the 247 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, the compression
   method an entry uses, how many records the central directory gives one
@@ -189,7 +189,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 246-rule Python
+Every emitted shape is **differentially tested against the 247-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

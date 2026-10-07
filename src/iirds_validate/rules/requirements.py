@@ -506,7 +506,9 @@ def r8_a_declared_nested_package_is_in_the_archive(ctx):
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#nesting-of-packages",
       covers=("x8-3-1-2-nesting-of-packages#2",
-              "x6-7-3-packages-related-to-component-trees#5"),
+              "x6-7-3-packages-related-to-component-trees#5",
+              "x6-7-3-packages-related-to-component-trees#4",
+              "x8-3-1-2-nesting-of-packages#3"),
       diagnosis="cause",
       fix="Remove the nested container from the archive and the iirds:Package that "
           "declares it, and model the hierarchy with a component tree instead: relate "

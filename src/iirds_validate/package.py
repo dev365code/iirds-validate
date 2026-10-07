@@ -854,6 +854,8 @@ _DATA_DESCRIPTOR = b"PK\x07\x08"
 _DESCRIPTOR_BYTES = 24
 _ZIP64_EXTRA = 0x0001
 _PLACEHOLDER = 0xFFFFFFFF
+#: General purpose bit 3 (APPNOTE 4.4.4): the crc and sizes follow the data.
+_SIZES_AFTER_DATA = 0x08
 
 
 class LocalHeader(NamedTuple):
@@ -884,6 +886,15 @@ def parse_local_header(raw: bytes, offset: int) -> Optional[LocalHeader]:
     return LocalHeader(offset, name, _u16(raw, 6), _u16(raw, 8), _u32(raw, 14),
                        compress_size, file_size, offset + _HEADER_FIXED + name_len + extra_len,
                        extra)
+
+
+def _has_zip64_record(extra: bytes) -> bool:
+    at = 0
+    while at + 4 <= len(extra):
+        if _u16(extra, at) == _ZIP64_EXTRA:
+            return True
+        at += 4 + _u16(extra, at + 2)
+    return False
 
 
 def _zip64_sizes(extra: bytes, compress_size: int, file_size: int):
@@ -941,6 +952,14 @@ def _opens_like_a_container(head: bytes, more) -> bool:
     written by whoever built the archive and a consumer streaming the file
     reads the local one; where they disagree this sees what a stream sees.
 
+    A writer that cannot seek -- to a pipe, a socket, a stream it hands on --
+    sets general purpose bit 3 on every entry, the stored mimetype included,
+    and writes zero for the sizes in the local header, putting them after the
+    data instead (APPNOTE 4.4.4, 4.3.9). Its archive is the container §5.2
+    describes all the same, and read here by the size field it was a nested
+    child no rule could see; so with bit 3 set the sizes are read where the
+    writer put them.
+
     `more` is called with the number of bytes needed when the extra field
     pushes the payload past what was already read.
     """
@@ -950,13 +969,29 @@ def _opens_like_a_container(head: bytes, more) -> bool:
         return False
     name_len, extra_len = _u16(head, 26), _u16(head, 28)
     payload = MIMETYPE_VALUE.encode("ascii")
-    if name_len != len(MIMETYPE_FILE) or _u32(head, 18) != len(payload):
-        return False
-    if head[_HEADER_FIXED:_HEADER_FIXED + name_len] != MIMETYPE_FILE.encode("ascii"):
+    if name_len != len(MIMETYPE_FILE):
         return False
     start = _HEADER_FIXED + name_len + extra_len
-    raw = head if len(head) >= start + len(payload) else more(start + len(payload))
-    return raw[start:start + len(payload)] == payload
+    need = start + len(payload) + _DESCRIPTOR_BYTES
+    raw = head if len(head) >= need else more(need)
+    header = parse_local_header(raw, 0)
+    if header is None or header.name != MIMETYPE_FILE.encode("ascii"):
+        return False
+    if raw[start:start + len(payload)] != payload:
+        return False
+    if not header.flag_bits & _SIZES_AFTER_DATA:
+        return header.compress_size == len(payload)
+    # APPNOTE 4.4.4: with bit 3 set the local header's crc and sizes are zero,
+    # and 4.3.9 puts the real ones after the data, the signature optional and
+    # the sizes eight bytes each where the entry carries a ZIP64 record.
+    width = 8 if _has_zip64_record(header.extra) else 4
+    after = raw[start + len(payload):]
+    for skip in (4, 0) if after.startswith(_DATA_DESCRIPTOR) else (0,):
+        sizes = after[skip + 4:skip + 4 + 2 * width]
+        if len(sizes) == 2 * width and int.from_bytes(sizes[:width], "little") == \
+                int.from_bytes(sizes[width:], "little") == len(payload):
+            return True
+    return False
 
 
 def nested_containers(package) -> List[str]:

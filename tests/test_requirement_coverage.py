@@ -91,7 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 203, len(pairs)
+    assert len(pairs) == 208, len(pairs)
     assert len(asserted) == 89, sorted(asserted)
 
     # It used to reach three, and reaches most of appendix A now: those rows
@@ -111,7 +111,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 176
+    assert len(COVERED) == 181
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 
@@ -212,19 +212,11 @@ def test_the_undecidable_sentences_are_named():
 
 
 #: Chapter five obligations nothing checks, each with what it would take.
-CHAPTER_FIVE_GAPS = {
-    # "If metadata is provided in the JSON-LD 1.1 syntax, the META-INF
-    # directory MUST contain the file metadata.jsonld." C16.2 claimed this and
-    # does not check it: it asks whether an iiRDS/H package has the file and
-    # whether the file parses, and the reader opens two fixed paths, so a
-    # package carrying JSON-LD metadata at META-INF/metadata.json is read as
-    # metadata by nothing and reported by nothing -- built and run, it passes
-    # clean. What
-    # would close it is a rule about the other files in META-INF, and section
-    # 5.1.1 recommends consumers ignore them, so the reading wants settling
-    # before a rule is written.
-    "x5-1-1-metadata-location-and-rdf-serializations#3",
-}
+#: The last was 5.1.1's JSON-LD sentence, which C16.2 once claimed while
+#: asking only the handover half; it now reads every other file for JSON-LD
+#: metadata, and the reading about 5.1.1's advice to ignore those files is
+#: written in its docstring.
+CHAPTER_FIVE_GAPS = set()
 
 
 def test_chapter_five_is_mapped_apart_from_its_gaps():

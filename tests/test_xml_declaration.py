@@ -229,6 +229,23 @@ def test_a_second_byte_order_mark_is_a_character_the_document_is_refused_for(for
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
 
 
+@pytest.mark.parametrize("declaration, production, character", [
+    ('<?xml version="1.0" encoding="a>b"?>', "[81] EncName", ">"),
+    ('<?xml version="1.0" encoding="a?>b"?>', "[81] EncName", "?"),
+    ('<?xml version="1.0>" encoding="{name}"?>', "[26] VersionNum", ">"),
+    ('<?xml version="1.0" encoding="{name}" standalone="y>es"?>', "[32] SDDecl", ">"),
+])
+def test_a_value_the_first_close_cuts_is_refused_for_what_it_holds(declaration, production,
+                                                                   character):
+    """A declaration is read as far as the first `>`, since none holds one
+    before its `?>`. A value holding one had its closing quote beyond it, and
+    was said to have none; it holds a character its production does not
+    allow, and that is the reason."""
+    graph, error = parsed(stored("utf-8", declaration))
+    assert graph is None and iirds.MALFORMED_DECLARATION in error, error
+    assert "%s does not allow %s in the value" % (production, character) in error, error
+
+
 @pytest.mark.parametrize("declaration, production", [
     ('<?xml version="1.0"\u00a0encoding="{name}"?>', "[3] S"),
     ('<?xml version="1.0" encoding="{name}"\u3000?>', "[3] S"),
@@ -244,6 +261,11 @@ def test_what_stops_a_declaration_is_named_by_the_production_it_breaks(declarati
     graph, error = parsed(stored("utf-8 marked", declaration))
     assert graph is None and iirds.MALFORMED_DECLARATION in error, error
     assert "production %s" % production in error and "no pseudo-attribute" not in error, error
+
+
+def test_an_empty_name_is_shown_as_one():
+    graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding=""?>'))
+    assert graph is None and error.endswith("[81] EncName does not allow the name ''"), error
 
 
 @pytest.mark.parametrize("form", sorted(FORMS))

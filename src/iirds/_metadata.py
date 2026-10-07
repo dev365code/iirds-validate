@@ -278,6 +278,14 @@ _INTRODUCED_BY = {"version": "[24] VersionInfo", "encoding": "[80] EncodingDecl"
 #: The order production [23] gives them in.
 _ORDER = ("version", "encoding", "standalone")
 
+#: Every character a value of each may hold, by the same productions. A value
+#: with no closing quote before the first `>` holds a character outside its
+#: own, and unless that is the other quote, it is what is wrong with it.
+_ALPHABETS = {"version": frozenset("0123456789."),
+              "encoding": frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                                    "0123456789._-"),
+              "standalone": frozenset("yesno")}
+
 
 class _Declaration(NamedTuple):
     """An XML declaration as production [23] reads it. `span` is where the
@@ -374,6 +382,11 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
                                   "declaration does not" % (_INTRODUCED_BY[word], word))
         closing = text.find(quote, at + 1)
         if closing < 0:
+            stray = next((index for index in range(at + 1, len(text))
+                          if text[index] not in _ALPHABETS[word]), None)
+            if stray is not None and text[stray] not in "'\"":
+                return _Malformed(stray, "production %s does not allow %s in the value of %s"
+                                         % (_VALUES[word][0], _shown(text[stray]), word))
             return _Malformed(at, "production %s ends the value of %s with the quote it begins "
                                   "with, and this declaration does not" % (_INTRODUCED_BY[word], word))
         value = text[at + 1:closing]
@@ -518,8 +531,9 @@ def _shown(name: str) -> str:
     shown = name[:_LONGEST_NAME + 1].encode("unicode_escape").decode("ascii")
     shown = shown if len(shown) <= 60 else shown[:57] + "..."
     # A space at either end escapes nothing and reads as no space at all:
-    # "utf-8 " refused looked like UTF-8 refused.
-    return "'%s'" % shown if shown != shown.strip(" ") else shown
+    # "utf-8 " refused looked like UTF-8 refused. Nothing at all reads as no
+    # name given.
+    return "'%s'" % shown if not shown or shown != shown.strip(" ") else shown
 
 
 def _decoded(raw: bytes, encoding: str):

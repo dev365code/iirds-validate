@@ -462,3 +462,93 @@ def test_a_registered_name_without_a_python_codec_is_unreadable():
     graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="ISO-10646-UTF-1"?>'))
     assert graph is None and iirds.UNREADABLE_ENCODING in error
     assert "registered at IANA" in error and "no text codec" in error
+
+
+@pytest.mark.parametrize("declared,codec", [
+    ("IBM037", "cp037"), ("IBM500", "cp500"),
+    ("IBM01140", "cp1140"), ("IBM273", "cp273"),
+])
+def test_ebcdic_declaration_selects_its_registered_codec(make_package, declared, codec):
+    """XML 1.0 §4.3.3 and Appendix F.1: 4C 6F A7 94 identifies EBCDIC;
+    the complete encoding declaration determines which code page is used.
+    """
+    title = "A topicé [ ]" + (" €" if codec == "cp1140" else "")
+    text = '<?xml version="1.0" encoding="%s"?>\n' % declared + BODY.replace("A topic", title)
+    raw = text.encode(codec)
+    assert raw[:4] == b"\x4c\x6f\xa7\x94"
+    graph, error = parsed(raw)
+    assert graph is not None and error is None, error
+    assert any(str(value) == title for value in graph.objects())
+    report = runner.check(make_package(metadata=raw))
+    assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+@pytest.mark.parametrize("declared", ["UTF-8", "IBM1026", "csUnicode"])
+def test_ebcdic_declaration_must_explain_its_observed_bytes(declared):
+    """XML 1.0 §4.3.3 refuses bytes other than the declared encoding.
+    A declaration read in the cp037 view must re-encode to the stored bytes.
+    """
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode("cp037")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+    assert "EBCDIC" in error and "4.3.3" in error
+
+
+@pytest.mark.parametrize("declaration", ['<?xml version="1.0"?>', '<?xml-stylesheet href="x"?>'])
+def test_ebcdic_signature_needs_a_readable_encoding_declaration(declaration):
+    """XML 1.0 §4.3.3 requires a declaration for non-UTF-8/16 entities;
+    Appendix F's EBCDIC signature alone does not select the code page.
+    """
+    graph, error = parsed((declaration + "\n" + BODY).encode("cp037"))
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert "EBCDIC-family bytes" in error and "no readable encoding declaration" in error
+
+
+def test_ebcdic_without_the_appendix_f_signature_is_not_guessed():
+    """XML 1.0 Appendix F.1 gives <?xml's signature, not every EBCDIC prefix."""
+    graph, error = parsed(BODY.encode("cp037"))
+    assert graph is None and error
+    assert iirds.first_bytes_encoding(BODY.encode("cp037")) is None
+
+
+def test_ebcdic_cp1026_is_not_retried_after_the_cp037_view():
+    """XML 1.0 §2.8 [23]/Appendix F.1: the sole cp037 declaration view
+    cannot read cp1026's double quotes; no other code page is guessed.
+    """
+    raw = ('<?xml version="1.0" encoding="IBM1026"?>\n' + BODY).encode("cp1026")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.MALFORMED_DECLARATION in error, error
+    assert "EBCDIC-family bytes" in error and "no readable encoding declaration" in error
+
+
+@pytest.mark.parametrize("declared,registered", [("IBM875", False), ("IBM1047", True)])
+def test_ebcdic_unavailable_names_use_the_existing_unreadable_path(declared, registered):
+    """XML 1.0 §4.3.3: unsupported names may be treated as unknown.
+    IBM875 is absent from this IANA snapshot; IBM1047 is registered without
+    a Python codec under its registered name or aliases.
+    """
+    from iirds import _metadata
+
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode("cp037")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+    assert (_metadata._registered(declared) is not None) is registered
+    assert ("registered at IANA" if registered else "not an IANA-registered") in error
+
+
+@pytest.mark.parametrize("element,namespace,rule", [
+    ("svg", "http://www.w3.org/2000/svg", "R42"),
+    ("html", "http://www.w3.org/1999/xhtml", "B6"),
+])
+def test_content_identification_uses_the_ebcdic_byte_signature(make_package, element,
+                                                            namespace, rule):
+    """iiRDS 1.3 §8.2.1.1/§8.2.1.2: EBCDIC XML reaches the same
+    bounded root-namespace identification via XML Appendix F.1.
+    """
+    from test_obl_c import A_PROFILE
+
+    raw = ('<?xml version="1.0" encoding="IBM037"?><%s xmlns="%s"/>'
+           % (element, namespace)).encode("cp037")
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/ebcdic.bin", raw),)))
+    assert [f.violation.subject for f in report.findings if f.rule.id == rule] == ["content/ebcdic.bin"]

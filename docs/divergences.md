@@ -323,6 +323,12 @@ declaration, unmarked UTF-32LE and UTF-32BE are now read. Appendix F is
 non-normative and calls UTF-32 UCS-4. Its unusual UCS-4 orders are unsupported;
 a prefix it does not identify is read as UTF-8 rather than guessed as UTF-16.
 
+The EBCDIC signature `4C 6F A7 94` uses a single cp037 declaration view;
+declarations unreadable in that view, such as double-quoted cp1026 declarations,
+are refused without trying another code page. A readable declaration must
+reproduce its observed bytes under the declared codec before that codec reads
+the whole document.
+
 Generic `UTF-16` and its registered alias require a byte order mark. Unmarked
 `UTF-16LE`, `UTF-16BE`, `ISO-10646-UCS-2` and `csUnicode` retain the order
 shown by their first bytes. The UCS-2 labels refuse decoded characters outside

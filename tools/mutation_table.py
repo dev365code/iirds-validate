@@ -60,6 +60,20 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("metadata/ebcdic-signature-not-detected",
+     METADATA,
+     '    if raw[:4] == b"\\x4c\\x6f\\xa7\\x94":',
+     '    if False:',
+     ["tests/test_xml_declaration.py"],
+     "registered EBCDIC declarations and their text are read as UTF-8 and refused"),
+
+    ("metadata/ebcdic-declaration-bytes-not-checked",
+     METADATA,
+     '        consistent = codec is not None and declaration.encode(codec) == observed',
+     '        consistent = True',
+     ["tests/test_xml_declaration.py"],
+     "a declaration naming a codec that changes its own bytes escapes the contradiction guard"),
+
     ("content/pdf-signature-limited-to-one-major-version",
      "src/iirds_validate/rules/content.py",
      'PDF_MAGIC = b"%PDF-"',

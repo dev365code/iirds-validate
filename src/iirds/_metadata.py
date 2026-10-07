@@ -80,6 +80,10 @@ class _Start(NamedTuple):
 def _start(raw: bytes) -> _Start:
     if raw[:4] in _UNUSUAL_ORDERS:
         return _Start(None, "latin-1", 0, False)
+    if raw[:4] == b"\x4c\x6f\xa7\x94":
+        # Appendix F identifies the family; cp037 reads only the declaration
+        # window. Its declared codec must explain those same bytes below.
+        return _Start("IBM037", "cp037", 0, False)
     for bom, encoding, codec in _MARKS:
         if raw.startswith(bom):
             return _Start(encoding, codec, len(bom), True)
@@ -431,7 +435,8 @@ def _prolog(raw: bytes):
 def first_bytes_encoding(raw: bytes) -> Optional[str]:
     """The encoding a metadata document's first bytes say it is in, read as
     XML 1.0 appendix F reads them: a byte order mark, or the shape of unmarked
-    UTF-16 or UTF-32. None where they keep ASCII where ASCII is and say no
+    UTF-16 or UTF-32, or IBM037's view of the EBCDIC declaration signature.
+    None where they keep ASCII where ASCII is and say no
     more -- UTF-8, or an encoding beside it that only a declaration names."""
     return _start(raw).encoding
 
@@ -583,6 +588,8 @@ def _decode(raw: bytes, prolog=None) -> bytes:
     """
     start, found = prolog if prolog is not None else _prolog(raw)
     codec = start.codec if _read_here(start) else None
+    if start.encoding == "IBM037" and isinstance(found, _Declaration) and found.encoding:
+        codec = _codec_for(found.encoding)
     if codec is None and isinstance(found, _Declaration) and found.encoding:
         form = _encoding_form(found.encoding)
         if form is None or form == "UTF-8":
@@ -705,8 +712,15 @@ def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]
             return "%s: UnicodeDecodeError: no Appendix F byte pattern; read as UTF-8; %s" % (
                 name, exc)
     if isinstance(found, _Malformed):
-        return "%s: %s: at character %d, %s" % (name, MALFORMED_DECLARATION, found.at + 1,
-                                                 found.why)
+        reason = "%s: %s: at character %d, %s" % (name, MALFORMED_DECLARATION, found.at + 1,
+                                                  found.why)
+        if start.encoding == "IBM037":
+            reason += ("; EBCDIC-family bytes by XML 1.0 Appendix F, and no readable "
+                       "encoding declaration in the cp037 view -- save as UTF-8 with "
+                       "a matching declaration")
+        return reason
+    if start.encoding == "IBM037":
+        return _refused_by_ebcdic(name, stored, found)
     declared = found.encoding if found is not None else None
     if start.encoding is not None:
         return _refused_by_first_bytes(name, start, declared, stored)
@@ -722,6 +736,35 @@ def _unread(name: str, declared: str) -> Optional[str]:
     if _encoding_form(declared) is None and _codec_for(declared) is None:
         return "%s: %s: %s: registered at IANA, but no text codec is available" % (
             name, UNREADABLE_ENCODING, shown)
+    return None
+
+
+def _refused_by_ebcdic(name: str, stored: bytes,
+                       found: Optional[_Declaration]) -> Optional[str]:
+    """One cp037 declaration view, checked against its declared codec's bytes.
+
+    Appendix F identifies an EBCDIC family, not its code page. The full
+    declaration settles the page only when that codec reproduces the bytes
+    we read. A different declaration view is never tried after a refusal.
+    """
+    if found is None or found.encoding is None:
+        return ("%s: %s: EBCDIC-family bytes by XML 1.0 Appendix F, and no readable "
+                "encoding declaration -- declare the matching registered encoding "
+                "under XML 1.0 §4.3.3, or save as UTF-8" % (name, UNDECLARED_ENCODING))
+    refused = _unread(name, found.encoding)
+    if refused is not None:
+        return refused
+    codec = _codec_for(found.encoding)
+    observed = stored[:found.end]
+    declaration = observed.decode("cp037")
+    try:
+        consistent = codec is not None and declaration.encode(codec) == observed
+    except (LookupError, UnicodeError):
+        consistent = False
+    if not consistent:
+        return _contradicted(name, "its first bytes say", "EBCDIC-family bytes "
+                             "(XML 1.0 Appendix F), whose declaration bytes disagree with",
+                             found.encoding)
     return None
 
 

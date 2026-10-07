@@ -163,3 +163,37 @@ def test_one_character_settles_the_byte_order(order):
     assert graph is None and iirds.UNDECLARED_ENCODING in error, error
     graph, error = parsed(unmarked(order, '<?xml version="1.0" encoding="{own}"?>', WIDE_NAMED))
     assert error is None and graph is not None, error
+
+# ---------------------------------------------------------------------------
+# UTF-16 the parser would find for itself. It sniffs the first bytes it is
+# handed, as this reader does, and a document decoded and written out as UTF-8
+# can begin like UTF-16 to it: U+0000 in either of its first two characters.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("head", ["", '<?xml version="1.0"?>\n',
+                                  '<?xml version="1.0" encoding="{own}"?>\n'])
+@pytest.mark.parametrize("order", sorted(ORDERS))
+def test_utf16_behind_a_utf8_mark_is_refused(order, head, tmp_path):
+    """The mark says UTF-8, and read as UTF-8 the rest is ASCII with U+0000
+    between its characters, which XML lets stand nowhere. Written out again,
+    it began like UTF-16, and the parser read it as that, the mark and any
+    declaration behind it held against nothing."""
+    raw = b"\xef\xbb\xbf" + unmarked(order, head)
+    graph, error = parsed(raw)
+    assert graph is None and error, (order, head)
+    assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+@pytest.mark.parametrize("head", ["", '<?xml version="1.0" encoding="ISO-10646-UCS-4"?>\n'])
+def test_ucs4_in_octet_order_3412_cut_short_is_refused(head, tmp_path):
+    """`FE FF 00 00` is UCS-4 in an unusual octet order to appendix F, and a
+    UTF-16 mark to this reader, which reads U+0000 between the characters
+    after it. Cut by two bytes it was read, nine statements, behind a
+    declaration of ISO-10646-UCS-4 or none."""
+    body = head + BODY
+    whole = b"\xfe\xff\x00\x00" + b"".join(
+        bytes((unit[2], unit[3], unit[0], unit[1]))
+        for unit in (ord(character).to_bytes(4, "big") for character in body))
+    graph, error = parsed(whole[:-2])
+    assert graph is None and error, error
+    assert not runner.check(build_package(tmp_path, metadata=whole[:-2])).ok

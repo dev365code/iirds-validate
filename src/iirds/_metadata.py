@@ -632,11 +632,17 @@ def _decode(raw: bytes, prolog=None) -> bytes:
     text = raw[start.skip:].decode(start.codec)
     if isinstance(found, _Declaration) and found.span is not None:
         text = text[:found.span[0]] + text[found.span[1]:]
-    # Behind the mark sliced off above, a second is a character, which nothing
-    # lets stand before a declaration or the document element. UTF-8 that
-    # began EF BB BF would hand it to the parser as a mark, and a declaration
-    # behind it as the document's own; a mark in front keeps it a character.
-    return (b"\xef\xbb\xbf" if text.startswith("\ufeff") else b"") + text.encode("utf-8")
+    # The parser sniffs the first bytes it is handed, as this reader does, and
+    # UTF-8 can begin like something else. Behind the mark sliced off above, a
+    # second is a character, which nothing lets stand before a declaration or
+    # the document element: UTF-8 that began EF BB BF would hand it to the
+    # parser as a mark, and a declaration behind it as the document's own.
+    # U+0000 in either of the first two characters, which XML lets stand
+    # nowhere, made UTF-8 the parser read as UTF-16, and UTF-16 behind a UTF-8
+    # mark was read as though the mark were not there. A mark in front keeps
+    # each the character it is, and the parser refuses it.
+    sniffed = text.startswith("\ufeff") or "\x00" in text[:2]
+    return (b"\xef\xbb\xbf" if sniffed else b"") + text.encode("utf-8")
 
 
 def _fetches_in_context(source, found):

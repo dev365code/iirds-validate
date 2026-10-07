@@ -420,16 +420,12 @@ def _normal(name: str) -> str:
 
 #: The two encodings XML requires beside UTF-8, by name with case, `-`, `_`
 #: and `.` set aside -- with ISO-10646-UCS-2 and ISO-10646-UCS-4, the names
-#: section 4.3.3 gives beside them for the same encodings of Unicode. Every
-#: other encoding a document is decoded under, to be compared with UTF-8, is
-#: one that reads a character from each byte.
+#: section 4.3.3 gives beside them for the same encodings of Unicode. A
+#: declaration of one over bytes that open `3C 3F 78 6D` contradicts them;
+#: every other encoding a document is decoded under, to be compared with
+#: UTF-8, is one that reads a character from each byte.
 _UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
                           "iso10646ucs2", "iso10646ucs4"})
-
-#: The codec each of the two UCS names is read with. Python answers to
-#: neither name, and a name read under no codec at all was a document read
-#: under nothing.
-_UCS_CODECS = {"iso10646ucs2": "utf-16", "iso10646ucs4": "utf-32"}
 
 #: The IANA names that agree with a UTF-16 or UTF-32 mark, without regard to
 #: case (section 4.3.3 recommends IANA names): a family name in either byte
@@ -447,6 +443,10 @@ _AGREEING = {
 #: does not read, not one it can hold against the mark.
 _UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
                                "iso10646ucs2", "iso10646ucs4"})
+
+#: What bytes that open `3C 3F 78 6D` say, by XML 1.0 appendix F: UTF-8, or
+#: another encoding in which ASCII characters are the ASCII bytes.
+_KEEPS_ASCII = "an encoding in which ASCII characters are ASCII bytes (XML 1.0 appendix F)"
 
 #: Names Python gives a code page that differs from one Windows machine to
 #: the next, and that no other system has: a declaration of one would be read
@@ -746,9 +746,12 @@ def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
     ASCII characters are ASCII bytes.
 
     rdflib decodes as UTF-8 whatever the declaration names. A name this reader
-    does not read is refused by name, with nothing decoded. Any other name is
-    read both ways -- under the name, and as UTF-8 -- and where the two are
-    different text there are two readings of one file, so it is refused
+    does not read is refused by name, with nothing decoded. A name for UTF-16
+    or UTF-32, or one under which the declaration's own bytes are other
+    characters, contradicts the first bytes: appendix F reads `3C 3F 78 6D` as
+    UTF-8 or an encoding in which ASCII characters are ASCII bytes. Any other
+    name is read both ways -- under the name, and as UTF-8 -- and where the two
+    are different text there are two readings of one file, so it is refused
     rather than one chosen. Where they are the same, as they are for a code
     page that keeps ASCII where ASCII is over bytes all under 128, nothing is
     said.
@@ -758,8 +761,10 @@ def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
     refused = _unread(name, declared)
     if refused is not None:
         return refused
-    theirs = _decoded(stored, _UCS_CODECS.get(_normal(declared), declared))
-    ours = _decoded(stored, "utf-8")
+    own = stored[:found.end]
+    if _normal(declared) in _UTF16_OR_32 or _decoded(own, declared) != own.decode("latin-1"):
+        return _contradicted(name, "its first bytes say", _KEEPS_ASCII, declared)
+    theirs, ours = _decoded(stored, declared), _decoded(stored, "utf-8")
     if theirs is None and ours is None:
         return None          # neither reads it, and the parser says so itself
     if theirs is None or ours is None or theirs != ours:

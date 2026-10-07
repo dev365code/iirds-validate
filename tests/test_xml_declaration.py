@@ -234,6 +234,16 @@ def test_unmarked_utf32_declaring_another_encoding_is_contradicted():
     assert graph is None and iirds.CONTRADICTED_ENCODING in error and "UTF-32LE" in error, error
 
 
+def test_utf16_declared_over_bytes_that_keep_ascii_is_a_contradiction():
+    """E44: refused as a declaration this reader reads differently. Appendix F
+    reads `3C 3F 78 6D` as UTF-8 or an encoding in which ASCII characters are
+    ASCII bytes, so the bytes contradict the declaration, which section 4.3.3
+    makes a fatal error."""
+    graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="UTF-16"?>'))
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+    assert "appendix F" in error and "4.3.3" in error, error
+
+
 def test_the_note_on_a_decode_failure_names_the_declaration_the_grammar_reads(tmp_path):
     """The C16.1 note names what the document declares, read by the same
     reading the checks use, single quotes and white space around Eq

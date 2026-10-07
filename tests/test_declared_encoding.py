@@ -341,10 +341,15 @@ def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
                                       "ISO-10646-UCS-4"])
 def test_a_declaration_that_reads_ascii_as_other_text_is_refused(declared):
     """Bytes all under 128 are the same text only under a code page that keeps
-    ASCII where it is; these read them as other characters."""
+    ASCII where it is; these read them as other characters. And the bytes that
+    open the document, `3C 3F 78 6D`, already say which: XML 1.0 appendix F
+    reads them as UTF-8 or an encoding in which ASCII characters are ASCII
+    bytes, so a 16- or 32-bit encoding, or an EBCDIC page, contradicts them --
+    a fatal error by section 4.3.3, refused as the contradiction it is."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
-    assert graph is None and iirds.UNUSED_ENCODING in error, (declared, error)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, (declared, error)
+    assert "ASCII characters are ASCII bytes" in error and declared in error, error
 
 
 def test_a_utf8_mark_under_another_declaration_is_refused():

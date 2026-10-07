@@ -46,6 +46,24 @@ sentence, that the checksum "MUST be provided separately": what travels
 beside a container is not in it. Its first clause, that the checksum is not
 inside the package, stays work. The denominator stays 280.
 
+- Unmarked UTF-32 with a matching registered declaration is now read;
+  undeclared or contradictory wide text stays refused.
+- Registered IANA names and aliases with a Python text codec are now read,
+  including legacy multibyte encodings; unregistered spellings are now refused
+  across all encoding families.
+- Generic UTF-16 without a byte order mark is now refused; explicit byte-order
+  labels retain their existing behavior.
+- UCS-2 declarations over supplementary characters are now refused.
+- Complete repeats of bounded cyclic graph bundles are now read once;
+  partial repeats still describe additional nodes.
+- Anonymous graph copies are now read as a count and canonical description,
+  with stable report payloads across serialization order.
+- XHTML and SVG behind long XML prologs, wide encoding or escaped namespace
+  values are now read by bounded XML tokens for extension checks; attribute
+  text that only quotes a namespace declaration makes no format claim.
+- Identification reads from unreferenced files and gzip output now count
+  towards the content budget and are refused when the run exceeds it.
+
 ## 0.8.0 — 2026-09-30
 
 **Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The

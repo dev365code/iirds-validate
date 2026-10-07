@@ -293,96 +293,66 @@ it fails under either reading.
 
 ## Metadata in an encoding this reader does not decode
 
-**C16.1 — `metadata.rdf` whose bytes do not decode as UTF-8 is refused,
-whatever it declares, unless a UTF-16 or UTF-32 byte order mark, or the byte
-pattern of unmarked UTF-16 under a declaration that names it, settles another
-encoding — and the package below was refused with nothing in it damaged.**
+**C16.1 — encoding names are read through the IANA registry, and bytes
+must agree with the declaration.**
 
-A real third-party package declares `encoding="windows-1252"`. This tool
-reports `ERROR C16.1` and says nothing about the graph. `xml.etree`, in the
-same interpreter, parses the same bytes and finds its elements; rdflib, which
-is what this tool parses with, decodes as UTF-8 whatever the declaration says,
-and fails on the first byte above 0x7F.
+The reader decodes registered names and aliases without regard to case when
+Python provides a text codec. The offline registry snapshot is generated from
+[IANA Character Sets](https://www.iana.org/assignments/character-sets/character-sets.xhtml)
+and belongs to the `iirds` reader package. A registered name without a local
+codec is refused as unreadable. Unregistered spellings such as `utf8`,
+`UTF_16`, `cp65001`, `cp1252` and `ascii` are refused by the same path;
+`US-ASCII`, `csASCII`, `latin1` and `windows-1252` are registered. This is the
+choice to interpret IANA-registered names permitted by
+[XML 1.0 section 4.3.3](https://www.w3.org/TR/2008/REC-xml-20081126/#charencoding),
+not a claim that every other processor must support every registered codec.
 
-Refusing is defensible and is kept. XML 1.0 requires a processor to support
-UTF-8 and UTF-16 and nothing else, so a document in another encoding is one an
-XML processor may decline, and iiRDS says nothing that overrides that. What a
-consumer does with such a package is not settled by the specification, and a
-validator that read it here while a consumer's reader refused it there would be
-blessing a delivery that does not arrive.
+A real third-party package in `windows-1252` was refused because rdflib reads
+RDF/XML as UTF-8 regardless of its declaration. Registered, supported codecs
+are now decoded before that parser receives the document. The declaration
+is checked before it is removed for UTF-8 transcoding. Without a byte order
+mark, a supported registered legacy declaration determines how the bytes are
+read; UTF-8's possible reading does not override it. The finding still names
+an encoding it cannot read, so resending intact bytes is not its remedy:
+correct the name or save as UTF-8 and change the declaration with the bytes.
 
-What was wrong was the sentence beside the refusal. It said an encoding error
-means "the bytes were damaged or cut short in transit and the file has to be
-sent again" -- so a reader asks their supplier to resend a file that is
-intact, and receives it again unchanged. The finding now names the encoding the
-document declares -- including UTF-8, when that is what it says and the bytes
-are not, which is the commonest of these in the field -- and the remedy answers
-each declaration separately. Written as some other encoding, or as one this
-reader will not use at all, the file is written as UTF-8 and its declaration
-made to say so, or taken out. Written as UTF-8 and
-not being it, the file was saved in another encoding and the declaration left
-where it was. Written not at all, UTF-8 is what XML assumes, and the file is
-worth looking at before it is asked for again.
+A byte order mark or Appendix F byte pattern that contradicts a declaration
+is refused. ASCII `<?xm` cannot be declared UTF-16 or UTF-32. UTF-32 without
+an encoding declaration is refused, with or without a mark; with a matching
+declaration, unmarked UTF-32LE and UTF-32BE are now read. Appendix F is
+non-normative and calls UTF-32 UCS-4. Its unusual UCS-4 orders are unsupported;
+a prefix it does not identify is read as UTF-8 rather than guessed as UTF-16.
 
-Transcoding that package -- which is not in this repository -- to UTF-8 and
-nothing else turned the verdict into a pass with no findings, which is the
-measurement that says the markup was never the problem. It would not now: its
-declaration still said `windows-1252`, which the check below refuses over UTF-8
-bytes, so the declaration changes with the bytes.
+Generic `UTF-16` and its registered alias require a byte order mark. Unmarked
+`UTF-16LE`, `UTF-16BE`, `ISO-10646-UCS-2` and `csUnicode` retain the order
+shown by their first bytes. The UCS-2 labels refuse decoded characters outside
+the BMP. LE/BE labels with a mark keep their existing behavior; the separate
+labeling recommendation in [RFC 2781 section 3.3](https://www.rfc-editor.org/rfc/rfc2781.html#section-3.3)
+has not been turned into another refusal.
 
-The other direction is refused too: a declaration that reads the bytes as other
-text than UTF-8 does -- `windows-1252` over UTF-8 bytes with a letter outside
-ASCII, with or without a byte order mark -- is two readings of one file, and
-this reader holds one of them, so it refuses rather than choose. A document
-whose bytes read the same both ways passes. A declaration naming an encoding
-this reader does not decode -- anything but UTF-8, UTF-16, UTF-32 and the
-encodings that read one character from each byte, or a name no codec answers
-to -- is refused by name without the document being decoded under it.
-A document whose byte order mark, or whose first bytes as unmarked UTF-16 or
-UTF-32, say one encoding while its declaration names another is refused: XML
-1.0 section 4.3.3 makes that a fatal error "in the absence of information
-provided by an external transport protocol", and a ZIP member has none, so the
-section applies as written -- a note on applying it, not a divergence. First
-bytes `3C 3F 78 6D`, the ASCII of `<?xm`, say an encoding in which ASCII
-characters are ASCII bytes, so a declaration of UTF-16 or UTF-32 over them is
-the same contradiction. UTF-32 that declares nothing is refused too, and the
-reason gives the sentence it breaks: behind a byte order mark, the MUST that an
-entity in an encoding other than UTF-8 or UTF-16 begin with an encoding
-declaration -- an error, by section 1.2 -- and without one, the fatal error the
-section makes of an entity that begins with neither a byte order mark nor an
-encoding declaration and is not UTF-8. Which bytes mark which encoding is read
-as Appendix F reads them, a non-normative table that calls UTF-32 UCS-4.
+The XML declaration follows productions [23]–[26], [32], [80] and [81].
+`VersionNum` must match `1.` followed by digits; accepted `1.x` declarations
+are parsed as XML 1.0. This checks the written declaration even behind a mark.
 
-The declaration itself is read once, by productions [23] to [26], [32], [80]
-and [81], and a declaration the grammar does not allow is refused, with the
-production it breaks, whatever stands in front of it; behind a byte order mark
-one was removed unread and the package passed. Names are matched without
-regard to case, and the names and aliases IANA registers for UTF-8, UTF-16 and
-UTF-32 -- `csUTF8`, `csUTF16`, `csUnicode`, `csUCS4` among them -- are read as
-the encodings they name, as the section recommends, though expat reads none of
-the aliases. A spelling IANA does not register, `utf8` or `UTF_16`, and a name
-only Python reads as UTF-8, such as `cp65001`, has no such standing: it is
-read only where expat and libxml2 both read it, and expat reads none of them
-as what it spells, so each is refused by name.
+### Measured processor compatibility
 
-UTF-16 without a byte order mark is read only under a declaration that names
-it. With no encoding declaration it begins with neither a byte order mark nor
-an encoding declaration and is not UTF-8, which section 4.3.3 makes a fatal
-error; the section also says an entity in UTF-16 MUST begin with a byte order
-mark, and that its terms UTF-8 and UTF-16 do not apply to UTF-16LE or UTF-16BE,
-and Appendix F reads such a stream as mislabeled, lacking a required encoding
-declaration. It is refused, where it was read: expat reads it from the shape of
-its first bytes, and libxml2 only where `<?` stands first, a declaration or
-another instruction. Under `UTF-16LE` or `UTF-16BE` it is read, and is the form
-RFC 2781 section 3.3 gives those labels, which carry no byte order mark. Under
-`UTF-16` it is read too, though the same section of XML says an entity in
-UTF-16 MUST begin with a byte order mark: that is an error by section 1.2,
-which a processor may report and recover from, not a fatal one, and a warning
-for it is a candidate, not a rule. RFC 2781 section 4.3 says text labelled
-UTF-16 with no byte order mark SHOULD be read big-endian; this reader goes by
-the shape of the first bytes, as Appendix F does, and reads a little-endian
-document so labelled as little-endian -- a SHOULD of the RFC set aside, where
-reading it would make the document's own markup unreadable.
+The same byte inputs were read on 2026-10-07 with Python 3.13.15,
+expat 2.8.3, lxml 6.1.3 and libxml2 2.14.6. lxml used `recover=False`,
+`no_network=True` and `resolve_entities=False`; a successful parse with an
+error log is recorded as a warning. The alias matrix includes both ASCII and
+non-ASCII text, not just successful parsing of ASCII markup.
+
+| input | this reader | expat | libxml2 |
+|---|---|---|---|
+| Registered Unicode aliases, eleven byte forms, each with ASCII and non-ASCII text | all twenty-two read | all twenty-two refused | the two unmarked `csUTF8` inputs refused; others read, some with a warning |
+| UTF-32LE/BE with a mark and matching declaration | both read | both refused | both read |
+| Unregistered `utf8`/`UTF8`, ASCII text | refused | read | read |
+| Unregistered `utf8`/`UTF8`, non-ASCII text | refused | refused | read |
+
+These observations show a compatibility difference, not a rule inferred from
+processor agreement. In particular, the older claim that both processors
+refuse marked UTF-32 does not hold for the libxml2 version measured here.
+Java was unavailable for this measurement.
 
 ## What this tool refuses to read, and why that is its own decision
 
@@ -1232,10 +1202,10 @@ node across the document -- and one repeating part of it around such a node
 makes a second node, which L9 reports. Graphs that share labels -- a default
 graph whose rendition a named graph speaks of -- are one description of the
 nodes they share, and a graph repeating that description whole counts once,
-whatever order the graphs come in, where their blank nodes form trees; a graph
-repeating one of them alone, or part of one, makes second nodes, which L9
-reports. Where their blank nodes do not form trees, naming them would take a
-search, kept for the graphs that can be left out, and the repeat is a second
+whatever order the graphs come in. Trees are compared directly; a non-tree
+whole bundle is compared by rdflib graph isomorphism within the same blank-node
+limit and document search allowance. A graph repeating one part alone makes
+second nodes, which L9 reports. Past the comparison limit a repeat is a second
 copy, which L9 reports. And where a file's statements are split
 between its default graph and named graphs, and the default graph holds such a
 node, the merge, which reads default graphs, holds that node beside
@@ -1245,6 +1215,12 @@ holding statements the default graph lacks, those that IRIs name, and counts
 the rest. rdflib reads a graph container (`@container: @graph`), and a graph
 object given as a property's value, into the default graph, where a JSON-LD
 1.1 processor makes each a named graph, so L17 does not see those shapes.
+
+Repeated independent graphs with blank-node names are represented by a copy
+count and one canonical description, not a chosen representative graph name.
+Only IRI graph names are listed, in sorted order. Reordering anonymous copies
+leaves the report payload byte-identical; the package digest still describes
+the archive's own bytes and changes when those bytes change.
 
 A reader that asks a JSON-LD document for one graph is given its default
 graph, and from a file whose statements sit in a named graph it gets less, or

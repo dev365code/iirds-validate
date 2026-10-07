@@ -99,8 +99,8 @@ def _read_here(start: _Start) -> bool:
     XML requires a byte order mark on a UTF-16 document and expat does not
     insist, autodetecting instead -- so a document can be UTF-16 to the parser
     and opaque bytes to every guard below, which is how `<!ENTITY` in UTF-16
-    was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32 is decoded here too, after its declaration has been
-    checked against the byte order by the same guard as a marked document.
+    was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32
+    is decoded here too, after its declaration has been checked against the byte order by the same guard as a marked document.
     A missing or contradictory declaration is refused before this decode.
     """
     return start.encoding is not None
@@ -1394,8 +1394,8 @@ def _lent(items, blanks, shared, searched=True):
 
     Trees are fingerprinted in one pass. A non-tree union is compared with
     whole candidate repeats by rdflib isomorphism, only within the existing
-    blank-node limit and while the document's search allowance is intact. And only where a graph that can be left out is the
-    union's size, since a repeat says as many statements as what it repeats:
+    blank-node limit and while the document's search allowance is intact. Only
+    where a graph that can be left out is the union's size, since a repeat says as many statements as what it repeats:
     a document of graphs sharing labels and repeating nothing pays nothing.
     """
     sizes = {len(graph) for (_name, graph), nodes in zip(items, blanks)
@@ -1510,10 +1510,9 @@ def merge_graphs_of(graphs):
     graph by graph, the limit let a document of many graphs cost a search
     apiece.
 
-    The default graph comes first, then the named graphs in the order of
-    their names, a graph with a name before one without: which of two
-    repeats is left out is what a caller reports, and the order a parser
-    hands graphs over in follows its blank-node labels.
+    The default graph comes first, then IRI-named graphs in name order.
+    Anonymous repeated graphs contribute a count and a canonical description,
+    so parser order cannot choose an anonymous representative.
 
     Returns ``(merged, repeats, uncounted)``: the merged graph, repeated IRI
     graph names or anonymous repetition summaries, and graphs that could not

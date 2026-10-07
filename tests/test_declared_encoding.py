@@ -283,10 +283,13 @@ def test_a_name_longer_than_any_codecs_is_refused_unread():
     assert graph is None and iirds.UNREADABLE_ENCODING in error, error
 
 
-@pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "cp65001", "macintosh", "TIS-620"])
+@pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "macintosh", "TIS-620"])
 def test_a_name_that_reads_ascii_as_ascii_passes(declared):
-    """ASCII's own IANA name, UTF-8's Windows one, and two single-byte pages
-    a list of names refused."""
+    """ASCII's own IANA name, and two single-byte pages a list of names
+    refused. UTF-8's Windows name, `cp65001`, was here; IANA does not register
+    it and neither expat nor libxml2 reads it, and
+    `test_a_name_python_reads_as_utf8_and_iana_does_not_register_is_refused`
+    holds that it is refused."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
     assert error is None and graph is not None, error
@@ -378,10 +381,11 @@ def test_a_document_the_entity_check_cannot_answer_for_is_refused(monkeypatch):
     assert graph is None and "could not be read for XML entities" in error, error
 
 
-@pytest.mark.parametrize("declared", ["UTF-8", "utf--8"])
+@pytest.mark.parametrize("declared", ["UTF-8", "csUTF8"])
 def test_bytes_that_are_not_utf8_are_the_parsers_to_refuse(declared):
     """A name that is not UTF-8 in the document element, under a declaration
-    Python reads as UTF-8. Older expat hands such a name on unchecked; the
+    this reader reads as UTF-8 -- the name IANA registers, and the alias it
+    registers beside it. Older expat hands such a name on unchecked; the
     entity check and the declaration check leave the refusal to the parser,
     which names the byte, instead of refusing for a reason the document does
     not have."""

@@ -197,6 +197,69 @@ def test_the_name_read_is_the_one_declared(form):
     assert iirds.declared_encoding(raw) == FORMS[form][2].lower()
 
 
+# ---------------------------------------------------------------------------
+# Which names are read. Section 4.3.3: a processor "SHOULD match character
+# encoding names in a case-insensitive way and SHOULD either interpret an
+# IANA-registered name as the encoding registered at IANA for that name or
+# treat it as unknown". The registered names and aliases of UTF-8, UTF-16 and
+# UTF-32 are read as what IANA registers them as. A spelling IANA does not
+# register is read only if both processors a consumer is likely to have read
+# it; measured on expat 2.6.1 and libxml2 2.9.14, with text in which a
+# misreading shows, expat reads none, so none is.
+# ---------------------------------------------------------------------------
+
+#: (stored as, the alias IANA registers beside the name of its encoding)
+ALIASES = [("utf-8", "csUTF8"), ("utf-8 marked", "csUTF8"),
+           ("utf-16le marked", "csUTF16"), ("utf-16be marked", "csUTF16"),
+           ("utf-16le marked", "csUTF16LE"), ("utf-16be marked", "csUTF16BE"),
+           ("utf-16le unmarked", "csUTF16LE"), ("utf-16le marked", "csUnicode"),
+           ("utf-32le marked", "csUTF32"), ("utf-32be marked", "csUTF32BE"),
+           ("utf-32le marked", "csUCS4")]
+
+
+@pytest.mark.parametrize("form, alias", ALIASES, ids=["%s %s" % pair for pair in ALIASES])
+def test_an_alias_iana_registers_is_read_as_its_name(form, alias, tmp_path):
+    """E14 among them: `csUTF16` behind a UTF-16LE mark was refused as a name
+    this reader does not read."""
+    raw = stored(form, '<?xml version="1.0" encoding="%s"?>' % alias)
+    graph, error = parsed(raw)
+    assert error is None and graph is not None, (form, alias, error)
+    assert runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+#: (stored as, a spelling IANA does not register)
+SPELLINGS = [("utf-8", "utf8"), ("utf-8", "UTF_8"), ("utf-8", "utf--8"),
+             ("utf-8 marked", "utf8"), ("utf-8 marked", "utf_8"),
+             ("utf-16le marked", "utf16"), ("utf-16be marked", "UTF_16"),
+             ("utf-16le marked", "UTF-16-LE"), ("utf-16le unmarked", "utf16le"),
+             ("utf-32le marked", "utf32"), ("utf-32le marked", "UTF_32LE")]
+
+
+@pytest.mark.parametrize("form, spelling", SPELLINGS, ids=["%s %s" % pair for pair in SPELLINGS])
+def test_a_spelling_iana_does_not_register_is_refused_by_name(form, spelling, tmp_path):
+    """E42 and E43 among them: `utf8` behind a UTF-8 mark was read, and
+    `utf16` behind a UTF-16 one refused. Both are refused now, for the same
+    reason, with or without a mark."""
+    raw = stored(form, '<?xml version="1.0" encoding="%s"?>' % spelling)
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (form, spelling, error)
+    assert "IANA does not register" in error and spelling in error, error
+    assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+@pytest.mark.parametrize("declared", ["cp65001", "u8", "utf", "utf-8-sig", "utf8_ucs2"])
+def test_a_name_python_reads_as_utf8_and_iana_does_not_register_is_refused(declared):
+    """Python answers to each of these with its UTF-8 codec, and passed them
+    as UTF-8 over UTF-8 bytes; neither expat nor libxml2 reads one of them."""
+    graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="%s"?>' % declared))
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+    assert "a name for UTF-8 that IANA does not register" in error, error
+
+
+# ---------------------------------------------------------------------------
+# What the refusals say.
+# ---------------------------------------------------------------------------
+
 def test_a_declaration_out_of_order_behind_a_utf32_mark_is_refused_as_that():
     """E39: refused, and said to declare no encoding at all; it declares
     UTF-32, in a declaration production [23] does not allow."""
@@ -244,13 +307,16 @@ def test_utf16_declared_over_bytes_that_keep_ascii_is_a_contradiction():
     assert "appendix F" in error and "4.3.3" in error, error
 
 
-def test_the_note_on_a_decode_failure_names_the_declaration_the_grammar_reads(tmp_path):
+@pytest.mark.parametrize("declared", ["UTF-8", "csUTF8"])
+def test_the_note_on_a_decode_failure_names_the_declaration_the_grammar_reads(declared,
+                                                                              tmp_path):
     """The C16.1 note names what the document declares, read by the same
     reading the checks use, single quotes and white space around Eq
-    included."""
-    raw = ("<?xml version='1.0' encoding = 'UTF-8'?>\n" + BODY.replace(
+    included -- and calls a declaration of UTF-8, by its name or by the alias
+    IANA registers beside it, the contradiction it is."""
+    raw = ("<?xml version='1.0' encoding = '%s'?>\n" % declared + BODY.replace(
         "Test package", "Größe")).encode("windows-1252")
     report = runner.check(build_package(tmp_path, metadata=raw))
     [finding] = [f for f in report.findings if f.rule.id == "C16.1"]
-    assert "encoding='UTF-8', which these bytes are not" in finding.violation.detail, (
+    assert "encoding=%r, which these bytes are not" % declared in finding.violation.detail, (
         finding.violation.detail)

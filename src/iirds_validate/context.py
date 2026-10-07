@@ -659,7 +659,7 @@ def _declared_encoding(raw, reported) -> str:
     declared = declared_encoding(bytes(raw))
     if declared is None:
         return ""
-    if declared.lower().replace("_", "-") in ("utf-8", "utf8"):
+    if declared.lower() in ("utf-8", "csutf8"):
         return " (the document declares encoding=%r, which these bytes are not)" % declared
     return " (the document declares encoding=%r)" % declared
 

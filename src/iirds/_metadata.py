@@ -418,31 +418,38 @@ def _normal(name: str) -> str:
     return name.lower().replace("-", "").replace("_", "").replace(".", "")
 
 
-#: The two encodings XML requires beside UTF-8, by name with case, `-`, `_`
-#: and `.` set aside -- with ISO-10646-UCS-2 and ISO-10646-UCS-4, the names
-#: section 4.3.3 gives beside them for the same encodings of Unicode. A
-#: declaration of one over bytes that open `3C 3F 78 6D` contradicts them;
-#: every other encoding a document is decoded under, to be compared with
-#: UTF-8, is one that reads a character from each byte.
-_UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
-                          "iso10646ucs2", "iso10646ucs4"})
+#: The names IANA registers for the encoding forms of Unicode, with the
+#: aliases it registers beside them, by the form each names. Section 4.3.3:
+#: an XML processor "SHOULD match character encoding names in a
+#: case-insensitive way and SHOULD either interpret an IANA-registered name
+#: as the encoding registered at IANA for that name or treat it as unknown".
+#: These are read as the form they name; ISO-10646-UCS-2 and -4 are the names
+#: the same section gives beside UTF-16, for the same encodings of Unicode.
+_REGISTERED = {"utf-8": "UTF-8", "csutf8": "UTF-8",
+               "utf-16": "UTF-16", "csutf16": "UTF-16",
+               "utf-16le": "UTF-16LE", "csutf16le": "UTF-16LE",
+               "utf-16be": "UTF-16BE", "csutf16be": "UTF-16BE",
+               "iso-10646-ucs-2": "UTF-16", "csunicode": "UTF-16",
+               "utf-32": "UTF-32", "csutf32": "UTF-32",
+               "utf-32le": "UTF-32LE", "csutf32le": "UTF-32LE",
+               "utf-32be": "UTF-32BE", "csutf32be": "UTF-32BE",
+               "iso-10646-ucs-4": "UTF-32", "csucs4": "UTF-32"}
 
-#: The IANA names that agree with a UTF-16 or UTF-32 mark, without regard to
-#: case (section 4.3.3 recommends IANA names): a family name in either byte
-#: order, a byte-order name only in its own.
-_AGREEING = {
-    "UTF-16LE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16le"}),
-    "UTF-16BE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16be"}),
-    "UTF-32LE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32le"}),
-    "UTF-32BE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32be"}),
-}
+#: Those names with case, `-`, `_` and `.` set aside. A declaration matching
+#: one of these and not its registered spelling -- `utf8`, `UTF_16`,
+#: `UTF-16-LE` -- uses a spelling IANA does not register, and is read only if
+#: the processors a consumer has read it. Measured on expat 2.6.1 and libxml2
+#: 2.9.14, with text in which a misreading shows: expat reads no such spelling
+#: of UTF-8, UTF-16 or UTF-32, so none is read by both, and none is read here.
+_SPELLED = {_normal(name): form for name, form in _REGISTERED.items()}
 
-#: Spellings of UTF-16 and UTF-32, and of the two UCS names, that are not
-#: their IANA names: `utf16` and `ISO_10646_UCS_2` among them, whether or not
-#: Python's codecs answer to them. A declaration of one is a name this reader
-#: does not read, not one it can hold against the mark.
-_UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
-                               "iso10646ucs2", "iso10646ucs4"})
+#: The forms each first-bytes reading agrees with: its family's name in
+#: either byte order, and a byte order's own name only in that order.
+_AGREES = {"UTF-8": frozenset({"UTF-8"}),
+           "UTF-16LE": frozenset({"UTF-16", "UTF-16LE"}),
+           "UTF-16BE": frozenset({"UTF-16", "UTF-16BE"}),
+           "UTF-32LE": frozenset({"UTF-32", "UTF-32LE"}),
+           "UTF-32BE": frozenset({"UTF-32", "UTF-32BE"})}
 
 #: What bytes that open `3C 3F 78 6D` say, by XML 1.0 appendix F: UTF-8, or
 #: another encoding in which ASCII characters are the ASCII bytes.
@@ -518,17 +525,16 @@ def _decoded(raw: bytes, encoding: str):
         return None
 
 
-def _is_utf8_name(name: str) -> bool:
-    """Whether a declaration names UTF-8: `UTF-8`, `utf8` or `utf_8`, in any
-    case, since XML encoding names are not case sensitive.
-
-    Those spellings exactly. Stripping `-` and `_` first made `U-T-F-8`, a
-    name no codec answers to, into UTF-8 here, and a padded name into one
-    XML does not allow; any other spelling is asked of the codec like every
-    other name. Compared rather than looked up: `codecs.lookup` would be a
-    new import in a library whose import list is itself a gate.
-    """
-    return name.lower() in ("utf-8", "utf8", "utf_8")
+def _reads_as_utf8(name: str) -> bool:
+    """Whether Python reads the name as UTF-8: the two bytes UTF-8 writes `é`
+    in come back as that one character. `cp65001`, `u8` and `utf-8-sig` are
+    such names, and IANA registers none of them. Asked of the codec rather
+    than looked up: `codecs.lookup` would be a new import in a library whose
+    import list is itself a gate."""
+    try:
+        return b"\xc3\xa9".decode(name) == "é"
+    except Exception:
+        return False
 
 
 class _Element(Exception):
@@ -697,20 +703,24 @@ def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]
     return _refused_by_reading(name, stored, declared, found)
 
 
-def _unread(name: str, declared: str, mark: Optional[str] = None) -> Optional[str]:
-    """Why the declared name is one this reader does not read, or None: a
-    name longer than any codec's, a code page that differs between machines,
-    any name but UTF-8's, UTF-16's, UTF-32's and the encodings read one
-    character from each byte -- and under a mark, a spelling of UTF-16 or
-    UTF-32 that is not the IANA name. Asked before anything is decoded under
-    the name."""
+def _unread(name: str, declared: str) -> Optional[str]:
+    """Why the declared name is one this reader does not read, or None.
+
+    A name longer than any codec's, a code page that differs between
+    machines, a spelling of UTF-8, UTF-16 or UTF-32 that IANA does not
+    register, and any other name but the encodings read one character from
+    each byte. Asked before anything is decoded under the name.
+    """
     shown = _shown(declared)
-    normal = _normal(declared)
-    if (len(declared) > _LONGEST_NAME or normal in _PLATFORM_CODECS
-            or (mark is not None and normal in _UNREGISTERED_UTF
-                and declared.lower() not in {n for a in _AGREEING.values() for n in a})
-            or not (normal in _UTF16_OR_32 or _is_utf8_name(declared)
-                    or _one_character_a_byte(declared))):
+    if len(declared) > _LONGEST_NAME or _normal(declared) in _PLATFORM_CODECS:
+        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
+    if declared.lower() in _REGISTERED:
+        return None
+    spelled = _SPELLED.get(_normal(declared)) or ("UTF-8" if _reads_as_utf8(declared) else None)
+    if spelled is not None:
+        return "%s: %s: %s, a name for %s that IANA does not register" % (
+            name, UNREADABLE_ENCODING, shown, spelled)
+    if not _one_character_a_byte(declared):
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     return None
 
@@ -729,13 +739,11 @@ def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str]) -
     """
     if declared is None:
         return _undeclared(name, start) if start.encoding.startswith("UTF-32") else None
-    if start.encoding == "UTF-8" and _is_utf8_name(declared):
-        return None
-    if start.encoding != "UTF-8" and declared.lower() in _AGREEING[start.encoding]:
-        return None
-    refused = _unread(name, declared, start.encoding)
+    refused = _unread(name, declared)
     if refused is not None:
         return refused
+    if _REGISTERED.get(declared.lower()) in _AGREES[start.encoding]:
+        return None
     return _contradicted(name, "its byte order mark says" if start.marked else "its first bytes say",
                          start.encoding, declared)
 
@@ -756,13 +764,16 @@ def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
     page that keeps ASCII where ASCII is over bytes all under 128, nothing is
     said.
     """
-    if declared is None or _is_utf8_name(declared):
+    if declared is None:
         return None
     refused = _unread(name, declared)
     if refused is not None:
         return refused
+    form = _REGISTERED.get(declared.lower())
+    if form == "UTF-8":
+        return None
     own = stored[:found.end]
-    if _normal(declared) in _UTF16_OR_32 or _decoded(own, declared) != own.decode("latin-1"):
+    if form is not None or _decoded(own, declared) != own.decode("latin-1"):
         return _contradicted(name, "its first bytes say", _KEEPS_ASCII, declared)
     theirs, ours = _decoded(stored, declared), _decoded(stored, "utf-8")
     if theirs is None and ours is None:

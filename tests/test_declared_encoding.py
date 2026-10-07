@@ -283,10 +283,13 @@ def test_a_name_longer_than_any_codecs_is_refused_unread():
     assert graph is None and iirds.UNREADABLE_ENCODING in error, error
 
 
-@pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "cp65001", "macintosh", "TIS-620"])
+@pytest.mark.parametrize("declared", ["ANSI_X3.4-1968", "macintosh", "TIS-620"])
 def test_a_name_that_reads_ascii_as_ascii_passes(declared):
-    """ASCII's own IANA name, UTF-8's Windows one, and two single-byte pages
-    a list of names refused."""
+    """ASCII's own IANA name, and two single-byte pages a list of names
+    refused. UTF-8's Windows name, `cp65001`, was here; IANA does not register
+    it and neither expat nor libxml2 reads it, and
+    `test_a_name_python_reads_as_utf8_and_iana_does_not_register_is_refused`
+    holds that it is refused."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
     assert error is None and graph is not None, error
@@ -306,13 +309,24 @@ def test_the_remedy_followed_passes():
     assert _parsed(declared_too)[1] is None
 
 
-@pytest.mark.parametrize("declared", ["U-T-F-8", "U_T_F_8", "u-tf8", " utf-8", "utf-8 ", "_utf8"])
+@pytest.mark.parametrize("declared", ["U-T-F-8", "U_T_F_8", "u-tf8"])
 def test_a_spelling_of_utf8_no_codec_answers_to_is_refused_by_name(declared):
-    """UTF-8 is `UTF-8`, `utf8` or `utf_8`, in any case; a name with its
-    separators moved, or padded, is some other name, and no codec's."""
+    """A name with UTF-8's separators moved is some other name, and no
+    codec's."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+
+
+@pytest.mark.parametrize("declared", [" utf-8", "utf-8 ", "_utf8"])
+def test_a_padded_name_is_not_one_the_grammar_allows(declared):
+    """Production [81] EncName begins with a letter and holds no white space,
+    so a padded name -- or one led by `_` -- leaves the declaration outside
+    the grammar: refused for that, before any name is looked up."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.MALFORMED_DECLARATION in error and "[81]" in error, (
+        declared, error)
 
 
 @pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape",
@@ -330,10 +344,15 @@ def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
                                       "ISO-10646-UCS-4"])
 def test_a_declaration_that_reads_ascii_as_other_text_is_refused(declared):
     """Bytes all under 128 are the same text only under a code page that keeps
-    ASCII where it is; these read them as other characters."""
+    ASCII where it is; these read them as other characters. And the bytes that
+    open the document, `3C 3F 78 6D`, already say which: XML 1.0 appendix F
+    reads them as UTF-8 or an encoding in which ASCII characters are ASCII
+    bytes, so a 16- or 32-bit encoding, or an EBCDIC page, contradicts them --
+    a fatal error by section 4.3.3, refused as the contradiction it is."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
-    assert graph is None and iirds.UNUSED_ENCODING in error, (declared, error)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, (declared, error)
+    assert "ASCII characters are ASCII bytes" in error and declared in error, error
 
 
 def test_a_utf8_mark_under_another_declaration_is_refused():
@@ -362,10 +381,11 @@ def test_a_document_the_entity_check_cannot_answer_for_is_refused(monkeypatch):
     assert graph is None and "could not be read for XML entities" in error, error
 
 
-@pytest.mark.parametrize("declared", ["UTF-8", "utf--8"])
+@pytest.mark.parametrize("declared", ["UTF-8", "csUTF8"])
 def test_bytes_that_are_not_utf8_are_the_parsers_to_refuse(declared):
     """A name that is not UTF-8 in the document element, under a declaration
-    Python reads as UTF-8. Older expat hands such a name on unchecked; the
+    this reader reads as UTF-8 -- the name IANA registers, and the alias it
+    registers beside it. Older expat hands such a name on unchecked; the
     entity check and the declaration check leave the refusal to the parser,
     which names the byte, instead of refusing for a reason the document does
     not have."""
@@ -420,8 +440,9 @@ def test_a_declaration_its_bytes_contradict_is_refused(mark, codec, declared, sa
 
 
 def test_utf32_declaring_nothing_is_refused():
-    """XML makes an entity with no declaration, in any encoding but UTF-8 or
-    UTF-16, a fatal error (section 4.3.3)."""
+    """Section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16
+    MUST begin with an encoding declaration -- an error, by section 1.2, and
+    refused."""
     graph, error = _parsed(_marked(b"\xff\xfe\x00\x00", "utf-32-le", None))
     assert graph is None and iirds.UNDECLARED_ENCODING in error, error
     assert "UTF-32LE" in error and "4.3.3" in error, error

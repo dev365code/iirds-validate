@@ -14,7 +14,7 @@ import json
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from rdflib import BNode, Graph, Literal
 
@@ -26,54 +26,74 @@ MAX_METADATA_BYTES = 64 * 1024 * 1024
 #: declares — and marks with a byte order mark — any other encoding fails to
 #: parse at all. XML says the BOM decides, so it is honoured here and the
 #: payload handed on as UTF-8.
-#: Longest mark first, because a UTF-32 mark begins with a UTF-16 one and the
-#: order is what tells them apart.
 #:
-#: Every codec here must be one that *consumes* the mark. `utf-16-le` and
-#: `utf-32-le` do not: they leave U+FEFF at the front of the text, the
-#: declaration is then no longer the first thing in it, and the substitution
-#: below -- which may only match the first thing, because that is the only
-#: place a declaration may sit -- stops firing. The bytes go on to say UTF-8
-#: while the declaration still says UTF-16, and the two readers disagree about
-#: the document: one refuses it, the other reads it and expands what it
-#: declares. The mark is not data; a codec that hands it back is the wrong
-#: codec.
-_BOMS = ((b"\xff\xfe\x00\x00", "utf-32"), (b"\x00\x00\xfe\xff", "utf-32"),
-         (b"\xff\xfe", "utf-16"), (b"\xfe\xff", "utf-16"),
-         (b"\xef\xbb\xbf", "utf-8-sig"))
+#: What the first bytes say, as XML 1.0 appendix F reads them: a byte order
+#: mark, the encoding it names, and the codec that reads what follows it. The
+#: mark is sliced off, never decoded: a codec that hands U+FEFF back leaves the
+#: declaration second in the text, where nothing may take it for one, and the
+#: bytes go on to say UTF-8 while the declaration still says UTF-16. Longest
+#: mark first, because a UTF-32 mark begins with a UTF-16 one and the order is
+#: what tells them apart.
+_MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8"),
+          (b"\xff\xfe\x00\x00", "UTF-32LE", "utf-32-le"),
+          (b"\x00\x00\xfe\xff", "UTF-32BE", "utf-32-be"),
+          (b"\xff\xfe", "UTF-16LE", "utf-16-le"), (b"\xfe\xff", "UTF-16BE", "utf-16-be"))
+
+#: Without a mark, the *shape* of the first bytes, null or not. Every legal
+#: first character of an XML document is ASCII, which in UTF-32 is three null
+#: bytes and one that is not, and in UTF-16LE `xx 00`, in UTF-16BE `00 xx`:
+#: four bytes settle UTF-32, and then two settle UTF-16, whatever the
+#: character after them is. Two earlier versions of this keyed on the
+#: document beginning with `<` and both were wrong, in the same way and for
+#: the same reason: `<` is a property of the fixtures, not of XML. A document
+#: may open with `Misc*` -- whitespace, a comment, a processing instruction --
+#: and may carry no declaration at all. Whitespace was the lead that got
+#: through. Asked of two characters, the shape missed UTF-16 whose second
+#: character holds no null byte, `<` and then a name in CJK among them.
+_WIDE = {(False, True, True, True): ("UTF-32LE", "utf-32-le"),
+         (True, True, True, False): ("UTF-32BE", "utf-32-be")}
+_NARROW = {(False, True): ("UTF-16LE", "utf-16-le"), (True, False): ("UTF-16BE", "utf-16-be")}
 
 
-def _sniff(raw: bytes):
-    """The encoding expat will take an unmarked document for, or None.
+class _Start(NamedTuple):
+    """What a document's first bytes say it is.
+
+    `encoding` is None where they keep ASCII where ASCII is and say no more --
+    UTF-8, or any of the encodings appendix F lists beside it -- and `codec`
+    then reads the opening one character a byte, which is exact for the ASCII
+    a declaration is written in. `skip` is what a byte order mark takes, and
+    `marked` whether there was one rather than a shape.
+    """
+    encoding: Optional[str]
+    codec: str
+    skip: int
+    marked: bool
+
+
+def _start(raw: bytes) -> _Start:
+    for bom, encoding, codec in _MARKS:
+        if raw.startswith(bom):
+            return _Start(encoding, codec, len(bom), True)
+    shape = _WIDE.get(tuple(byte == 0 for byte in raw[:4])) if len(raw) >= 4 else None
+    if shape is None and len(raw) >= 2:
+        shape = _NARROW.get(tuple(byte == 0 for byte in raw[:2]))
+    if shape is not None:
+        return _Start(shape[0], shape[1], 0, False)
+    return _Start(None, "latin-1", 0, False)
+
+
+def _read_here(start: _Start) -> bool:
+    """Whether this reader decodes a document so marked before the parser.
 
     XML requires a byte order mark on a UTF-16 document and expat does not
     insist, autodetecting instead -- so a document can be UTF-16 to the parser
     and opaque bytes to every guard below, which is how `<!ENTITY` in UTF-16
-    was invisible to a pattern that only ever matches UTF-8.
-
-    Decided on the *shape* of the first two characters, not on what they are.
-    Two earlier versions of this keyed on the document beginning with `<` and
-    both were wrong, in the same way and for the same reason: `<` is a
-    property of the fixtures, not of XML. A document may open with `Misc*` --
-    whitespace, a comment, a processing instruction -- and may carry no
-    declaration at all. Whitespace was the lead that got through.
-
-    An ASCII character in UTF-16LE is `xx 00`, in UTF-16BE `00 xx`, and in
-    UTF-32 three of the four bytes are null. Every legal first character of an
-    XML document is ASCII, so two characters settle it whatever they are.
-    Unmarked UTF-32 is refused by expat, so nothing can be smuggled in it, and
-    claiming to read it here would admit documents the parser will not.
+    was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32
+    is refused by expat, so nothing can be smuggled in it, and claiming to read
+    it here would admit documents the parser will not: its declaration is
+    read, and held against its bytes, and the document left to the parser.
     """
-    if len(raw) < 4:
-        return None
-    null = tuple(byte == 0 for byte in raw[:4])
-    if null in ((False, True, True, True), (True, True, True, False)):
-        return None                                 # unmarked UTF-32
-    if null == (False, True, False, True):
-        return "utf-16-le"
-    if null == (True, False, True, False):
-        return "utf-16-be"
-    return None
+    return start.encoding is not None and (start.marked or not start.encoding.startswith("UTF-32"))
 
 
 class _Declared(Exception):
@@ -166,17 +186,30 @@ UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 #: UTF-8 bytes.
 UNUSED_ENCODING = "declares an encoding this reader reads differently"
 
-#: A document whose declaration names one encoding while its byte order mark,
-#: or the first two characters of unmarked UTF-16, say another. XML makes that
+#: A document whose declaration names one encoding while its first bytes say
+#: another: a byte order mark, the shape of unmarked UTF-16 or UTF-32, or the
+#: `3C 3F 78 6D` of an encoding that keeps ASCII where ASCII is. XML makes that
 #: a fatal error (section 4.3.3) where no transport protocol gives the
 #: encoding -- and none gives a ZIP member's, so the premise holds for every
 #: file in a package. Not a declaration this reader leaves unused: one the
 #: bytes contradict.
 CONTRADICTED_ENCODING = "declares an encoding its bytes contradict"
 
-#: A UTF-32 document with no declaration: XML makes an entity with none, in an
-#: encoding other than UTF-8 or UTF-16, a fatal error (section 4.3.3).
+#: A document whose first bytes say UTF-16 or UTF-32 and that declares no
+#: encoding. Section 4.3.3 makes it a fatal error for an entity that begins
+#: with neither a byte order mark nor an encoding declaration to use an
+#: encoding other than UTF-8, which UTF-16 and UTF-32 without a mark both do,
+#: and says an entity in an encoding other than UTF-8 or UTF-16 MUST begin
+#: with an encoding declaration -- an error, by section 1.2 -- which UTF-32
+#: behind a mark breaks. Refused either way; the reason says which sentence.
 UNDECLARED_ENCODING = "declares no encoding where XML requires one"
+
+#: A document whose XML declaration is not one production [23] allows:
+#: pseudo-attributes out of order or given twice, a version that is not
+#: VersionNum, a name that is not EncName. Not well-formed, which section 1.2
+#: makes a fatal error, and refused whatever stands in front of it; the
+#: reason names the production broken.
+MALFORMED_DECLARATION = "has an XML declaration the grammar does not allow"
 
 #: Names the RDF/XML grammar takes out of `nodeElementURIs` (§7.2.5): the
 #: core syntax terms (§7.2.2), `rdf:li`, and the old terms (§7.2.4). Anything
@@ -220,28 +253,236 @@ def _split(tag: str) -> Tuple[str, str]:
     return "", tag
 
 
-#: The `encoding=` of an XML declaration, which may sit only at the front,
-#: behind a UTF-8 byte order mark at most. `<?xml` and then white space: a
-#: processing instruction whose target merely starts with those letters --
-#: `<?xml-stylesheet` -- is not a declaration.
-_DECLARED = re.compile(br'^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])(.*?)\1',
-                       re.DOTALL)
+#: White space, as production [3] has it, and a run of it.
+_SPACE = " \t\r\n"
+_SPACES = re.compile("[ \t\r\n]*")
 
-#: A name XML allows for an encoding (XML 1.0, production 81).
-_ENCODING_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]*")
+#: The characters beyond ASCII that XML 1.0 lets stand in a name (productions
+#: [4] and [4a]). A pseudo-attribute's name is read as far as a run of name
+#: characters goes, so that what stops it is reported as itself. Every run
+#: is a pattern's: a declaration may be a file's length of white space, and
+#: read a character at a time in Python it took four times as long.
+_NAME_RANGES = ((0xB7, 0xB7), (0xC0, 0xD6), (0xD8, 0xF6), (0xF8, 0x37D), (0x37F, 0x1FFF),
+                (0x200C, 0x200D), (0x203F, 0x2040), (0x2070, 0x218F), (0x2C00, 0x2FEF),
+                (0x3001, 0xD7FF), (0xF900, 0xFDCF), (0xFDF0, 0xFFFD), (0x10000, 0xEFFFF))
+_NAME = re.compile("[-.0-9:A-Z_a-z%s]*" % "".join("%s-%s" % (chr(low), chr(high))
+                                                   for low, high in _NAME_RANGES))
 
-#: The two encodings XML requires beside UTF-8, by name with case, `-`, `_`
-#: and `.` set aside -- with ISO-10646-UCS-2 and ISO-10646-UCS-4, the names
-#: section 4.3.3 gives beside them for the same encodings of Unicode. Every
-#: other encoding a document is decoded under, to be compared with UTF-8, is
-#: one that reads a character from each byte.
-_UTF16_OR_32 = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
-                          "iso10646ucs2", "iso10646ucs4"})
 
-#: The codec each of the two UCS names is read with. Python answers to
-#: neither name, and a name read under no codec at all was a document read
-#: under nothing.
-_UCS_CODECS = {"iso10646ucs2": "utf-16", "iso10646ucs4": "utf-32"}
+#: What each pseudo-attribute's value may be, by the production that says so.
+_VALUES = {"version": ("[26] VersionNum", re.compile(r"1\.[0-9]+")),
+           "encoding": ("[81] EncName", re.compile(r"[A-Za-z][A-Za-z0-9._-]*")),
+           "standalone": ("[32] SDDecl", re.compile(r"yes|no"))}
+
+#: The production that brings each pseudo-attribute in, white space first.
+_INTRODUCED_BY = {"version": "[24] VersionInfo", "encoding": "[80] EncodingDecl",
+                  "standalone": "[32] SDDecl"}
+
+#: The order production [23] gives them in.
+_ORDER = ("version", "encoding", "standalone")
+
+#: A run of the characters a value of each may hold, by the same productions.
+#: A value with no closing quote before the first `>` holds a character
+#: outside its own, and unless that is the other quote, it is what is wrong
+#: with it.
+_ALPHABETS = {"version": re.compile("[0-9.]*"), "encoding": re.compile("[A-Za-z0-9._-]*"),
+              "standalone": re.compile("[enosy]*")}
+
+
+class _Declaration(NamedTuple):
+    """An XML declaration as production [23] reads it. `span` is where the
+    encoding declaration stands, the white space in front of it included, in
+    characters from the start of the declaration; `end` is just past `?>`."""
+    version: str
+    encoding: Optional[str]
+    standalone: Optional[str]
+    span: Optional[Tuple[int, int]]
+    end: int
+
+
+class _Malformed(NamedTuple):
+    """Where a declaration stops matching production [23], and why."""
+    at: int
+    why: str
+
+
+def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
+    """The XML declaration at the front of `text`, read by production [23]
+    and the productions it names; None where the document begins with none.
+
+    A declaration stands first or not at all: behind white space, a comment or
+    another instruction, `<?xml` is a declaration out of place, which the
+    parser refuses, and this answers None. Only `<?xml` and then white space
+    or `?` begins one. `<?xml` and then a name character is an instruction
+    with a longer target, and `<?xml` and then anything else is not a
+    declaration either, but an instruction XML reserves the name of, which the
+    parser refuses. Read without a mark, one character a byte, a byte over 127
+    there is half of a character not yet known, and the answer does not hang
+    on it. A declaration either matches the grammar or is reported where it
+    stops: the pseudo-attributes in order, each once, white space before each,
+    `=` between optional white space, each value in one pair of quotes and of
+    the shape its production gives, and `?>` at the end.
+    """
+    if not text.startswith("<?xml"):
+        return None
+    at = 5
+    if at < len(text) and text[at] not in _SPACE and text[at] != "?":
+        return None
+    found = {}
+    span = None
+    while True:
+        spaced = at
+        at = _SPACES.match(text, at).end()
+        if text.startswith("?>", at):
+            break
+        begins = at
+        at = _NAME.match(text, at).end()
+        word = text[begins:at]
+        if not word:
+            if begins < len(text) and text[begins].isspace():
+                return _Malformed(begins, "production [3] S is #x20, #x9, #xD or #xA, and this "
+                                          "declaration has U+%04X for white space" % ord(text[begins]))
+            if "version" not in found:
+                return _Malformed(begins, "production [23] XMLDecl begins with version, "
+                                          "and this declaration does not")
+            return _Malformed(begins, "production [23] XMLDecl ends with ?>, and this "
+                                      "declaration has %s there" % (_shown(text[begins:begins + 1])
+                                                                     or "nothing"))
+        if word not in _VALUES and word.lower() in _VALUES:
+            return _Malformed(begins, "production %s spells %s in lower case, and this "
+                                      "declaration %s" % (_INTRODUCED_BY[word.lower()],
+                                                          word.lower(), word))
+        if word not in _VALUES:
+            return _Malformed(begins, "production [23] XMLDecl has no pseudo-attribute "
+                                      "named %s" % _shown(word))
+        if word in found:
+            return _Malformed(begins, "production [23] XMLDecl gives %s once, and this "
+                                      "declaration gives it again" % word)
+        later = [name for name in _ORDER[_ORDER.index(word) + 1:] if name in found]
+        if later:
+            return _Malformed(begins, "production [23] XMLDecl gives %s before %s, and this "
+                                      "declaration after it" % (word, later[0]))
+        if word != "version" and "version" not in found:
+            return _Malformed(begins, "production [23] XMLDecl begins with version, and this "
+                                      "declaration with %s" % word)
+        if spaced == begins:
+            return _Malformed(begins, "production %s puts white space before %s, and this "
+                                      "declaration none" % (_INTRODUCED_BY[word], word))
+        at = _SPACES.match(text, at).end()
+        if not text.startswith("=", at):
+            return _Malformed(at, "production [25] Eq puts = after %s, and this declaration "
+                                  "does not" % word)
+        at = _SPACES.match(text, at + 1).end()
+        quote = text[at:at + 1]
+        if quote not in ("'", '"'):
+            return _Malformed(at, "production %s puts the value of %s in quotes, and this "
+                                  "declaration does not" % (_INTRODUCED_BY[word], word))
+        closing = text.find(quote, at + 1)
+        if closing < 0:
+            stray = _ALPHABETS[word].match(text, at + 1).end()
+            if stray < len(text) and text[stray] not in "'\"":
+                return _Malformed(stray, "production %s does not allow %s in the value of %s"
+                                         % (_VALUES[word][0], _shown(text[stray]), word))
+            return _Malformed(at, "production %s ends the value of %s with the quote it begins "
+                                  "with, and this declaration does not" % (_INTRODUCED_BY[word], word))
+        value = text[at + 1:closing]
+        production, pattern = _VALUES[word]
+        if not pattern.fullmatch(value):
+            return _Malformed(at + 1, "production %s does not allow the %s %s"
+                                      % (production, "name" if word == "encoding" else "value",
+                                         _shown(value)))
+        found[word] = value
+        at = closing + 1
+        if word == "encoding":
+            span = (spaced, at)
+    if "version" not in found:
+        return _Malformed(at, "production [23] XMLDecl begins with version, and this "
+                              "declaration has none")
+    return _Declaration(found["version"], found.get("encoding"), found.get("standalone"),
+                        span, at + 2)
+
+
+def _region(raw: bytes, start: _Start) -> str:
+    """The front of the document, read as its first bytes say, as far as the
+    first `>`: no XML declaration holds one before the `?>` that ends it, so
+    this is the whole of any declaration there is, however much white space
+    stands in it. A larger piece is read each time until one is found. A byte
+    the codec does not read becomes U+FFFD, which no declaration may hold, so
+    a declaration with one is refused rather than read some other way."""
+    limit = 4096
+    while True:
+        piece = raw[start.skip:start.skip + limit].decode(start.codec, "replace")
+        end = piece.find(">")
+        if end >= 0:
+            return piece[:end + 1]
+        if start.skip + limit >= len(raw):
+            return piece
+        limit *= 8
+
+
+def _prolog(raw: bytes):
+    """What the first bytes say, and the declaration behind them: the one
+    reading the checks hold the bytes to and the decode then removes."""
+    start = _start(raw)
+    return start, _xml_declaration(_region(raw, start))
+
+
+def first_bytes_encoding(raw: bytes) -> Optional[str]:
+    """The encoding a metadata document's first bytes say it is in, read as
+    XML 1.0 appendix F reads them: a byte order mark, or the shape of unmarked
+    UTF-16 or UTF-32. None where they keep ASCII where ASCII is and say no
+    more -- UTF-8, or an encoding beside it that only a declaration names."""
+    return _start(raw).encoding
+
+
+def declared_encoding(raw: bytes) -> Optional[str]:
+    """The encoding a metadata document's XML declaration names, read as
+    production [23] reads a declaration: None where the document has no
+    declaration, or one the grammar does not allow."""
+    found = _prolog(raw)[1]
+    return found.encoding if isinstance(found, _Declaration) else None
+
+
+def _normal(name: str) -> str:
+    return name.lower().replace("-", "").replace("_", "").replace(".", "")
+
+
+#: The names IANA registers for the encoding forms of Unicode, with the
+#: aliases it registers beside them, by the form each names. Section 4.3.3:
+#: an XML processor "SHOULD match character encoding names in a
+#: case-insensitive way and SHOULD either interpret an IANA-registered name
+#: as the encoding registered at IANA for that name or treat it as unknown".
+#: These are read as the form they name; ISO-10646-UCS-2 and -4 are the names
+#: the same section gives beside UTF-16, for the same encodings of Unicode.
+_REGISTERED = {"utf-8": "UTF-8", "csutf8": "UTF-8",
+               "utf-16": "UTF-16", "csutf16": "UTF-16",
+               "utf-16le": "UTF-16LE", "csutf16le": "UTF-16LE",
+               "utf-16be": "UTF-16BE", "csutf16be": "UTF-16BE",
+               "iso-10646-ucs-2": "UTF-16", "csunicode": "UTF-16",
+               "utf-32": "UTF-32", "csutf32": "UTF-32",
+               "utf-32le": "UTF-32LE", "csutf32le": "UTF-32LE",
+               "utf-32be": "UTF-32BE", "csutf32be": "UTF-32BE",
+               "iso-10646-ucs-4": "UTF-32", "csucs4": "UTF-32"}
+
+#: Those names with case, `-`, `_` and `.` set aside. A declaration matching
+#: one of these and not its registered spelling -- `utf8`, `UTF_16`,
+#: `UTF-16-LE` -- uses a spelling IANA does not register, and is read only if
+#: the processors a consumer has read it. Measured on expat 2.6.1 and libxml2
+#: 2.9.14, with text in which a misreading shows: expat reads no such spelling
+#: of UTF-8, UTF-16 or UTF-32, so none is read by both, and none is read here.
+_SPELLED = {_normal(name): form for name, form in _REGISTERED.items()}
+
+#: The forms each first-bytes reading agrees with: its family's name in
+#: either byte order, and a byte order's own name only in that order.
+_AGREES = {"UTF-8": frozenset({"UTF-8"}),
+           "UTF-16LE": frozenset({"UTF-16", "UTF-16LE"}),
+           "UTF-16BE": frozenset({"UTF-16", "UTF-16BE"}),
+           "UTF-32LE": frozenset({"UTF-32", "UTF-32LE"}),
+           "UTF-32BE": frozenset({"UTF-32", "UTF-32BE"})}
+
+#: What bytes that open `3C 3F 78 6D` say, by XML 1.0 appendix F: UTF-8, or
+#: another encoding in which ASCII characters are the ASCII bytes.
+_KEEPS_ASCII = "an encoding in which ASCII characters are ASCII bytes (XML 1.0 appendix F)"
 
 #: Names Python gives a code page that differs from one Windows machine to
 #: the next, and that no other system has: a declaration of one would be read
@@ -287,14 +528,6 @@ def _one_character_a_byte(name: str) -> bool:
 _LONGEST_NAME = 60
 
 
-def _declared_encoding_name(raw: bytes) -> Optional[str]:
-    """The name the document declares, as written, or None where it declares
-    none. Cut one character past the longest a codec has, which is enough to
-    refuse it by: a name is as long as its sender makes it."""
-    found = _DECLARED.match(raw)
-    return found.group(2)[:_LONGEST_NAME + 1].decode("latin-1") if found else None
-
-
 def _shown(name: str) -> str:
     """A declared name as it can be printed: a name carried a terminal escape
     and a line break into the report, and wrote a line of its own there. Cut
@@ -302,8 +535,9 @@ def _shown(name: str) -> str:
     shown = name[:_LONGEST_NAME + 1].encode("unicode_escape").decode("ascii")
     shown = shown if len(shown) <= 60 else shown[:57] + "..."
     # A space at either end escapes nothing and reads as no space at all:
-    # "utf-8 " refused looked like UTF-8 refused.
-    return "'%s'" % shown if shown != shown.strip(" ") else shown
+    # "utf-8 " refused looked like UTF-8 refused. Nothing at all reads as no
+    # name given.
+    return "'%s'" % shown if not shown or shown != shown.strip(" ") else shown
 
 
 def _decoded(raw: bytes, encoding: str):
@@ -321,17 +555,16 @@ def _decoded(raw: bytes, encoding: str):
         return None
 
 
-def _is_utf8_name(name: str) -> bool:
-    """Whether a declaration names UTF-8: `UTF-8`, `utf8` or `utf_8`, in any
-    case, since XML encoding names are not case sensitive.
-
-    Those spellings exactly. Stripping `-` and `_` first made `U-T-F-8`, a
-    name no codec answers to, into UTF-8 here, and a padded name into one
-    XML does not allow; any other spelling is asked of the codec like every
-    other name. Compared rather than looked up: `codecs.lookup` would be a
-    new import in a library whose import list is itself a gate.
-    """
-    return name.lower() in ("utf-8", "utf8", "utf_8")
+def _reads_as_utf8(name: str) -> bool:
+    """Whether Python reads the name as UTF-8: the two bytes UTF-8 writes `é`
+    in come back as that one character. `cp65001`, `u8` and `utf-8-sig` are
+    such names, and IANA registers none of them. Asked of the codec rather
+    than looked up: `codecs.lookup` would be a new import in a library whose
+    import list is itself a gate."""
+    try:
+        return b"\xc3\xa9".decode(name) == "é"
+    except Exception:
+        return False
 
 
 class _Element(Exception):
@@ -377,32 +610,39 @@ def _why_not_rdfxml(tag: str) -> str:
     return "document element is rdf:%s, a name the grammar reserves" % local
 
 
-def _decode(raw: bytes) -> bytes:
+def _decode(raw: bytes, prolog=None) -> bytes:
     """The document as UTF-8, decided the way the parser will decide it.
 
     Everything after this point reads text. If this disagrees with expat
     about what the bytes say, every guard below is looking at a different
     document from the one that gets parsed.
+
+    The encoding declaration would contradict the bytes once they are UTF-8,
+    so it goes -- the one `_prolog` read, where it read it, and nothing else.
+    A pattern removed it before, and a pattern of its own read it for the
+    checks: a declaration the two read differently had its encoding removed
+    unread, and the parser saw a declaration nobody had held to the bytes.
+    Only ever at the front, the one place a declaration may sit: a passage
+    quoting a declaration came back into the graph with a piece missing once,
+    so the file said one thing and the graph said another.
     """
-    for bom, encoding in _BOMS:
-        if raw.startswith(bom):
-            return _as_utf8(raw.decode(encoding))
-    encoding = _sniff(raw)
-    if encoding is not None:
-        return _as_utf8(raw.decode(encoding))
-    return raw
-
-
-def _as_utf8(text: str) -> bytes:
-    # The declaration would now contradict the bytes, so it goes. Anchored to
-    # the front, because that is the only place a declaration may sit: without
-    # the anchor the first match could be anywhere, and where the real
-    # declaration named no encoding it was -- a passage quoting a declaration
-    # came back into the graph with a piece missing, so the file said one thing
-    # and the graph said another.
-    text = re.sub(r'^(<\?xml[^>]*?)\s+encoding\s*=\s*(["\'])[^"\']*\2',
-                  r"\1", text, count=1)
-    return text.encode("utf-8")
+    start, found = prolog if prolog is not None else _prolog(raw)
+    if not _read_here(start):
+        return raw
+    text = raw[start.skip:].decode(start.codec)
+    if isinstance(found, _Declaration) and found.span is not None:
+        text = text[:found.span[0]] + text[found.span[1]:]
+    # The parser sniffs the first bytes it is handed, as this reader does, and
+    # UTF-8 can begin like something else. Behind the mark sliced off above, a
+    # second is a character, which nothing lets stand before a declaration or
+    # the document element: UTF-8 that began EF BB BF would hand it to the
+    # parser as a mark, and a declaration behind it as the document's own.
+    # U+0000 in either of the first two characters, which XML lets stand
+    # nowhere, made UTF-8 the parser read as UTF-16, and UTF-16 behind a UTF-8
+    # mark was read as though the mark were not there. A mark in front keeps
+    # each the character it is, and the parser refuses it.
+    sniffed = text.startswith("\ufeff") or "\x00" in text[:2]
+    return (b"\xef\xbb\xbf" if sniffed else b"") + text.encode("utf-8")
 
 
 def _fetches_in_context(source, found):
@@ -482,146 +722,158 @@ def _oversize(name: str, size: int) -> str:
             % (name, size - 1, MAX_METADATA_BYTES))
 
 
-def _declaration_refused(name: str, stored: bytes) -> Optional[str]:
-    """Why the document's declaration refuses it, or None where it does not.
+def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]:
+    """Why the document's XML declaration refuses it, or None where it does not.
 
-    rdflib decodes as UTF-8 whatever the declaration names. A name XML does
-    not allow, or one this reader does not decode, is refused by name, with
-    nothing decoded. Any other name is read both ways -- under the name, and
-    as UTF-8 -- and where the two are different text there are two readings
-    of one file, so it is refused rather than one chosen. Where they are the
-    same, as they are for a code page that keeps ASCII where ASCII is over
-    bytes all under 128, nothing is said.
+    One reading of the declaration, `_prolog`'s, is held against the first
+    bytes here and removed by the decode after. A declaration the grammar does
+    not allow is refused whatever is in front of it. Behind a byte order mark,
+    or in unmarked UTF-16 or UTF-32, the name it declares must agree with
+    what the first bytes say; with nothing in front, rdflib decodes as UTF-8
+    whatever the declaration names, and a name read differently is refused
+    rather than one reading chosen.
     """
-    declared = _declared_encoding_name(stored)
-    if declared is None or _is_utf8_name(declared):
-        return None
+    start, found = prolog if prolog is not None else _prolog(stored)
+    if isinstance(found, _Malformed):
+        return "%s: %s: at character %d, %s" % (name, MALFORMED_DECLARATION, found.at + 1,
+                                                 found.why)
+    declared = found.encoding if found is not None else None
+    if start.encoding is not None:
+        return _refused_by_first_bytes(name, start, declared, stored)
+    return _refused_by_reading(name, stored, declared, found)
+
+
+def _unread(name: str, declared: str) -> Optional[str]:
+    """Why the declared name is one this reader does not read, or None.
+
+    A name longer than any codec's, a code page that differs between
+    machines, a spelling of UTF-8, UTF-16 or UTF-32 that IANA does not
+    register, and any other name but the encodings read one character from
+    each byte. Asked before anything is decoded under the name.
+    """
     shown = _shown(declared)
-    normal = declared.lower().replace("-", "").replace("_", "").replace(".", "")
-    if (len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared)
-            or normal in _PLATFORM_CODECS
-            or not (normal in _UTF16_OR_32 or _one_character_a_byte(declared))):
+    if len(declared) > _LONGEST_NAME or _normal(declared) in _PLATFORM_CODECS:
         return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
-    # A document behind a byte order mark does not get here with a name that
-    # is not UTF-8's: the mark's own check answers it first.
-    theirs, ours = _decoded(stored, _UCS_CODECS.get(normal, declared)), _decoded(stored, "utf-8")
-    if theirs is None and ours is None:
-        return None          # neither reads it, and the parser says so itself
-    if theirs is None or ours is None or theirs != ours:
-        return "%s: %s: %s" % (name, UNUSED_ENCODING, shown)
+    if declared.lower() in _REGISTERED:
+        return None
+    spelled = _SPELLED.get(_normal(declared)) or ("UTF-8" if _reads_as_utf8(declared) else None)
+    if spelled is not None:
+        return "%s: %s: %s, a name for %s that IANA does not register" % (
+            name, UNREADABLE_ENCODING, shown, spelled)
+    if not _one_character_a_byte(declared):
+        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
     return None
 
 
-#: What a document's first bytes mark it as: a byte order mark, and the codec
-#: that reads past it. Unmarked UTF-16 is marked by its first two characters,
-#: which `_sniff` reads.
-_MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8-sig"),
-          (b"\xff\xfe\x00\x00", "UTF-32LE", "utf-32"), (b"\x00\x00\xfe\xff", "UTF-32BE", "utf-32"),
-          (b"\xff\xfe", "UTF-16LE", "utf-16"), (b"\xfe\xff", "UTF-16BE", "utf-16"))
-
-#: The IANA names that agree with a UTF-16 or UTF-32 mark, without regard to
-#: case (section 4.3.3 recommends IANA names): a family name in either byte
-#: order, a byte-order name only in its own.
-_AGREEING = {
-    "UTF-16LE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16le"}),
-    "UTF-16BE": frozenset({"utf-16", "iso-10646-ucs-2", "utf-16be"}),
-    "UTF-32LE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32le"}),
-    "UTF-32BE": frozenset({"utf-32", "iso-10646-ucs-4", "utf-32be"}),
-}
-
-#: Spellings of UTF-16 and UTF-32, and of the two UCS names, that are not
-#: their IANA names: `utf16` and `ISO_10646_UCS_2` among them, whether or not
-#: Python's codecs answer to them. A declaration of one is a name this reader
-#: does not read, not one it can hold against the mark.
-_UNREGISTERED_UTF = frozenset({"utf16", "utf16le", "utf16be", "utf32", "utf32le", "utf32be",
-                               "iso10646ucs2", "iso10646ucs4"})
-
-#: The `encoding=` of a declaration in a document already decoded, as far as
-#: the quote that opens its value.
-_ENCODING_OPENS = re.compile(r'<\?xml\s[^>]*?\sencoding\s*=\s*(["\'])', re.DOTALL)
-
-
-def _declared_behind_mark(stored: bytes, codec: str) -> Optional[str]:
-    """The encoding a marked document's declaration names, or None where it
-    names none.
-
-    Read as far as the declaration runs, a larger piece each time: XML lets
-    white space stand between its attributes, and a fixed piece let an
-    `encoding=` pushed past it go unread. Once the quote that opens the value
-    is found, the piece grows until the one that closes it is: a value
-    holding `?>` -- which no encoding's name can -- ended the reading there,
-    and the declaration went unread.
-    """
-    limit = 4096
-    while True:
-        try:
-            head = stored[:limit].decode(codec, "ignore").lstrip("\ufeff")
-        except Exception:
-            return None
-        opened = _ENCODING_OPENS.match(head)
-        whole = limit >= len(stored)
-        if opened is not None:
-            closing = head.find(opened.group(1), opened.end())
-            if closing >= 0:
-                return head[opened.end():closing]
-            if whole:
-                return head[opened.end():]
-        elif "?>" in head or whole:
-            return None
-        limit *= 8
-
-
-def _marked_declaration_refused(name: str, stored: bytes) -> Optional[str]:
-    """Why a document its first bytes mark as UTF-8, UTF-16 or UTF-32 is
-    refused for its declaration, or None where it is not.
+def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str],
+                            stored: bytes) -> Optional[str]:
+    """A document its first bytes mark as UTF-8, UTF-16 or UTF-32.
 
     XML makes it a fatal error for a document to arrive in an encoding other
-    than the one its declaration names, and for one that declares nothing to
-    be in any but UTF-8 or UTF-16 (section 4.3.3). A parser reading the
-    bytes as stored stops at either; the decode below believed the mark,
-    dropped the declaration, and read the document all the same. The mark's
-    encoding and the declaration are both named in the refusal, since the
-    remedy is to make one say what the other does. Which bytes mark which
-    encoding is read as XML's Appendix F reads it -- a non-normative table,
+    than the one its declaration names (section 4.3.3), and a parser reading
+    the bytes as stored stops there; the decode believed the mark, dropped the
+    declaration, and read the document all the same. The encoding the first
+    bytes say and the declaration are both named in the refusal, since the
+    remedy is to make one say what the other does. Which bytes say which
+    encoding is read as XML's Appendix F reads them -- a non-normative table,
     which calls UTF-32 by its older name, UCS-4.
+
+    A document that declares no encoding needs none behind a UTF-8 or UTF-16
+    mark. Behind a UTF-32 one, and with no mark at all, it is refused for it.
     """
-    sniffed = _sniff(stored)
-    found_mark = next(((mark, codec) for bom, mark, codec in _MARKS if stored.startswith(bom)), None)
-    if found_mark is None and sniffed is not None:
-        found_mark = ("UTF-16LE" if sniffed == "utf-16-le" else "UTF-16BE", sniffed)
-    if found_mark is None:
-        return None
-    mark, codec = found_mark
-    where = ("its byte order mark says" if stored[:2] in (b"\xff\xfe", b"\xfe\xff")
-             or stored[:3] == b"\xef\xbb\xbf" or stored[:4] == b"\x00\x00\xfe\xff"
-             else "its first bytes say")
-    declared = _declared_behind_mark(stored, codec)
     if declared is None:
-        if mark.startswith("UTF-32"):
-            return ("%s: %s: %s %s and it declares no encoding; XML 1.0 section 4.3.3 "
-                    "makes an undeclared encoding other than UTF-8 or UTF-16 a fatal error -- "
-                    "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, where, mark))
+        if start.marked and not start.encoding.startswith("UTF-32"):
+            return None
+        return _undeclared(name, start, stored)
+    refused = _unread(name, declared)
+    if refused is not None:
+        return refused
+    if _REGISTERED.get(declared.lower()) in _AGREES[start.encoding]:
         return None
-    declared = declared[:_LONGEST_NAME + 1]
-    shown = _shown(declared)
-    lowered = declared.lower()
-    normal = lowered.replace("-", "").replace("_", "").replace(".", "")
-    if mark == "UTF-8" and _is_utf8_name(declared):
+    return _contradicted(name, "its byte order mark says" if start.marked else "its first bytes say",
+                         start.encoding, declared)
+
+
+def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
+                        found: Optional[_Declaration]) -> Optional[str]:
+    """A document with nothing in front: no mark, and first bytes in which
+    ASCII characters are ASCII bytes.
+
+    rdflib decodes as UTF-8 whatever the declaration names. A name this reader
+    does not read is refused by name, with nothing decoded. A name for UTF-16
+    or UTF-32, or one under which the declaration's own bytes are other
+    characters, contradicts the first bytes: appendix F reads `3C 3F 78 6D` as
+    UTF-8 or an encoding in which ASCII characters are ASCII bytes. Any other
+    name is read both ways -- under the name, and as UTF-8 -- and where the two
+    are different text there are two readings of one file, so it is refused
+    rather than one chosen. Where they are the same, as they are for a code
+    page that keeps ASCII where ASCII is over bytes all under 128, nothing is
+    said.
+    """
+    if declared is None:
         return None
-    if mark != "UTF-8" and lowered in _AGREEING[mark]:
+    refused = _unread(name, declared)
+    if refused is not None:
+        return refused
+    form = _REGISTERED.get(declared.lower())
+    if form == "UTF-8":
         return None
-    # A name this reader does not read is refused as that, as it is with no
-    # mark in front of it: saving the file in the encoding it names is no
-    # remedy where that encoding is refused too.
-    if (len(declared) > _LONGEST_NAME or not _ENCODING_NAME.fullmatch(declared)
-            or normal in _PLATFORM_CODECS
-            or (normal in _UNREGISTERED_UTF and lowered not in {n for a in _AGREEING.values() for n in a})
-            or not (normal in _UTF16_OR_32 or _is_utf8_name(declared)
-                    or _one_character_a_byte(declared))):
-        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
+    own = stored[:found.end]
+    if form is not None or _decoded(own, declared) != own.decode("latin-1"):
+        return _contradicted(name, "its first bytes say", _KEEPS_ASCII, declared)
+    theirs, ours = _decoded(stored, declared), _decoded(stored, "utf-8")
+    if theirs is None and ours is None:
+        return None          # neither reads it, and the parser says so itself
+    if theirs is None or ours is None or theirs != ours:
+        return "%s: %s: %s" % (name, UNUSED_ENCODING, _shown(declared))
+    return None
+
+
+def _contradicted(name: str, where: str, said: str, declared: str) -> str:
     return ("%s: %s: %s %s and its declaration says %s; XML 1.0 section 4.3.3 makes that "
             "a fatal error -- make the declaration name the encoding the bytes are in, or save "
-            "the file in the one it names" % (name, CONTRADICTED_ENCODING, where, mark, shown))
+            "the file in the one it names" % (name, CONTRADICTED_ENCODING, where, said,
+                                              _shown(declared)))
+
+
+def _undeclared(name: str, start: _Start, stored: bytes) -> str:
+    """A document its first bytes say is UTF-16 or UTF-32 that declares no
+    encoding. Section 4.3.3 makes one that begins with neither a byte order
+    mark nor an encoding declaration, and is not UTF-8, a fatal error, and
+    says an entity in an encoding other than UTF-8 or UTF-16 MUST begin with
+    an encoding declaration -- an error, by section 1.2. The reason gives the
+    sentence that applies, and calls only the first fatal: UTF-32 behind a
+    mark breaks the MUST alone. Unmarked UTF-16 is the fatal error, beside
+    two more sentences of the section -- an entity in UTF-16 MUST begin with a
+    byte order mark, and its terms UTF-8 and UTF-16 do not apply to UTF-16LE
+    or UTF-16BE -- and appendix F's reading of its first bytes: `<?` it leaves
+    to the encoding declaration to settle, and anything else it reads as a
+    stream mislabeled, lacking a required one. The remedy puts the
+    declaration at the start, since one standing anywhere else is no
+    declaration at all."""
+    if start.marked:
+        return ("%s: %s: its byte order mark says %s and no encoding declaration begins it; "
+                "XML 1.0 section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16 "
+                "MUST begin with an encoding declaration, an error under section 1.2 -- declare "
+                "UTF-32 in an XML declaration at its start, or save the file as UTF-8"
+                % (name, UNDECLARED_ENCODING, start.encoding))
+    said = ("%s: %s: its first bytes say %s and it begins with neither a byte order mark nor "
+            "an encoding declaration; XML 1.0 section 4.3.3 makes that a fatal error for an "
+            "entity in an encoding other than UTF-8" % (name, UNDECLARED_ENCODING, start.encoding))
+    if start.encoding.startswith("UTF-32"):
+        return said + (" -- save it with a byte order mark and declare UTF-32 in an XML "
+                       "declaration at its start, or save the file as UTF-8")
+    opening = stored[:4]
+    if opening.decode(start.codec, "replace") == "<?":
+        reading = ("appendix F leaves bytes that open %s to the encoding declaration to settle, "
+                   "and none settles them" % " ".join("%02X" % byte for byte in opening))
+    else:
+        reading = ("appendix F reads such a stream as mislabeled, lacking a required encoding "
+                   "declaration")
+    return said + (", says an entity in UTF-16 MUST begin with a byte order mark, and says its "
+                   "terms UTF-8 and UTF-16 do not apply to UTF-16LE or UTF-16BE; %s -- save the "
+                   "file with a byte order mark, declare %s in an XML declaration at its start, "
+                   "or save it as UTF-8" % (reading, start.encoding))
 
 
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:
@@ -692,13 +944,15 @@ def _parse_metadata(name: str, raw: bytes, base: str,
     # mark is taken off: the decode below drops a UTF-8 mark and the
     # declaration behind it, and a false declaration behind the mark went
     # unread.
+    prolog = None
     if fmt == "xml":
-        refused = _marked_declaration_refused(name, raw) or _declaration_refused(name, raw)
+        prolog = _prolog(raw)
+        refused = _declaration_refused(name, raw, prolog)
         if refused is not None:
             return None, refused
 
     try:
-        raw = _decode(raw)
+        raw = _decode(raw, prolog)
     except Exception as exc:
         return None, "%s: %s: %s" % (name, type(exc).__name__, exc)
 
@@ -1158,17 +1412,74 @@ def graph_difference(one: Graph, other: Graph):
             only(rows_other, label_other, counts_other, counts_one))
 
 
+def _lent(items, blanks, shared):
+    """The fingerprints of the graphs that share labels, taken together.
+
+    A label names one node across a document, so the graphs that share one
+    are one description of the nodes they share, and each set of graphs
+    joined by labels is fingerprinted as the one graph it is: a graph is a
+    repeat of them only by repeating all they say of those nodes. Taken graph
+    by graph, a graph saying only a rendition's format of a node the default
+    graph says more of had the shape of any rendition with that format and
+    nothing else, and one such, a second node, was left out as its repeat.
+    And taken as the loop below reached them, a repeat the parser handed over
+    first was kept and one it handed over later left out -- an order that
+    follows the hash seed where graphs have no names.
+
+    Only where the union's blank nodes form trees, in the one pass that
+    costs. Where they do not, naming them would take a search, kept for the
+    graphs that can be left out, and nothing is fingerprinted, as nothing
+    sharing a label was. And only where a graph that can be left out is the
+    union's size, since a repeat says as many statements as what it repeats:
+    a document of graphs sharing labels and repeating nothing pays nothing.
+    """
+    sizes = {len(graph) for (_name, graph), nodes in zip(items, blanks)
+             if nodes and not nodes & shared}
+    if not sizes:
+        return set()
+    joined = list(range(len(items)))
+
+    def find(index):
+        while joined[index] != index:
+            joined[index] = joined[joined[index]]
+            index = joined[index]
+        return index
+
+    holder = {}
+    for index, nodes in enumerate(blanks):
+        for node in nodes & shared:
+            if node in holder:
+                joined[find(index)] = find(holder[node])
+            else:
+                holder[node] = index
+    together = {}
+    for index, nodes in enumerate(blanks):
+        if nodes & shared:
+            together.setdefault(find(index), Graph())
+            together[find(index)] += items[index][1]
+    return {tuple(_fingerprint(whole)) for whole in together.values()
+            if len(whole) in sizes and not _outside_trees(whole)}
+
+
 def merge_graphs_of(graphs):
     """One document's graphs -- a mapping of name -> Graph, the default graph
     first -- merged into one, a graph that repeats another counted once.
 
     A blank node's label names one node across a JSON-LD document, so graphs
-    that share one are about the same node and are joined as they are. A
-    graph with blank nodes of its own that repeats one already joined -- the
-    same triples, its blank nodes aside -- is left out: joined, its copies
-    would be second nodes. A repeat is found by the graph's fingerprint, taken
-    once per graph -- one pass where its blank nodes form trees, a search over
-    the few that do not -- so the cost is the document's size.
+    that share one are about the same node and are joined as they are, never
+    left out. A graph with blank nodes of its own that repeats one already
+    joined -- the same triples, its blank nodes aside -- is left out: joined,
+    its copies would be second nodes. A repeat is found by the graph's
+    fingerprint, taken once per graph -- one pass where its blank nodes form
+    trees, a search over the few that do not -- so the cost is the document's
+    size.
+
+    Graphs that share labels are one description of the nodes they share,
+    and a graph repeating that whole is a repeat of them all: `_lent` takes
+    their fingerprints together, before any graph is merged. The default
+    graph lending its rendition's label to a named graph was in no
+    fingerprint at all, and a graph repeating it whole was joined, a second
+    rendition beside the first.
 
     The limit is the document's, as it is for a comparison of two documents:
     where the graphs to be fingerprinted hold more blank nodes outside trees
@@ -1208,7 +1519,7 @@ def merge_graphs_of(graphs):
                for (_name, graph), nodes in zip(items, blanks)]
     searched = sum(outside) <= MAX_COMPARED_BLANK_NODES
     merged = Graph()
-    kept = set()
+    kept = _lent(items, blanks, shared)
     repeats, uncounted = [], []
     for (name, graph), nodes, apart in zip(items, blanks, outside):
         if nodes and not nodes & shared:

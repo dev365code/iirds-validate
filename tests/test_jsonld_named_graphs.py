@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from rdflib import BNode, Graph, Literal, URIRef
 
 import iirds
@@ -671,3 +672,193 @@ def test_a_language_tag_case_does_not_double_what_hangs_off_an_anonymous_node(ma
     package = iirds.open(make_package(metadata=_TOC_RDF, jsonld=_toc_jsonld("DE")))
     alone = iirds.open(make_package(name="alone.iirds", metadata=_TOC_RDF))
     assert len(package.graph) == len(alone.graph), (len(package.graph), len(alone.graph))
+
+
+def _anonymous():
+    """The package, a topic, and a rendition with no name: MINIMAL_RDF's
+    statements, its rendition a blank node."""
+    package, topic, rendition = _nodes()
+    return package, topic, {k: v for k, v in rendition.items() if k != "@id"}
+
+
+def _labelled(label="_:r"):
+    """The same, the rendition given a blank-node label a graph can share."""
+    package, topic, rendition = _anonymous()
+    return [package, dict(topic, **{"has-rendition": dict(rendition, **{"@id": label})})]
+
+
+#: What a graph beside the default one says of the default graph's labelled
+#: rendition: a statement the default graph makes too, held from the topic's
+#: side, the rendition's, or both.
+SHARING = {
+    "the topic's side": [{"@id": "urn:test:topic1", "has-rendition": "_:r"}],
+    "the rendition's side": [{"@id": "_:r", "format": "application/xhtml+xml"}],
+    "both sides": [{"@id": "urn:test:topic1",
+                    "has-rendition": {"@id": "_:r", "format": "application/xhtml+xml"}}],
+}
+
+
+@pytest.mark.parametrize("side", list(SHARING))
+def test_a_whole_repeat_counts_once_where_the_default_graph_shares_a_label(make_package, side):
+    """J05 and its twins. The default graph's rendition label is used in
+    another graph too, which made the default graph one never fingerprinted,
+    so a third graph repeating it whole -- a rendition without a name of its
+    own -- was taken for more statements, a second rendition, and L9 failed
+    the package. A label names one node across the document, so the graph
+    sharing it is joined as it is; the default graph is still the graph it
+    is, and a graph repeating it is left out."""
+    package, topic, rendition = _anonymous()
+    repeat = {"@id": "urn:test:g2", "@graph": [package, dict(topic, **{"has-rendition": rendition})]}
+    jsonld = _document(_labelled() + [{"@id": "urn:test:g1", "@graph": SHARING[side]}, repeat])
+    package = make_package(metadata=MINIMAL_RDF, jsonld=jsonld)
+    checked, linted = runner.check(package), runner.lint(package)
+    assert checked.ok, [(f.rule.id, f.violation.detail) for f in checked.findings]
+    assert not _findings(linted, "L9"), [f.violation.detail for f in _findings(linted, "L9")]
+    assert not _findings(linted, "L17"), [f.violation.detail for f in _findings(linted, "L17")]
+
+
+def _j(extra, labelled=False):
+    """A document after jl's J cases: the default graph, then `extra`."""
+    package, topic, rendition = _anonymous()
+    default = _labelled() if labelled else [package, dict(topic, **{"has-rendition": rendition})]
+    return _document(default + extra)
+
+
+def _repeat(**changed):
+    package, topic, rendition = _anonymous()
+    return [package, dict(topic, **dict({"has-rendition": rendition}, **changed))]
+
+
+#: (the named graphs, whether the default graph's rendition is labelled,
+#: whether the package passes)
+J_CASES = {
+    "J02 a named graph that says another title": (
+        [{"@id": "urn:test:g", "@graph": _repeat(title="Other")}], False, False),
+    "J03 a whole repeat": ([{"@id": "urn:test:g", "@graph": _repeat()}], False, True),
+    "J04 a partial repeat, its rendition a second one": (
+        [{"@id": "urn:test:g", "@graph": _repeat()[1:]}], False, False),
+    "J05 a whole repeat, the default graph's label shared": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat()}], True, True),
+    "J05c the same without the graph that shares it": (
+        [{"@id": "urn:test:g2", "@graph": _repeat()}], True, True),
+    "J05 with the repeat saying another title": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat(title="Other")}], True, False),
+    "J05 with the repeat holding a second rendition": (
+        [{"@id": "urn:test:g1", "@graph": SHARING["the rendition's side"]},
+         {"@id": "urn:test:g2", "@graph": _repeat(**{"has-rendition": [
+             _anonymous()[2], dict(_anonymous()[2], source="content/topic2.xhtml")]})}],
+        True, False),
+    "J05 with the shared label saying something only it says": (
+        [{"@id": "urn:test:g1", "@graph": [{"@id": "_:r", "source": "content/other.xhtml"}]},
+         {"@id": "urn:test:g2", "@graph": _repeat()}], True, False),
+}
+
+
+@pytest.mark.parametrize("case", list(J_CASES))
+def test_what_only_one_file_says_is_still_l9s(make_package, case):
+    """A repeat is left out only where it is the same statements; a value
+    changed, a node more, or a statement only the shared label's graph makes
+    is in metadata.jsonld and not metadata.rdf, and L9 says so."""
+    extra, labelled, passes = J_CASES[case]
+    report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=_j(extra, labelled)))
+    assert report.ok is passes, (case, [(f.rule.id, f.violation.detail) for f in report.findings])
+    assert bool(_findings(report, "L9")) is not passes, case
+
+
+def test_a_graph_repeating_part_of_a_lent_description_is_a_second_node(make_package):
+    """One graph says, of the default graph's labelled rendition, that the
+    topic has it and its format; another, a rendition of the topic with that
+    format and nothing more. Taken alone the first had the second's shape and
+    the second was left out as its repeat -- but the rendition the first
+    speaks of is the default graph's, which says more, and the second's is
+    another node, which L9 reports."""
+    fragment = [{"@id": "urn:test:topic1",
+                 "has-rendition": {"format": "application/xhtml+xml"}}]
+    jsonld = _j([{"@id": "urn:test:g1", "@graph": SHARING["both sides"]},
+                 {"@id": "urn:test:g3", "@graph": fragment}], labelled=True)
+    report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=jsonld))
+    assert not report.ok and _findings(report, "L9"), sorted({f.rule.id for f in report.findings})
+
+
+@pytest.mark.parametrize("names", [("urn:test:z", "urn:test:zz", "urn:test:a"),
+                                   ("urn:test:z", "urn:test:zz", "urn:test:zzz")])
+def test_the_names_of_the_graphs_do_not_decide_a_whole_repeat(make_package, names):
+    """The graph lending a label, the graph borrowing it, and a repeat of the
+    two: the repeat named before them or after them in the order of names is
+    the same repeat, and left out either way. It was kept where it came
+    first."""
+    lender, borrower, repeat = names
+    package, topic, rendition = _anonymous()
+    jsonld = _document([package,
+                        {"@id": lender, "@graph": [dict(topic, **{"has-rendition": dict(
+                            rendition, **{"@id": "_:r"})})]},
+                        {"@id": borrower, "@graph": SHARING["the rendition's side"]},
+                        {"@id": repeat, "@graph": [dict(topic, **{"has-rendition": rendition})]}])
+    report = runner.check(make_package(metadata=MINIMAL_RDF, jsonld=jsonld))
+    assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+def test_graphs_without_names_merge_alike_in_any_order():
+    """Graphs named by blank nodes come in the order the parser hands them
+    over, which follows the hash seed. The lender, the borrower and a repeat
+    of the two, in every order: one merge, the repeat left out each time."""
+    import itertools
+
+    package, topic, rendition = _anonymous()
+    jsonld = _document([package,
+                        {"@id": "_:a", "@graph": [dict(topic, **{"has-rendition": dict(
+                            rendition, **{"@id": "_:r"})})]},
+                        {"@id": "_:b", "@graph": SHARING["the rendition's side"]},
+                        {"@id": "_:c", "@graph": [dict(topic, **{"has-rendition": rendition})]}])
+    default, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, jsonld.encode(),
+                                                        base=iirds.PACKAGE_BASE)
+    assert error is None and len(named) == 3, (error, named)
+    results = set()
+    for order in itertools.permutations(named.items()):
+        merged, repeats, uncounted = iirds.merge_graphs_of(dict([(None, default)] + list(order)))
+        results.add((len(merged), len(repeats), len(uncounted)))
+    assert results == {(len(default) + 6, 1, 0)}, results
+
+
+def test_a_repeat_of_less_than_a_lent_description_is_kept():
+    """Another graph says more of the default graph's rendition than the
+    default graph does -- a note -- and a third repeats the default graph
+    alone. The rendition the document describes has the note, the third
+    graph's has not: a second rendition, kept, as it was."""
+    note = [{"@id": "_:r", "urn:test:note": "n"}]
+    jsonld = _j([{"@id": "urn:test:g1", "@graph": note},
+                 {"@id": "urn:test:g2", "@graph": _repeat()}], labelled=True)
+    default, named, error = iirds.parse_metadata_graphs(iirds.METADATA_JSONLD, jsonld.encode(),
+                                                        base=iirds.PACKAGE_BASE)
+    assert error is None, error
+    merged, repeats, uncounted = iirds.merge_graphs_of(dict({None: default}, **named))
+    assert repeats == [] and uncounted == [], (repeats, uncounted)
+
+
+def test_graphs_sharing_labels_are_fingerprinted_only_where_a_repeat_could_be(monkeypatch):
+    """A repeat says as many statements as what it repeats. Fifty graphs, each
+    saying something of a rendition the default graph lends it, and no graph
+    that could repeat them: nothing is fingerprinted, where every one of them
+    was. One graph more, repeating them all whole: the fifty-one are
+    fingerprinted once, together, the repeat once, and it is left out."""
+    from iirds import _metadata
+
+    asked = []
+    fingerprint = _metadata._fingerprint
+    monkeypatch.setattr(_metadata, "_fingerprint", lambda graph: asked.append(1) or fingerprint(graph))
+    lent = [{"@id": "urn:test:topic%d" % n, "has-rendition": {"@id": "_:r%d" % n, "format": "f%d" % n}}
+            for n in range(50)]
+    borrowing = [{"@id": "urn:test:g%d" % n, "@graph": [{"@id": "_:r%d" % n, "format": "f%d" % n}]}
+                 for n in range(50)]
+    repeat = {"@id": "urn:test:repeat", "@graph": [
+        {"@id": "urn:test:topic%d" % n, "has-rendition": {"format": "f%d" % n}} for n in range(50)]}
+    for graphs, fingerprints, repeats in ((lent + borrowing, 0, []),
+                                          (lent + borrowing + [repeat], 2, [URIRef("urn:test:repeat")])):
+        default, named, error = iirds.parse_metadata_graphs(
+            iirds.METADATA_JSONLD, _document(graphs).encode(), base=iirds.PACKAGE_BASE)
+        assert error is None, error
+        del asked[:]
+        merged, left_out, uncounted = iirds.merge_graphs_of(dict({None: default}, **named))
+        assert (len(asked), left_out) == (fingerprints, repeats), (len(asked), left_out)

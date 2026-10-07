@@ -158,3 +158,32 @@ def test_a_stylesheet_instruction_is_not_named_as_a_declaration(tmp_path):
     said = [f for f in runner.run(package, runner.ALL_KINDS).findings if f.rule.id == "C16.1"]
     assert said, "a document that is not UTF-8 was not refused"
     assert "declares encoding" not in (said[0].violation.detail or ""), said[0].violation.detail
+
+
+#: A document behind a UTF-16 mark, its declaration agreeing with the mark.
+UTF16 = DECLARED.replace('encoding="windows-1252"', 'encoding="UTF-16"')
+
+#: Ways it fails that are not its declaration's.
+FAILURES = {
+    "a mismatched tag": b"\xff\xfe" + UTF16.replace("</iirds:Package>",
+                                                    "</iirds:Pakage>").encode("utf-16-le"),
+    "an entity declared": b"\xff\xfe" + UTF16.replace(
+        "\n<rdf:RDF", '\n<!DOCTYPE rdf:RDF [<!ENTITY t "x">]>\n<rdf:RDF', 1).encode("utf-16-le"),
+    "a document element RDF/XML has not got": b"\xff\xfe" + (
+        '<?xml version="1.0" encoding="UTF-16"?>\n<manual/>\n').encode("utf-16-le"),
+    "cut short in a code unit": (b"\xff\xfe" + UTF16.encode("utf-16-le"))[:-1],
+}
+
+
+@pytest.mark.parametrize("failure", sorted(FAILURES))
+def test_a_utf16_document_failing_for_another_reason_gains_no_note(tmp_path, failure):
+    """The reader decodes a document behind a UTF-16 mark and hands the parser
+    UTF-8, so its bytes are never UTF-8, whatever failed; and its declaration
+    was held against the mark before anything was parsed. Told what it
+    declares, each of these was told the declaration was the fault."""
+    package = _package(tmp_path, FAILURES[failure], "utf16.iirds")
+    said = [f for f in runner.run(package, runner.ALL_KINDS).findings
+            if f.rule.id in ("C16.1", "S2", "C9")]
+    assert said, failure
+    assert all("declares encoding" not in (f.violation.detail or "") for f in said), (
+        failure, [f.violation.detail for f in said])

@@ -537,8 +537,21 @@ def test_a_document_that_describes_a_declaration_is_not_refused(codec):
         assert graph is not None, error
 
 
-@pytest.mark.parametrize("codec", ["utf-8", "utf-16-le", "utf-16-be", "utf-16", "utf-8-sig"])
-def test_the_graph_says_what_the_file_says(codec):
+#: How the document is stored: the codec, the mark in front of it, and what
+#: its own declaration says beside the version. UTF-16 without a mark is read
+#: only under a declaration naming it (tests/test_unmarked_utf16.py), so in
+#: each byte order a declaration naming no encoding stands behind a mark, and
+#: without one the declaration names the byte order.
+STORED = {"utf-8": ("utf-8", b"", ""), "utf-16": ("utf-16", b"", ""),
+          "utf-8-sig": ("utf-8-sig", b"", ""),
+          "utf-16-le marked": ("utf-16-le", b"\xff\xfe", ""),
+          "utf-16-be marked": ("utf-16-be", b"\xfe\xff", ""),
+          "utf-16-le declared": ("utf-16-le", b"", ' encoding="UTF-16LE"'),
+          "utf-16-be declared": ("utf-16-be", b"", ' encoding="UTF-16BE"')}
+
+
+@pytest.mark.parametrize("stored", list(STORED))
+def test_the_graph_says_what_the_file_says(stored):
     """Reading is meant to be faithful, and one substitution was not.
 
     A decoded document had its encoding declaration removed, because after a
@@ -548,14 +561,15 @@ def test_the_graph_says_what_the_file_says(codec):
     came back into the graph with a piece missing. The file said one thing and
     the graph said another, which is the one thing a reader must not do.
     """
+    codec, mark, declared = STORED[stored]
     inner = '<?xml version="1.0" encoding="utf-8"?>'
-    document = ('<?xml version="1.0"?>'
+    document = ('<?xml version="1.0"%s?>' % declared +
                 '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"'
                 ' xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">'
                 '<rdf:Description rdf:about="urn:test:note">'
                 '<rdfs:comment><![CDATA[' + inner + ']]></rdfs:comment>'
                 '</rdf:Description></rdf:RDF>')
-    graph, error = iirds.parse_metadata(iirds.METADATA_RDF, document.encode(codec),
+    graph, error = iirds.parse_metadata(iirds.METADATA_RDF, mark + document.encode(codec),
                                         base=iirds.PACKAGE_BASE)
     assert error is None, error
     said = [str(o) for _s, p, o in graph if str(p).endswith("comment")]

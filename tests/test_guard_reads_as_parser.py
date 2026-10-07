@@ -53,7 +53,7 @@ def test_a_document_that_is_not_rdfxml_is_refused_whatever_it_declares(declared,
     assert graph is None and error, (declared, prolog)
 
 
-@pytest.mark.parametrize("declared", ["UTF-8", "utf8", "windows-1252"])
+@pytest.mark.parametrize("declared", ["UTF-8", "csUTF8", "windows-1252"])
 def test_a_document_with_nothing_to_refuse_is_still_read(declared):
     graph, error = _parsed(_declaring(declared, "", "", BODY % "Operating instructions"))
     assert error is None and graph is not None, (declared, error)

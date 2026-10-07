@@ -295,8 +295,8 @@ it fails under either reading.
 
 **C16.1 — `metadata.rdf` whose bytes do not decode as UTF-8 is refused,
 whatever it declares, unless a UTF-16 or UTF-32 byte order mark, or the byte
-pattern of unmarked UTF-16, settles another encoding — and the package below was
-refused with nothing in it damaged.**
+pattern of unmarked UTF-16 under a declaration that names it, settles another
+encoding — and the package below was refused with nothing in it damaged.**
 
 A real third-party package declares `encoding="windows-1252"`. This tool
 reports `ERROR C16.1` and says nothing about the graph. `xml.etree`, in the
@@ -338,15 +338,51 @@ whose bytes read the same both ways passes. A declaration naming an encoding
 this reader does not decode -- anything but UTF-8, UTF-16, UTF-32 and the
 encodings that read one character from each byte, or a name no codec answers
 to -- is refused by name without the document being decoded under it.
-A document whose byte order mark, or whose first bytes as unmarked UTF-16,
-say one encoding while its declaration names another is refused, and so is
-UTF-32 that declares nothing: XML 1.0 section 4.3.3 makes both fatal errors
-"in the absence of information provided by an external transport protocol",
-and a ZIP member has none, so the section applies as written -- a note on
-applying it, not a divergence. Which bytes mark which encoding is read as
-Appendix F reads them, a non-normative table that calls UTF-32 UCS-4. UTF-16 without a byte order mark, which the
-same section says MUST begin with one, is read: that is not a fatal error, and
-a warning for it is a candidate, not a rule.
+A document whose byte order mark, or whose first bytes as unmarked UTF-16 or
+UTF-32, say one encoding while its declaration names another is refused: XML
+1.0 section 4.3.3 makes that a fatal error "in the absence of information
+provided by an external transport protocol", and a ZIP member has none, so the
+section applies as written -- a note on applying it, not a divergence. First
+bytes `3C 3F 78 6D`, the ASCII of `<?xm`, say an encoding in which ASCII
+characters are ASCII bytes, so a declaration of UTF-16 or UTF-32 over them is
+the same contradiction. UTF-32 that declares nothing is refused too, and the
+reason gives the sentence it breaks: behind a byte order mark, the MUST that an
+entity in an encoding other than UTF-8 or UTF-16 begin with an encoding
+declaration -- an error, by section 1.2 -- and without one, the fatal error the
+section makes of an entity that begins with neither a byte order mark nor an
+encoding declaration and is not UTF-8. Which bytes mark which encoding is read
+as Appendix F reads them, a non-normative table that calls UTF-32 UCS-4.
+
+The declaration itself is read once, by productions [23] to [26], [32], [80]
+and [81], and a declaration the grammar does not allow is refused, with the
+production it breaks, whatever stands in front of it; behind a byte order mark
+one was removed unread and the package passed. Names are matched without
+regard to case, and the names and aliases IANA registers for UTF-8, UTF-16 and
+UTF-32 -- `csUTF8`, `csUTF16`, `csUnicode`, `csUCS4` among them -- are read as
+the encodings they name, as the section recommends, though expat reads none of
+the aliases. A spelling IANA does not register, `utf8` or `UTF_16`, and a name
+only Python reads as UTF-8, such as `cp65001`, has no such standing: it is
+read only where expat and libxml2 both read it, and expat reads none of them
+as what it spells, so each is refused by name.
+
+UTF-16 without a byte order mark is read only under a declaration that names
+it. With no encoding declaration it begins with neither a byte order mark nor
+an encoding declaration and is not UTF-8, which section 4.3.3 makes a fatal
+error; the section also says an entity in UTF-16 MUST begin with a byte order
+mark, and that its terms UTF-8 and UTF-16 do not apply to UTF-16LE or UTF-16BE,
+and Appendix F reads such a stream as mislabeled, lacking a required encoding
+declaration. It is refused, where it was read: expat reads it from the shape of
+its first bytes, and libxml2 only where `<?` stands first, a declaration or
+another instruction. Under `UTF-16LE` or `UTF-16BE` it is read, and is the form
+RFC 2781 section 3.3 gives those labels, which carry no byte order mark. Under
+`UTF-16` it is read too, though the same section of XML says an entity in
+UTF-16 MUST begin with a byte order mark: that is an error by section 1.2,
+which a processor may report and recover from, not a fatal one, and a warning
+for it is a candidate, not a rule. RFC 2781 section 4.3 says text labelled
+UTF-16 with no byte order mark SHOULD be read big-endian; this reader goes by
+the shape of the first bytes, as Appendix F does, and reads a little-endian
+document so labelled as little-endian -- a SHOULD of the RFC set aside, where
+reading it would make the document's own markup unreadable.
 
 ## What this tool refuses to read, and why that is its own decision
 
@@ -1193,7 +1229,14 @@ those is searched, the files are not compared and L9 says so, a limit of this
 tool rather than a reading of the standard -- one that
 shares a node with another graph is not, since a blank node's label names one
 node across the document -- and one repeating part of it around such a node
-makes a second node, which L9 reports. And where a file's statements are split
+makes a second node, which L9 reports. Graphs that share labels -- a default
+graph whose rendition a named graph speaks of -- are one description of the
+nodes they share, and a graph repeating that description whole counts once,
+whatever order the graphs come in, where their blank nodes form trees; a graph
+repeating one of them alone, or part of one, makes second nodes, which L9
+reports. Where their blank nodes do not form trees, naming them would take a
+search, kept for the graphs that can be left out, and the repeat is a second
+copy, which L9 reports. And where a file's statements are split
 between its default graph and named graphs, and the default graph holds such a
 node, the merge, which reads default graphs, holds that node beside
 `metadata.rdf`'s: a rule that looks at it reports it twice, a count rule as a

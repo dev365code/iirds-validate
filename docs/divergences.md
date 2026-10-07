@@ -295,8 +295,8 @@ it fails under either reading.
 
 **C16.1 — `metadata.rdf` whose bytes do not decode as UTF-8 is refused,
 whatever it declares, unless a UTF-16 or UTF-32 byte order mark, or the byte
-pattern of unmarked UTF-16, settles another encoding — and the package below was
-refused with nothing in it damaged.**
+pattern of unmarked UTF-16 under a declaration that names it, settles another
+encoding — and the package below was refused with nothing in it damaged.**
 
 A real third-party package declares `encoding="windows-1252"`. This tool
 reports `ERROR C16.1` and says nothing about the graph. `xml.etree`, in the
@@ -364,9 +364,25 @@ the aliases. A spelling IANA does not register, `utf8` or `UTF_16`, and a name
 only Python reads as UTF-8, such as `cp65001`, has no such standing: it is
 read only where expat and libxml2 both read it, and expat reads none of them
 as what it spells, so each is refused by name.
-UTF-16 without a byte order mark, which the same section says MUST begin with
-one, is read: that is not a fatal error, and a warning for it is a candidate,
-not a rule.
+
+UTF-16 without a byte order mark is read only under a declaration that names
+it. With no encoding declaration it begins with neither a byte order mark nor
+an encoding declaration and is not UTF-8, which section 4.3.3 makes a fatal
+error; the section also says an entity in UTF-16 MUST begin with a byte order
+mark, and that its terms UTF-8 and UTF-16 do not apply to UTF-16LE or
+UTF-16BE, and Appendix F reads such a stream as mislabeled, lacking a required
+encoding declaration. It is refused, where it was read: expat reads it from the
+shape of its first bytes, and libxml2 only where an XML declaration stands
+first. Under `UTF-16LE` or `UTF-16BE` it is read, and is the form RFC 2781
+section 3.3 gives those labels, which carry no byte order mark. Under `UTF-16`
+it is read too, though the same section of XML says an entity in UTF-16 MUST
+begin with a byte order mark: that is an error by section 1.2, which a
+processor may report and recover from, not a fatal one, and a warning for it
+is a candidate, not a rule. RFC 2781 section 4.3 says text labelled UTF-16
+with no byte order mark SHOULD be read big-endian; this reader goes by the
+shape of the first bytes, as Appendix F does, and reads a little-endian
+document so labelled as little-endian -- a SHOULD of the RFC set aside, where
+reading it would make the document's own markup unreadable.
 
 ## What this tool refuses to read, and why that is its own decision
 

@@ -739,7 +739,7 @@ def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]
                                                  found.why)
     declared = found.encoding if found is not None else None
     if start.encoding is not None:
-        return _refused_by_first_bytes(name, start, declared)
+        return _refused_by_first_bytes(name, start, declared, stored)
     return _refused_by_reading(name, stored, declared, found)
 
 
@@ -765,7 +765,8 @@ def _unread(name: str, declared: str) -> Optional[str]:
     return None
 
 
-def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str]) -> Optional[str]:
+def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str],
+                            stored: bytes) -> Optional[str]:
     """A document its first bytes mark as UTF-8, UTF-16 or UTF-32.
 
     XML makes it a fatal error for a document to arrive in an encoding other
@@ -783,7 +784,7 @@ def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str]) -
     if declared is None:
         if start.marked and not start.encoding.startswith("UTF-32"):
             return None
-        return _undeclared(name, start)
+        return _undeclared(name, start, stored)
     refused = _unread(name, declared)
     if refused is not None:
         return refused
@@ -835,7 +836,7 @@ def _contradicted(name: str, where: str, said: str, declared: str) -> str:
                                               _shown(declared)))
 
 
-def _undeclared(name: str, start: _Start) -> str:
+def _undeclared(name: str, start: _Start, stored: bytes) -> str:
     """A document its first bytes say is UTF-16 or UTF-32 that declares no
     encoding. Section 4.3.3 makes one that begins with neither a byte order
     mark nor an encoding declaration, and is not UTF-8, a fatal error, and
@@ -845,8 +846,11 @@ def _undeclared(name: str, start: _Start) -> str:
     mark breaks the MUST alone. Unmarked UTF-16 is the fatal error, beside
     two more sentences of the section -- an entity in UTF-16 MUST begin with a
     byte order mark, and its terms UTF-8 and UTF-16 do not apply to UTF-16LE
-    or UTF-16BE -- and appendix F's reading of a stream with no declaration
-    to say which encoding it is in: mislabeled."""
+    or UTF-16BE -- and appendix F's reading of its first bytes: `<?` it leaves
+    to the encoding declaration to settle, and anything else it reads as a
+    stream mislabeled, lacking a required one. The remedy puts the
+    declaration at the start, since one standing anywhere else is no
+    declaration at all."""
     if start.marked:
         return ("%s: %s: its byte order mark says %s and no encoding declaration begins it; "
                 "XML 1.0 section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16 "
@@ -857,13 +861,19 @@ def _undeclared(name: str, start: _Start) -> str:
             "an encoding declaration; XML 1.0 section 4.3.3 makes that a fatal error for an "
             "entity in an encoding other than UTF-8" % (name, UNDECLARED_ENCODING, start.encoding))
     if start.encoding.startswith("UTF-32"):
-        return said + (" -- save it with a byte order mark and declare UTF-32, or save the file "
-                       "as UTF-8")
+        return said + (" -- save it with a byte order mark and declare UTF-32 in an XML "
+                       "declaration at its start, or save the file as UTF-8")
+    opening = stored[:4]
+    if opening.decode(start.codec, "replace") == "<?":
+        reading = ("appendix F leaves bytes that open %s to the encoding declaration to settle, "
+                   "and none settles them" % " ".join("%02X" % byte for byte in opening))
+    else:
+        reading = ("appendix F reads such a stream as mislabeled, lacking a required encoding "
+                   "declaration")
     return said + (", says an entity in UTF-16 MUST begin with a byte order mark, and says its "
-                   "terms UTF-8 and UTF-16 do not apply to UTF-16LE or UTF-16BE; appendix F reads "
-                   "such a stream as mislabeled, lacking a required encoding declaration -- save "
-                   "the file with a byte order mark, declare %s, or save it as UTF-8"
-                   % start.encoding)
+                   "terms UTF-8 and UTF-16 do not apply to UTF-16LE or UTF-16BE; %s -- save the "
+                   "file with a byte order mark, declare %s in an XML declaration at its start, "
+                   "or save it as UTF-8" % (reading, start.encoding))
 
 
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:

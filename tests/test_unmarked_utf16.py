@@ -78,20 +78,47 @@ def test_unmarked_utf16_is_read_only_where_a_declaration_names_it(order, case):
         assert graph is None and refused in error, (order, case, error)
 
 
+#: What appendix F says of the first bytes, by what stands first: `<?` is a
+#: row of its own, which leaves the encoding to the declaration, and anything
+#: else is its last row, a stream mislabeled.
+READINGS = {"": "mislabeled, lacking a required encoding declaration",
+            "<!-- a comment -->\n": "mislabeled, lacking a required encoding declaration",
+            '<?xml version="1.0"?>\n': "to the encoding declaration to settle, and none",
+            "<?pi x?>\n": "to the encoding declaration to settle, and none"}
+
+
 @pytest.mark.parametrize("order", sorted(ORDERS))
-@pytest.mark.parametrize("head", ["", '<?xml version="1.0"?>\n'])
+@pytest.mark.parametrize("head", list(READINGS))
 def test_the_refusal_calls_only_the_first_sentence_fatal(order, head):
     """The fatal error is the entity that begins with neither a mark nor an
     encoding declaration. The MUST that UTF-16 begin with a mark, and the
     terms that do not reach UTF-16LE or UTF-16BE, are given as what they are,
-    and appendix F's reading of the bytes beside them."""
+    and appendix F's reading of the bytes beside them -- the row they match:
+    E07's declaration opens `<?`, which the row for `3C 00 3F 00` leaves to
+    the encoding declaration, and it was called mislabeled, the last row's
+    word."""
     graph, error = parsed(unmarked(order, head))
     assert graph is None and iirds.UNDECLARED_ENCODING in error, error
     assert order in error and "4.3.3" in error, error
     assert error.count("fatal") == 1, error
     assert "MUST begin with a byte order mark" in error, error
     assert "do not apply to UTF-16LE or UTF-16BE" in error, error
-    assert "appendix F" in error and "mislabeled" in error, error
+    assert "appendix F" in error and READINGS[head] in error, error
+
+
+@pytest.mark.parametrize("order", sorted(ORDERS))
+@pytest.mark.parametrize("front", ["\n", "<!-- a comment -->\n"])
+def test_a_declaration_out_of_place_is_told_to_stand_first(order, front):
+    """A declaration behind white space or a comment is none, and the document
+    begins with neither a mark nor an encoding declaration. It was told to
+    declare its byte order, which it does; the remedy puts the declaration at
+    its start, and done, the document is read."""
+    declaration = '<?xml version="1.0" encoding="{own}"?>\n'
+    graph, error = parsed(unmarked(order, front + declaration))
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert "declare %s in an XML declaration at its start" % order in error, error
+    graph, error = parsed(unmarked(order, declaration + front))
+    assert error is None and graph is not None, error
 
 
 @pytest.mark.parametrize("order", sorted(ORDERS))
@@ -163,6 +190,7 @@ def test_one_character_settles_the_byte_order(order):
     assert graph is None and iirds.UNDECLARED_ENCODING in error, error
     graph, error = parsed(unmarked(order, '<?xml version="1.0" encoding="{own}"?>', WIDE_NAMED))
     assert error is None and graph is not None, error
+
 
 # ---------------------------------------------------------------------------
 # UTF-16 the parser would find for itself. It sniffs the first bytes it is

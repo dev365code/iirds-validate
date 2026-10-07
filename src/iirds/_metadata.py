@@ -431,6 +431,14 @@ def _prolog(raw: bytes):
     return start, _xml_declaration(_region(raw, start))
 
 
+def first_bytes_encoding(raw: bytes) -> Optional[str]:
+    """The encoding a metadata document's first bytes say it is in, read as
+    XML 1.0 appendix F reads them: a byte order mark, or the shape of unmarked
+    UTF-16 or UTF-32. None where they keep ASCII where ASCII is and say no
+    more -- UTF-8, or an encoding beside it that only a declaration names."""
+    return _start(raw).encoding
+
+
 def declared_encoding(raw: bytes) -> Optional[str]:
     """The encoding a metadata document's XML declaration names, read as
     production [23] reads a declaration: None where the document has no

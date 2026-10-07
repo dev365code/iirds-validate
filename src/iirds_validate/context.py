@@ -36,6 +36,7 @@ from iirds import (
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
     declared_encoding,
+    first_bytes_encoding,
     merge_graphs_of,
     merge_sources,
     parse_metadata_graphs,
@@ -619,8 +620,18 @@ def _is_decode_failure(raw, reported) -> bool:
     declaration" branch, which asks for the file to be sent again -- and it
     matched a vocabulary error that happened to carry "codec can" inside a bad
     NCName.
+
+    A document whose first bytes say UTF-16 or UTF-32 is the exception to the
+    test on the bytes: the reader decodes it and hands the parser UTF-8, so
+    its bytes are never UTF-8 whatever failed, and its declaration was held
+    against them before anything was parsed. Once its declaration was read
+    as well, every such failure -- a mismatched tag, an entity refused -- was
+    told what the document declares, as if that were the fault. It is told
+    nothing.
     """
     if isinstance(raw, (bytes, bytearray)):
+        if first_bytes_encoding(bytes(raw)) not in (None, "UTF-8"):
+            return False
         try:
             bytes(raw).decode("utf-8")
         except UnicodeDecodeError:

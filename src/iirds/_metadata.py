@@ -88,12 +88,11 @@ def _read_here(start: _Start) -> bool:
     XML requires a byte order mark on a UTF-16 document and expat does not
     insist, autodetecting instead -- so a document can be UTF-16 to the parser
     and opaque bytes to every guard below, which is how `<!ENTITY` in UTF-16
-    was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32
-    is refused by expat, so nothing can be smuggled in it, and claiming to read
-    it here would admit documents the parser will not: its declaration is
-    read, and held against its bytes, and the document left to the parser.
+    was invisible to a pattern that only ever matches UTF-8. Unmarked UTF-32 is decoded here too, after its declaration has been
+    checked against the byte order by the same guard as a marked document.
+    A missing or contradictory declaration is refused before this decode.
     """
-    return start.encoding is not None and (start.marked or not start.encoding.startswith("UTF-32"))
+    return start.encoding is not None
 
 
 class _Declared(Exception):

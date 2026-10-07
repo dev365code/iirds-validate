@@ -408,3 +408,19 @@ def test_the_note_on_a_decode_failure_names_the_declaration_the_grammar_reads(de
     [finding] = [f for f in report.findings if f.rule.id == "C16.1"]
     assert "encoding=%r, which these bytes are not" % declared in finding.violation.detail, (
         finding.violation.detail)
+
+
+@pytest.mark.parametrize("order", ["le", "be"])
+@pytest.mark.parametrize("label", ["UTF-32", "csUTF32", "ISO-10646-UCS-4", "csUCS4",
+                                   "UTF-32{order}", "csUTF32{order}"])
+def test_unmarked_utf32_is_read_when_its_declaration_names_its_order(order, label, tmp_path):
+    """XML 1.0 §4.3.3 and Appendix F.1: a matching declaration labels
+    unmarked UCS-4; the no-BOM/no-declaration fatal condition does not apply.
+    https://www.w3.org/TR/2008/REC-xml-20081126/#charencoding
+    """
+    declared = label.format(order=order.upper())
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode('utf-32-' + order)
+    graph, error = parsed(raw)
+    assert graph is not None and error is None, error
+    report = runner.check(build_package(tmp_path, metadata=raw))
+    assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]

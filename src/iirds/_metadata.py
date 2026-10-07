@@ -734,8 +734,10 @@ def _unread(name: str, declared: str) -> Optional[str]:
         return "%s: %s: %s: not an IANA-registered encoding name (XML 1.0 §4.3.3)" % (
             name, UNREADABLE_ENCODING, shown)
     if _encoding_form(declared) is None and _codec_for(declared) is None:
-        return "%s: %s: %s: registered at IANA, but no text codec is available" % (
-            name, UNREADABLE_ENCODING, shown)
+        return ("%s: %s: %s: registered at IANA, but no text codec is available "
+                "(XML 1.0 §4.3.3) -- use a supported registered encoding name with "
+                "matching bytes, or save as UTF-8 and update the declaration" % (
+                    name, UNREADABLE_ENCODING, shown))
     return None
 
 

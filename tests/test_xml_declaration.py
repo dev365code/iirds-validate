@@ -22,6 +22,7 @@ is refused whatever stands in front of it.
 """
 from __future__ import annotations
 
+import re
 import xml.parsers.expat as expat
 
 import pytest
@@ -462,6 +463,36 @@ def test_a_registered_name_without_a_python_codec_is_unreadable():
     graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="ISO-10646-UTF-1"?>'))
     assert graph is None and iirds.UNREADABLE_ENCODING in error
     assert "registered at IANA" in error and "no text codec" in error
+    assert "XML 1.0 §4.3.3" in error
+    assert "save as UTF-8 and update the declaration" in error
+
+
+def test_every_registered_name_without_a_codec_has_a_cited_remedy():
+    """XML 1.0 §4.3.3: unsupported registered names keep their refusal,
+    identify that policy, and offer a supported reading with matching bytes.
+    """
+    from iirds import _metadata
+
+    unsupported = [r["name"] for r in _metadata._CHARSETS
+                   if _metadata._encoding_form(r["name"]) is None
+                   and _metadata._codec_for(r["name"]) is None]
+    assert "ISO-10646-UTF-1" in unsupported and "IBM1047" in unsupported
+    for declared in unsupported:
+        error = _metadata._unread(iirds.METADATA_RDF, declared)
+        assert "XML 1.0 §4.3.3" in error, error
+        assert "save as UTF-8 and update the declaration" in error, error
+        raw = stored("utf-8", '<?xml version="1.0" encoding="%s"?>' % declared)
+        graph, error = parsed(raw)
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]*", declared):
+            # Some IANA names contain ':' or '+', which EncName forbids.
+            # XMLDecl syntax is judged before any codec is selected.
+            assert graph is None and iirds.MALFORMED_DECLARATION in error, error
+            continue
+        assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+        assert "registered at IANA" in error and "no text codec" in error, error
+        assert "XML 1.0 §4.3.3" in error, error
+        assert "supported registered encoding name with matching bytes" in error, error
+        assert "save as UTF-8 and update the declaration" in error, error
 
 
 @pytest.mark.parametrize("declared,codec", [

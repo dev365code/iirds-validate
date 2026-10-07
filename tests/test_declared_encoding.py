@@ -431,7 +431,7 @@ def test_utf32_declaring_nothing_is_refused():
     (b"\xff\xfe", "utf-16-le", None),
     (b"\xef\xbb\xbf", "utf-8", "UTF-8"),
     (b"\xef\xbb\xbf", "utf-8", None),
-    (b"", "utf-16-le", "UTF-16"),
+    (b"", "utf-16-le", "UTF-16LE"),
 ])
 def test_a_declaration_agreeing_with_the_mark_is_read(mark, codec, declared):
     graph, error = _parsed(_marked(mark, codec, declared))

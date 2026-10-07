@@ -729,6 +729,12 @@ def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str],
     refused = _unread(name, declared)
     if refused is not None:
         return refused
+    if (not start.marked and start.encoding.startswith("UTF-16")
+            and _registered(declared)["mib"] == 1015):
+        return ("%s: %s: %s without a byte order mark; XML 1.0 section 4.3.3 "
+                "requires a byte order mark for generic UTF-16 -- add the mark, or "
+                "declare the byte order as UTF-16LE or UTF-16BE" % (
+                    name, UNREADABLE_ENCODING, _shown(declared)))
     if _encoding_form(declared) in _AGREES[start.encoding]:
         return None
     return _contradicted(name, "its byte order mark says" if start.marked else "its first bytes say",

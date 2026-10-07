@@ -49,7 +49,7 @@ UNMARKED = {
     "a processing instruction": ("<?pi x?>\n", iirds.UNDECLARED_ENCODING),
     "its own byte order": ('<?xml version="1.0" encoding="{own}"?>\n', None),
     "its own byte order in lower case": ('<?xml version="1.0" encoding="{lower}"?>\n', None),
-    "UTF-16": ('<?xml version="1.0" encoding="UTF-16"?>\n', None),
+    "UTF-16": ('<?xml version="1.0" encoding="UTF-16"?>\n', iirds.UNREADABLE_ENCODING),
     "the other byte order": ('<?xml version="1.0" encoding="{other}"?>\n',
                              iirds.CONTRADICTED_ENCODING),
     "UTF-8": ('<?xml version="1.0" encoding="UTF-8"?>\n', iirds.CONTRADICTED_ENCODING),
@@ -69,7 +69,7 @@ def parsed(raw):
 @pytest.mark.parametrize("case", list(UNMARKED))
 def test_unmarked_utf16_is_read_only_where_a_declaration_names_it(order, case):
     """E05, E06 and E07 among them, read before; E08 and its byte-order twins
-    read still."""
+    read only with order-specific labels."""
     head, refused = UNMARKED[case]
     graph, error = parsed(unmarked(order, head))
     if refused is None:
@@ -150,9 +150,11 @@ def test_a_package_whose_metadata_is_unmarked_undeclared_utf16_fails(case, tmp_p
     assert iirds.UNDECLARED_ENCODING in refused[0].violation.detail, refused[0].violation.detail
 
 
-@pytest.mark.parametrize("declared", ["UTF-16", "UTF-16LE"])
+@pytest.mark.parametrize("declared", ["UTF-16LE", "csUTF16LE"])
 def test_a_package_whose_metadata_names_its_utf16_passes(declared, tmp_path):
-    """E08, and the label RFC 2781 gives a little-endian stream with no mark."""
+    """RFC 2781 §3.3: a little-endian stream can name its byte order.
+    The generic UTF-16 label needs a mark under XML 1.0 §4.3.3.
+    """
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode("utf-16-le")
     report = runner.check(build_package(tmp_path, metadata=raw))
     assert report.ok, sorted({f.rule.id for f in report.findings})
@@ -225,3 +227,16 @@ def test_ucs4_in_octet_order_3412_cut_short_is_refused(head, tmp_path):
     graph, error = parsed(whole[:-2])
     assert graph is None and error, error
     assert not runner.check(build_package(tmp_path, metadata=whole[:-2])).ok
+
+
+@pytest.mark.parametrize("order", ["utf-16-le", "utf-16-be"])
+@pytest.mark.parametrize("declared", ["UTF-16", "utf-16", "csUTF16"])
+def test_generic_utf16_without_a_mark_is_refused(order, declared, tmp_path):
+    """XML 1.0 §4.3.3 requires a BOM for the generic UTF-16 encoding.
+    RFC 2781 §3.3's order-specific labels and IANA UCS-2 are separate.
+    """
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode(order)
+    graph, error = parsed(raw)
+    assert graph is None and "byte order mark" in error, error
+    assert "4.3.3" in error and declared in error
+    assert not runner.check(build_package(tmp_path, metadata=raw)).ok

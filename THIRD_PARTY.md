@@ -10,6 +10,7 @@ Everything bundled here, where it came from, and what you may do with it.
 | `iirds-core.rdf`, `iirds-machinery.rdf`, `iirds-software.rdf`, `iirds-handover.rdf`, `iirds-skos.rdf` | [iiRDS 1.3 release](https://www.iirds.org/materials/version-13) | CC BY-ND 4.0, © tekom Deutschland e.V. | **No — byte-for-byte verbatim** |
 | Reference fixture corpus (`tests/corpus/plusmeta/`) | [plusmeta/iirds-validation-tool](https://github.com/plusmeta/iirds-validation-tool) @ `f1119bea` | MIT | **No — byte-for-byte verbatim, SHA-256 per file** |
 | Term names per edition (`src/iirds_validate/data/version-terms.json`) | schema downloads at [iirds.org](https://www.iirds.org) (1.0–1.2); the bundled ontologies (1.3) | names only — see NOTICE item 3 | Derived: IRIs extracted, no statement reproduced |
+| IANA character-set snapshot (`src/iirds/data/iana-charsets.csv`, `iana-charsets.json`) | [IANA Character Sets](https://www.iana.org/assignments/character-sets/character-sets-1.csv) | [CC0 1.0 under IANA/IETF's joint statement](https://www.iana.org/help/licensing-terms) | CSV line endings normalized; JSON name/alias/MIBenum fields generated |
 | `rdflib` | [RDFLib](https://github.com/RDFLib/rdflib) | BSD-3-Clause | No (runtime dependency) |
 | `isodate` | [gweis/isodate](https://github.com/gweis/isodate) | BSD-3-Clause | No — arrives with `rdflib`, redistributed in the `.pyz` |
 | `pyparsing` | [pyparsing/pyparsing](https://github.com/pyparsing/pyparsing) | MIT | No — arrives with `rdflib`, redistributed in the `.pyz` |

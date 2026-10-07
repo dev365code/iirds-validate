@@ -97,3 +97,22 @@ adds to, removes from, or otherwise varies the terms of that material.
 
 See THIRD_PARTY.md for the full provenance table and docs/licensing.md for what
 the mixed licensing means in practice.
+
+================================================================================
+5. IANA character-set registry  —  src/iirds/data/
+================================================================================
+
+    iana-charsets.csv and iana-charsets.json derive from the IANA Character
+    Sets protocol registry:
+    https://www.iana.org/assignments/character-sets/character-sets-1.csv
+
+    IANA and IETF's joint statement of 10 November 2021 places their
+    applicable rights in the Protocol Registries under CC0 1.0:
+    https://www.iana.org/help/licensing-terms
+    https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+    The CSV has normalized line endings; the JSON extracts names, aliases
+    and MIBenum values and records its source URL, access date and digest.
+    Regenerate with tools/iana_charsets.py --refresh. CC0's limitations and
+    disclaimers apply; the registry is provided without representations or
+    warranties. This project does not imply IANA or IETF endorsement.

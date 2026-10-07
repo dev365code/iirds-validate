@@ -226,6 +226,8 @@ def test_the_readme_carries_the_stewardship_pledge_word_for_word(paragraph):
 #: no reader of NOTICE would meet it. A new data file has to be added here,
 #: which is the moment to ask the question about it.
 BUNDLED_DATA = {
+    "src/iirds/data/iana-charsets.csv": "NOTICE item 5, CC0-1.0",
+    "src/iirds/data/iana-charsets.json": "NOTICE item 5, CC0-1.0",
     "src/iirds_validate/data/ontologies/1.3/iirds-core.rdf": "NOTICE item 1",
     "src/iirds_validate/data/ontologies/1.3/iirds-handover.rdf": "NOTICE item 1",
     "src/iirds_validate/data/ontologies/1.3/iirds-machinery.rdf": "NOTICE item 1",

@@ -47,6 +47,7 @@ jobs:
       # the pinned catalogue. A hand-edit to schema_tables.py would otherwise
       # survive until someone reran the generator and silently lost it.
       - run: pip install -e .
+      - run: python tools/iana_charsets.py --check
       - run: python tools/propose_class_rules.py --check
 
       # The front page's two pictures are drawn from a run of the checker, and

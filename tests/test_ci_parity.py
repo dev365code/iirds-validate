@@ -153,6 +153,7 @@ CHECK_TARGETS = ("lint", "generated", "corpus", "versions", "requirements",
 #: has a `lint` target at all.
 CHECK_COMMANDS = (
     "ruff check --no-cache .",
+    "tools/iana_charsets.py --check",
     "tools/propose_class_rules.py --check",
     "tools/gen_door.py --check",
     "tools/gen_stable_section.py --check",

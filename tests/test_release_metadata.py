@@ -29,6 +29,21 @@ from iirds_validate import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def test_content_extension_verdict_movement_is_recorded():
+    """A newly refused unreferenced PDF must have a release-note remedy.
+
+    The note has to name byte identification beyond declared renditions,
+    the recognized formats, extension rules and the newly refused shape.
+    """
+    note = next(body for release, _rest, body in entries((ROOT / "CHANGELOG.md").read_text())
+                if release == "0.9.0")
+    paragraphs = [" ".join(p.split()) for p in note.split("\n\n")]
+    required = ("declared rendition", "bytes", "PDF 1.x", "2.0", "SVG", "XHTML",
+                "XML tokens", "8.2.1", "B6", "R41", "R42", "now refused", ".bin")
+    assert any(all(term in p for term in required) for p in paragraphs), (
+        "the release note does not describe the content extension verdict movement")
+
 #: Every `## ` line, whatever it says. Deliberately loose in three ways: a
 #: heading this file cannot read has to reach an assertion that names it
 #: rather than falling out of the search and reading as an entry nobody

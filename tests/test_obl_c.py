@@ -63,6 +63,20 @@ def test_a_pdf_a_page_links_to_is_named_pdf(make_package):
     assert _subjects(report, "R41") == ["content/manual.bin"], sorted(f.rule.id for f in report.findings)
 
 
+def test_a_pdf2_file_outside_the_declared_rendition_is_refused(make_package):
+    """Section 8.2.1.1's extension requirement binds an unreferenced PDF too.
+
+    The declared XHTML rendition is valid; adding only this PDF 2.0 .bin
+    takes the package from clean to one R41 error.
+    """
+    assert runner.check(make_package(metadata=A_PROFILE)).ok
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/manual.bin", b"%PDF-2.0\n%%EOF\n"),)))
+    assert not report.ok
+    assert [(f.rule.id, f.severity.value, f.violation.subject) for f in report.findings] == [
+        ("R41", "error", "content/manual.bin")]
+
+
 def test_a_pdf_named_pdf_draws_nothing_however_it_is_reached(make_package):
     assert not _subjects(_declared(make_package, "content/manual.pdf", PDF,
                                    "application/octet-stream", "c3.iirds"), "R41")

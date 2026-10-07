@@ -64,6 +64,13 @@ inside the package, stays work. The denominator stays 280.
 - Identification reads from unreferenced files and gzip output now count
   towards the content budget and are refused when the run exceeds it.
 
+Content files are now identified from their bytes regardless of whether they
+are a declared rendition: PDF 1.x and 2.0 by their signature, SVG and XHTML by
+XML tokens. The identified formats receive the extension checks in section
+8.2.1 (B6, R41 and R42). An otherwise valid iiRDS/A package with an undeclared
+PDF in a `.bin` file is now refused; give each identified file the extension
+its format requires.
+
 ## 0.8.0 — 2026-09-30
 
 **Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The

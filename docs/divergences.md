@@ -1210,6 +1210,28 @@ whatever L9 finds. Whether the standard means `metadata.jsonld` to state its
 metadata in the default graph, and whether "semantically match" compares
 statements whatever graph holds them, is a question for the Consortium.
 
+## R46, R48 and R49 — three readings of chapter 6 the sentences leave open
+
+- **R46** reads section 6.5.1's "one or more relations to one of the
+  standardized iirds:DocumentTypes" as any relation M15.1 accepts,
+  `iirds:has-document-type` or `iirds:is-applicable-for-document-type`: the
+  sentence names no property. Section 8.3.2.1 calls `iirds:has-document-type`
+  "the mandatory relation" for iiRDS/H, and M15.1, which claims that sentence
+  too, accepts the other property there as well -- a gap in that older claim,
+  recorded here rather than closed with this rule.
+- **R48** asks a translation whose original this package does not describe --
+  one in a nested package, whose metadata the parent must not carry (section
+  5.3), or one delivered elsewhere -- only whether it is a version of some
+  information object. Whether it shares the original's cannot be read from
+  one container, so a translation that is a version of the wrong object
+  passes where its original is not here.
+- **R49** compares a selector's `dcterms:conformsTo` with the IRIs of the Web
+  Annotation Data Model's table exactly, a text value's surrounding white
+  space aside. `https://tools.ietf.org/rfc/rfc3778` names the same RFC as the
+  table's `http://tools.ietf.org/rfc/rfc3778` and is reported: the table names
+  each specification by one IRI, and that IRI is what a consumer compares
+  against.
+
 ## Where severity currently outruns the reading
 
 The rule here is that anything resting on this project's own reading is a

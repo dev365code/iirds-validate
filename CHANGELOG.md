@@ -4,6 +4,48 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.9.0 — unreleased
+
+**Four sentences of chapter 6 are reported whole.** Each had a rule near it
+that let some package breaking it pass.
+
+- Section 6.5.1 asks every `iirds:Document` for "one or more relations to one
+  of the standardized iirds:DocumentTypes". M15.1 reported a document with no
+  type and R19 a type that is no document type; a document whose types were
+  all proprietary, or named something the package never describes, passed.
+  R46 reports it, and M15.1 claims the sentence beside it.
+- Section 6.9.1 asks every root of a directory structure for one
+  `iirds:has-directory-structure-type`. M24.6 asked whether some root carried
+  it; R47 asks it of every node no other directory node points at, so a
+  second root, a node left out of every level, or a root only a topic or the
+  package points at, without one is reported. M24.2, which reports a
+  second type, claims the sentence beside it.
+- Section 6.10.2 asks a translation and its original for an
+  `iirds:is-version-of` to the same information object; R48 reports a pair
+  with none in common -- or with only a topic, a piece of text or a name the
+  package never describes in common, none of which is an information object. iiRDS 1.3 is the first edition with
+  `iirds:is-translation-of`.
+- Section 6.3.1 allows in a selector's `dcterms:conformsTo` only a
+  specification from the Web Annotation Data Model's table of fragment
+  selectors; R49 reports any other value, and one of the table's IRIs spelled
+  another way, on every selector -- a range that names a specification of its
+  own among them.
+
+For a package with nothing else wrong, each takes the exit code from `0` to
+`1`. No verdict moves on the vendored corpus or the fixtures; the two
+reference-corpus packages built to break M24.6 draw R47 beside it. Coverage of
+the standard goes from 172 to 176 of 280, each of the four held by a package.
+Each rule has a SHACL shape.
+
+**Four obligations are excused with a reason rather than left as work.** Three
+bind a reader, not a package: a consumer must be able to ignore or modify
+class values (appendix B.4), link types are compared without regard to case
+(B.5.2 -- B5 does so), and content processing must not rely on a stylesheet
+(B.7). The fourth is the second clause of section 8.3.1.3's checksum
+sentence, that the checksum "MUST be provided separately": what travels
+beside a container is not in it. Its first clause, that the checksum is not
+inside the package, stays work. The denominator stays 280.
+
 ## 0.8.0 — 2026-09-30
 
 **Verdicts that moved in 0.7.1 and 0.6.0 without these notes saying so.** The

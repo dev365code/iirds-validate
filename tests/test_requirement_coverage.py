@@ -91,7 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 197, len(pairs)
+    assert len(pairs) == 203, len(pairs)
     assert len(asserted) == 89, sorted(asserted)
 
     # It used to reach three, and reaches most of appendix A now: those rows
@@ -111,7 +111,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
-    assert len(COVERED) == 172
+    assert len(COVERED) == 176
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"
 
@@ -194,16 +194,21 @@ def test_a_sentence_no_single_container_can_decide_is_recorded_apart():
         assert len(reason) > 40, rid
 
 
-def test_the_undecidable_sentence_is_the_nested_package_one():
+def test_the_undecidable_sentences_are_named():
     """Named rather than counted, because a list whose only gate is its size
-    can be filled with anything. This is the sentence: a nested package must
-    not carry metadata about the outer one. Its antecedent follows from section 6.2 --
-    a conformant child's own iirds:Package carries no is-part-of-package at
-    all -- so the only evidence that this container is the nested one is the
-    breach being looked for."""
+    can be filled with anything. The first is the sentence that a nested
+    package must not carry metadata about the outer one. Its antecedent
+    follows from section 6.2 -- a conformant child's own iirds:Package carries
+    no is-part-of-package at all -- so the only evidence that this container
+    is the nested one is the breach being looked for. The second is the
+    checksum sentence's second clause, "but MUST be provided separately":
+    what travels beside a container, where the validator holds the container
+    alone. Its first clause, that the checksum is not inside, stays work."""
     from iirds_validate.rules.requirements import NOT_DECIDABLE_ALONE
 
-    assert sorted(NOT_DECIDABLE_ALONE) == ["x5-3-nested-iirds-packages#2"]
+    assert sorted(NOT_DECIDABLE_ALONE) == ["x5-3-nested-iirds-packages#2",
+                                           "x8-3-1-3-optional-checksums-for-packages#4"]
+    assert "x8-3-1-3-optional-checksums-for-packages#3" not in NOT_DECIDABLE_ALONE
 
 
 #: Chapter five obligations nothing checks, each with what it would take.
@@ -286,7 +291,7 @@ def test_the_scope_document_counts_the_excused_obligations_correctly():
     # literal "Twenty-six" onto a total that still added up two of three, which
     # is the same shape as the defect: a number typed where one is derived.
     words = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
-             26: "Twenty-six"}
+             7: "Seven", 8: "Eight", 9: "Nine", 26: "Twenty-six"}
     total = len(NOT_ABOUT_THE_PACKAGE) + len(NOT_DECIDABLE_ALONE)
     scope = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "scope.md").read_text("utf-8")
 
@@ -452,7 +457,7 @@ def test_the_excused_total_is_what_the_report_prints():
     )
 
     assert (len(NOT_ABOUT_THE_PACKAGE), len(NOT_DECIDABLE_ALONE),
-            len(DEFINES_A_CONCEPT)) == (2, 1, 26)
+            len(DEFINES_A_CONCEPT)) == (5, 2, 26)
 
 
 def test_the_report_prints_what_the_tables_hold():
@@ -479,7 +484,9 @@ def test_the_report_prints_what_the_tables_hold():
         cwd=str(root), capture_output=True, text=True, check=True).stdout
 
     assert "%d more are addressed to consumers" % len(NOT_ABOUT_THE_PACKAGE) in printed
-    assert "%d more is about the package" % len(NOT_DECIDABLE_ALONE) in printed
+    undecidable = len(NOT_DECIDABLE_ALONE)
+    assert "%d more %s about the package" % (undecidable, "is" if undecidable == 1 else "are") \
+        in printed
     assert "%d more are the word inside a vocabulary" % len(DEFINES_A_CONCEPT) in printed
     for forbidden in ("tekom", "effectively complete", "confirmed unreachable"):
         assert forbidden not in printed, forbidden

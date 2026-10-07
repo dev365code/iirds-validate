@@ -17,13 +17,14 @@ package itself claims is iiRDS XHTML5.
 """
 from __future__ import annotations
 
+import codecs
 import posixpath
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
 import zlib
 
-from iirds import UnreadableMethod
+from iirds import UnreadableMethod, first_bytes_encoding
 
 from .. import terms as T
 from ..model import Violation
@@ -467,7 +468,19 @@ def _sniff(ctx, name):
         renditions = ctx.__dict__.get("_rendition_names")
         if renditions is None:
             renditions = ctx.__dict__["_rendition_names"] = frozenset(_renditions_declared_as(ctx))
-        cache[name] = _head(ctx, name, SNIFF, rendition=name in renditions)[0]
+        head = _head(ctx, name, SNIFF, rendition=name in renditions)[0]
+        if head is not None:
+            compressed = head[:2] == GZIP_MAGIC
+            body = _gunzipped(head) if compressed else head
+            if body and _looks_xml(body) and _first_element(body) is None:
+                if len(head) >= SNIFF:
+                    head = _head(ctx, name, MAX_XML_IDENTIFICATION_BYTES,
+                                 rendition=name in renditions)[0]
+                body = _gunzipped(head, MAX_XML_IDENTIFICATION_BYTES) \
+                    if compressed and head is not None else head
+            if compressed:
+                ctx.__dict__.setdefault("_inflated", {})[name] = body
+        cache[name] = head
     return cache[name]
 
 
@@ -741,59 +754,229 @@ SVG_NAMESPACE = b"http://www.w3.org/2000/svg"
 #: How much of a file is read to find its first element: enough for an XML
 #: declaration, a comment or two and a document type declaration.
 SNIFF = 4096
+MAX_XML_IDENTIFICATION_BYTES = 64 * 1024
 
-#: No quantifier inside a repeated alternation: `<!DOCTYPE(?:[^[>]|\[.*?\])*>`
-#: backtracked exponentially over an internal subset left open, and some ninety
-#: bytes of `[][][]...` held a whole run. An internal subset is one bracketed
-#: run with no `]` inside it; one that does contain one ends the match early,
-#: and the file is then not known to be anything, which is the safe answer.
-_PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->|<!DOCTYPE[^\[>]*(?:\[[^\]]*\])?[^>]*>", re.S)
-_START = re.compile(rb"<(?:([A-Za-z_][\w.-]*):)?([A-Za-z_][\w.-]*)([^>]*)>", re.S)
-_ENTITY = re.compile(rb"<!ENTITY\s+([A-Za-z_][\w.-]*)\s+([\"'])(.*?)\2\s*>", re.S)
-_ENTITY_REFERENCE = re.compile(rb"&([A-Za-z_][\w.-]*);")
+_XML_SPACE = " \t\r\n"
+_XML_NAME_START = ((0xC0, 0xD6), (0xD8, 0xF6), (0xF8, 0x2FF), (0x370, 0x37D),
+                   (0x37F, 0x1FFF), (0x200C, 0x200D), (0x2070, 0x218F),
+                   (0x2C00, 0x2FEF), (0x3001, 0xD7FF), (0xF900, 0xFDCF),
+                   (0xFDF0, 0xFFFD), (0x10000, 0xEFFFF))
+
+
+def _name_start(char):
+    return (char in ":_" or "A" <= char <= "Z" or "a" <= char <= "z"
+            or any(low <= ord(char) <= high for low, high in _XML_NAME_START))
+
+
+def _name_at(text, position):
+    if position >= len(text) or not _name_start(text[position]):
+        return None, position
+    start = position
+    position += 1
+    while position < len(text):
+        char = text[position]
+        if not (_name_start(char) or char in "-.0123456789" or ord(char) == 0xB7
+                or 0x300 <= ord(char) <= 0x36F or 0x203F <= ord(char) <= 0x2040):
+            break
+        position += 1
+    return text[start:position], position
+
+
+def _space_at(text, position):
+    while position < len(text) and text[position] in _XML_SPACE:
+        position += 1
+    return position
+
+
+def _unescape_attribute(value, entities):
+    predefined = {"lt": "<", "gt": ">", "amp": "&", "quot": '"', "apos": "'"}
+    result = []
+    position = 0
+    while position < len(value):
+        if value[position] != "&":
+            result.append(value[position])
+            position += 1
+            continue
+        end = value.find(";", position + 1)
+        if end < 0:
+            return None
+        reference = value[position + 1:end]
+        if reference.startswith("#"):
+            hexadecimal = reference.startswith(("#x", "#X"))
+            digits = reference[2:] if hexadecimal else reference[1:]
+            alphabet = "0123456789abcdefABCDEF" if hexadecimal else "0123456789"
+            if not digits or any(char not in alphabet for char in digits):
+                return None
+            significant = digits.lstrip("0") or "0"
+            if len(significant) > (6 if hexadecimal else 7):
+                return None
+            number = int(significant, 16 if hexadecimal else 10)
+            if not (number in (9, 10, 13) or 0x20 <= number <= 0xD7FF
+                    or 0xE000 <= number <= 0xFFFD or 0x10000 <= number <= 0x10FFFF):
+                return None
+            replacement = chr(number)
+        else:
+            replacement = predefined.get(reference, entities.get(reference))
+            if replacement is None:
+                return None
+        result.append(replacement)
+        position = end + 1
+    return "".join(result)
+
+
+def _entity_at(text, position, entities):
+    position = _space_at(text, position + len("<!ENTITY"))
+    name, position = _name_at(text, position)
+    position = _space_at(text, position)
+    if not name or position >= len(text) or text[position] not in "\"'":
+        return None
+    quote = text[position]
+    start = position + 1
+    end = text.find(quote, start)
+    if end < 0:
+        return None
+    value = _unescape_attribute(text[start:end], {})
+    position = _space_at(text, end + 1)
+    if value is None or position >= len(text) or text[position] != ">":
+        return None
+    entities[name] = value
+    return position + 1
+
+
+def _doctype_at(text, position, entities):
+    position += len("<!DOCTYPE")
+    depth = 0
+    quote = None
+    while position < len(text):
+        char = text[position]
+        if quote:
+            if char == quote:
+                quote = None
+        elif text.startswith("<!--", position):
+            end = text.find("-->", position + 4)
+            if end < 0:
+                return None
+            position = end + 3
+            continue
+        elif depth and text.startswith("<!ENTITY", position):
+            end = _entity_at(text, position, entities)
+            if end is not None:
+                position = end
+                continue
+        elif char in "\"'":
+            quote = char
+        elif char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth < 0:
+                return None
+        elif char == ">" and depth == 0:
+            return position + 1
+        position += 1
+    return None
+
+
+def _attributes_at(text, position, entities):
+    attributes = {}
+    while position < len(text):
+        before_space = position
+        position = _space_at(text, position)
+        if text.startswith("/>", position):
+            return attributes, position + 2
+        if position < len(text) and text[position] == ">":
+            return attributes, position + 1
+        if position == before_space:
+            return None
+        name, position = _name_at(text, position)
+        if not name or name in attributes:
+            return None
+        position = _space_at(text, position)
+        if position >= len(text) or text[position] != "=":
+            return None
+        position = _space_at(text, position + 1)
+        if position >= len(text) or text[position] not in "\"'":
+            return None
+        quote = text[position]
+        start = position + 1
+        end = text.find(quote, start)
+        if end < 0 or "<" in text[start:end]:
+            return None
+        value = _unescape_attribute(text[start:end], entities)
+        if value is None:
+            return None
+        attributes[name] = value
+        position = end + 1
+    return None
+
+
+def _xml_prefix(head):
+    encoding = first_bytes_encoding(head) or "UTF-8"
+    decoder = codecs.getincrementaldecoder(encoding)("strict")
+    try:
+        text = decoder.decode(head, final=False)
+    except UnicodeDecodeError as exc:
+        # An invalid byte after a complete start tag does not erase the tag.
+        # Only the valid prefix is tokenized; no character is replaced.
+        text = head[:exc.start].decode(encoding)
+    return text[1:] if text.startswith("\ufeff") else text
+
+
+def _looks_xml(head):
+    if first_bytes_encoding(head) is not None:
+        return True
+    return _xml_prefix(head).lstrip(_XML_SPACE).startswith("<")
 
 
 def _first_element(head: bytes):
-    """`(namespace, local name)` of the first element in `head`, or None.
+    """Tokenize the bounded XML prefix and return (namespace, local name).
 
-    Past a byte order mark, the XML declaration, processing instructions,
-    comments and a document type declaration; the namespace is the one the
-    element's own start tag binds for its prefix, or the default. That is the
-    whole of what deciding "this file is an SVG" or "this file is XHTML" needs,
-    and a parse of the whole file would read far more than a first element.
+    XML 1.0 §2.3/§3.1: values are quoted tokens, not substrings of other
+    values. Appendix F/BOM decides decoding; internal DTD literals are read
+    without fetching an external subset or recursively expanding entities.
     """
-    text = head[3:] if head.startswith(b"\xef\xbb\xbf") else head
+    text = _xml_prefix(head)
     position = 0
     entities = {}
-    while True:
-        prolog = _PROLOG.match(text, position)
-        if not prolog or prolog.end() == position:
+    while position < len(text):
+        position = _space_at(text, position)
+        if text.startswith("<?", position):
+            end = text.find("?>", position + 2)
+            if end < 0:
+                return None
+            position = end + 2
+        elif text.startswith("<!--", position):
+            end = text.find("-->", position + 4)
+            if end < 0 or "--" in text[position + 4:end]:
+                return None
+            position = end + 3
+        elif text.startswith("<!DOCTYPE", position):
+            position = _doctype_at(text, position, entities)
+            if position is None:
+                return None
+        else:
             break
-        if prolog.group(0).startswith(b"<!DOCTYPE"):
-            entities.update((m.group(1), m.group(3)) for m in _ENTITY.finditer(prolog.group(0)))
-        position = prolog.end()
-    start = _START.match(text, position)
-    if not start:
+    if not text.startswith("<", position):
         return None
-    prefix, local, attributes = start.groups()
-    declared = b"xmlns:" + prefix if prefix else b"xmlns"
-    bound = re.search(rb"(?:^|\s)" + re.escape(declared) + rb"\s*=\s*([\"'])(.*?)\1", attributes, re.S)
-    namespace = bound.group(2) if bound else b""
-    # Older Illustrator writes it through an entity its document type
-    # declaration defines -- `xmlns="&ns_svg;"`. A value that is exactly one
-    # such reference is that entity's text, taken as written: one level, the
-    # way the file itself says it, and nothing expanded inside it.
-    whole = _ENTITY_REFERENCE.fullmatch(namespace)
-    if whole and whole.group(1) in entities:
-        namespace = entities[whole.group(1)]
-    return (namespace, local)
+    name, position = _name_at(text, position + 1)
+    if not name or name.count(":") > 1:
+        return None
+    found = _attributes_at(text, position, entities)
+    if found is None:
+        return None
+    attributes, _end = found
+    prefix, separator, local = name.partition(":")
+    if separator and (not prefix or not local):
+        return None
+    namespace = attributes.get("xmlns:" + prefix if separator else "xmlns", "")
+    return namespace.encode("utf-8"), (local if separator else prefix).encode("utf-8")
 
 
-def _gunzipped(head: bytes):
+def _gunzipped(head: bytes, limit=SNIFF):
     """The start of what a gzip stream holds, as far as `head` carries it;
     None where it is not a gzip stream this can inflate."""
     try:
-        return zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(head, SNIFF)
+        return zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(head, limit)
     except zlib.error:
         return None
 
@@ -867,7 +1050,7 @@ def r42_svg_extension(ctx):
         if head is None:
             continue
         compressed = head[:2] == GZIP_MAGIC
-        body = _gunzipped(head) if compressed else head
+        body = ctx.__dict__.get("_inflated", {}).get(name) if compressed else head
         if not body or _first_element(body) != (SVG_NAMESPACE, b"svg"):
             continue
         lowered = name.lower()

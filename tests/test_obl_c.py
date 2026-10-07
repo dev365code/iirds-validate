@@ -277,3 +277,44 @@ def test_a_document_type_declaration_left_open_is_read_in_bounded_time():
     _first_element((b"<!DOCTYPE " + b"[]" * SNIFF)[:SNIFF])
     _first_element(b"<!DOCTYPE " + b"[]" * 28)
     assert time.perf_counter() - started < 1.0
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("case,rule,name,body,expected", [
+    ("utf16-svg", "R42", "figure.bin", SVG.decode().encode("utf-16"), True),
+    ("long-comment-xhtml", "B6", "page.html",
+     b"<!--" + b"a" * 5000 + b"-->" + PAGE.format("x").split("?>", 1)[1].encode(), True),
+    ("namespace-charref", "R42", "figure.bin", SVG.replace(b"www.w3.org", b"www.w3.or&#103;"), True),
+    ("quoted-close", "R42", "figure.bin", b'<svg width=">" xmlns="http://www.w3.org/2000/svg"/>', True),
+    ("long-svgz", "R42", "figure.bin",
+     gzip.compress(b"<!--" + b"a" * 5000 + b'--><svg xmlns="http://www.w3.org/2000/svg"/>', mtime=0), True),
+    ("false-svg-namespace", "R42", "figure.bin", b'<svg note=" xmlns=\'http://www.w3.org/2000/svg\' "/>', False),
+    ("false-xhtml-namespace", "B6", "page.html", b'<html note=" xmlns=\'http://www.w3.org/1999/xhtml\' "/>', False),
+])
+def test_extension_identification_tokenizes_the_xml_prefix(make_package, case, rule, name, body,
+                                                          expected):
+    """iiRDS 1.3 §8.2.1.1/§8.2.1.2: extensions are checked for identified
+    XHTML/SVG. XML 1.0 §2.3/§3.1 tokens, encodings and quoted values decide
+    the root namespace, rather than a substring inside another attribute.
+    """
+    package = make_package(name=case + ".iirds", metadata=A_PROFILE,
+                           extra=(("content/" + name, body),))
+    report = runner.check(package)
+    assert bool(_subjects(report, rule)) is expected, [(f.rule.id, f.violation) for f in report.findings]
+
+
+@pytest.mark.parametrize("delta,expected", [(-1, True), (0, True), (1, False)])
+def test_xml_identification_window_has_a_byte_boundary(make_package, delta, expected):
+    """iiRDS §8.2.1.2 identification is bounded; XML 1.0 §3.1 needs
+    the complete start tag before its namespace can be identified.
+    """
+    from iirds_validate.rules.content import MAX_XML_IDENTIFICATION_BYTES
+
+    root = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+    padding = MAX_XML_IDENTIFICATION_BYTES + delta - len(root) - 7
+    body = b"<!--" + b"a" * padding + b"-->" + root
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/boundary.bin", body),)))
+    assert bool(_subjects(report, "R42")) is expected

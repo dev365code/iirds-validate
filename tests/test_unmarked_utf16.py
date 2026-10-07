@@ -139,3 +139,27 @@ def test_an_entity_declared_in_unmarked_utf16_that_is_read_is_refused(order):
             '<!DOCTYPE rdf:RDF [<!ENTITY t "Test package">]>\n')
     graph, error = parsed(unmarked(order, head, BODY.replace("Test package", "&t;")))
     assert graph is None and "XML entities" in error, error
+
+
+#: A node element named in CJK as the document element, which RDF/XML allows:
+#: in UTF-16 its second character holds no null byte.
+WIDE_NAMED = ('<日:Package xmlns:日="http://iirds.tekom.de/iirds#" '
+              'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+              'rdf:about="urn:test:package"><日:iiRDSVersion>1.3</日:iiRDSVersion>'
+              '</日:Package>')
+
+
+@pytest.mark.parametrize("order", sorted(ORDERS))
+def test_one_character_settles_the_byte_order(order):
+    """Every legal first character is ASCII, so in UTF-16 the first two bytes
+    settle the byte order. Asked of four, the shape missed a document whose
+    second character holds no null byte, and it was refused as bytes that are
+    not UTF-8, not for the declaration it lacks. Under one naming its byte
+    order it is read."""
+    codec = ORDERS[order][0]
+    raw = WIDE_NAMED.encode(codec)
+    assert iirds.first_bytes_encoding(raw) == order
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    graph, error = parsed(unmarked(order, '<?xml version="1.0" encoding="{own}"?>', WIDE_NAMED))
+    assert error is None and graph is not None, error

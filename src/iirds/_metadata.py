@@ -39,19 +39,20 @@ _MARKS = ((b"\xef\xbb\xbf", "UTF-8", "utf-8"),
           (b"\x00\x00\xfe\xff", "UTF-32BE", "utf-32-be"),
           (b"\xff\xfe", "UTF-16LE", "utf-16-le"), (b"\xfe\xff", "UTF-16BE", "utf-16-be"))
 
-#: Without a mark, the *shape* of the first four bytes, null or not. An ASCII
-#: character in UTF-16LE is `xx 00`, in UTF-16BE `00 xx`, and in UTF-32 three
-#: of the four bytes are null. Every legal first character of an XML document
-#: is ASCII, so two characters settle it whatever they are. Two earlier
-#: versions of this keyed on the document beginning with `<` and both were
-#: wrong, in the same way and for the same reason: `<` is a property of the
-#: fixtures, not of XML. A document may open with `Misc*` -- whitespace, a
-#: comment, a processing instruction -- and may carry no declaration at all.
-#: Whitespace was the lead that got through.
-_SHAPES = {(False, True, False, True): ("UTF-16LE", "utf-16-le"),
-           (True, False, True, False): ("UTF-16BE", "utf-16-be"),
-           (False, True, True, True): ("UTF-32LE", "utf-32-le"),
-           (True, True, True, False): ("UTF-32BE", "utf-32-be")}
+#: Without a mark, the *shape* of the first bytes, null or not. Every legal
+#: first character of an XML document is ASCII, which in UTF-32 is three null
+#: bytes and one that is not, and in UTF-16LE `xx 00`, in UTF-16BE `00 xx`:
+#: four bytes settle UTF-32, and then two settle UTF-16, whatever the
+#: character after them is. Two earlier versions of this keyed on the
+#: document beginning with `<` and both were wrong, in the same way and for
+#: the same reason: `<` is a property of the fixtures, not of XML. A document
+#: may open with `Misc*` -- whitespace, a comment, a processing instruction --
+#: and may carry no declaration at all. Whitespace was the lead that got
+#: through. Asked of two characters, the shape missed UTF-16 whose second
+#: character holds no null byte, `<` and then a name in CJK among them.
+_WIDE = {(False, True, True, True): ("UTF-32LE", "utf-32-le"),
+         (True, True, True, False): ("UTF-32BE", "utf-32-be")}
+_NARROW = {(False, True): ("UTF-16LE", "utf-16-le"), (True, False): ("UTF-16BE", "utf-16-be")}
 
 
 class _Start(NamedTuple):
@@ -73,10 +74,11 @@ def _start(raw: bytes) -> _Start:
     for bom, encoding, codec in _MARKS:
         if raw.startswith(bom):
             return _Start(encoding, codec, len(bom), True)
-    if len(raw) >= 4:
-        shape = _SHAPES.get(tuple(byte == 0 for byte in raw[:4]))
-        if shape is not None:
-            return _Start(shape[0], shape[1], 0, False)
+    shape = _WIDE.get(tuple(byte == 0 for byte in raw[:4])) if len(raw) >= 4 else None
+    if shape is None and len(raw) >= 2:
+        shape = _NARROW.get(tuple(byte == 0 for byte in raw[:2]))
+    if shape is not None:
+        return _Start(shape[0], shape[1], 0, False)
     return _Start(None, "latin-1", 0, False)
 
 

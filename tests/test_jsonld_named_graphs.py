@@ -835,3 +835,30 @@ def test_a_repeat_of_less_than_a_lent_description_is_kept():
     assert error is None, error
     merged, repeats, uncounted = iirds.merge_graphs_of(dict({None: default}, **named))
     assert repeats == [] and uncounted == [], (repeats, uncounted)
+
+
+def test_graphs_sharing_labels_are_fingerprinted_only_where_a_repeat_could_be(monkeypatch):
+    """A repeat says as many statements as what it repeats. Fifty graphs, each
+    saying something of a rendition the default graph lends it, and no graph
+    that could repeat them: nothing is fingerprinted, where every one of them
+    was. One graph more, repeating them all whole: the fifty-one are
+    fingerprinted once, together, the repeat once, and it is left out."""
+    from iirds import _metadata
+
+    asked = []
+    fingerprint = _metadata._fingerprint
+    monkeypatch.setattr(_metadata, "_fingerprint", lambda graph: asked.append(1) or fingerprint(graph))
+    lent = [{"@id": "urn:test:topic%d" % n, "has-rendition": {"@id": "_:r%d" % n, "format": "f%d" % n}}
+            for n in range(50)]
+    borrowing = [{"@id": "urn:test:g%d" % n, "@graph": [{"@id": "_:r%d" % n, "format": "f%d" % n}]}
+                 for n in range(50)]
+    repeat = {"@id": "urn:test:repeat", "@graph": [
+        {"@id": "urn:test:topic%d" % n, "has-rendition": {"format": "f%d" % n}} for n in range(50)]}
+    for graphs, fingerprints, repeats in ((lent + borrowing, 0, []),
+                                          (lent + borrowing + [repeat], 2, [URIRef("urn:test:repeat")])):
+        default, named, error = iirds.parse_metadata_graphs(
+            iirds.METADATA_JSONLD, _document(graphs).encode(), base=iirds.PACKAGE_BASE)
+        assert error is None, error
+        del asked[:]
+        merged, left_out, uncounted = iirds.merge_graphs_of(dict({None: default}, **named))
+        assert (len(asked), left_out) == (fingerprints, repeats), (len(asked), left_out)

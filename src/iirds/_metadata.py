@@ -1429,8 +1429,14 @@ def _lent(items, blanks, shared):
     Only where the union's blank nodes form trees, in the one pass that
     costs. Where they do not, naming them would take a search, kept for the
     graphs that can be left out, and nothing is fingerprinted, as nothing
-    sharing a label was.
+    sharing a label was. And only where a graph that can be left out is the
+    union's size, since a repeat says as many statements as what it repeats:
+    a document of graphs sharing labels and repeating nothing pays nothing.
     """
+    sizes = {len(graph) for (_name, graph), nodes in zip(items, blanks)
+             if nodes and not nodes & shared}
+    if not sizes:
+        return set()
     joined = list(range(len(items)))
 
     def find(index):
@@ -1451,7 +1457,8 @@ def _lent(items, blanks, shared):
         if nodes & shared:
             together.setdefault(find(index), Graph())
             together[find(index)] += items[index][1]
-    return {tuple(_fingerprint(whole)) for whole in together.values() if not _outside_trees(whole)}
+    return {tuple(_fingerprint(whole)) for whole in together.values()
+            if len(whole) in sizes and not _outside_trees(whole)}
 
 
 def merge_graphs_of(graphs):

@@ -306,13 +306,24 @@ def test_the_remedy_followed_passes():
     assert _parsed(declared_too)[1] is None
 
 
-@pytest.mark.parametrize("declared", ["U-T-F-8", "U_T_F_8", "u-tf8", " utf-8", "utf-8 ", "_utf8"])
+@pytest.mark.parametrize("declared", ["U-T-F-8", "U_T_F_8", "u-tf8"])
 def test_a_spelling_of_utf8_no_codec_answers_to_is_refused_by_name(declared):
-    """UTF-8 is `UTF-8`, `utf8` or `utf_8`, in any case; a name with its
-    separators moved, or padded, is some other name, and no codec's."""
+    """A name with UTF-8's separators moved is some other name, and no
+    codec's."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+
+
+@pytest.mark.parametrize("declared", [" utf-8", "utf-8 ", "_utf8"])
+def test_a_padded_name_is_not_one_the_grammar_allows(declared):
+    """Production [81] EncName begins with a letter and holds no white space,
+    so a padded name -- or one led by `_` -- leaves the declaration outside
+    the grammar: refused for that, before any name is looked up."""
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
+    graph, error = _parsed(raw)
+    assert graph is None and iirds.MALFORMED_DECLARATION in error and "[81]" in error, (
+        declared, error)
 
 
 @pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape",

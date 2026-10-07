@@ -22,7 +22,6 @@ before any rule runs — and lets the same rules apply to metadata.jsonld.
 from __future__ import annotations
 
 import hashlib
-import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
@@ -31,10 +30,12 @@ from rdflib.namespace import RDF, RDFS
 
 from iirds import (
     CONTRADICTED_ENCODING,
+    MALFORMED_DECLARATION,
     MAX_METADATA_BYTES,
     UNDECLARED_ENCODING,
     UNREADABLE_ENCODING,
     UNUSED_ENCODING,
+    declared_encoding,
     merge_graphs_of,
     merge_sources,
     parse_metadata_graphs,
@@ -594,14 +595,6 @@ def build_graph(package: Package):
     return graph, errors, sources, per_source, graphs_of, (repeats, uncounted)
 
 
-#: The encoding an XML declaration names. Matched on the bytes, because
-#: reaching this at all means they would not decode; the declaration itself is
-#: ASCII by definition (XML 1.0 section 4.3.3).
-#: The declaration's encoding, at the front of the document behind a UTF-8
-#: mark at most; `<?xml-stylesheet` is not a declaration.
-_DECLARED = re.compile(rb"""^(?:\xef\xbb\xbf)?<\?xml\s[^>]*?encoding\s*=\s*["']([\w.:-]+)["']""")
-
-
 def _is_decode_failure(raw, reported) -> bool:
     """Was this failure about turning bytes into characters?
 
@@ -658,12 +651,14 @@ def _declared_encoding(raw, reported) -> str:
     if not isinstance(raw, (bytes, bytearray)) or not _is_decode_failure(raw, reported):
         return ""
     if isinstance(reported, str) and any(category in reported for category in (
-            UNUSED_ENCODING, UNREADABLE_ENCODING, CONTRADICTED_ENCODING, UNDECLARED_ENCODING)):
+            UNUSED_ENCODING, UNREADABLE_ENCODING, CONTRADICTED_ENCODING, UNDECLARED_ENCODING,
+            MALFORMED_DECLARATION)):
         return ""                # the refusal names the declaration already
-    found = _DECLARED.match(bytes(raw[:200]))
-    if found is None:
+    # The declaration as the reader read it, by the grammar: a pattern of its
+    # own here would be a second reading of one declaration.
+    declared = declared_encoding(bytes(raw))
+    if declared is None:
         return ""
-    declared = found.group(1).decode("ascii", "replace")
     if declared.lower().replace("_", "-") in ("utf-8", "utf8"):
         return " (the document declares encoding=%r, which these bytes are not)" % declared
     return " (the document declares encoding=%r)" % declared

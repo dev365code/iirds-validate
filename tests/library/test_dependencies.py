@@ -44,8 +44,8 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "iirds"
 #: of its nodes, and `permutations` is that enumeration. rdflib's canonical
 #: form, which did the job before, named one structure two ways in different
 #: runs. Standard library, like the four above.
-ALLOWED = {"hashlib", "iirds", "itertools", "rdflib", "__future__", "json", "os",
-           "pathlib", "posixpath", "re", "time", "typing", "unicodedata",
+ALLOWED = {"codecs", "hashlib", "iirds", "itertools", "rdflib", "__future__", "json", "os",
+           "pathlib", "pkgutil", "posixpath", "re", "time", "typing", "unicodedata",
            "urllib", "xml", "zipfile"}
 
 

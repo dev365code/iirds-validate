@@ -71,6 +71,7 @@ fix:
 # them. --check regenerates into memory and compares; it caught exactly that
 # within an hour of the Makefile being written.
 generated:
+	$(PYTHON) tools/iana_charsets.py --check
 	$(PYTHON) tools/propose_class_rules.py --check
 # The front page's two pictures. Held to a real run by tests/test_readme_front.py
 # and held to nothing at all here until this line: every figure that moved was

@@ -331,7 +331,7 @@ def test_a_spelling_iana_does_not_register_is_refused_by_name(form, spelling, tm
     raw = stored(form, '<?xml version="1.0" encoding="%s"?>' % spelling)
     graph, error = parsed(raw)
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (form, spelling, error)
-    assert "IANA does not register" in error and spelling in error, error
+    assert "not an IANA-registered encoding name" in error and spelling in error, error
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
 
 
@@ -341,7 +341,7 @@ def test_a_name_python_reads_as_utf8_and_iana_does_not_register_is_refused(decla
     as UTF-8 over UTF-8 bytes; neither expat nor libxml2 reads one of them."""
     graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="%s"?>' % declared))
     assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
-    assert "a name for UTF-8 that IANA does not register" in error, error
+    assert "not an IANA-registered encoding name" in error, error
 
 
 # ---------------------------------------------------------------------------
@@ -424,3 +424,41 @@ def test_unmarked_utf32_is_read_when_its_declaration_names_its_order(order, labe
     assert graph is not None and error is None, error
     report = runner.check(build_package(tmp_path, metadata=raw))
     assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+@pytest.mark.parametrize("declared,codec,accepted", [
+    ("latin1", "latin-1", True), ("csISOLatin1", "latin-1", True),
+    ("ISO-8859-1", "latin-1", True), ("windows-1252", "cp1252", True),
+    ("cswindows1252", "cp1252", True), ("US-ASCII", "ascii", True),
+    ("csASCII", "ascii", True), ("csUTF8", "utf-8", True),
+    ("UTF-7", "utf-7", True), ("Shift_JIS", "shift_jis", True),
+    ("GB18030", "gb18030", True), ("utf8", "utf-8", False),
+    ("cp65001", "utf-8", False), ("cp1252", "utf-8", False),
+    ("ascii", "utf-8", False), ("x-utf8", "utf-8", False),
+])
+def test_encoding_names_follow_the_complete_iana_registry(declared, codec, accepted):
+    """XML 1.0 §4.3.3: name/alias membership is case insensitive, and a
+    registered encoding may be read by its codec. IANA registry record 3
+    names US-ASCII and csASCII, but not ASCII.
+    https://www.iana.org/assignments/character-sets/character-sets.xhtml
+    """
+    title = "本文" if codec == "shift_jis" else "café"
+    body = BODY if codec == "ascii" else BODY.replace("A topic", title)
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + body).encode(codec)
+    graph, error = parsed(raw)
+    if accepted:
+        assert graph is not None and error is None, error
+        if codec != "ascii":
+            assert any(str(value) == title for value in graph.objects())
+    else:
+        assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+        assert "not an IANA-registered encoding name" in error and "4.3.3" in error
+
+
+def test_a_registered_name_without_a_python_codec_is_unreadable():
+    """XML 1.0 §4.3.3 permits treating an unsupported IANA name as unknown.
+    The registry's ISO-10646-UTF-1 record has no Python text codec.
+    """
+    graph, error = parsed(stored("utf-8", '<?xml version="1.0" encoding="ISO-10646-UTF-1"?>'))
+    assert graph is None and iirds.UNREADABLE_ENCODING in error
+    assert "registered at IANA" in error and "no text codec" in error

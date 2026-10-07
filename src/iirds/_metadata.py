@@ -8,12 +8,14 @@ from here; there is one copy.
 """
 from __future__ import annotations
 
+import codecs
 import hashlib
 import itertools
 import json
 import re
 import xml.etree.ElementTree as ElementTree
 import xml.parsers.expat as expat
+from pkgutil import get_data
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from rdflib import BNode, Graph, Literal
@@ -172,17 +174,8 @@ NOT_RDFXML = "not an RDF/XML document"
 #: told otherwise.
 UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 
-#: A document whose declaration and this reader disagree about what it says.
-#: rdflib decodes as UTF-8 whatever the declaration names, so where the
-#: declaration names something else there are two readings of one file. Where
-#: they are the same text -- every byte under 128 in a code page that keeps
-#: ASCII where ASCII is, which is most of a conformant package that happens to
-#: declare one -- there is nothing to report and nothing is reported. Where they differ, one of them is what
-#: the supplier meant and this reader is holding the other, so it refuses
-#: instead of choosing. That case was silent before: the refusal was rdflib
-#: failing on a high byte, which caught the document written in the codepage
-#: it declared and missed the one whose declaration was simply false over
-#: UTF-8 bytes.
+#: Legacy refusal category, retained for callers reading stored reports.
+#: Registered encodings are now decoded before the UTF-8-only RDF parser.
 UNUSED_ENCODING = "declares an encoding this reader reads differently"
 
 #: A document whose declaration names one encoding while its first bytes say
@@ -442,34 +435,38 @@ def declared_encoding(raw: bytes) -> Optional[str]:
     return found.encoding if isinstance(found, _Declaration) else None
 
 
-def _normal(name: str) -> str:
-    return name.lower().replace("-", "").replace("_", "").replace(".", "")
+#: XML 1.0 section 4.3.3 permits interpreting registered names, or
+#: treating them as unknown. This reader uses the complete offline registry,
+#: including aliases, and reads the encoding where Python has a text codec.
+_CHARSETS = json.loads(get_data("iirds", "data/iana-charsets.json"))["records"]
+_IANA_NAMES = {name.lower(): record for record in _CHARSETS
+               for name in [record["name"], *record["aliases"]]}
+_UNICODE_FORMS = {106: "UTF-8", 1000: "UTF-16", 1001: "UTF-32",
+                  1013: "UTF-16BE", 1014: "UTF-16LE", 1015: "UTF-16",
+                  1017: "UTF-32", 1018: "UTF-32BE", 1019: "UTF-32LE"}
 
 
-#: The names IANA registers for the encoding forms of Unicode, with the
-#: aliases it registers beside them, by the form each names. Section 4.3.3:
-#: an XML processor "SHOULD match character encoding names in a
-#: case-insensitive way and SHOULD either interpret an IANA-registered name
-#: as the encoding registered at IANA for that name or treat it as unknown".
-#: These are read as the form they name; ISO-10646-UCS-2 and -4 are the names
-#: the same section gives beside UTF-16, for the same encodings of Unicode.
-_REGISTERED = {"utf-8": "UTF-8", "csutf8": "UTF-8",
-               "utf-16": "UTF-16", "csutf16": "UTF-16",
-               "utf-16le": "UTF-16LE", "csutf16le": "UTF-16LE",
-               "utf-16be": "UTF-16BE", "csutf16be": "UTF-16BE",
-               "iso-10646-ucs-2": "UTF-16", "csunicode": "UTF-16",
-               "utf-32": "UTF-32", "csutf32": "UTF-32",
-               "utf-32le": "UTF-32LE", "csutf32le": "UTF-32LE",
-               "utf-32be": "UTF-32BE", "csutf32be": "UTF-32BE",
-               "iso-10646-ucs-4": "UTF-32", "csucs4": "UTF-32"}
+def _registered(name):
+    return _IANA_NAMES.get(name.lower())
 
-#: Those names with case, `-`, `_` and `.` set aside. A declaration matching
-#: one of these and not its registered spelling -- `utf8`, `UTF_16`,
-#: `UTF-16-LE` -- uses a spelling IANA does not register, and is read only if
-#: the processors a consumer has read it. Measured on expat 2.6.1 and libxml2
-#: 2.9.14, with text in which a misreading shows: expat reads no such spelling
-#: of UTF-8, UTF-16 or UTF-32, so none is read by both, and none is read here.
-_SPELLED = {_normal(name): form for name, form in _REGISTERED.items()}
+
+def _encoding_form(name):
+    record = _registered(name)
+    return _UNICODE_FORMS.get(record["mib"]) if record is not None else None
+
+
+def _codec_for(name):
+    record = _registered(name)
+    if record is None:
+        return None
+    for label in dict.fromkeys([name, record["name"], *record["aliases"]]):
+        try:
+            codecs.lookup(label)
+        except (LookupError, UnicodeError):
+            continue
+        return label
+    return None
+
 
 #: The forms each first-bytes reading agrees with: its family's name in
 #: either byte order, and a byte order's own name only in that order.
@@ -482,44 +479,6 @@ _AGREES = {"UTF-8": frozenset({"UTF-8"}),
 #: What bytes that open `3C 3F 78 6D` say, by XML 1.0 appendix F: UTF-8, or
 #: another encoding in which ASCII characters are the ASCII bytes.
 _KEEPS_ASCII = "an encoding in which ASCII characters are ASCII bytes (XML 1.0 appendix F)"
-
-#: Names Python gives a code page that differs from one Windows machine to
-#: the next, and that no other system has: a declaration of one would be read
-#: one way here, another there, and not at all on Linux. Refused by name
-#: everywhere, so that a verdict does not depend on the machine that gave it.
-_PLATFORM_CODECS = frozenset({"mbcs", "dbcs", "ansi", "oem"})
-
-#: Bytes a codec with escapes or shifting states reads as fewer characters
-#: than there are bytes: a backslash escape, HZ's and ISO-2022's shifts, and
-#: UTF-7's. Asked first, so that an escape codec never sees the bytes below.
-_SHIFTS = b"\\u0041~{\x1b$B+-"
-
-#: Every byte once.
-_EVERY_BYTE = bytes(range(256))
-
-
-def _one_character_a_byte(name: str) -> bool:
-    """Whether the named codec reads one character from each byte, as the
-    single-byte families do -- ASCII under any of its names, Latin, ISO 8859,
-    the Windows, DOS, Mac and EBCDIC pages, KOI8, TIS-620.
-
-    Asked of the codec rather than of its name: a list of names refused
-    `ANSI_X3.4-1968`, which is ASCII's own, and let through Johab, which pairs
-    bytes. A byte the codec has no character for is replaced here, and only
-    here, because the question is how many characters come out, not which. A
-    multi-byte codec pairs bytes and gives fewer; one with escapes or states
-    gives fewer on `_SHIFTS`; and one that raises -- punycode, idna, a name no
-    codec answers to -- is not decoded at all. Asked on so few bytes that the
-    answer costs nothing whatever the codec is. UTF-8's own names
-    pass too -- no two neighbours in every byte once make a sequence UTF-8
-    pairs -- which is harmless: such a document is compared UTF-8 with UTF-8.
-    """
-    try:
-        return (len(_SHIFTS.decode(name, "replace")) == len(_SHIFTS)
-                and len(_EVERY_BYTE.decode(name, "replace")) == len(_EVERY_BYTE))
-    except Exception:
-        return False
-
 
 #: Longer than the name of any codec there is -- the longest is a third of
 #: this. A name as long is refused before a codec is asked for it: asking
@@ -552,18 +511,6 @@ def _decoded(raw: bytes, encoding: str):
         return raw.decode(encoding)
     except Exception:
         return None
-
-
-def _reads_as_utf8(name: str) -> bool:
-    """Whether Python reads the name as UTF-8: the two bytes UTF-8 writes `é`
-    in come back as that one character. `cp65001`, `u8` and `utf-8-sig` are
-    such names, and IANA registers none of them. Asked of the codec rather
-    than looked up: `codecs.lookup` would be a new import in a library whose
-    import list is itself a gate."""
-    try:
-        return b"\xc3\xa9".decode(name) == "é"
-    except Exception:
-        return False
 
 
 class _Element(Exception):
@@ -626,9 +573,14 @@ def _decode(raw: bytes, prolog=None) -> bytes:
     so the file said one thing and the graph said another.
     """
     start, found = prolog if prolog is not None else _prolog(raw)
-    if not _read_here(start):
+    codec = start.codec if _read_here(start) else None
+    if codec is None and isinstance(found, _Declaration) and found.encoding:
+        form = _encoding_form(found.encoding)
+        if form is None or form == "UTF-8":
+            codec = _codec_for(found.encoding)
+    if codec is None:
         return raw
-    text = raw[start.skip:].decode(start.codec)
+    text = raw[start.skip:].decode(codec)
     if isinstance(found, _Declaration) and found.span is not None:
         text = text[:found.span[0]] + text[found.span[1]:]
     # The parser sniffs the first bytes it is handed, as this reader does, and
@@ -743,24 +695,14 @@ def _declaration_refused(name: str, stored: bytes, prolog=None) -> Optional[str]
 
 
 def _unread(name: str, declared: str) -> Optional[str]:
-    """Why the declared name is one this reader does not read, or None.
-
-    A name longer than any codec's, a code page that differs between
-    machines, a spelling of UTF-8, UTF-16 or UTF-32 that IANA does not
-    register, and any other name but the encodings read one character from
-    each byte. Asked before anything is decoded under the name.
-    """
+    """A name absent from IANA, or a registered name without a local codec."""
     shown = _shown(declared)
-    if len(declared) > _LONGEST_NAME or _normal(declared) in _PLATFORM_CODECS:
-        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
-    if declared.lower() in _REGISTERED:
-        return None
-    spelled = _SPELLED.get(_normal(declared)) or ("UTF-8" if _reads_as_utf8(declared) else None)
-    if spelled is not None:
-        return "%s: %s: %s, a name for %s that IANA does not register" % (
-            name, UNREADABLE_ENCODING, shown, spelled)
-    if not _one_character_a_byte(declared):
-        return "%s: %s: %s" % (name, UNREADABLE_ENCODING, shown)
+    if len(declared) > _LONGEST_NAME or _registered(declared) is None:
+        return "%s: %s: %s: not an IANA-registered encoding name (XML 1.0 §4.3.3)" % (
+            name, UNREADABLE_ENCODING, shown)
+    if _encoding_form(declared) is None and _codec_for(declared) is None:
+        return "%s: %s: %s: registered at IANA, but no text codec is available" % (
+            name, UNREADABLE_ENCODING, shown)
     return None
 
 
@@ -787,7 +729,7 @@ def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str],
     refused = _unread(name, declared)
     if refused is not None:
         return refused
-    if _REGISTERED.get(declared.lower()) in _AGREES[start.encoding]:
+    if _encoding_form(declared) in _AGREES[start.encoding]:
         return None
     return _contradicted(name, "its byte order mark says" if start.marked else "its first bytes say",
                          start.encoding, declared)
@@ -814,18 +756,13 @@ def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
     refused = _unread(name, declared)
     if refused is not None:
         return refused
-    form = _REGISTERED.get(declared.lower())
+    form = _encoding_form(declared)
     if form == "UTF-8":
         return None
     own = stored[:found.end]
-    if form is not None or _decoded(own, declared) != own.decode("latin-1"):
+    if form is not None or _decoded(own, _codec_for(declared)) != own.decode("latin-1"):
         return _contradicted(name, "its first bytes say", _KEEPS_ASCII, declared)
-    theirs, ours = _decoded(stored, declared), _decoded(stored, "utf-8")
-    if theirs is None and ours is None:
-        return None          # neither reads it, and the parser says so itself
-    if theirs is None or ours is None or theirs != ours:
-        return "%s: %s: %s" % (name, UNUSED_ENCODING, _shown(declared))
-    return None
+    return None      # The registered declaration decides how these bytes are read.
 
 
 def _contradicted(name: str, where: str, said: str, declared: str) -> str:

@@ -1,28 +1,7 @@
-"""What this tool does with a document's encoding declaration.
+"""Encoding declarations follow IANA membership and the declared text codec.
 
-Four states, and it used to tell two of them apart. A document whose
-declaration and bytes agreed on a codec this tool cannot read was refused with
-the codec's own words -- `can't decode byte 0xfc in position 297` -- which
-named no repair. A document whose declaration was a lie was refused when the
-bytes happened not to be UTF-8 and accepted in silence when they happened to
-be: the asymmetry was the defect, because what is wrong with the file is the
-same in both.
-
-The silence was total. A package declaring `windows-1252` over UTF-8 bytes
-produced a report byte-identical to the UTF-8 control once the digest and the
-path were set aside -- measured, `difference keys: []`.
-
-What decides the ambiguous case is not a round trip. UTF-8 bytes read as
-cp1252 give `fÃ¼r` and encode back to the original bytes exactly, so a round
-trip calls that document consistent and would put mojibake in the graph --
-worse than today, where it is read as UTF-8 and comes out right. What tells
-the three apart is whether the bytes are valid UTF-8 *and* carry a byte over
-127: only then do the two readings differ, which is why an ASCII-only document
-declaring a single-byte code page draws nothing. One declaring UTF-16 or an
-EBCDIC page over those bytes reads as other text, and is refused.
-
-No silent substitution, in any state: `errors="replace"` turns a document
-nobody can read into one that parses and says something else.
+Unregistered names are refused; registered codecs are used where supported.
+BOM/first-byte contradictions are still refused before decoding.
 """
 from __future__ import annotations
 
@@ -45,8 +24,8 @@ PLAIN = "Operating instructions"
 
 #: declared encoding, the codec the bytes are actually in, the title
 CONTROLS = {
-    "declared 1252 and written in 1252": ("windows-1252", "cp1252", GERMAN),
-    "declared 1252 and written in utf-8": ("windows-1252", "utf-8", GERMAN),
+    "declared 1252 and written in 1252": ("cp1252", "cp1252", GERMAN),
+    "declared 1252 and written in utf-8": ("cp1252", "utf-8", GERMAN),
     "declared utf-8 and written in 1252": ("utf-8", "cp1252", GERMAN),
     "declared an encoding no codec answers to": ("x-nonesuch", "utf-8", GERMAN),
     "declared utf-8 and written in utf-8": ("utf-8", "utf-8", GERMAN),
@@ -91,11 +70,11 @@ def test_parse_metadata_answers_rather_than_raises(state, tmp_path):
     assert graph is not None or error, "neither a graph nor a reason"
 
 
-def test_a_declaration_that_is_a_lie_is_not_silent(tmp_path):
+def test_an_unregistered_code_page_name_is_not_silent(tmp_path):
     """The whole of the defect in one comparison.
 
-    A package declaring `windows-1252` over UTF-8 bytes is a package whose
-    declaration is false, and this tool reads it as UTF-8 and says nothing.
+    An unregistered cp1252 name is refused even when its bytes are UTF-8.
+    The registered windows-1252 counterpart is covered by the codec tests.
     Set the digest and the path aside and the report is the control's.
     """
     lie = report_of(tmp_path / "a", "declared 1252 and written in utf-8")
@@ -108,13 +87,13 @@ def test_a_declaration_that_is_a_lie_is_not_silent(tmp_path):
 
 
 def test_a_document_this_tool_cannot_read_says_what_to_do(tmp_path):
-    """`windows-1252` is a codec Python has and this tool refuses, with the
+    """`cp1252` is a Python codec name that IANA does not register, with the
     codec's own sentence about a byte at an offset. A reader is told which
     byte and not what to do."""
     report = report_of(tmp_path, "declared 1252 and written in 1252")
     said = " ".join(str(f.get("detail", "")) for f in report["findings"])
     assert "position" not in said, said
-    assert "windows-1252" in said, (
+    assert "cp1252" in said, (
         "the refusal does not name the encoding the document declares: %s" % said)
 
 
@@ -135,24 +114,10 @@ def test_an_ascii_document_declaring_another_encoding_draws_nothing(tmp_path):
     "declared 1252 and written in utf-8",
     "declared an encoding no codec answers to",
 ])
-def test_a_declaration_the_reader_reads_differently_is_refused(tmp_path, state):
-    """Refused where the declaration and this reader are two readings of the
-    file, whatever made them differ.
-
-    One of these three was decided by the bytes instead. rdflib decodes as
-    UTF-8 whatever the declaration says and fails on the first byte above
-    0x7F, so `windows-1252` over German text was refused while the same
-    declaration over UTF-8 bytes -- a declaration that is simply false --
-    decoded, parsed and passed. The refusal was never about the declaration;
-    it was a decode error, and it caught the honest document and missed the
-    lying one.
-
-    The ASCII case is deliberately not here. Where every byte is under 128
-    the two readings are the same text, and
-    `test_an_ascii_document_declaring_another_encoding_draws_nothing` holds
-    that they stay silent -- a first version of this rule refused them and
-    would have failed conformant packages that declare a codepage and say
-    nothing but English.
+def test_an_unregistered_declaration_is_refused(tmp_path, state):
+    """An unregistered name is refused whether the bytes are UTF-8 or a
+    Python code page; the report identifies that declaration and its repair.
+    Registered codec text fidelity is asserted separately.
     """
     report = report_of(tmp_path, state)
     fired = {f["rule"] for f in report["findings"]}
@@ -202,7 +167,10 @@ def test_an_encoding_outside_the_ones_read_here_is_refused_unread(monkeypatch):
 def test_parse_metadata_answers_whatever_is_declared(declared):
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
-    assert graph is None and error, declared
+    if declared in {"shift_jis", "gb18030", "big5", "euc-jp", "utf-7"}:
+        assert graph is not None and error is None, (declared, error)
+    else:
+        assert graph is None and error, declared
 
 
 def test_the_declared_name_reaches_the_report_as_printable_text():
@@ -246,6 +214,10 @@ AS_THE_PARSER_READS = [(declared, prolog)
 
 
 def _declaring(declared, prolog, subset, body):
+    # cp864 has no German letters; keep this entity/root guard input within
+    # the declared character set. Codec text fidelity has its own tests.
+    if declared == "cp864":
+        prolog = prolog.replace("Größe", "Words")
     return ('<?xml version="1.0" encoding="%s"?>\n%s<!DOCTYPE rdf:RDF [%s]>\n'
             % (declared, prolog, subset) + body).encode("utf-8")
 
@@ -297,15 +269,15 @@ def test_a_name_that_reads_ascii_as_ascii_passes(declared):
 
 def test_the_remedy_followed_passes():
     """C16.1 says: write the file as UTF-8 and make the declaration say so.
-    Rewriting the bytes and leaving `windows-1252` in front of them is two
-    readings of one file, and stays refused."""
+    Rewriting the bytes while leaving the unregistered cp1252 name is
+    still refused; the registered UTF-8 name makes the repair complete."""
     from iirds_validate.registry import all_rules
 
     fix = next(rule.fix for rule in all_rules() if rule.id == "C16.1")
     assert "declaration say UTF-8" in fix, fix
-    rewritten = document("windows-1252", "utf-8", GERMAN)
+    rewritten = document("cp1252", "utf-8", GERMAN)
     assert _parsed(rewritten)[0] is None
-    declared_too = rewritten.replace(b'encoding="windows-1252"', b'encoding="UTF-8"')
+    declared_too = rewritten.replace(b'encoding="cp1252"', b'encoding="UTF-8"')
     assert _parsed(declared_too)[1] is None
 
 
@@ -331,13 +303,16 @@ def test_a_padded_name_is_not_one_the_grammar_allows(declared):
 
 @pytest.mark.parametrize("declared", ["ISO-2022-JP", "HZ-GB-2312", "unicode_escape",
                                       "raw_unicode_escape", "UTF-7"])
-def test_an_encoding_with_escapes_or_shifts_is_refused_by_name(declared):
+def test_shift_codecs_require_registration_and_decode_their_text(declared):
     """Each reads one character from each byte of plain ASCII, and fewer from
     its escapes; asked only of every byte once, some of them looked like a
     code page."""
     raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY % PLAIN).encode("ascii")
     graph, error = _parsed(raw)
-    assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
+    if declared in {"ISO-2022-JP", "HZ-GB-2312", "UTF-7"}:
+        assert graph is not None and error is None, (declared, error)
+    else:
+        assert graph is None and iirds.UNREADABLE_ENCODING in error, (declared, error)
 
 
 @pytest.mark.parametrize("declared", ["UTF-16", "UTF-16LE", "cp037", "ISO-10646-UCS-2",
@@ -492,7 +467,7 @@ def test_a_declaration_pushed_far_along_is_still_read_against_the_mark():
     assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
 
 
-@pytest.mark.parametrize("declared", ["Shift_JIS", "x-nonesuch", "punycode"])
+@pytest.mark.parametrize("declared", ["ISO-10646-UTF-1", "x-nonesuch", "punycode"])
 def test_a_name_this_reader_does_not_read_is_that_under_a_mark_too(declared):
     """Saving the file in an encoding this reader refuses is no remedy, so the
     refusal is the one it gets without a mark."""

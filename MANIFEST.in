@@ -7,3 +7,5 @@ prune shims
 # The suite needs the corpus and the fixtures beside it, which do not ship;
 # half a suite is worse than none.
 prune tests
+
+recursive-include src/iirds/data *.json *.csv

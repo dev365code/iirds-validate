@@ -184,8 +184,9 @@ UNREADABLE_ENCODING = "declares an encoding this reader does not read"
 #: UTF-8 bytes.
 UNUSED_ENCODING = "declares an encoding this reader reads differently"
 
-#: A document whose declaration names one encoding while its byte order mark,
-#: or the first two characters of unmarked UTF-16, say another. XML makes that
+#: A document whose declaration names one encoding while its first bytes say
+#: another: a byte order mark, the shape of unmarked UTF-16 or UTF-32, or the
+#: `3C 3F 78 6D` of an encoding that keeps ASCII where ASCII is. XML makes that
 #: a fatal error (section 4.3.3) where no transport protocol gives the
 #: encoding -- and none gives a ZIP member's, so the premise holds for every
 #: file in a package. Not a declaration this reader leaves unused: one the

@@ -338,15 +338,33 @@ whose bytes read the same both ways passes. A declaration naming an encoding
 this reader does not decode -- anything but UTF-8, UTF-16, UTF-32 and the
 encodings that read one character from each byte, or a name no codec answers
 to -- is refused by name without the document being decoded under it.
-A document whose byte order mark, or whose first bytes as unmarked UTF-16,
-say one encoding while its declaration names another is refused, and so is
-UTF-32 that declares nothing: XML 1.0 section 4.3.3 makes both fatal errors
-"in the absence of information provided by an external transport protocol",
-and a ZIP member has none, so the section applies as written -- a note on
-applying it, not a divergence. Which bytes mark which encoding is read as
-Appendix F reads them, a non-normative table that calls UTF-32 UCS-4. UTF-16 without a byte order mark, which the
-same section says MUST begin with one, is read: that is not a fatal error, and
-a warning for it is a candidate, not a rule.
+A document whose byte order mark, or whose first bytes as unmarked UTF-16 or
+UTF-32, say one encoding while its declaration names another is refused: XML
+1.0 section 4.3.3 makes that a fatal error "in the absence of information
+provided by an external transport protocol", and a ZIP member has none, so the
+section applies as written -- a note on applying it, not a divergence. First
+bytes `3C 3F 78 6D`, the ASCII of `<?xm`, say an encoding in which ASCII
+characters are ASCII bytes, so a declaration of UTF-16 or UTF-32 over them is
+the same contradiction. UTF-32 that declares nothing is refused too, and the
+reason gives the sentence it breaks: behind a byte order mark, the MUST that an
+entity in an encoding other than UTF-8 or UTF-16 begin with an encoding
+declaration -- an error, by section 1.2 -- and without one, the fatal error the
+section makes of an entity that begins with neither a byte order mark nor an
+encoding declaration and is not UTF-8. Which bytes mark which encoding is read
+as Appendix F reads them, a non-normative table that calls UTF-32 UCS-4.
+
+The declaration itself is read once, by productions [23] to [26], [32], [80]
+and [81], and a declaration the grammar does not allow is refused, with the
+production it breaks, whatever stands in front of it; behind a byte order mark
+one was removed unread and the package passed. Names are matched without
+regard to case, and the names and aliases IANA registers for UTF-8, UTF-16 and
+UTF-32 -- `csUTF8`, `csUTF16`, `csUnicode`, `csUCS4` among them -- are read as
+the encodings they name, as the section recommends. A spelling IANA does not
+register, `utf8` or `UTF_16`, and a name only Python reads as UTF-8, such as
+`cp65001`, is refused by name: expat reads none of them as what it spells.
+UTF-16 without a byte order mark, which the same section says MUST begin with
+one, is read: that is not a fatal error, and a warning for it is a candidate,
+not a rule.
 
 ## What this tool refuses to read, and why that is its own decision
 

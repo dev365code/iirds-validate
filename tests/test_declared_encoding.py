@@ -440,8 +440,9 @@ def test_a_declaration_its_bytes_contradict_is_refused(mark, codec, declared, sa
 
 
 def test_utf32_declaring_nothing_is_refused():
-    """XML makes an entity with no declaration, in any encoding but UTF-8 or
-    UTF-16, a fatal error (section 4.3.3)."""
+    """Section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16
+    MUST begin with an encoding declaration -- an error, by section 1.2, and
+    refused."""
     graph, error = _parsed(_marked(b"\xff\xfe\x00\x00", "utf-32-le", None))
     assert graph is None and iirds.UNDECLARED_ENCODING in error, error
     assert "UTF-32LE" in error and "4.3.3" in error, error

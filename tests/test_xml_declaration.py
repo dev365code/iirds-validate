@@ -191,6 +191,19 @@ def test_a_target_that_only_begins_with_xml_is_not_a_declaration():
     assert parsed(raw)[1] is None
 
 
+@pytest.mark.parametrize("target", ["xml\u05d0", "xml\u05ea"])
+@pytest.mark.parametrize("form", ["utf-8", "utf-8 marked", "utf-16le marked"])
+def test_an_instruction_whose_target_begins_with_xml_is_read(form, target):
+    """A target that begins with `xml` and goes on is a name XML reserves and
+    allows. Read without a mark, one character a byte, the first byte of a
+    Hebrew letter is `×`, which no name holds, and the instruction was refused
+    as a declaration the grammar does not allow."""
+    raw = stored(form, "<?%s?>" % target)
+    graph, error = parsed(raw)
+    assert error is None and graph is not None, (form, error)
+    assert iirds.declared_encoding(raw) is None
+
+
 #: Each mark, with the codec of what follows it and the name agreeing with it.
 MARKS = {"utf-8": (b"\xef\xbb\xbf", "utf-8", "UTF-8"),
          "utf-16le": (b"\xff\xfe", "utf-16-le", "UTF-16"),
@@ -214,6 +227,23 @@ def test_a_second_byte_order_mark_is_a_character_the_document_is_refused_for(for
     assert graph is None and error, (form, declaration)
     assert iirds.declared_encoding(raw) is None
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+@pytest.mark.parametrize("declaration, production", [
+    ('<?xml version="1.0"\u00a0encoding="{name}"?>', "[3] S"),
+    ('<?xml version="1.0" encoding="{name}"\u3000?>', "[3] S"),
+    ('<?xml version="1.0"\x0cencoding="{name}"?>', "[3] S"),
+    ('<?xml version\u00a0="1.0" encoding="{name}"?>', "[25] Eq"),
+    ('<?xml Version="1.0" encoding="{name}"?>', "[24] VersionInfo"),
+    ('<?xml version="1.0" ENCODING="{name}"?>', "[80] EncodingDecl"),
+    ('<?xml version="1.0" encoding="{name}" Standalone="no"?>', "[32] SDDecl"),
+])
+def test_what_stops_a_declaration_is_named_by_the_production_it_breaks(declaration, production):
+    """White space that is not XML's, and a pseudo-attribute in another case,
+    were reported as pseudo-attributes production [23] has not got."""
+    graph, error = parsed(stored("utf-8 marked", declaration))
+    assert graph is None and iirds.MALFORMED_DECLARATION in error, error
+    assert "production %s" % production in error and "no pseudo-attribute" not in error, error
 
 
 @pytest.mark.parametrize("form", sorted(FORMS))

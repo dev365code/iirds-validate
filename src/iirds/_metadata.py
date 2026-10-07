@@ -253,8 +253,8 @@ def _split(tag: str) -> Tuple[str, str]:
 _SPACE = " \t\r\n"
 
 #: The characters beyond ASCII that XML 1.0 lets stand in a name (productions
-#: [4] and [4a]). Right after `<?xml`, one of them makes a longer
-#: processing-instruction target, as `-` does in `<?xml-stylesheet`.
+#: [4] and [4a]). A pseudo-attribute's name is read as far as they go, so that
+#: what stops it is reported as itself.
 _NAME_RANGES = ((0xB7, 0xB7), (0xC0, 0xD6), (0xD8, 0xF6), (0xF8, 0x37D), (0x37F, 0x1FFF),
                 (0x200C, 0x200D), (0x203F, 0x2040), (0x2070, 0x218F), (0x2C00, 0x2FEF),
                 (0x3001, 0xD7FF), (0xF900, 0xFDCF), (0xFDF0, 0xFFFD), (0x10000, 0xEFFFF))
@@ -302,9 +302,13 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
 
     A declaration stands first or not at all: behind white space, a comment or
     another instruction, `<?xml` is a declaration out of place, which the
-    parser refuses, and this answers None. `<?xml` and then a name character
-    is an instruction with a longer target. Anything else beginning `<?xml` is
-    a declaration, and either matches the grammar or is reported where it
+    parser refuses, and this answers None. Only `<?xml` and then white space
+    or `?` begins one. `<?xml` and then a name character is an instruction
+    with a longer target, and `<?xml` and then anything else is not a
+    declaration either, but an instruction XML reserves the name of, which the
+    parser refuses. Read without a mark, one character a byte, a byte over 127
+    there is half of a character not yet known, and the answer does not hang
+    on it. A declaration either matches the grammar or is reported where it
     stops: the pseudo-attributes in order, each once, white space before each,
     `=` between optional white space, each value in one pair of quotes and of
     the shape its production gives, and `?>` at the end.
@@ -312,7 +316,7 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
     if not text.startswith("<?xml"):
         return None
     at = 5
-    if at < len(text) and _is_name_character(text[at]):
+    if at < len(text) and text[at] not in _SPACE and text[at] != "?":
         return None
     found = {}
     span = None
@@ -323,16 +327,23 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
         if text.startswith("?>", at):
             break
         begins = at
-        while at < len(text) and text[at] not in _SPACE and text[at] not in "=?>'\"":
+        while at < len(text) and _is_name_character(text[at]):
             at += 1
         word = text[begins:at]
         if not word:
+            if begins < len(text) and text[begins].isspace():
+                return _Malformed(begins, "production [3] S is #x20, #x9, #xD or #xA, and this "
+                                          "declaration has U+%04X for white space" % ord(text[begins]))
             if "version" not in found:
                 return _Malformed(begins, "production [23] XMLDecl begins with version, "
                                           "and this declaration does not")
             return _Malformed(begins, "production [23] XMLDecl ends with ?>, and this "
                                       "declaration has %s there" % (_shown(text[begins:begins + 1])
                                                                      or "nothing"))
+        if word not in _VALUES and word.lower() in _VALUES:
+            return _Malformed(begins, "production %s spells %s in lower case, and this "
+                                      "declaration %s" % (_INTRODUCED_BY[word.lower()],
+                                                          word.lower(), word))
         if word not in _VALUES:
             return _Malformed(begins, "production [23] XMLDecl has no pseudo-attribute "
                                       "named %s" % _shown(word))

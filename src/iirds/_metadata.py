@@ -249,21 +249,20 @@ def _split(tag: str) -> Tuple[str, str]:
     return "", tag
 
 
-#: White space, as production [3] has it.
+#: White space, as production [3] has it, and a run of it.
 _SPACE = " \t\r\n"
+_SPACES = re.compile("[ \t\r\n]*")
 
 #: The characters beyond ASCII that XML 1.0 lets stand in a name (productions
-#: [4] and [4a]). A pseudo-attribute's name is read as far as they go, so that
-#: what stops it is reported as itself.
+#: [4] and [4a]). A pseudo-attribute's name is read as far as a run of name
+#: characters goes, so that what stops it is reported as itself. Every run
+#: is a pattern's: a declaration may be a file's length of white space, and
+#: read a character at a time in Python it took four times as long.
 _NAME_RANGES = ((0xB7, 0xB7), (0xC0, 0xD6), (0xD8, 0xF6), (0xF8, 0x37D), (0x37F, 0x1FFF),
                 (0x200C, 0x200D), (0x203F, 0x2040), (0x2070, 0x218F), (0x2C00, 0x2FEF),
                 (0x3001, 0xD7FF), (0xF900, 0xFDCF), (0xFDF0, 0xFFFD), (0x10000, 0xEFFFF))
-
-
-def _is_name_character(character: str) -> bool:
-    if character.isascii():
-        return character.isalnum() or character in "-._:"
-    return any(low <= ord(character) <= high for low, high in _NAME_RANGES)
+_NAME = re.compile("[-.0-9:A-Z_a-z%s]*" % "".join("%s-%s" % (chr(low), chr(high))
+                                                   for low, high in _NAME_RANGES))
 
 
 #: What each pseudo-attribute's value may be, by the production that says so.
@@ -278,13 +277,12 @@ _INTRODUCED_BY = {"version": "[24] VersionInfo", "encoding": "[80] EncodingDecl"
 #: The order production [23] gives them in.
 _ORDER = ("version", "encoding", "standalone")
 
-#: Every character a value of each may hold, by the same productions. A value
-#: with no closing quote before the first `>` holds a character outside its
-#: own, and unless that is the other quote, it is what is wrong with it.
-_ALPHABETS = {"version": frozenset("0123456789."),
-              "encoding": frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-                                    "0123456789._-"),
-              "standalone": frozenset("yesno")}
+#: A run of the characters a value of each may hold, by the same productions.
+#: A value with no closing quote before the first `>` holds a character
+#: outside its own, and unless that is the other quote, it is what is wrong
+#: with it.
+_ALPHABETS = {"version": re.compile("[0-9.]*"), "encoding": re.compile("[A-Za-z0-9._-]*"),
+              "standalone": re.compile("[enosy]*")}
 
 
 class _Declaration(NamedTuple):
@@ -330,13 +328,11 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
     span = None
     while True:
         spaced = at
-        while at < len(text) and text[at] in _SPACE:
-            at += 1
+        at = _SPACES.match(text, at).end()
         if text.startswith("?>", at):
             break
         begins = at
-        while at < len(text) and _is_name_character(text[at]):
-            at += 1
+        at = _NAME.match(text, at).end()
         word = text[begins:at]
         if not word:
             if begins < len(text) and text[begins].isspace():
@@ -368,23 +364,19 @@ def _xml_declaration(text: str) -> Union[None, _Declaration, _Malformed]:
         if spaced == begins:
             return _Malformed(begins, "production %s puts white space before %s, and this "
                                       "declaration none" % (_INTRODUCED_BY[word], word))
-        while at < len(text) and text[at] in _SPACE:
-            at += 1
+        at = _SPACES.match(text, at).end()
         if not text.startswith("=", at):
             return _Malformed(at, "production [25] Eq puts = after %s, and this declaration "
                                   "does not" % word)
-        at += 1
-        while at < len(text) and text[at] in _SPACE:
-            at += 1
+        at = _SPACES.match(text, at + 1).end()
         quote = text[at:at + 1]
         if quote not in ("'", '"'):
             return _Malformed(at, "production %s puts the value of %s in quotes, and this "
                                   "declaration does not" % (_INTRODUCED_BY[word], word))
         closing = text.find(quote, at + 1)
         if closing < 0:
-            stray = next((index for index in range(at + 1, len(text))
-                          if text[index] not in _ALPHABETS[word]), None)
-            if stray is not None and text[stray] not in "'\"":
+            stray = _ALPHABETS[word].match(text, at + 1).end()
+            if stray < len(text) and text[stray] not in "'\"":
                 return _Malformed(stray, "production %s does not allow %s in the value of %s"
                                          % (_VALUES[word][0], _shown(text[stray]), word))
             return _Malformed(at, "production %s ends the value of %s with the quote it begins "

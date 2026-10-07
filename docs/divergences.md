@@ -359,9 +359,11 @@ production it breaks, whatever stands in front of it; behind a byte order mark
 one was removed unread and the package passed. Names are matched without
 regard to case, and the names and aliases IANA registers for UTF-8, UTF-16 and
 UTF-32 -- `csUTF8`, `csUTF16`, `csUnicode`, `csUCS4` among them -- are read as
-the encodings they name, as the section recommends. A spelling IANA does not
-register, `utf8` or `UTF_16`, and a name only Python reads as UTF-8, such as
-`cp65001`, is refused by name: expat reads none of them as what it spells.
+the encodings they name, as the section recommends, though expat reads none of
+the aliases. A spelling IANA does not register, `utf8` or `UTF_16`, and a name
+only Python reads as UTF-8, such as `cp65001`, has no such standing: it is
+read only where expat and libxml2 both read it, and expat reads none of them
+as what it spells, so each is refused by name.
 UTF-16 without a byte order mark, which the same section says MUST begin with
 one, is read: that is not a fatal error, and a warning for it is a candidate,
 not a rule.

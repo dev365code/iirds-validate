@@ -1,34 +1,50 @@
 {
  "counts": {
-  "branch": 1,
+  "branch": 2,
   "finding": 1,
   "other": 1,
-  "silent": 11
+  "silent": 26
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
-  "container.py": "3a3fba813cb7815aa2ce9b5c8741877a57c5b837d25573bb89a7fd9fe7965937",
-  "content.py": "8da51678e83e3bafcda3a00b8bbdd4ab3f97a5580b7c397d0dea197ae68c3c83",
+  "container.py": "33d54589897c06bdcf7413d7641a7deec1b8c23af033c24d2eabb1d191467c8b",
+  "content.py": "47a026fb5f7f7083ecfb158ecde512c3a50f4986edb09118c7095f960c7939bf",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
-  "lint.py": "e29579f72011688f6e9b7f1ac647a00e25fb209d212b8f13f10990b8ecc0e2a9",
-  "requirements.py": "7412ccc688b7d6f98c982d0dac14af9624b9057863d2bb13483cbd0a9f4b9549",
+  "lint.py": "528b2321fb0d54d0661d53cac2636651310ad397c60cc05b1f32fc771410c0f8",
+  "requirements.py": "bcaa968f8d96941825489f2f781200d91394ed76a08b753b3062f1eee7e97a58",
   "schema.py": "f0900772469aacb21791943ff88ee74209c76fdbe96f766c4706863fb7558666",
   "schema_tables.py": "8a13d6e9362f3f7f4d85bc60a2f5dd42076b0fb8a2d7179c58ff1f951b301cb4",
   "system.py": "b3540077e6cfd0dc6eb7960a44272f67863c2fe435d9264088005667ec6c85d3"
  },
  "unreached": {
   "content.py": {
+   "_attributes_at :: return None [2]": "silent",
+   "_attributes_at :: return None [3]": "silent",
+   "_attributes_at :: return None [4]": "silent",
+   "_attributes_at :: return None [5]": "silent",
+   "_attributes_at :: return None [7]": "silent",
    "_bytes_of :: raise": "other",
    "_declares_entities :: return False [3]": "silent",
-   "b3_only_listed_elements :: continue": "silent"
+   "_doctype_at :: continue [1]": "silent",
+   "_doctype_at :: if end < 0:": "branch",
+   "_doctype_at :: return None [1]": "silent",
+   "_doctype_at :: return None [2]": "silent",
+   "_entity_at :: return None [1]": "silent",
+   "_entity_at :: return None [2]": "silent",
+   "_first_element :: return None [1]": "silent",
+   "_first_element :: return None [5]": "silent",
+   "_first_element :: return None [7]": "silent",
+   "_gunzipped :: return None": "silent",
+   "_name_at :: return None, position": "silent",
+   "_unescape_attribute :: return None [1]": "silent",
+   "_unescape_attribute :: return None [3]": "silent",
+   "_unescape_attribute :: return None [4]": "silent"
   },
   "lint.py": {
    "_suggest :: return None [1]": "silent",
    "_suggest :: return None [2]": "silent",
-   "_undescribed_references :: continue # a term from the standard vocabulary": "silent",
    "l15_name_from_a_later_edition :: return": "silent",
-   "l17_jsonld_statements_in_a_named_graph :: return [2]": "silent",
-   "l6_unlabelled_concepts :: continue [2]": "silent"
+   "l17_jsonld_statements_in_a_named_graph :: return [2]": "silent"
   },
   "schema.py": {
    "m16_3_event_extension_is_a_class :: continue": "silent"

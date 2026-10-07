@@ -775,11 +775,9 @@ def _refused_by_reading(name: str, stored: bytes, declared: Optional[str],
     or UTF-32, or one under which the declaration's own bytes are other
     characters, contradicts the first bytes: appendix F reads `3C 3F 78 6D` as
     UTF-8 or an encoding in which ASCII characters are ASCII bytes. Any other
-    name is read both ways -- under the name, and as UTF-8 -- and where the two
-    are different text there are two readings of one file, so it is refused
-    rather than one chosen. Where they are the same, as they are for a code
-    page that keeps ASCII where ASCII is over bytes all under 128, nothing is
-    said.
+    registered legacy declaration determines how the rest of the bytes are
+    decoded. The declaration's own ASCII markup must be unchanged under that
+    codec; otherwise its name contradicts the Appendix F opening pattern.
     """
     if declared is None:
         return None

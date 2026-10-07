@@ -19,6 +19,7 @@ from pkgutil import get_data
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from rdflib import BNode, Graph, Literal
+from rdflib.compare import isomorphic
 
 #: Two cheap guards, applied before the parser sees anything.
 MAX_METADATA_BYTES = 64 * 1024 * 1024
@@ -1377,7 +1378,7 @@ def graph_difference(one: Graph, other: Graph):
             only(rows_other, label_other, counts_other, counts_one))
 
 
-def _lent(items, blanks, shared):
+def _lent(items, blanks, shared, searched=True):
     """The fingerprints of the graphs that share labels, taken together.
 
     A label names one node across a document, so the graphs that share one
@@ -1391,10 +1392,9 @@ def _lent(items, blanks, shared):
     first was kept and one it handed over later left out -- an order that
     follows the hash seed where graphs have no names.
 
-    Only where the union's blank nodes form trees, in the one pass that
-    costs. Where they do not, naming them would take a search, kept for the
-    graphs that can be left out, and nothing is fingerprinted, as nothing
-    sharing a label was. And only where a graph that can be left out is the
+    Trees are fingerprinted in one pass. A non-tree union is compared with
+    whole candidate repeats by rdflib isomorphism, only within the existing
+    blank-node limit and while the document's search allowance is intact. And only where a graph that can be left out is the
     union's size, since a repeat says as many statements as what it repeats:
     a document of graphs sharing labels and repeating nothing pays nothing.
     """
@@ -1422,8 +1422,22 @@ def _lent(items, blanks, shared):
         if nodes & shared:
             together.setdefault(find(index), Graph())
             together[find(index)] += items[index][1]
-    return {tuple(_fingerprint(whole)) for whole in together.values()
-            if len(whole) in sizes and not _outside_trees(whole)}
+    fingerprints = set()
+    candidates = [(graph, nodes) for (_name, graph), nodes in zip(items, blanks)
+                  if nodes and not nodes & shared]
+    for whole in together.values():
+        if len(whole) not in sizes:
+            continue
+        outside = _outside_trees(whole)
+        if not outside:
+            fingerprints.add(tuple(_fingerprint(whole)))
+        elif searched and outside <= MAX_COMPARED_BLANK_NODES:
+            for candidate, _nodes in candidates:
+                if (len(candidate) == len(whole)
+                        and _outside_trees(candidate) <= MAX_COMPARED_BLANK_NODES
+                        and isomorphic(whole, candidate)):
+                    fingerprints.add(tuple(_fingerprint(candidate)))
+    return fingerprints
 
 
 def merge_graphs_of(graphs):
@@ -1484,7 +1498,7 @@ def merge_graphs_of(graphs):
                for (_name, graph), nodes in zip(items, blanks)]
     searched = sum(outside) <= MAX_COMPARED_BLANK_NODES
     merged = Graph()
-    kept = _lent(items, blanks, shared)
+    kept = _lent(items, blanks, shared, searched)
     repeats, uncounted = [], []
     for (name, graph), nodes, apart in zip(items, blanks, outside):
         if nodes and not nodes & shared:

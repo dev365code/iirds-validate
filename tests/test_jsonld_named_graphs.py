@@ -862,3 +862,25 @@ def test_graphs_sharing_labels_are_fingerprinted_only_where_a_repeat_could_be(mo
         del asked[:]
         merged, left_out, uncounted = iirds.merge_graphs_of(dict({None: default}, **named))
         assert (len(asked), left_out) == (fingerprints, repeats), (len(asked), left_out)
+
+
+def test_a_shared_cycle_and_its_whole_repeat_count_once(make_package):
+    """JSON-LD 1.1 §8 and §4.5.1 give blank labels document scope.
+    A whole repeated description remains the same shape when it has a cycle;
+    the reader's comparison is bounded by its existing blank-node limit.
+    """
+    a = {"@id": "_:a", "urn:test:next": {"@id": "_:b"}}
+    b = {"@id": "_:b", "urn:test:next": {"@id": "_:a"}}
+    whole, error = iirds.parse_metadata(iirds.METADATA_JSONLD,
+                                        _document(_nodes() + [a, b]).encode(),
+                                        base=iirds.PACKAGE_BASE)
+    assert error is None
+    document = _document(_nodes() + [a,
+        {"@id": "urn:test:lender", "@graph": [b]},
+        {"@id": "urn:test:repeat", "@graph": _nodes() + [
+            {"@id": "_:x", "urn:test:next": {"@id": "_:y"}},
+            {"@id": "_:y", "urn:test:next": {"@id": "_:x"}}]}])
+    report = runner.check(make_package(metadata=whole.serialize(format="xml", encoding="utf-8"),
+                                       jsonld=document))
+    assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
+    assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]

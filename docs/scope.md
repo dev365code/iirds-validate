@@ -56,6 +56,13 @@ Written down so that none of these gets built by drift.
   its named graphs take the file past it -- the limit is the file's, its graphs
   together -- L9 says the files were not compared. Either names the limit.
 
+Content-file identification reads at most 64 KiB for an XML-looking prefix
+(a byte order mark or decoded text beginning with `<`). Other signatures use
+4096 bytes. XML identification skips declarations, comments, processing
+instructions and a DOCTYPE internal subset before reading the root's
+namespace attributes. Every identification read, including unreferenced files
+and gzip output, counts towards the run's content budget.
+
 ## Where things live
 
 | | |

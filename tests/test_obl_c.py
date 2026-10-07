@@ -318,3 +318,22 @@ def test_xml_identification_window_has_a_byte_boundary(make_package, delta, expe
     report = runner.check(make_package(metadata=A_PROFILE,
                                       extra=(("content/boundary.bin", body),)))
     assert bool(_subjects(report, "R42")) is expected
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_identification_charges_unreferenced_bytes_and_gzip_output(make_package, monkeypatch,
+                                                                  compressed):
+    """iiRDS 1.3 §8.2.1.2 binds every SVG, including referenced content.
+    The run ceiling applies to every identification read, including
+    unreferenced files and bytes inflated from a gzip SVG prefix.
+    """
+    from iirds_validate import package as package_module
+
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 512)
+    body = b"<!--" + b"a" * 5000 + b'--><svg xmlns="http://www.w3.org/2000/svg"/>'
+    body = gzip.compress(body, mtime=0) if compressed else body
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/unreferenced.bin", body),)))
+    assert _subjects(report, "S9"), [(f.rule.id, f.violation.detail) for f in report.findings]
+    assert not report.ok
+    assert not _subjects(report, "S3")

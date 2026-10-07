@@ -311,14 +311,14 @@ def test_first_bytes_are_not_read_once_the_content_budget_is_spent():
     assert run.package.reads == 0
 
 
-def test_a_rendition_s_first_bytes_are_charged_and_another_file_s_are_not():
+def test_identification_bytes_are_charged_for_renditions_and_other_files():
     from iirds_validate.rules.content import _head
 
     rendition, other = _Run(_Package()), _Run(_Package())
     assert _head(rendition, "content/logo.gif", 12, rendition=True) == (GIF[:12], None)
     assert rendition.package.charged == 13      # the read's limit plus one, as read
     assert _head(other, "content/spare.gif", 12, rendition=False) == (GIF[:12], None)
-    assert other.package.charged == 0
+    assert other.package.charged == 13
 
 
 def test_bytes_b1_read_are_used_and_an_empty_file_is_empty():

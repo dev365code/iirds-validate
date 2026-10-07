@@ -471,15 +471,17 @@ def _sniff(ctx, name):
         head = _head(ctx, name, SNIFF, rendition=name in renditions)[0]
         if head is not None:
             compressed = head[:2] == GZIP_MAGIC
-            body = _gunzipped(head) if compressed else head
+            body = _inflate_sniff(ctx, name, head, SNIFF) if compressed else head
             if body and _looks_xml(body) and _first_element(body) is None:
                 if len(head) >= SNIFF:
                     head = _head(ctx, name, MAX_XML_IDENTIFICATION_BYTES,
                                  rendition=name in renditions)[0]
-                body = _gunzipped(head, MAX_XML_IDENTIFICATION_BYTES) \
+                body = _inflate_sniff(ctx, name, head, MAX_XML_IDENTIFICATION_BYTES) \
                     if compressed and head is not None else head
             if compressed:
                 ctx.__dict__.setdefault("_inflated", {})[name] = body
+            if ctx.__dict__.get("content_budget") is not None:
+                head = None
         cache[name] = head
     return cache[name]
 
@@ -981,32 +983,42 @@ def _gunzipped(head: bytes, limit=SNIFF):
         return None
 
 
+def _inflate_sniff(ctx, name, head, limit):
+    """Charge the bytes produced by identification's bounded gzip read."""
+    body = _gunzipped(head, limit)
+    if body is not None:
+        try:
+            ctx.package.charge(len(body))
+        except ContentBudgetExceeded as exc:
+            ctx.__dict__["content_budget"] = (exc.read_so_far, exc.limit, name)
+            return None
+    return body
+
+
 def _head(ctx, name, size, *, rendition):
     """The first `size` bytes of a file, and why they were not read where
     that is the caller's to say.
 
     Bytes `_bytes_of` already holds are used rather than read again, and a
     file it read and found empty is empty rather than unread. Nothing is read
-    once the run's content budget is spent. A rendition's bytes are charged to
-    that budget and may cross it, as `_bytes_of`'s may, which S9 reports; a
-    file the package does not list is not charged -- C1's damage check reads
-    every entry whole and pays nothing, and a stop charged to such a file
-    would have S9 name something that is not a rendition. A method no bounded
+    once the run's content budget is spent. Every identification read is charged,
+    including files no rendition names, and may cross it, as `_bytes_of`'s
+    may, which S9 reports. C1's separate container damage check does not count
+    as content identification. A method no bounded
     read can be made of is S14's to report, and this code's own faults reach
     the runner. Any other failure comes back as a reason, for the rule that
     asked to report: the first version caught everything and went on, and a
     file nobody could read passed as one nothing was wrong with.
     """
+    if ctx.__dict__.get("content_budget") is not None:
+        return None, None
     memo = ctx.__dict__.get("_content_bytes") or {}
     if name in memo:
         raw, why = memo[name]
         return (None, None) if (why and not raw) else (raw[:size], None)
-    if ctx.__dict__.get("content_budget") is not None:
-        return None, None
     try:
         head, _more = ctx.package.read_bounded(name, size)
-        if rendition:
-            ctx.package.charge(len(head))
+        ctx.package.charge(len(head))
     except UnreadableMethod:
         return None, None
     except ContentBudgetExceeded as exc:

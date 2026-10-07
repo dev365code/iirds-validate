@@ -1722,3 +1722,10 @@ entirely. Earlier revisions of this document set **0 unexplained** in bold; the
 classifier does not carry bold. Treat the last three rows as "needs a human",
 which is what the divergence rows above are for.
 
+
+### Content-file identification window
+
+XML-looking files have a 64 KiB identification window; other file signatures
+use 4096 bytes. If no complete root start tag fits in that window, B6 and R42
+make no format claim. Identification reads and bounded gzip output count
+towards the run's content budget even when no rendition names the file.

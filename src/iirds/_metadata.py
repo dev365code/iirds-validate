@@ -827,15 +827,16 @@ def _undeclared(name: str, start: _Start) -> str:
     byte order mark nor an encoding declaration a fatal error; the reason
     gives the sentence that applies."""
     if start.marked:
-        return ("%s: %s: its byte order mark says %s and it declares no encoding; XML 1.0 "
-                "section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16 MUST "
-                "begin with an encoding declaration, an error under section 1.2 -- declare "
-                "UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING, start.encoding))
-    return ("%s: %s: its first bytes say %s and it declares no encoding; XML 1.0 section "
-            "4.3.3 makes it a fatal error for an entity that begins with neither a byte order "
-            "mark nor an encoding declaration to use an encoding other than UTF-8 -- save it "
-            "with a byte order mark and declare UTF-32, or save the file as UTF-8"
-            % (name, UNDECLARED_ENCODING, start.encoding))
+        return ("%s: %s: its byte order mark says %s and no encoding declaration begins it; "
+                "XML 1.0 section 4.3.3 says an entity in an encoding other than UTF-8 or UTF-16 "
+                "MUST begin with an encoding declaration, an error under section 1.2 -- declare "
+                "UTF-32 in an XML declaration at its start, or save the file as UTF-8"
+                % (name, UNDECLARED_ENCODING, start.encoding))
+    return ("%s: %s: its first bytes say %s and it begins with neither a byte order mark nor "
+            "an encoding declaration; XML 1.0 section 4.3.3 makes that a fatal error for an "
+            "entity in an encoding other than UTF-8 -- save it with a byte order mark and "
+            "declare UTF-32, or save the file as UTF-8" % (name, UNDECLARED_ENCODING,
+                                                          start.encoding))
 
 
 def parse_metadata(name: str, raw: bytes, *, base: str) -> Tuple[Optional[Graph], Optional[str]]:

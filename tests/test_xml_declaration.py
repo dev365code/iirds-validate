@@ -229,6 +229,17 @@ def test_a_second_byte_order_mark_is_a_character_the_document_is_refused_for(for
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
 
 
+@pytest.mark.parametrize("front", [" ", "<!-- a comment -->", "\ufeff"])
+def test_a_declaration_out_of_place_behind_a_utf32_mark_is_not_called_absent(front):
+    """It declares UTF-32, where nothing lets a declaration stand. Refused
+    still, as UTF-32 that no encoding declaration begins, and the remedy
+    puts the declaration at its start, where it was said to declare nothing."""
+    raw = stored("utf-32le marked", front + '<?xml version="1.0" encoding="UTF-32"?>')
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNDECLARED_ENCODING in error, error
+    assert "no encoding declaration begins it" in error and "at its start" in error, error
+
+
 @pytest.mark.parametrize("declaration, production, character", [
     ('<?xml version="1.0" encoding="a>b"?>', "[81] EncName", ">"),
     ('<?xml version="1.0" encoding="a?>b"?>', "[81] EncName", "?"),

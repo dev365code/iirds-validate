@@ -191,6 +191,31 @@ def test_a_target_that_only_begins_with_xml_is_not_a_declaration():
     assert parsed(raw)[1] is None
 
 
+#: Each mark, with the codec of what follows it and the name agreeing with it.
+MARKS = {"utf-8": (b"\xef\xbb\xbf", "utf-8", "UTF-8"),
+         "utf-16le": (b"\xff\xfe", "utf-16-le", "UTF-16"),
+         "utf-16be": (b"\xfe\xff", "utf-16-be", "UTF-16"),
+         "utf-32le": (b"\xff\xfe\x00\x00", "utf-32-le", "UTF-32")}
+
+
+@pytest.mark.parametrize("declaration", ["", '<?xml version="1.0"?>\n',
+                                         '<?xml version="1.0" encoding="{own}"?>\n',
+                                         '<?xml version="1.0" encoding="ISO-8859-1"?>\n'])
+@pytest.mark.parametrize("form", sorted(MARKS))
+def test_a_second_byte_order_mark_is_a_character_the_document_is_refused_for(form, declaration,
+                                                                            tmp_path):
+    """A byte order mark is a signature once. Behind it U+FEFF is a character,
+    and nothing lets one stand before the declaration or the document element.
+    Decoded and written again as UTF-8 it read as a mark, and a declaration
+    behind it, ISO-8859-1 behind a UTF-16 mark among them, passed unheld."""
+    mark, codec, own = MARKS[form]
+    raw = mark + ("\ufeff" + declaration.format(own=own) + BODY).encode(codec)
+    graph, error = parsed(raw)
+    assert graph is None and error, (form, declaration)
+    assert iirds.declared_encoding(raw) is None
+    assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
 @pytest.mark.parametrize("form", sorted(FORMS))
 def test_the_name_read_is_the_one_declared(form):
     raw = stored(form, "<?xml version='1.0'\tencoding = '{lower}' standalone='no'?>")

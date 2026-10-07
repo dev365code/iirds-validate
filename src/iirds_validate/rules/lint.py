@@ -1037,7 +1037,9 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     default = graphs.get(None)
     # Named only where they hold something the default graph does not: a
     # graph restating the default one hides nothing from its reader.
-    left_out = set(ctx.repeats.get(METADATA_JSONLD) or ())
+    repeated = ctx.repeats.get(METADATA_JSONLD) or ()
+    grouped = [item for item in repeated if hasattr(item, "description")]
+    left_out = {item for item in repeated if not hasattr(item, "description")}
     named = [name for name, graph in graphs.items()
              if name is not None and default is not None and name not in left_out
              and any(triple not in default for triple in graph)]
@@ -1052,10 +1054,14 @@ def l17_jsonld_statements_in_a_named_graph(ctx):
     # it would say two things about one package.
     iris = sorted(str(name) for name in named if not isinstance(name, BNode))
     parts = iris[:3] + (["%d more" % (len(iris) - 3)] if len(iris) > 3 else [])
-    unnamed = len(named) - len(iris)
+    unnamed = len(named) - len(iris) - sum(item.count - 1 for item in grouped)
     if unnamed:
         parts.append("%d without a name" % unnamed)
     where = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+    if grouped:
+        descriptions = "; ".join("%d graph copies repeat canonical description %s" % (
+            item.count, item.description) for item in sorted(grouped, key=lambda x: x.description))
+        where += "; " + descriptions
     seen = "none of them" if missed == stated else "the other %d" % (stated - missed)
     yield Violation("statements of metadata.jsonld are in a named graph, which a reader of the "
                     "default graph does not see",

@@ -884,3 +884,37 @@ def test_a_shared_cycle_and_its_whole_repeat_count_once(make_package):
                                        jsonld=document))
     assert not _findings(report, "L9"), [f.violation.detail for f in _findings(report, "L9")]
     assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+def test_blank_named_repeats_publish_a_count_and_canonical_description():
+    """JSON-LD 1.1 §8 allows blank nodes as graph names; §4.5.1 scopes
+    their labels to the document. A repeat summary must not select a label.
+    """
+    results = []
+    for order in (("a", "b"), ("b", "a")):
+        graphs = {None: Graph()}
+        graphs.update((BNode(name), _tree_graph()) for name in order)
+        merged, repeated, uncounted = iirds.merge_graphs_of(graphs)
+        assert len(repeated) == 1 and repeated[0].count == 2, repeated
+        assert repeated[0].description and not uncounted
+        results.append((sorted((str(s), str(p), str(o)) for s, p, o in merged), repeated))
+    assert results[0] == results[1]
+
+
+def test_blank_graph_repetition_reports_match_after_reordering(make_package):
+    """JSON-LD 1.1 §8: graph ordering does not choose the anonymous
+    description reported. The archive digest still identifies stored bytes.
+    """
+    outputs = []
+    for order in (("a", "b"), ("b", "a")):
+        document = _document([_nodes()[0]] + [
+            {"@id": "_:" + name, "@graph": _repeat()[1:]} for name in order])
+        report = runner.run(make_package(name="same.iirds", metadata=MINIMAL_RDF, jsonld=document),
+                            runner.ALL_KINDS)
+        payload = report.as_dict()
+        payload.pop("packageDigest")  # Changing archive bytes changes its provenance digest.
+        outputs.append(json.dumps(payload, sort_keys=True).encode())
+        [finding] = _findings(report, "L17")
+        assert "2 graph copies repeat canonical description" in finding.violation.detail
+        assert "_:a" not in finding.violation.detail and "_:b" not in finding.violation.detail
+    assert outputs[0] == outputs[1]

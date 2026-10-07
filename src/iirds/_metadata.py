@@ -19,7 +19,7 @@ from pkgutil import get_data
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from rdflib import BNode, Graph, Literal
-from rdflib.compare import isomorphic
+from rdflib.compare import isomorphic, to_canonical_graph
 
 #: Two cheap guards, applied before the parser sees anything.
 MAX_METADATA_BYTES = 64 * 1024 * 1024
@@ -1440,6 +1440,45 @@ def _lent(items, blanks, shared, searched=True):
     return fingerprints
 
 
+class _GraphRepeat(NamedTuple):
+    """Anonymous graph copies, reported as a count and one stable description."""
+    count: int
+    description: str
+
+
+def _blank_repeat_groups(items, blanks, shared, searched):
+    groups, keys = {}, {}
+    for (name, graph), nodes in zip(items, blanks):
+        if (not isinstance(name, BNode) or not nodes or nodes & shared
+                or (not searched and _outside_trees(graph))):
+            continue
+        key = tuple(_fingerprint(graph))
+        keys[name] = key
+        groups.setdefault(key, []).append((name, graph))
+    return {key: members for key, members in groups.items() if len(members) > 1}, keys
+
+
+def _canonical_repeat(graph, description, occupied):
+    normalized = Graph()
+    for triple in graph:
+        normalized.add(tuple(Literal(str(term), lang=term.language.lower())
+                             if isinstance(term, Literal) and term.language else term
+                             for term in triple))
+    canonical = to_canonical_graph(normalized)
+    names = {}
+    for node in sorted({term for triple in canonical for term in triple
+                        if isinstance(term, BNode)}, key=str):
+        label = "canonical_" + description + "_" + str(node)
+        while BNode(label) in occupied:
+            label += "_"
+        names[node] = BNode(label)
+        occupied.add(names[node])
+    result = Graph()
+    for triple in canonical:
+        result.add(tuple(names.get(term, term) for term in triple))
+    return result
+
+
 def merge_graphs_of(graphs):
     """One document's graphs -- a mapping of name -> Graph, the default graph
     first -- merged into one, a graph that repeats another counted once.
@@ -1476,9 +1515,10 @@ def merge_graphs_of(graphs):
     repeats is left out is what a caller reports, and the order a parser
     hands graphs over in follows its blank-node labels.
 
-    Returns ``(merged, repeats, uncounted)``: the merged graph, the names of
-    graphs left out as repeats, and the names of graphs that could not be
-    counted.
+    Returns ``(merged, repeats, uncounted)``: the merged graph, repeated IRI
+    graph names or anonymous repetition summaries, and graphs that could not
+    be counted. Equal anonymous graphs contribute one canonical description,
+    with their copy count; no anonymous graph is selected as representative.
     """
     items = list(graphs.items())
     items = items[:1] + sorted(items[1:], key=lambda item: (isinstance(item[0], BNode),
@@ -1500,10 +1540,24 @@ def merge_graphs_of(graphs):
     merged = Graph()
     kept = _lent(items, blanks, shared, searched)
     repeats, uncounted = [], []
+    anonymous, cached_keys = _blank_repeat_groups(items, blanks, shared, searched)
+    counted = set()
+    occupied = set().union(*blanks)
     for (name, graph), nodes, apart in zip(items, blanks, outside):
+        cached = cached_keys.get(name)
+        if cached in anonymous:
+            if cached not in counted:
+                description = hashlib.sha256(repr(cached).encode("utf-8")).hexdigest()
+                if cached not in kept:
+                    merged += _canonical_repeat(graph, description, occupied)
+                    kept.add(cached)
+                repeats.append(_GraphRepeat(len(anonymous[cached]), description))
+                counted.add(cached)
+            continue
         if nodes and not nodes & shared:
             try:
-                key = tuple(_fingerprint(graph)) if searched or not apart else None
+                key = (cached_keys[name] if name in cached_keys else tuple(_fingerprint(graph))) \
+                    if searched or not apart else None
             except _NotCompared:
                 key = None
             if key is None and sizes[len(graph)] > 1:
@@ -1514,6 +1568,8 @@ def merge_graphs_of(graphs):
                     continue
                 kept.add(key)
         merged += graph
+    repeats.sort(key=lambda item: (2, item.description) if isinstance(item, _GraphRepeat)
+                 else (1, "") if isinstance(item, BNode) else (0, str(item)))
     return merged, repeats, uncounted
 
 

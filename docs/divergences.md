@@ -1229,7 +1229,12 @@ those is searched, the files are not compared and L9 says so, a limit of this
 tool rather than a reading of the standard -- one that
 shares a node with another graph is not, since a blank node's label names one
 node across the document -- and one repeating part of it around such a node
-makes a second node, which L9 reports. And where a file's statements are split
+makes a second node, which L9 reports. The graph repeated may itself lend a
+label to another graph, as a default graph whose rendition a named graph
+speaks of does; it is still the graph it is, and a whole repeat of it counts
+once, where its blank nodes form trees. Where they do not, naming them would
+take a search, kept for the graphs that can be left out, and the repeat is a
+second copy, which L9 reports. And where a file's statements are split
 between its default graph and named graphs, and the default graph holds such a
 node, the merge, which reads default graphs, holds that node beside
 `metadata.rdf`'s: a rule that looks at it reports it twice, a count rule as a

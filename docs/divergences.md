@@ -1468,9 +1468,10 @@ over the shift key. A package that genuinely uses the wrong extension --
 `.html`, `.htm` -- is still reported, which is the case the sentence is about.
 
 This is a spelling, so the claim on the sentence stands. It is one call to
-`.lower()` if the Consortium reads it the other way. R41, R42, R44 and R45,
-which hold iiRDS/A renditions to `.pdf`, `.svg` or `.svgz`, `.mp4` and `.mp3`
-and claim no sentence, compare the same way.
+`.lower()` if the Consortium reads it the other way. R41 and R42, which hold
+every PDF and every SVG in an iiRDS/A package to `.pdf` and to `.svg` or
+`.svgz` and claim those sentences, and R44 and R45, which hold video and audio
+to `.mp4` and `.mp3` and claim none, compare the same way.
 
 ### B8 — "only one" is scoped to a hazard statement, not to a file
 

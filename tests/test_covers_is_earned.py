@@ -867,6 +867,12 @@ NAMED_CASES = {
         "test_obl_h:test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way",
 
     # --- evidence: C content & formats ---
+    "x8-2-1-1-text-formats#5":
+        "test_obl_c:test_a_pdf_the_metadata_calls_something_else_is_named_pdf",
+    "x8-2-1-2-graphics-formats#3":
+        "test_obl_c:test_an_svg_a_page_shows_under_another_name_is_refused",
+    "x8-2-1-1-text-formats#2":
+        "test_obl_c:test_an_xhtml_page_a_page_links_to_is_named_xhtml",
 
 }
 
@@ -911,7 +917,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 181, len(CLAIMED)
+    assert len(CLAIMED) == 184, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 
@@ -1191,6 +1197,15 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     reported and still exits 0. That is deliberate and argued in
     docs/divergences.md -- and the coverage figure is the line a reader quotes,
     so the count has to be beside it and has to be the measured one.
+
+    Section 8.2's obligations are not among them, whichever rule claims one
+    and wherever that rule runs. The section is iiRDS/A's: only an iiRDS/A
+    package can breach one of its sentences, and in an iiRDS/A package the
+    runner does not demote a content finding -- so a package that breaches
+    it fails. What decides it is the scope of the sentence, read from the
+    requirement's own section, not which profiles the rule is registered for:
+    B6 runs everywhere and claims one of section 8.2's sentences as well as
+    appendix B's.
     """
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
     # Obligations, not rules: nine content rules claim ten of appendix B's, and
@@ -1200,8 +1215,11 @@ def test_the_scope_document_says_which_claims_do_not_fail_a_package():
     # them appendix B's: counting appendix B's alone let an eleventh, claimed
     # by a content rule from another section, go uncounted.
     kinds = {rule.id: rule.kind for rule in all_rules()}
+    sections = {r["id"]: r["section"] for r in
+                json.loads((ROOT / "docs" / "requirements.json").read_text("utf-8"))["requirements"]}
     demoted = sorted(requirement for requirement, claimants in CLAIMED.items()
-                     if {kinds[rule_id] for rule_id in claimants} == {"content"})
+                     if {kinds[rule_id] for rule_id in claimants} == {"content"}
+                     and not sections[requirement].startswith("x8-2"))
     appendix_b = sorted(requirement for requirement in CLAIMED if requirement.startswith("b-"))
     assert demoted == appendix_b, (
         "only content rules claim %s; appendix B's claimed obligations are %s"

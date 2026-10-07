@@ -736,6 +736,11 @@ def _refused_by_first_bytes(name: str, start: _Start, declared: Optional[str],
                 "declare the byte order as UTF-16LE or UTF-16BE" % (
                     name, UNREADABLE_ENCODING, _shown(declared)))
     if _encoding_form(declared) in _AGREES[start.encoding]:
+        if _registered(declared)["mib"] == 1000:
+            text = _decoded(stored[start.skip:], start.codec)
+            if text is not None and any(ord(char) > 0xFFFF for char in text):
+                return _contradicted(name, "its decoded text contains", "characters outside "
+                                     "the UCS-2 BMP", declared)
         return None
     return _contradicted(name, "its byte order mark says" if start.marked else "its first bytes say",
                          start.encoding, declared)

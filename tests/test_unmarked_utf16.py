@@ -240,3 +240,17 @@ def test_generic_utf16_without_a_mark_is_refused(order, declared, tmp_path):
     assert graph is None and "byte order mark" in error, error
     assert "4.3.3" in error and declared in error
     assert not runner.check(build_package(tmp_path, metadata=raw)).ok
+
+
+@pytest.mark.parametrize("order", ["utf-16-le", "utf-16-be"])
+@pytest.mark.parametrize("declared", ["ISO-10646-UCS-2", "csUnicode"])
+def test_ucs2_cannot_declare_a_supplementary_character(order, declared, tmp_path):
+    """IANA record 1000 restricts UCS-2 to the BMP. XML 1.0 §4.3.3
+    requires the declaration to name the encoding represented by the bytes.
+    """
+    body = BODY.replace("A topic", "outside 😀")
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + body).encode(order)
+    graph, error = parsed(raw)
+    assert graph is None and iirds.CONTRADICTED_ENCODING in error, error
+    assert "BMP" in error and declared in error
+    assert not runner.check(build_package(tmp_path, metadata=raw)).ok

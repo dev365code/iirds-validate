@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 
 from rdflib import URIRef
-from rdflib.namespace import RDFS
 
 from .. import terms as T
 from ..model import Violation
@@ -149,18 +148,6 @@ def _cell_text(cell):
     return "".join(parts)
 
 
-def _cell_values(cell):
-    """Visible values and actual link targets, without guessing header meanings."""
-    values = set()
-    for element in _cell_elements(cell):
-        text = " ".join(_cell_text(element).split())
-        if text:
-            values.add(text)
-        if _list_tag(element) == "a" and element.get("href"):
-            values.add(element.get("href").strip())
-    return values
-
-
 def _contains(text, value):
     return bool(value) and re.search(r"(?<!\w)" + re.escape(str(value)) + r"(?!\w)", text) is not None
 
@@ -236,46 +223,9 @@ def _document_rows(ctx, documents):
             yield number, cells, _row_units(ctx, cells, documents)
 
 
-def _node_names(ctx, node):
-    return {str(node)} | {str(v) for v in ctx.values(node, RDFS.label)} \
-        | {str(v) for v in ctx.ontology.graph.objects(node, RDFS.label)}
-
-
-def _data_columns(ctx, cells, unit):
-    """Candidate positions for the five bullet points, using actual cell data."""
-    slots = [set() for _ in range(5)]
-    for position, cell in enumerate(cells):
-        values = _cell_values(cell)
-        if {str(v) for v in ctx.values(unit, T.title)} & values:
-            slots[0].add(position)
-        languages = {str(v).lower() for v in ctx.values(unit, T.language)}
-        if languages and languages <= {v.lower() for v in values}:
-            slots[1].add(position)
-        if any(_node_names(ctx, v) & values or _identity_in(ctx, v, " ".join(values))
-               for v in ctx.values(unit, T.relates_to_product_variant)):
-            slots[2].add(position)
-        categories = list(ctx.values(unit, T.hov_has_document_category)) \
-            + list(ctx.values(unit, T.has_external_classification))
-        if any(_node_names(ctx, c) & values
-               or {str(v) for v in ctx.values(c, T.classificationIdentifier)} & values
-               for c in categories):
-            slots[3].add(position)
-        if unit in _row_units(ctx, [cell], {unit}):
-            slots[4].add(position)
-    return slots
-
-
-def _five_distinct_columns(slots, used=frozenset()):
-    # Only the five data roles in this section, not a general table engine.
-    if not slots:
-        return True
-    first, *rest = sorted(slots, key=len)
-    return any(_five_distinct_columns(rest, used | {column}) for column in first - used)
-
-
 @rule("R69", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
       title="the content list provides all five required data columns",
-      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#6",),
+      spec=_CONTENT_LIST_SECTION, covers=(),
       fix="Provide columns in index.html for the document title, languages, product "
           "instance reference or complex identity, document category or external "
           "classification, and unit IRI, complex identity or PDF/A hyperlink. Fill "
@@ -283,19 +233,12 @@ def _five_distinct_columns(slots, used=frozenset()):
 def r69_content_list_columns(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
-    units = set(ctx.instances_of(T.InformationUnit))
-    for rows in _list_tables(_list_root(ctx)):
-        if not rows:
-            continue
-        common = None
-        for cells in rows:
-            targets = _row_units(ctx, cells, units)
-            if len(targets) != 1:
-                break
-            slots = _data_columns(ctx, cells, next(iter(targets)))
-            common = slots if common is None else [a & b for a, b in zip(common, slots)]
-        else:
-            if common is not None and _five_distinct_columns(common):
-                return
-    yield Violation("the content list must provide all five required data columns",
-                    subject=CONTENT_LIST)
+    documents = set(ctx.instances_of(T.Document))
+    for number, cells, targets in _document_rows(ctx, documents):
+        if len(targets) == 1:
+            nonempty = sum(bool(_cell_text(cell).strip())
+                           or any(e.get("href") for e in _cell_elements(cell)) for cell in cells)
+            if nonempty < 5:
+                document = next(iter(targets))
+                yield Violation("the row for document %s provides fewer than five data cells" % document,
+                                subject=CONTENT_LIST, detail="row %d" % number)

@@ -667,25 +667,25 @@ def test_content_list_with_one_row_per_unit_passes(tmp_path):
 def test_content_list_without_tabular_data_is_reported(tmp_path):
     package = listed_handover(tmp_path, "no-table.iirds", body="<html><body/></html>")
     assert findings(package, "R68")
-    assert findings(package, "R69")
+    assert findings(package, "R69") == []
 
 
 @pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
-def test_content_list_missing_a_required_data_column_is_reported(tmp_path, column):
+def test_content_list_missing_a_data_cell_is_reported(tmp_path, column):
     """x8-3-1-1-mandatory-content-list#6\n
     The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):"""
     rows = [r[:column] + r[column + 1:] for r in list_rows()]
     headers = LIST_COLUMNS[:column] + LIST_COLUMNS[column + 1:]
     package = listed_handover(tmp_path, "missing-column.iirds", body=content_list(rows, headers))
-    assert findings(package, "R69")
+    assert bool(findings(package, "R69")) == (column != 4)
 
 
 @pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
 def test_content_list_header_cannot_replace_missing_column_data(tmp_path, column):
     rows = list_rows()
-    rows[0] = rows[0][:column] + ("",) + rows[0][column + 1:]
+    rows[1] = rows[1][:column] + ("",) + rows[1][column + 1:]
     package = listed_handover(tmp_path, "empty-cell.iirds", rows=rows)
-    assert findings(package, "R69")
+    assert bool(findings(package, "R69")) == (column != 4)
 
 
 def test_content_list_required_columns_and_additional_data_pass(tmp_path):
@@ -787,7 +787,7 @@ def test_foreign_table_names_do_not_supply_xhtml_tabular_data(tmp_path):
                                              'xmlns="urn:foreign"')
     package = listed_handover(tmp_path, "foreign-table.iirds", body=body)
     assert findings(package, "R68")
-    assert findings(package, "R69")
+    assert findings(package, "R69") == []
 
 
 # Content list inputs rebuilt by the fixture writer.
@@ -880,3 +880,45 @@ def test_h2b_table_semantics_accept_headers_footers_and_spans(tmp_path, case):
 def test_h2b_table_semantics_nested_cells_belong_only_to_the_inner_table(tmp_path):
     body = content_list([("Outer",)], headers=()).replace('<td>Outer</td>', '<td>Outer<table><tbody><tr><td>urn:test:doc2</td></tr><tr><td>urn:test:doc3</td></tr></tbody></table></td>')
     assert findings(h2b_review_package(tmp_path, 'baseline', body), 'R68') == []
+
+
+H2B_REVIEW_LISTS.update({
+    'split_row_column_witness': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>urn:test:package</td></tr><tr><td>urn:test:doc2</td></tr><tr><td>urn:test:doc3</td></tr></tbody></table><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr></tbody></table></body></html>',
+    'language_english': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'title_suffix': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+})
+
+def test_h2b_cells_are_checked_for_every_document_across_tables(tmp_path):
+    from iirds_validate.cli import main
+
+    package = h2b_review_package(tmp_path, 'split_row_column_witness')
+    assert findings(package, 'R68') == []
+    got = findings(package, 'R69')
+    assert {f.violation.message for f in got} == {
+        'the row for document urn:test:doc2 provides fewer than five data cells',
+        'the row for document urn:test:doc3 provides fewer than five data cells'}
+    assert main(['check', '-W', str(package)]) == 1
+
+
+@pytest.mark.parametrize('case', ['language_english', 'title_suffix'])
+def test_h2b_cells_accept_human_readable_data(tmp_path, case):
+    assert findings(h2b_review_package(tmp_path, case), 'R69') == []
+
+
+def test_h2b_cells_example_62_shape_needs_no_package_data(tmp_path):
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('>en<', '>English<').replace('http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td>', 'iirdsHov:Operation</td>')
+    metadata = H2B_REVIEW_METADATA.replace('<iirds:title>Operating instructions 1</iirds:title>', '').replace('<iirds:language>en</iirds:language>', '', 1).replace('<hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>', '', 1)
+    package = h2b_review_package(tmp_path, 'baseline', body, metadata)
+    assert not {f.rule.id for f in runner.check(package).findings} & {'R67', 'R68', 'R69'}
+
+
+def test_h2b_cells_a_document_row_in_another_table_also_needs_five_cells(tmp_path):
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('</body>', '<table><tbody><tr><td>urn:test:doc2</td></tr></tbody></table></body>')
+    got = findings(h2b_review_package(tmp_path, 'baseline', body), 'R69')
+    assert len(got) == 1
+    assert 'urn:test:doc2' in got[0].violation.message
+
+
+def test_h2b_cells_empty_grid_positions_do_not_provide_data(tmp_path):
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('>en<', '><')
+    assert len(findings(h2b_review_package(tmp_path, 'baseline', body), 'R69')) == 2

@@ -1416,6 +1416,13 @@ list row as a row for a delivered Document, with no row required for the
 Package itself. Topic and Fragment instances are reported by M15.11a under
 section 8.3.2.1 and are outside the list's row population.
 
+R68 and R69 inspect the same document rows across all tables. R69 reports a
+row with fewer than five nonempty cells in its logical grid, including cells
+carried down by rowspan. It does not verify which data roles those cells
+provide or their human-readable spelling: language names, abbreviated IRIs
+and titles with revision notes remain readable to a person. Neither R69 nor
+C11.2 claims section 8.3.1.1's complete column-data obligation (#6).
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

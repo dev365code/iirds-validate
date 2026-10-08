@@ -679,15 +679,50 @@ def b5_link_rel(ctx):
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
 
 
+_NON_CSS_SIGNATURES = (
+    (b"%PDF-", "PDF"), (b"PK\x03\x04", "ZIP"), (b"PK\x05\x06", "ZIP"),
+    (b"PK\x07\x08", "ZIP"), (b"\x89PNG\r\n\x1a\n", "PNG"),
+    (b"\xff\xd8\xff", "JPEG"), (b"GIF87a", "GIF"), (b"GIF89a", "GIF"),
+    (b"\x1f\x8b", "gzip"),
+)
+
+
+def _stylesheet_text(raw):
+    """CSS Syntax 3 section 3.2: BOM, exact @charset prefix, then UTF-8.
+
+    Local links supply neither protocol nor environment encodings. Decode
+    with replacement; an encoding cannot establish that a file is not CSS.
+    """
+    for bom, encoding in ((b"\xef\xbb\xbf", "utf-8"), (b"\xff\xfe", "utf-16-le"),
+                          (b"\xfe\xff", "utf-16-be")):
+        if raw.startswith(bom):
+            return raw[len(bom):].decode(encoding, errors="replace")
+    encoding = "utf-8"
+    declaration = re.match(br'@charset "([\x00-\x21\x23-\x7f]*)";', raw[:1024])
+    if declaration:
+        try:
+            candidate = codecs.lookup(declaration.group(1).decode("ascii")).name
+        except LookupError:
+            candidate = "utf-8"
+        if candidate not in ("utf-16", "utf-16-le", "utf-16-be"):
+            encoding = candidate
+    try:
+        return raw.decode(encoding, errors="replace")
+    except LookupError:
+        # A Python transformation codec is not a character encoding.
+        return raw.decode("utf-8", errors="replace")
+
+
 @rule("R74", covers=(), kind="content", prio="MUST", versions=(), variants=(),
       title="an iiRDS XHTML5 stylesheet must be in CSS format",
-      fix="Replace the linked file with a CSS stylesheet and update every reference to it. "
-          "If the file is missing, include it at the path the link names.")
+      fix="Replace a file identified as another format with a CSS stylesheet. "
+          "If the stylesheet is missing, include it at the linked path or correct the link. "
+          "Update references when its path changes.")
 def r74_stylesheet_format(ctx):
     """B.1: "iiRDS XHTML5 stylesheets MUST be in CSS format."
 
-    Reject known non-CSS bytes and text that is not UTF-8, without a CSS
-    parser. Other UTF-8 text passes, so this does not claim the whole sentence.
+    Identify binary signatures and XML/HTML after CSS decoding, without a
+    CSS parser. Other text passes, so this does not claim the whole sentence.
     Resolve local links as `_pointed_at` does; no other B rule reports missing
     stylesheet targets. External resources are not opened.
     """
@@ -713,18 +748,17 @@ def r74_stylesheet_format(ctx):
         if unread:
             # S9/S14/S16 report refusals; no format was determined.
             continue
-        head = raw.lstrip(b" \t\r\n\f")
-        if head.startswith(b"\xef\xbb\xbf"):
-            head = head[3:].lstrip(b" \t\r\n\f")
-        non_css = head.startswith((b"<", b"%PDF-", b"PK\x03\x04", b"PK\x05\x06",
-                                   b"PK\x07\x08", b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff",
-                                   b"GIF87a", b"GIF89a", b"\xff\xfe", b"\xfe\xff"))
-        try:
-            raw.decode("utf-8")
-        except UnicodeDecodeError:
-            non_css = True
-        if non_css:
-            yield Violation("the linked stylesheet has bytes incompatible with CSS text",
+        binary = next((kind for signature, kind in _NON_CSS_SIGNATURES
+                       if raw.startswith(signature)), None)
+        if binary:
+            yield Violation("the linked stylesheet is a %s file, not CSS" % binary,
+                            subject=name)
+            continue
+        text = _stylesheet_text(raw).lstrip(" \t\r\n\f")
+        while text.startswith("<!--"):
+            text = text[4:].lstrip(" \t\r\n\f")
+        if text.lower().startswith(("<?xml", "<!doctype", "<html", "<svg", "<rdf:rdf")):
+            yield Violation("the linked stylesheet is an XML or HTML document, not CSS",
                             subject=name)
 
 

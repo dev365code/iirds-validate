@@ -461,21 +461,58 @@ def test_c2_unused_names_do_not_identify_graphics_but_known_rasters_still_report
     assert _subjects(report, "R43") == ["content/identified.bin"]
 
 
-@pytest.mark.parametrize("name,body", [
-    ("style.xml", b'<?xml version="1.0"?><style/>'),
-    ("style.css", b" \n<html><head/></html>"),
-    ("style.pdf", PDF), ("style.zip", b"PK\x03\x04"),
-    ("style.png", b"\x89PNG\r\n\x1a\n"), ("style.jpg", JPEG),
-    ("style.gif", b"GIF89a"), ("style.wide", "p { color: red; }".encode("utf-16")),
-    ("style.bin", b"p { color: red; }\xff"),
-    ("style.bom", b"\xef\xbb\xbf<html/>"),
-    ("style.late", b"p { color: red; }" + b" " * 5000 + b"\xff"),
+@pytest.mark.parametrize("name,body,format_name", [
+    ("style.xml", b'<?xml version="1.0"?><style/>', "XML or HTML document"),
+    ("style.css", b" \n<html><head/></html>", "XML or HTML document"),
+    ("style.doctype", b"<!dOcTyPe html><html/>", "XML or HTML document"),
+    ("style.svg", b"<svg/>", "XML or HTML document"),
+    ("style.rdf", b"<rdf:RDF/>", "XML or HTML document"),
+    ("style.pdf", PDF, "PDF file"), ("style.zip", b"PK\x03\x04", "ZIP file"),
+    ("style.png", b"\x89PNG\r\n\x1a\n", "PNG file"),
+    ("style.jpg", JPEG, "JPEG file"), ("style.gif", b"GIF89a", "GIF file"),
+    ("style.gz", b"\x1f\x8b", "gzip file"),
+    ("style.wide-xml", b"\xff\xfe" + '<?xml version="1.0"?><style/>'.encode("utf-16-le"),
+     "XML or HTML document"),
+    ("style.bom", b"\xef\xbb\xbf<html/>", "XML or HTML document"),
 ])
-def test_c2_a_stylesheet_with_non_css_bytes_is_reported(make_package, name, body):
+def test_c2_a_stylesheet_with_non_css_bytes_is_reported(make_package, name, body, format_name):
     """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
     report = _linked(make_package, '<link rel="stylesheet" href="%s"/>' % name,
                      (("content/" + name, body),), "c2-style.iirds")
     assert _subjects(report, "R74") == ["content/" + name]
+    finding = next(f for f in report.findings if f.rule.id == "R74")
+    assert finding.violation.message == "the linked stylesheet is a%s %s, not CSS" % (
+        "n" if format_name == "XML or HTML document" else "", format_name)
+    assert finding.rule.fix == (
+        "Replace a file identified as another format with a CSS stylesheet. "
+        "If the stylesheet is missing, include it at the linked path or correct the link. "
+        "Update references when its path changes.")
+
+
+@pytest.mark.parametrize("name,body", [
+    ("style.wide", b"\xff\xfe" + "p { color: red; }".encode("utf-16-le")),
+    ("style.big-endian", b"\xfe\xff" + "p { color: red; }".encode("utf-16-be")),
+    ("style.latin", b'@charset "iso-8859-1"; p { content: "caf\xe9"; }'),
+    ("style.cdo", b"<!--\np { color: red; }\n-->"),
+    ("style.import", b'\xef\xbb\xbf@import "other.css";'),
+    ("style.empty", b""),
+    ("style.less-than", b'p::after { content: "<"; }'),
+    ("style.bin", b"p { color: red; }\xff"),
+    ("style.late", b"p { color: red; }" + b" " * 5000 + b"\xff"),
+])
+def test_a_stylesheets_encoding_does_not_identify_another_format(make_package, name, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    report = _linked(make_package, '<link rel="stylesheet" href="%s"/>' % name,
+                     (("content/" + name, body),), "encoded-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+
+
+def test_leading_cdo_tokens_do_not_hide_an_xml_stylesheet(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    body = b' \n<!-- \t<!--\n<?xml version="1.0"?><style/>'
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "wrapped-xml-stylesheet.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
 
 
 @pytest.mark.parametrize("href", ["../style%20sheet.css?x=1#part", "/style%20sheet.css"])

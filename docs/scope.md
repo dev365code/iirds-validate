@@ -127,7 +127,7 @@ regression tests, which record every defect it has caught and how.
 Kept short and kept honest. If one of these is quietly dropped, something has
 gone wrong.
 
-1. **Coverage of the standard is 185 of 280.** 150 of the 185 are held by a
+1. **Coverage of the standard is 184 of 280.** 149 of the 184 are held by a
    package. The second number is the one to weigh, and it is the smaller one
    for a reason worth stating plainly: a `covers=` claim used to be made by
    reading a sentence and a rule side by side and judging them to be about the
@@ -154,14 +154,14 @@ gone wrong.
    does, and a documented divergence that narrows a check withdraws the claim
    with it — keeping both is exactly how a documented exemption becomes an
    undocumented hole. `tests/test_covers_is_earned.py` holds the criterion,
-   names the 150 claims a package stands behind, and names the other 35 in a
+   names the 149 claims a package stands behind, and names the other 35 in a
    list called UNAUDITED. Every one of those 35 may be perfectly good; none
    is *known* to be, and the ten that were not looked just like them.
 
    **A claim says a violation is reported. It does not say the package
-   fails.** Eleven of the 185 are appendix B's obligations about iiRDS XHTML5
+   fails.** Ten of the 184 are appendix B's obligations about iiRDS XHTML5
    content, claimed by content rules alone, and outside profile iiRDS/A the runner demotes content findings to
-   warnings — so a package breaching one of those eleven is reported, prints
+   warnings — so a package breaching one of those ten is reported, prints
    `PASS` and exits 0 -- except where no content rule got a parsed
    document for the file at all, the container having refused to hand it over
    or this tool having refused to parse it, which `ERROR S16` reports as the

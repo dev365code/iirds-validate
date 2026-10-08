@@ -666,15 +666,16 @@ _DOCUMENT_RELATIONS = frozenset(("alternate", "author", "help", "license", "next
                                "prefetch", "prev", "search"))
 
 
-@rule("B5", covers=("b-5-2-document-metadata#1", "b-5-2-document-metadata#3"), kind="content", prio="MUST", versions=(), variants=(),
+@rule("B5", covers=("b-5-2-document-metadata#1",), kind="content", prio="MUST", versions=(), variants=(),
       title="link is only for stylesheets; document relations on a and area belong in RDF",
       fix="Use link only with rel=\"stylesheet\", or delete it. Express document relations "
           "on link, a or area in the iiRDS metadata graph; remove those rel tokens from "
           "a and area while retaining their ordinary hyperlinks.")
 def b5_link_rel(ctx):
     """B.5.2. Every other relation "MUST be expressed by means of RDF in
-    iiRDS". HTML5 2014 section 4.8.4 defines eight relation types shared by
-    link and a/area; expressing them on a/area does not put them in RDF."""
+    iiRDS". The eight shared types in HTML5 2014's basic table are reported
+    on a/area. Section 4.8.4.14 permits extension types that this fixed set
+    does not know, so the whole relation sentence remains unclaimed."""
     for name, root in _walk(ctx):
         # By local name, like every other rule here. Matching the namespaced
         # tag meant a document missing its xmlns declaration got B2, B3, B4, B7

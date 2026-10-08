@@ -597,7 +597,7 @@ def test_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
     (element, rel) for element in ("a", "area")
     for rel in ("alternate", "author", "help", "license", "next", "prefetch", "prev", "search")
 ] + [("link", "next"), ("a", "NEXT"), ("area", "nofollow\tPREV next")])
-def test_document_relations_are_reported_by_a_rule_claiming_the_sentence(
+def test_shared_document_relations_are_reported_without_claiming_the_whole_sentence(
         make_package, element, rel):
     """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
     markup = '<%s rel="%s" href="next.xhtml"/>' % (element, rel)
@@ -605,7 +605,7 @@ def test_document_relations_are_reported_by_a_rule_claiming_the_sentence(
                      "document-relation.iirds")
     findings = [f for f in report.findings if f.rule.id == "B5"]
     assert len(findings) == 1
-    assert "b-5-2-document-metadata#3" in findings[0].rule.covers
+    assert "b-5-2-document-metadata#3" not in findings[0].rule.covers
     if element != "link":
         assert "<%s rel=" % element in findings[0].violation.message
         assert "metadata graph" in findings[0].violation.message
@@ -753,3 +753,16 @@ def test_a_gif_identifier_does_not_identify_a_stylesheet_as_an_image(make_packag
     report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
                      (("content/style.css", body),), "gif-selector-stylesheet.iirds")
     assert not _subjects(report, "R74")
+
+@pytest.mark.parametrize("element", ["a", "area"])
+def test_extended_document_relations_leave_the_whole_sentence_unclaimed(make_package, element):
+    """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."
+    HTML5 permits an open registry of relation types, including last.
+    """
+    from iirds_validate.registry import all_rules
+
+    report = _linked(make_package, '<%s rel="last" href="last.xhtml"/>' % element,
+                     (("content/last.xhtml", PAGE.format("last").encode()),),
+                     "extended-document-relation.iirds")
+    assert not _subjects(report, "B5")
+    assert all("b-5-2-document-metadata#3" not in rule.covers for rule in all_rules())

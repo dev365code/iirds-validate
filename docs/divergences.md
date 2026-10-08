@@ -1405,6 +1405,16 @@ settle it, this document said otherwise, and the entry now says so. What
 remains interpretation there is the exemption it grants, not the finding it
 makes.
 
+### B5 — document relations include an open set of link types
+
+B5 reports non-stylesheet link elements and the eight types shared by link,
+a and area in HTML5 2014's basic table: alternate, author, help, license, next,
+prefetch, prev and search. Section
+[4.8.4.14](https://www.w3.org/TR/2014/REC-html5-20141028/links.html#other-link-types)
+also permits registered extension types. B5 does not read that open registry,
+so it does not claim the whole sentence requiring relations usually
+represented by link to be expressed by RDF.
+
 ### R74 — stylesheet bytes exclude known non-CSS formats
 
 R74 examines linked local files for identifiable non-CSS content and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.

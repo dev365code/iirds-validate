@@ -718,7 +718,8 @@ def test_content_list_obligations_are_only_asked_in_h_reading(tmp_path, profile)
 def test_content_list_xhtml_attribute_requirements_are_reported(tmp_path, extra):
     package = listed_handover(tmp_path, "attributes.iirds",
                               body=content_list(list_rows(), extra=extra))
-    assert findings(package, "R67")
+    assert findings(package, "R67") == []
+    assert {f.rule.id for f in runner.check(package).findings} & {"B4", "B5", "B7", "B11"}
 
 
 def test_the_package_information_unit_does_not_need_a_list_row(tmp_path):
@@ -922,3 +923,25 @@ def test_h2b_cells_a_document_row_in_another_table_also_needs_five_cells(tmp_pat
 def test_h2b_cells_empty_grid_positions_do_not_provide_data(tmp_path):
     body = H2B_REVIEW_LISTS['package_row_missing'].replace('>en<', '><')
     assert len(findings(h2b_review_package(tmp_path, 'baseline', body), 'R69')) == 2
+
+
+def test_h2b_elements_leave_onclick_to_one_b4_finding(tmp_path):
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('<td>en</td>', '<td onclick="alert(1)">en</td>', 1)
+    package = h2b_review_package(tmp_path, 'baseline', body)
+    assert len(findings(package, 'B4')) == 1
+    assert findings(package, 'R67') == []
+
+
+def test_h2b_elements_do_not_claim_the_unchecked_attribute_whitelist(tmp_path):
+    from iirds_validate.registry import all_rules
+
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('<td>en</td>', '<td invented="value">en</td>', 1)
+    package = h2b_review_package(tmp_path, 'baseline', body)
+    assert findings(package, 'R67') == []
+    claim = 'x8-3-1-1-mandatory-content-list#4'
+    assert not any(claim in rule.covers for rule in all_rules())
+
+
+def test_h2b_elements_report_a_non_html_root(tmp_path):
+    package = h2b_review_package(tmp_path, 'baseline', '<body/>')
+    assert any('html document element' in f.violation.message for f in findings(package, 'R67'))

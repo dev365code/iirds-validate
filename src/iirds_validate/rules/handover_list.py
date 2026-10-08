@@ -21,12 +21,6 @@ from .content import (
     _local,
     _SCHEME,
     _walk,
-    b4_no_event_handlers,
-    b5_link_rel,
-    b7_data_role_values,
-    b8_safety_alert_symbol,
-    b9_signal_word_present,
-    b11_no_scripting_urls,
 )
 from .handover import _CONTENT_LIST_SECTION
 
@@ -45,13 +39,13 @@ def _list_root(ctx):
 
 @rule("R67", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
       title="the content list uses only its five permitted XHTML sections",
-      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#4",),
+      spec=_CONTENT_LIST_SECTION, covers=(),
       fix="Write index.html as iiRDS XHTML5 using only Main Root, Document Metadata, "
           "Sections, Text-Level Semantics and Tabular Data. Replace grouping, embedded "
           "content and edit elements with elements from those five sections.")
 def r67_content_list_elements(ctx):
     if not ctx.package.has(CONTENT_LIST):
-        return  # C11.2 owns the missing list for all three sentences.
+        return  # C11.2 owns the missing list.
     root = _list_root(ctx)
     if root is None:
         yield Violation("the content list could not be read as iiRDS XHTML5",
@@ -69,16 +63,6 @@ def r67_content_list_elements(ctx):
             reported.add(element.tag)
             yield Violation("<%s> is outside the content list's permitted XHTML sections" % tag,
                             subject=CONTENT_LIST, detail=str(element.tag))
-    # "Based on iiRDS XHTML5" includes its attribute and semantic MUSTs too.
-    # Reuse B's implementations, without making ordinary renditions the
-    # subject of this profile-specific rule. B6's extension requirement has
-    # the explicit index.html exception in this section.
-    for check in (b4_no_event_handlers, b5_link_rel, b7_data_role_values,
-                  b8_safety_alert_symbol, b9_signal_word_present,
-                  b11_no_scripting_urls):
-        for violation in check(ctx):
-            if violation.subject == CONTENT_LIST:
-                yield violation
 
 
 def _list_tag(element):

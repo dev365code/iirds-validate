@@ -574,3 +574,217 @@ def test_json_that_is_not_valid_json_ld_is_not_metadata(tmp_path):
     text = '{"@context": 5, "@id": "urn:test:package", "@type": "%s"}' % PKG
     package = build_package(tmp_path, "badld.iirds", extra=(("META-INF/metadata.json", text),))
     assert findings(package, "C16.2") == []
+
+
+# Section 8.3.1.1 specifies column data, not header spelling or order.
+# The identifiers here are RDF IRIs, not names inferred from the ZIP entries.
+LIST_COLUMNS = ("Document", "Languages", "Product", "Category", "Reference")
+
+
+def list_rows(count=3):
+    return [("Operating instructions %d" % n, "en", "urn:test:variant",
+             "http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions",
+             ("urn:test:package" if n == 1 else "urn:test:doc%d" % n))
+            for n in range(1, count + 1)]
+
+
+def content_list(rows, headers=LIST_COLUMNS, extra=""):
+    from html import escape
+
+    head = ("<thead><tr>" + "".join("<th>%s</th>" % escape(h) for h in headers)
+            + "</tr></thead>") if headers else ""
+    body = "".join("<tr>" + "".join("<td>%s</td>" % escape(c) for c in row)
+                   + "</tr>" for row in rows)
+    return ('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Documents</title>'
+            '</head><body><table>' + head + '<tbody>' + body + '</tbody></table>'
+            + extra + '</body></html>')
+
+
+def listed_handover(tmp_path, name, rows=None, body=None, metadata=None):
+    """Three information units: the package and two delivered documents."""
+    if metadata is None:
+        start = HANDOVER.index('  <iirds:Document rdf:about="urn:test:doc1">')
+        end = HANDOVER.index('  </iirds:Document>', start) + len('  </iirds:Document>')
+        block = HANDOVER[start:end]
+        documents = "\n".join(block.replace('urn:test:doc1', 'urn:test:doc%d' % n)
+                              .replace('Operating instructions</iirds:title>',
+                                       'Operating instructions %d</iirds:title>' % n)
+                              for n in range(2, 4))
+        metadata = (HANDOVER[:start] + documents + HANDOVER[end:]).replace(
+            "<iirds:title>Handover</iirds:title>",
+            "<iirds:title>Operating instructions 1</iirds:title>"
+            "<iirds:language>en</iirds:language>"
+            '<hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/'
+            'handover#OperatingInstructions"/>')
+    if body is None:
+        body = content_list(list_rows() if rows is None else rows)
+    return build_package(tmp_path, name, metadata=metadata, jsonld=as_jsonld(metadata),
+                         content=(), extra=(("content/doc1.pdf", b"%PDF-1.4"),
+                                            ("index.html", body)))
+
+
+@pytest.mark.parametrize("element", ["video", "audio", "p", "div", "ins", "custom"])
+def test_content_list_elements_outside_its_allowed_sections_are_reported(tmp_path, element):
+    """x8-3-1-1-mandatory-content-list#4\n
+    The content list MUST be based on iiRDS XHTML 5 and only contain elements listed in sections:"""
+    body = content_list(list_rows(), extra="<%s/>" % element)
+    package = listed_handover(tmp_path, "element.iirds", body=body)
+    got = findings(package, "R67")
+    assert got and {f.violation.subject for f in got} == {"index.html"}
+
+
+def test_content_list_with_only_allowed_elements_passes(tmp_path):
+    body = content_list(list_rows(), extra="<section><h2>Summary</h2><span>Ready</span></section>")
+    package = listed_handover(tmp_path, "allowed.iirds", body=body)
+    assert findings(package, "R67") == []
+
+
+@pytest.mark.parametrize("body", ["<html><body>", '<html xmlns="urn:foreign"/>'])
+def test_content_list_that_cannot_be_iirds_xhtml_is_reported(tmp_path, body):
+    assert findings(listed_handover(tmp_path, "invalid-list.iirds", body=body), "R67")
+
+
+def test_content_list_missing_a_unit_row_is_reported(tmp_path):
+    """x8-3-1-1-mandatory-content-list#5\n
+    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):"""
+    package = listed_handover(tmp_path, "missing-row.iirds", rows=list_rows()[:2])
+    assert findings(package, "R68")
+
+
+@pytest.mark.parametrize("rows", [
+    list_rows()[:2] + [list_rows()[0]],
+    list_rows()[:2] + [list_rows()[2][:-1] + ("urn:test:unknown",)],
+    list_rows() + [list_rows()[0]],
+])
+def test_content_list_rows_must_refer_to_each_unit_once(tmp_path, rows):
+    assert findings(listed_handover(tmp_path, "wrong-rows.iirds", rows=rows), "R68")
+
+
+def test_content_list_with_one_row_per_unit_passes(tmp_path):
+    assert findings(listed_handover(tmp_path, "three-rows.iirds"), "R68") == []
+
+
+def test_content_list_without_tabular_data_is_reported(tmp_path):
+    package = listed_handover(tmp_path, "no-table.iirds", body="<html><body/></html>")
+    assert findings(package, "R68")
+    assert findings(package, "R69")
+
+
+@pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
+def test_content_list_missing_a_required_data_column_is_reported(tmp_path, column):
+    """x8-3-1-1-mandatory-content-list#6\n
+    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):"""
+    rows = [r[:column] + r[column + 1:] for r in list_rows()]
+    headers = LIST_COLUMNS[:column] + LIST_COLUMNS[column + 1:]
+    package = listed_handover(tmp_path, "missing-column.iirds", body=content_list(rows, headers))
+    assert findings(package, "R69")
+
+
+@pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
+def test_content_list_header_cannot_replace_missing_column_data(tmp_path, column):
+    rows = list_rows()
+    rows[0] = rows[0][:column] + ("",) + rows[0][column + 1:]
+    package = listed_handover(tmp_path, "empty-cell.iirds", rows=rows)
+    assert findings(package, "R69")
+
+
+def test_content_list_required_columns_and_additional_data_pass(tmp_path):
+    # The standard specifies data, not English captions, or a fixed order.
+    rows = [tuple(reversed(r)) + ("Delivered",) for r in list_rows()]
+    body = content_list(rows, ("Verweis", "Kategorie", "Produkt", "Sprache", "Titel", "Status"))
+    assert findings(listed_handover(tmp_path, "all-columns.iirds", body=body), "R69") == []
+
+
+def test_content_list_columns_do_not_require_a_header_spelling(tmp_path):
+    package = listed_handover(tmp_path, "no-captions.iirds", body=content_list(list_rows(), headers=()))
+    assert findings(package, "R69") == []
+
+
+@pytest.mark.parametrize("profile", ["A", "unrestricted"])
+def test_content_list_obligations_are_only_asked_in_h_reading(tmp_path, profile):
+    metadata = HANDOVER.replace("<iirds:formatRestriction>H</iirds:formatRestriction>",
+                                "<iirds:formatRestriction>%s</iirds:formatRestriction>" % profile)
+    package = listed_handover(tmp_path, "other-profile.iirds", body="<html><video/></html>",
+                              metadata=metadata)
+    assert not {"R67", "R68", "R69"} & {f.rule.id for f in runner.check(package).findings}
+
+
+@pytest.mark.parametrize("extra", [
+    '<span onclick="alert(1)">Title</span>',
+    '<a href="javascript:alert(1)">Title</a>',
+    '<link rel="next" href="content/doc1.pdf"/>',
+    '<span data-role="invented">Title</span>',
+])
+def test_content_list_xhtml_attribute_requirements_are_reported(tmp_path, extra):
+    package = listed_handover(tmp_path, "attributes.iirds",
+                              body=content_list(list_rows(), extra=extra))
+    assert findings(package, "R67")
+
+
+def test_the_package_information_unit_is_not_silently_removed_from_the_list(tmp_path):
+    rows = list_rows()[1:]
+    assert findings(listed_handover(tmp_path, "package-row.iirds", rows=rows), "R68")
+
+
+def test_missing_content_list_is_reported_by_the_shared_claimant(tmp_path):
+    from iirds_validate.registry import all_rules
+
+    package = build_package(tmp_path, "missing-list.iirds", metadata=HANDOVER,
+                            jsonld=as_jsonld(HANDOVER), content=(),
+                            extra=(("content/doc1.pdf", b"%PDF-1.4"),))
+    fired = {f.rule.id for f in runner.check(package).findings}
+    for suffix in ("#4", "#5", "#6"):
+        claim = "x8-3-1-1-mandatory-content-list" + suffix
+        assert fired & {r.id for r in all_rules() if claim in r.covers}
+    assert {"R67", "R68", "R69"}.isdisjoint(fired)
+
+
+def test_a_pdf_hyperlink_can_identify_a_document_row(tmp_path):
+    # The package row uses its IRI. The two documents share a PDF, and their
+    # title and language data distinguish the two links as 6.10.1 permits.
+    body = content_list(list_rows()).replace(
+        "<td>urn:test:doc2</td>", '<td><a href="./content/doc1.pdf">Open</a></td>').replace(
+        "<td>urn:test:doc3</td>", '<td><a href="content/doc1.pdf">Open</a></td>')
+    package = listed_handover(tmp_path, "linked.iirds", body=body)
+    assert findings(package, "R68") == []
+    assert findings(package, "R69") == []
+
+
+def test_a_complex_identity_can_identify_a_document_row(tmp_path):
+    metadata = HANDOVER.replace('</rdf:RDF>', """
+      <rdf:Description rdf:about="urn:test:doc1">
+        <iirds:has-identity><iirds:Identity>
+          <iirds:identifier>DOC-1</iirds:identifier>
+          <iirds:has-identity-domain rdf:resource="urn:test:document-domain"/>
+        </iirds:Identity></iirds:has-identity>
+      </rdf:Description>
+      <iirds:IdentityDomain rdf:about="urn:test:document-domain"/>
+    </rdf:RDF>""")
+    rows = [("Handover", "en", "urn:test:variant", LIST_COLUMNS[3], "urn:test:package"),
+            ("Operating instructions", "en", "urn:test:variant", LIST_COLUMNS[3], "urn:test:doc1")]
+    body = content_list(rows).replace("<td>urn:test:doc1</td>",
+                                      "<td><span>DOC-1</span><br/>"
+                                      "<span>urn:test:document-domain</span></td>")
+    assert findings(listed_handover(tmp_path, "identity.iirds", body=body, metadata=metadata), "R68") == []
+    body = body.replace("<span>urn:test:document-domain</span>", "")
+    assert findings(listed_handover(tmp_path, "bare-identifier.iirds", body=body, metadata=metadata), "R68")
+
+
+def test_content_list_new_findings_keep_the_h_content_warning_policy(tmp_path):
+    from iirds_validate.cli import main
+
+    package = listed_handover(tmp_path, "policy.iirds",
+                              body=content_list(list_rows(), extra="<video/>"))
+    got = runner.check(package)
+    assert findings(package, "R67")
+    assert not [f for f in got.findings if str(f.severity) == "error"]
+    assert main(["check", str(package)]) == 0
+    assert main(["check", "-W", str(package)]) == 1
+
+
+def test_foreign_table_names_do_not_supply_xhtml_tabular_data(tmp_path):
+    body = content_list(list_rows()).replace('xmlns="http://www.w3.org/1999/xhtml"',
+                                             'xmlns="urn:foreign"')
+    package = listed_handover(tmp_path, "foreign-table.iirds", body=body)
+    assert findings(package, "R68")
+    assert findings(package, "R69")

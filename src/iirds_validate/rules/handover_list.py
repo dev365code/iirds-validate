@@ -1,0 +1,239 @@
+"""Section 8.3.1.1: the human-readable content list in iiRDS/H.
+
+The specification names data, not header strings or a column order. Read the
+cells against the metadata; an English caption alone proves nothing about a
+column. Appendix B supplies the element inventory and the bounded XML reader.
+"""
+from __future__ import annotations
+
+from rdflib import URIRef
+from rdflib.namespace import RDFS
+
+from .. import terms as T
+from ..model import Violation
+from ..package import entry_named
+from ..registry import rule
+from .container import CONTENT_LIST
+from .content import (
+    ALLOWED_ELEMENTS,
+    XHTML_NS,
+    _local,
+    _walk,
+    b4_no_event_handlers,
+    b5_link_rel,
+    b7_data_role_values,
+    b8_safety_alert_symbol,
+    b9_signal_word_present,
+    b11_no_scripting_urls,
+)
+from .handover import _CONTENT_LIST_SECTION
+
+# 8.3.1.1 selects B.5.1/2/3/5/9 from B's inventory. The other permitted
+# sections in that inventory are B.5.4 (grouping), B.5.6 (embedded content)
+# and B.5.8 (edits). Subtract them rather than maintaining a second inventory.
+LIST_ELEMENTS = ALLOWED_ELEMENTS.difference((
+    "dd", "div", "dl", "dt", "figcaption", "figure", "li", "ol", "p", "pre", "ul",
+    "area", "audio", "img", "map", "source", "track", "video", "ins", "del",
+))
+
+
+def _list_root(ctx):
+    return dict(_walk(ctx)).get(CONTENT_LIST)
+
+
+@rule("R67", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
+      title="the content list uses only its five permitted XHTML sections",
+      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#4",),
+      fix="Write index.html as iiRDS XHTML5 using only Main Root, Document Metadata, "
+          "Sections, Text-Level Semantics and Tabular Data. Replace grouping, embedded "
+          "content and edit elements with elements from those five sections.")
+def r67_content_list_elements(ctx):
+    if not ctx.package.has(CONTENT_LIST):
+        return  # C11.2 owns the missing list for all three sentences.
+    root = _list_root(ctx)
+    if root is None:
+        yield Violation("the content list could not be read as iiRDS XHTML5",
+                        subject=CONTENT_LIST)
+        return
+    if _local(root.tag) != "html":
+        yield Violation("the content list must have an html document element",
+                        subject=CONTENT_LIST)
+    reported = set()
+    for element in root.iter():
+        tag = _local(element.tag)
+        foreign = isinstance(element.tag, str) and element.tag.startswith("{") \
+            and not element.tag.startswith(XHTML_NS)
+        if tag and (tag not in LIST_ELEMENTS or foreign) and element.tag not in reported:
+            reported.add(element.tag)
+            yield Violation("<%s> is outside the content list's permitted XHTML sections" % tag,
+                            subject=CONTENT_LIST, detail=str(element.tag))
+    # "Based on iiRDS XHTML5" includes its attribute and semantic MUSTs too.
+    # Reuse B's implementations, without making ordinary renditions the
+    # subject of this profile-specific rule. B6's extension requirement has
+    # the explicit index.html exception in this section.
+    for check in (b4_no_event_handlers, b5_link_rel, b7_data_role_values,
+                  b8_safety_alert_symbol, b9_signal_word_present,
+                  b11_no_scripting_urls):
+        for violation in check(ctx):
+            if violation.subject == CONTENT_LIST:
+                yield violation
+
+
+def _list_tag(element):
+    if isinstance(element.tag, str) and element.tag.startswith("{") \
+            and not element.tag.startswith(XHTML_NS):
+        return ""
+    return _local(element.tag)
+
+
+def _list_tables(root):
+    """Direct table rows, excluding header groups and rows made only of headers.
+
+    Do not count nested tables' rows as their enclosing table's rows. Rowspan
+    and colspan do not change the number of physical information-unit rows.
+    """
+    if root is None:
+        return
+    for table in (e for e in root.iter() if _list_tag(e) == "table"):
+        rows = []
+        for child in table:
+            tag = _list_tag(child)
+            candidates = [child] if tag == "tr" else list(child) if tag in ("tbody", "tfoot") else []
+            for row in candidates:
+                if _list_tag(row) != "tr":
+                    continue
+                cells = [e for e in row if _list_tag(e) in ("td", "th")]
+                if any(_list_tag(e) == "td" for e in cells):
+                    rows.append(cells)
+        yield rows
+
+
+def _cell_values(cell):
+    """Visible values and actual link targets, without guessing header meanings."""
+    values = set()
+    for element in cell.iter():
+        text = " ".join("".join(element.itertext()).split())
+        if text:
+            values.add(text)
+        if _list_tag(element) == "a" and element.get("href"):
+            values.add(element.get("href").strip())
+    return values
+
+
+def _identity_in(ctx, subject, values):
+    # Section 6.8.1 defines a complex identity as value AND domain. A bare
+    # identifier is not one, and can be repeated in another domain.
+    return any(str(identifier) in values and str(domain) in values
+               for identity in ctx.values(subject, T.has_identity)
+               for identifier in ctx.values(identity, T.identifier)
+               for domain in ctx.values(identity, T.has_identity_domain))
+
+
+def _row_units(ctx, cells, units):
+    values = set().union(*(_cell_values(c) for c in cells))
+    named = {u for u in units if isinstance(u, URIRef) and str(u) in values}
+    if named:
+        return named
+    identified = {u for u in units if any(_identity_in(ctx, u, _cell_values(c)) for c in cells)}
+    if identified:
+        return identified
+    # The final alternative in the fifth bullet is a hyperlink, not merely a
+    # filename printed as text. Resolve it like the existing rendition rules.
+    links = {entry_named(e.get("href")) for c in cells for e in c.iter()
+             if _list_tag(e) == "a" and e.get("href")}
+    links.discard(None)
+    referenced = {u for u in units for r in ctx.values(u, T.has_rendition)
+                  if "application/pdf" in {str(f) for f in ctx.values(r, T.fmt)}
+                  and any(entry_named(str(s)) in links for s in ctx.values(r, T.source))}
+    if len(referenced) > 1:
+        # 6.10.1 permits several units to share a rendition. Their title and
+        # language data can distinguish the rows without inventing file names.
+        referenced = {u for u in referenced
+                      if any(str(t) in values for t in ctx.values(u, T.title))
+                      and {str(v).lower() for v in ctx.values(u, T.language)}
+                      <= {v.lower() for v in values}}
+    return referenced
+
+
+@rule("R68", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
+      title="the content list has one table row per information unit",
+      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#5",),
+      fix="Provide a table in index.html with one row for each information unit. "
+          "Identify each unit by its IRI, its complex identity (value and domain), "
+          "or a hyperlink to its PDF/A rendition; remove duplicate unit rows.")
+def r68_content_list_rows(ctx):
+    if not ctx.package.has(CONTENT_LIST):
+        return  # C11.2 owns the missing list.
+    units = set(ctx.instances_of(T.InformationUnit))
+    for rows in _list_tables(_list_root(ctx)):
+        targets = [_row_units(ctx, cells, units) for cells in rows]
+        if len(rows) == len(units) and all(len(t) == 1 for t in targets) \
+                and set().union(*targets) == units:
+            return
+    yield Violation("the content list must contain a table with one row per information unit",
+                    subject=CONTENT_LIST, detail="%d information units in metadata" % len(units))
+
+
+def _node_names(ctx, node):
+    return {str(node)} | {str(v) for v in ctx.values(node, RDFS.label)} \
+        | {str(v) for v in ctx.ontology.graph.objects(node, RDFS.label)}
+
+
+def _data_columns(ctx, cells, unit):
+    """Candidate positions for the five bullet points, using actual cell data."""
+    slots = [set() for _ in range(5)]
+    for position, cell in enumerate(cells):
+        values = _cell_values(cell)
+        if {str(v) for v in ctx.values(unit, T.title)} & values:
+            slots[0].add(position)
+        languages = {str(v).lower() for v in ctx.values(unit, T.language)}
+        if languages and languages <= {v.lower() for v in values}:
+            slots[1].add(position)
+        if any(_node_names(ctx, v) & values or _identity_in(ctx, v, values)
+               for v in ctx.values(unit, T.relates_to_product_variant)):
+            slots[2].add(position)
+        categories = list(ctx.values(unit, T.hov_has_document_category)) \
+            + list(ctx.values(unit, T.has_external_classification))
+        if any(_node_names(ctx, c) & values
+               or {str(v) for v in ctx.values(c, T.classificationIdentifier)} & values
+               for c in categories):
+            slots[3].add(position)
+        if unit in _row_units(ctx, [cell], {unit}):
+            slots[4].add(position)
+    return slots
+
+
+def _five_distinct_columns(slots, used=frozenset()):
+    # Only the five data roles in this section, not a general table engine.
+    if not slots:
+        return True
+    first, *rest = sorted(slots, key=len)
+    return any(_five_distinct_columns(rest, used | {column}) for column in first - used)
+
+
+@rule("R69", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
+      title="the content list provides all five required data columns",
+      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#6",),
+      fix="Provide columns in index.html for the document title, languages, product "
+          "instance reference or complex identity, document category or external "
+          "classification, and unit IRI, complex identity or PDF/A hyperlink. Fill "
+          "each row with the corresponding metadata; captions alone do not provide data.")
+def r69_content_list_columns(ctx):
+    if not ctx.package.has(CONTENT_LIST):
+        return  # C11.2 owns the missing list.
+    units = set(ctx.instances_of(T.InformationUnit))
+    for rows in _list_tables(_list_root(ctx)):
+        if not rows:
+            continue
+        common = None
+        for cells in rows:
+            targets = _row_units(ctx, cells, units)
+            if len(targets) != 1:
+                break
+            slots = _data_columns(ctx, cells, next(iter(targets)))
+            common = slots if common is None else [a & b for a, b in zip(common, slots)]
+        else:
+            if common is not None and _five_distinct_columns(common):
+                return
+    yield Violation("the content list must provide all five required data columns",
+                    subject=CONTENT_LIST)

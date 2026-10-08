@@ -10,6 +10,8 @@ the claim was dropped.
 """
 from __future__ import annotations
 
+import pytest
+
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
 from iirds_validate.registry import all_rules
@@ -316,3 +318,43 @@ def test_a_fragment_selector_conforming_to_a_specification_off_the_list_is_repor
     assert claiming & found, ("a range naming its own syntax", sorted(found))
     found = fired(tmp_path, "range_ok.iirds", _range(""))
     assert not claiming & found, ("a range naming nothing", sorted(claiming & found))
+
+
+# Appendix A.1.3 repeats the whole range sentence for each endpoint property.
+def _endpoint_range(starts, ends):
+    endpoints = "".join(
+        '<iirds:has-%s-selector><iirds:FragmentSelector>'
+        '<dcterms:conformsTo rdf:resource="http://tools.ietf.org/rfc/rfc3778"/>'
+        '<rdf:value>page=%d</rdf:value></iirds:FragmentSelector>'
+        '</iirds:has-%s-selector>' % (end, number + 1, end)
+        for end, count in (("start", starts), ("end", ends))
+        for number in range(count))
+    topic = FRAGMENT_TOPIC.replace(
+        '<iirds:FragmentSelector>%s<rdf:value>page=10</rdf:value></iirds:FragmentSelector>',
+        '<iirds:RangeSelector>%s</iirds:RangeSelector>')
+    return SELECTOR_NS.replace('</rdf:RDF>', (topic % endpoints) + '</rdf:RDF>')
+
+
+@pytest.mark.parametrize("starts,ends,expected", [
+    (0, 1, "M14.1"), (2, 1, "M14.1"), (1, 0, "M14.2"), (1, 2, "M14.2")],
+    ids=["no-start", "two-starts", "no-end", "two-ends"])
+def test_a_range_with_zero_or_two_endpoint_selectors_is_reported(tmp_path, starts, ends, expected):
+    """rdfrelations_core_has-start-selector#1
+    rdfrelations_core_has-end-selector#1
+    Description: A range selector MUST reference one start and one end selector.
+    """
+    for requirement in ("rdfrelations_core_has-start-selector#1",
+                        "rdfrelations_core_has-end-selector#1"):
+        claiming = claimants(requirement)
+        found = fired(tmp_path, "range_endpoints_bad.iirds", _endpoint_range(starts, ends))
+        assert expected in found, (starts, ends, sorted(found))
+        assert expected in claiming & found, (requirement, starts, ends, sorted(found))
+
+
+def test_a_range_with_one_start_and_one_end_selector_passes(tmp_path):
+    """rdfrelations_core_has-start-selector#1
+    rdfrelations_core_has-end-selector#1
+    Description: A range selector MUST reference one start and one end selector.
+    """
+    found = fired(tmp_path, "range_endpoints_ok.iirds", _endpoint_range(1, 1))
+    assert not {"M14.1", "M14.2"} & found, sorted(found)

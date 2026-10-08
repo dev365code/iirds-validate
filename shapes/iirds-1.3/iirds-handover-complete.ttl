@@ -732,18 +732,20 @@ ivs:M13.2 a sh:NodeShape ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path <http://purl.org/dc/terms/conformsTo> ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
 ivs:M14.1 a sh:NodeShape ;
-  rdfs:label "iirds:RangeSelector must use property iirds:has-start-selector." ;
+  rdfs:label "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
   sh:severity sh:Violation ;
-  sh:message "iirds:RangeSelector must use property iirds:has-start-selector." ;
+  sh:message "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
   ivm:ruleId "M14.1" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfrelations_core_has-start-selector#1" ;
+  ivm:covers "rdfrelations_core_has-end-selector#1" ;
   sh:targetClass iirds:RangeSelector ;
   sh:property ivs:M14.1-p .
 ivs:M14.1-p a sh:PropertyShape ;
-  sh:message "iirds:RangeSelector must use property iirds:has-start-selector." ;
+  sh:message "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
   sh:severity sh:Violation ;
   ivm:ruleId "M14.1" ;
   sh:description "Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable." ;
@@ -753,18 +755,20 @@ ivs:M14.1-p a sh:PropertyShape ;
   sh:maxCount 1 .
 
 ivs:M14.2 a sh:NodeShape ;
-  rdfs:label "iirds:RangeSelector must use property iirds:has-end-selector." ;
+  rdfs:label "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
   sh:severity sh:Violation ;
-  sh:message "iirds:RangeSelector must use property iirds:has-end-selector." ;
+  sh:message "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
   ivm:ruleId "M14.2" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfrelations_core_has-start-selector#1" ;
+  ivm:covers "rdfrelations_core_has-end-selector#1" ;
   sh:targetClass iirds:RangeSelector ;
   sh:property ivs:M14.2-p .
 ivs:M14.2-p a sh:PropertyShape ;
-  sh:message "iirds:RangeSelector must use property iirds:has-end-selector." ;
+  sh:message "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
   sh:severity sh:Violation ;
   ivm:ruleId "M14.2" ;
   sh:description "Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular." ;

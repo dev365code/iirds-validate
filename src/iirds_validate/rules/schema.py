@@ -330,13 +330,19 @@ def r49_selector_names_a_listed_specification(ctx):
                                 subject=ctx.ref(sel), detail=ctx.ref(value))
 
 
-@rule("M14.1",
+@rule("M14.1", covers=("rdfrelations_core_has-start-selector#1",
+                       "rdfrelations_core_has-end-selector#1"),
+       title="A RangeSelector MUST have one iirds:has-start-selector, paired with "
+             "iirds:has-end-selector",
        fix="Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable.")
 def m14_1_range_start(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_start_selector, "iirds:has-start-selector")
 
 
-@rule("M14.2",
+@rule("M14.2", covers=("rdfrelations_core_has-start-selector#1",
+                       "rdfrelations_core_has-end-selector#1"),
+       title="A RangeSelector MUST have one iirds:has-end-selector, paired with "
+             "iirds:has-start-selector",
        fix="Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular.")
 def m14_2_range_end(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_end_selector, "iirds:has-end-selector")

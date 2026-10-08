@@ -662,21 +662,38 @@ def b11_no_scripting_urls(ctx):
                                                    value[:60]))
 
 
+_DOCUMENT_RELATIONS = frozenset(("alternate", "author", "help", "license", "next",
+                               "prefetch", "prev", "search"))
+
+
 @rule("B5", covers=("b-5-2-document-metadata#1", "b-5-2-document-metadata#3"), kind="content", prio="MUST", versions=(), variants=(),
-      title="link must be used only with rel=\"stylesheet\"",
-       fix="Use rel=\"stylesheet\", or delete the element. Other relations describe a document's place among others, and in iiRDS the metadata graph carries that; a consumer reads the graph and never sees this.")
+      title="link is only for stylesheets; document relations on a and area belong in RDF",
+      fix="Use link only with rel=\"stylesheet\", or delete it. Express document relations "
+          "on link, a or area in the iiRDS metadata graph; remove those rel tokens from "
+          "a and area while retaining their ordinary hyperlinks.")
 def b5_link_rel(ctx):
     """B.5.2. Every other relation "MUST be expressed by means of RDF in
-    iiRDS", so a `<link rel="next">` is metadata smuggled past the metadata."""
+    iiRDS". HTML5 2014 section 4.8.4 defines eight relation types shared by
+    link and a/area; expressing them on a/area does not put them in RDF."""
     for name, root in _walk(ctx):
         # By local name, like every other rule here. Matching the namespaced
         # tag meant a document missing its xmlns declaration got B2, B3, B4, B7
         # and B8 and silently lost B5.
-        for element in (e for e in root.iter() if _local(e.tag) == "link"):
+        for element in root.iter():
+            kind = _local(element.tag)
             rel = (element.get("rel") or "").strip().lower()   # ASCII case-insensitive
-            if rel != "stylesheet":
+            if kind == "link" and rel != "stylesheet":
                 yield Violation("<link> must be used only with rel=\"stylesheet\"",
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
+            elif kind in ("a", "area"):
+                tokens = set(re.split(r"[ \t\r\n\f]+", element.get("rel") or ""))
+                tokens = {token.translate(str.maketrans(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")) for token in tokens}
+                shared = sorted(tokens & _DOCUMENT_RELATIONS)
+                if shared:
+                    yield Violation('<%s rel="%s"> expresses a relation iiRDS carries '
+                                    'in the metadata graph' % (kind, " ".join(shared)),
+                                    subject=name, detail="found rel=%r" % (element.get("rel") or ""))
 
 
 _NON_CSS_SIGNATURES = (

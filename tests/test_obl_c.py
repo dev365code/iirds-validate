@@ -592,13 +592,34 @@ def test_c2_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
     assert not _subjects(report, "R74")
 
 
-def test_c2_document_relations_are_reported_by_a_rule_claiming_the_sentence(make_package):
+@pytest.mark.parametrize("element,rel", [
+    (element, rel) for element in ("a", "area")
+    for rel in ("alternate", "author", "help", "license", "next", "prefetch", "prev", "search")
+] + [("link", "next"), ("a", "NEXT"), ("area", "nofollow\tPREV next")])
+def test_c2_document_relations_are_reported_by_a_rule_claiming_the_sentence(
+        make_package, element, rel):
     """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
-    report = _linked(make_package, '<link rel="next" href="next.xhtml"/>', (),
+    markup = '<%s rel="%s" href="next.xhtml"/>' % (element, rel)
+    report = _linked(make_package, markup, (),
                      "c2-next.iirds")
     findings = [f for f in report.findings if f.rule.id == "B5"]
     assert len(findings) == 1
     assert "b-5-2-document-metadata#3" in findings[0].rule.covers
+    if element != "link":
+        assert "<%s rel=" % element in findings[0].violation.message
+        assert "metadata graph" in findings[0].violation.message
     sibling = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
                       (("content/style.css", b"p { color: red; }"),), "c2-stylesheet.iirds")
     assert not _subjects(sibling, "B5")
+
+
+@pytest.mark.parametrize("element", ["a", "area"])
+@pytest.mark.parametrize("rel", [None, "bookmark", "nofollow", "noreferrer", "tag",
+                                "icon", "stylesheet", "nofollow noreferrer"])
+def test_relations_specific_to_a_or_area_do_not_describe_document_metadata(
+        make_package, element, rel):
+    """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
+    attribute = '' if rel is None else ' rel="%s"' % rel
+    report = _linked(make_package, '<%s%s href="next.xhtml"/>' % (element, attribute), (),
+                     "ordinary-hyperlink.iirds")
+    assert not _subjects(report, "B5")

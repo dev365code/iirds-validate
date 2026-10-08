@@ -51,7 +51,7 @@ def test_the_census_numbers_hold():
     counts = MANIFEST["counts"]
     assert counts["core_emitted"] == 133
     assert counts["version_excluded"] == 2          # M16.1/2, MUSTs only through 1.1
-    assert counts["sparql_emitted"] == 40
+    assert counts["sparql_emitted"] == 41
     assert counts["deferred_v1.1"] == 9
     assert counts["not_expressible"] == 62
     assert counts["noop"] == 1
@@ -315,7 +315,7 @@ EMITTED_IDS = frozenset((
     "M96.3", "M97.1", "M97.2", "R1", "R10", "R12", "R2", "R4", "R5",
     "R13", "R14", "R15", "R16", "R17", "R19", "R20", "R21", "R23",
     # Four sentences of chapter 6 that no rule reported whole.
-    "R46", "R47", "R48", "R49",
+    "R46", "R47", "R48", "R49", "R61",
     "R6", "R7", "S4", "S5"))
 
 

@@ -10,6 +10,8 @@ the claim was dropped.
 """
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 from conftest import MINIMAL_RDF, build_package
@@ -358,3 +360,54 @@ def test_a_range_with_one_start_and_one_end_selector_passes(tmp_path):
     """
     found = fired(tmp_path, "range_endpoints_ok.iirds", _endpoint_range(1, 1))
     assert not {"M14.1", "M14.2"} & found, sorted(found)
+
+
+@pytest.mark.parametrize("classes", [
+    ("Document", "Topic"), ("Rendition", "Selector"), ("ProductVariant", "Component")],
+    ids=["information-unit-siblings", "top-level-classes", "product-metadata-siblings"])
+def test_a_resource_typed_with_two_disjoint_classes_is_reported(tmp_path, classes):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    types = "".join('<rdf:type rdf:resource="%s%s"/>' % (IIRDS, cls) for cls in classes)
+    metadata = with_nodes('<rdf:Description rdf:about="urn:test:mixed">%s</rdf:Description>'
+                          % types)
+    found = fired(tmp_path, "disjoint_bad.iirds", metadata)
+    assert "R61" in found, (classes, sorted(found))
+    assert "R61" in claimants("x6-11-1-disjointness#1") & found
+    if importlib.util.find_spec("pyshacl") is not None:
+        from test_shapes_parity import assert_parity
+        assert "R61" in assert_parity(tmp_path, "disjoint_shape_bad.iirds", metadata)
+
+
+def test_a_resource_typed_with_a_subclass_and_its_parent_is_not_disjoint(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = with_nodes(DOCUMENT % STANDARD +
+                          '<rdf:Description rdf:about="urn:test:doc">'
+                          '<rdf:type rdf:resource="%sInformationUnit"/>'
+                          '</rdf:Description>' % IIRDS)
+    found = fired(tmp_path, "disjoint_parent.iirds", metadata)
+    assert "R61" not in found, sorted(found)
+    if importlib.util.find_spec("pyshacl") is not None:
+        from test_shapes_parity import assert_parity
+        assert "R61" not in assert_parity(tmp_path, "disjoint_shape_parent.iirds", metadata)
+
+
+def test_a_document_also_typed_as_a_topic_changes_the_exit_code(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from iirds_validate.cli import main
+
+    metadata = with_nodes(DOCUMENT % STANDARD)
+    disjoint = metadata.replace('<iirds:Document rdf:about="urn:test:doc">',
+                                '<iirds:Document rdf:about="urn:test:doc">'
+                                '<rdf:type rdf:resource="%sTopic"/>' % IIRDS, 1)
+    clean = build_package(tmp_path, "one_class.iirds", metadata=metadata)
+    broken = build_package(tmp_path, "two_disjoint_classes.iirds", metadata=disjoint)
+    report = runner.run(broken, runner.ALL_KINDS)
+    assert {f.rule.id for f in report.findings if str(f.severity) == "error"} == {"R61"}
+    assert main(["check", str(clean), "-q"]) == 0
+    assert main(["check", str(broken), "-q"]) == 1

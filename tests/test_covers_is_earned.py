@@ -879,6 +879,9 @@ NAMED_CASES = {
     "rdfrelations_core_has-end-selector#1":
         "test_obl_G:test_a_range_with_zero_or_two_endpoint_selectors_is_reported",
 
+    "x6-11-1-disjointness#1":
+        "test_obl_G:test_a_resource_typed_with_two_disjoint_classes_is_reported",
+
 }
 
 
@@ -922,7 +925,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 186, len(CLAIMED)
+    assert len(CLAIMED) == 187, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

@@ -19,7 +19,7 @@ demonstrated.
 | `iirds-1.3/iirds-complete.ttl` | SHACL-AF engine | **start here**: core + SPARQL in one file, for any package that does not declare iiRDS/H |
 | `iirds-1.3/iirds-handover-complete.ttl` | SHACL-AF | everything, base + handover, for packages declaring `formatRestriction` H |
 | `iirds-1.3/iirds-core.ttl` | any SHACL Core engine | 124 shapes, one per rule: cardinalities, required properties, IRI-kind, value lists, the navigation-chain locals |
-| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 28 shapes, one per rule: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
+| `iirds-1.3/iirds-sparql.ttl` | SHACL-AF (`sh:sparql`) | 29 shapes, one per rule: graph-global checks (exactly one Package…), described-here exemptions, exact-typing prohibitions |
 | `iirds-1.3/iirds-handover-core.ttl` | Core | 9 iiRDS/H additions — apply **only** under iiRDS/H |
 | `iirds-1.3/iirds-handover-sparql.ttl` | SHACL-AF | 12 iiRDS/H additions (SPARQL): M15.11a, M15.7c, the five named-party MUSTs, R4 and R38 |
 | `MANIFEST.json` | — | every rule's disposition: shape IRI and file, or the verbatim reason it has no shape |
@@ -129,11 +129,12 @@ keeps the catalogue's rule wording, that text is MIT © plusmeta GmbH; the
 remedy texts (`sh:description`) are this project's own throughout. See
 `THIRD-PARTY-NOTICES.md` beside this file.
 
-They are deliberately **not** derived from the RDF ontology: the ontology
-carries no OWL axioms, its `rdfs:domain`/`range` are entailment hints rather
-than constraints, and
+Their constraints come from the specification. The ontology carries no OWL
+axioms, its `rdfs:domain`/`range` are entailment hints rather than constraints, and
 [models' own open issues](https://github.com/iirds-consortium/models/issues)
 document defects that ontology-derived shapes would faithfully encode.
+R61 reads sibling classes from the bundled hierarchy to apply the disjointness
+that section 6.11.1 states explicitly.
 
 **The caveat that matters: these shapes encode one documented reading of the
 specification.** Where prose underdetermines a rule, the choice made here is
@@ -143,10 +144,10 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-74 of the 247 rules have no shape, in four honest categories,
+74 of the 248 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **62 not expressible** — 62 of the 247 rules are about ZIP bytes, content
+- **62 not expressible** — 62 of the 248 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, the compression
   method an entry uses, how many records the central directory gives one
@@ -189,7 +190,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 247-rule Python
+Every emitted shape is **differentially tested against the 248-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

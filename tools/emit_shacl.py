@@ -46,7 +46,10 @@ from iirds_validate.model import ORGANISATION_TYPES, VCARD_KINDS, Severity  # no
 from iirds_validate.ontology import load as load_ontology  # noqa: E402
 from iirds_validate.registry import PROVENANCE, all_rules  # noqa: E402
 from iirds_validate.rules.lint import abstract_terms, relation_properties  # noqa: E402
-from iirds_validate.rules.schema import FRAGMENT_SPECIFICATIONS  # noqa: E402
+from iirds_validate.rules.schema import (  # noqa: E402
+    FRAGMENT_SPECIFICATIONS,
+    _disjoint_class_groups,
+)
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
 
 OUT = ROOT / "shapes"
@@ -722,6 +725,12 @@ for _rid, _cls in (("R34", "InformationObject"),
           || !REGEX(STR(?value), "^[A-Za-z][A-Za-z0-9+.-]*:")
           || STR(?value) = "urn:iirds:package:") }""" % _cls])
 
+SPARQL_FORMS["R61"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
+  ?value <%(rdf)stype> ?first, ?second .
+  FILTER (?first != ?second)
+  FILTER (%(disjoint_groups)s) }"""])
+
+
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
 #: label exemption nests) are the subtlest readings in the codebase, and the
 #: stop-line is a pass+fail fixture pair per shape before it ships.
@@ -1262,6 +1271,9 @@ def build() -> dict:
                  "selector_classes": _term_list(_ONTOLOGY.subclasses_of(T.Selector)),
                  # R48's: the classes an information unit is typed with.
                  "information_units": _term_list(_ONTOLOGY.subclasses_of(T.InformationUnit)),
+                 "disjoint_groups": " ||\n".join(
+                     "(?first IN (%s) && ?second IN (%s))" % (_term_list(group), _term_list(group))
+                     for group in _disjoint_class_groups(_ONTOLOGY)),
                  "fragment_specifications": ", ".join(
                      '"%s"' % iri for iri in sorted(FRAGMENT_SPECIFICATIONS))}
         lines = ["%s a sh:NodeShape ;" % sid]

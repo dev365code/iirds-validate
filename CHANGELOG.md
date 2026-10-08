@@ -9,6 +9,12 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
+A resource explicitly typed with disjoint iiRDS classes is now reported by
+R61: a `Document` and a `Topic`, a `Rendition` and a `Selector`, or siblings
+under any of section 6.11.1's eight classes. The sibling classes are read
+from the bundled ontology; a subclass typed alongside its parent is allowed.
+For a package with nothing else wrong, that takes the exit code from `0` to `1`.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

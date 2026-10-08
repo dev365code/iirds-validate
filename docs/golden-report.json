@@ -208,6 +208,7 @@
    "R5",
    "R6",
    "R60",
+   "R61",
    "R7",
    "R8",
    "S1",
@@ -308,7 +309,7 @@
   "errors": 1,
   "findingsNotListed": 0,
   "info": 0,
-  "rulesChecked": 199,
+  "rulesChecked": 200,
   "rulesNotImplemented": 0,
   "rulesSkipped": 33,
   "warnings": 0

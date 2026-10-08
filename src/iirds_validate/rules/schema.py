@@ -14,6 +14,7 @@ from .. import terms as T
 from ..context import container_packages, package_nodes
 from ..model import (
     DCTERMS,
+    IIRDS,
     ORGANISATION_TYPES,
     PACKAGE_BASE,
     VCARD_KINDS,
@@ -53,6 +54,56 @@ def _at_most_one(ctx, cls, prop, label):
                             subject=ctx.ref(subj),
                             detail="%d values: %s" % (len(values),
                                                       ", ".join(v[:40] for v in listed)))
+
+
+def _disjoint_class_groups(ontology):
+    """Section 6.11.1's eight classes and their siblings in the vocabulary.
+
+    Siblings share a direct rdfs:subClassOf parent. Walk the vocabulary below
+    the eight named classes to include siblings at every depth, without
+    adding inferred types to the package or putting a parent beside its child.
+    """
+    classes = ontology.classes()
+    roots = {T.AdministrativeMetadata, T.DirectoryNode, IIRDS["DocumentationMetadata"],
+             T.InformationObject, IIRDS["InformationType"], T.InformationUnit,
+             T.Rendition, T.Selector} & classes
+    parents = {parent for root in roots for parent in ontology.subclasses_of(root)}
+    groups = [frozenset(roots)]
+    for parent in sorted(parents):
+        children = set(ontology.graph.subjects(RDFS.subClassOf, parent)) & classes
+        if len(children) > 1:
+            groups.append(frozenset(children))
+    return groups
+
+
+@rule("R61", kind="schema", prio="MUST",
+      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"), variants=(),
+      covers=("x6-11-1-disjointness#1",),
+      title="disjoint iiRDS classes must not have instances in common",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x6-11-1-disjointness",
+      fix="Give the resource types from one class branch. A topic and a document, or a "
+          "rendition and a selector, describe different things; use separate resources "
+          "when both are needed.")
+def r61_disjoint_classes_have_no_common_instance(ctx):
+    """Section 6.11.1: "Disjoint classes MUST NOT have instances in common."
+
+    Compare the types the package states explicitly with disjoint groups
+    derived from the bundled ontology. A subclass and its parent are not
+    siblings, and no inferred rdf:type statements are added to this check.
+    """
+    groups = _disjoint_class_groups(ctx.ontology)
+    for subject in sorted(set(ctx.graph.subjects(RDF.type)), key=ctx.ref):
+        types = set(ctx.values(subject, RDF.type))
+        conflicts = set()
+        for group in groups:
+            common = types & group
+            if len(common) > 1:
+                conflicts.update(common)
+        if conflicts:
+            yield Violation("a resource is an instance of disjoint iiRDS classes",
+                            subject=ctx.ref(subject),
+                            detail=", ".join(sorted(ctx.ref(cls) for cls in conflicts)))
 
 
 # --------------------------------------------------------------------------

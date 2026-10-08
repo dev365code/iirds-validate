@@ -16,10 +16,10 @@ from ..package import entry_named
 from ..registry import rule
 from .container import CONTENT_LIST
 from .content import (
+    _SCHEME,
     ALLOWED_ELEMENTS,
     XHTML_NS,
     _local,
-    _SCHEME,
     _walk,
 )
 from .handover import _CONTENT_LIST_SECTION
@@ -124,6 +124,8 @@ def _cell_elements(cell):
 
 
 def _cell_text(cell):
+    if _list_tag(cell) == "br":
+        return "\n"
     parts = [cell.text or ""]
     for child in cell:
         if _list_tag(child) != "table":
@@ -182,8 +184,11 @@ def r68_content_list_rows(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
     documents = set(ctx.instances_of(T.Document))
+    if not documents and next(_list_tables(_list_root(ctx)), None) is None:
+        yield Violation("index.html must contain a table", subject=CONTENT_LIST,
+                        fix="Add an XHTML table to index.html.")
     occurrences = {document: [] for document in documents}
-    for number, cells, targets in _document_rows(ctx, documents):
+    for number, _cells, targets in _document_rows(ctx, documents):
         if len(targets) > 1:
             yield Violation("a row refers to more than one document", subject=CONTENT_LIST,
                             detail="row %d" % number)

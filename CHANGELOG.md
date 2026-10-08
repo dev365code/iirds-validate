@@ -9,8 +9,8 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
-iiRDS/H content lists now report excluded XHTML elements, a missing or
-repeated row identifying a document by its IRI, complex identity or PDF/A
+iiRDS/H content lists now report excluded XHTML elements, a missing table
+or a missing or repeated row identifying a document by its IRI, complex identity or PDF/A
 link, and a document row with fewer than five nonempty data cells. The list
 is read as the standard's own example shows it: one row per delivered
 document, none for the package itself. These findings are warnings in

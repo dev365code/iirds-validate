@@ -1414,7 +1414,8 @@ The same section's Example 62 lists only delivered documents, and section
 mandatory title, language or document category. This validator reads a content
 list row as a row for a delivered Document, with no row required for the
 Package itself. Topic and Fragment instances are reported by M15.11a under
-section 8.3.2.1 and are outside the list's row population.
+section 8.3.2.1 and are outside the list's row population. The table itself
+remains required when no documents are declared.
 
 R68 and R69 inspect the same document rows across all tables. R69 reports a
 row with fewer than five nonempty cells in its logical grid, including cells

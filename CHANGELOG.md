@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.9.0 — unreleased
+## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it
 that let some package breaking it pass.
@@ -99,6 +99,23 @@ behind a UTF-8 byte order mark. Correct the exporter's declaration: put
 version first and use a VersionNum beginning with `1.` followed by digits.
 Attribute order, repetition and encoding-name syntax are checked before
 parsing; keep the declared encoding consistent with the stored bytes.
+
+**Figures for this release, measured on this build.**
+Coverage of the standard is 184 of 280, of which 149 are held by a package;
+0.8.0 stated 172 and 137. R46 to R49 and R60 are the five rules added, so
+the rule count goes to 247. A conformant package is checked by the same
+rules as a directory or an archive but for the archive's nine, which an
+unpacked container names under `notApplicable` as `unpacked`:
+the same package packed -- `199 rules checked` on this build -- and
+unpacked, where the count moves from 199 to 190. A conformance run says it
+for the fifteen lint rules it does not ask -- the interoperability rules less
+the two that are marked conformance, which it does ask. The reasons a report
+can give come to seven. The iiRDS/H reading asks the handover rules the
+iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
+reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
+R45, the iiRDS/A content formats. `toolVersion` still moves only at a
+release: over this project's whole history, no commit that changed
+a rule file has ever moved it.
 
 ## 0.8.0 — 2026-09-30
 

@@ -22,6 +22,7 @@ is refused whatever stands in front of it.
 """
 from __future__ import annotations
 
+import codecs
 import re
 import xml.parsers.expat as expat
 
@@ -512,6 +513,58 @@ def test_ebcdic_declaration_selects_its_registered_codec(make_package, declared,
     assert any(str(value) == title for value in graph.objects())
     report = runner.check(make_package(metadata=raw))
     assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+@pytest.mark.parametrize("declared,codec", [("IBM01140", "cp1140"), ("IBM00858", "cp858")])
+def test_iana_ccsid_zero_padding_resolves_with_an_older_alias_table(monkeypatch, make_package,
+                                                                   declared, codec):
+    """XML 1.0 §4.3.3: IANA CCSID zero-padding names the same code page.
+    Python's unpadded codec remains usable when its older alias table lacks
+    the registry's padded name and aliases.
+    """
+    from iirds import _metadata
+
+    title = "A topicé €"
+    raw = ('<?xml version="1.0" encoding="%s"?>' % declared
+           + BODY.replace("A topic", title)).encode(codec)
+    original = codecs.lookup
+    record = _metadata._registered(declared)
+    absent = {label.lower() for label in [record["name"], *record["aliases"]]}
+
+    def older_lookup(label):
+        if label.lower() in absent:
+            raise LookupError(label)
+        return original(label)
+
+    monkeypatch.setattr(codecs, "lookup", older_lookup)
+    label = _metadata._codec_for(declared)
+    assert label is not None and original(label).name == codec
+    graph, error = parsed(raw)
+    assert graph is not None and error is None, error
+    assert any(str(value) == title for value in graph.objects())
+    assert runner.check(make_package(metadata=raw)).ok
+
+
+@pytest.mark.parametrize("declared", ["IBM00924", *["IBM0%d" % n for n in range(1141, 1150)]])
+def test_ccsid_names_without_a_codec_stay_unreadable(declared):
+    """XML 1.0 §4.3.3: CCSID zero-padding adds no unsupported code page."""
+    from iirds import _metadata
+
+    assert _metadata._registered(declared) is not None
+    assert _metadata._codec_for(declared) is None
+    raw = ('<?xml version="1.0" encoding="%s"?>' % declared + BODY).encode("cp037")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+    assert "registered at IANA" in error and "XML 1.0 §4.3.3" in error
+
+
+@pytest.mark.parametrize("declared", ["cp1140", "IBM1140", "cp858", "IBM858"])
+def test_unregistered_unpadded_codec_names_stay_unreadable(declared):
+    """XML 1.0 §4.3.3: lookup candidates never become new IANA names."""
+    from iirds import _metadata
+
+    assert _metadata._registered(declared) is None
+    assert _metadata._codec_for(declared) is None
 
 
 @pytest.mark.parametrize("declared", ["UTF-8", "IBM1026", "csUnicode"])

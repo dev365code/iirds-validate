@@ -473,7 +473,15 @@ def _codec_for(name):
     record = _registered(name)
     if record is None:
         return None
-    for label in dict.fromkeys([name, record["name"], *record["aliases"]]):
+    labels = [name, record["name"], *record["aliases"]]
+    # IANA uses five-digit zero-padded IBM CCSIDs. Older Python alias tables
+    # omit those spellings but expose the same code page without the padding.
+    for label in labels[:]:
+        ccsid = re.fullmatch(r"(?:IBM|CP|CCSID)(0[0-9]{4})", label, re.I)
+        if ccsid is not None:
+            number = int(ccsid.group(1))
+            labels.extend(("cp%d" % number, "ibm%d" % number))
+    for label in dict.fromkeys(labels):
         try:
             codecs.lookup(label)
         except (LookupError, UnicodeError):

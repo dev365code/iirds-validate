@@ -6,6 +6,8 @@ column. Appendix B supplies the element inventory and the bounded XML reader.
 """
 from __future__ import annotations
 
+import re
+
 from rdflib import URIRef
 from rdflib.namespace import RDFS
 
@@ -18,6 +20,7 @@ from .content import (
     ALLOWED_ELEMENTS,
     XHTML_NS,
     _local,
+    _SCHEME,
     _walk,
     b4_no_event_handlers,
     b5_link_rel,
@@ -120,39 +123,44 @@ def _cell_values(cell):
     return values
 
 
-def _identity_in(ctx, subject, values):
-    # Section 6.8.1 defines a complex identity as value AND domain. A bare
-    # identifier is not one, and can be repeated in another domain.
-    return any(str(identifier) in values and str(domain) in values
+def _contains(text, value):
+    return bool(value) and re.search(r"(?<!\w)" + re.escape(str(value)) + r"(?!\w)", text) is not None
+
+
+def _row_text(cells):
+    return " ".join(" ".join("".join(cell.itertext()).split()) for cell in cells)
+
+
+def _identity_in(ctx, subject, text):
+    return any(_contains(text, identifier) and _contains(text, domain)
                for identity in ctx.values(subject, T.has_identity)
                for identifier in ctx.values(identity, T.identifier)
                for domain in ctx.values(identity, T.has_identity_domain))
 
 
 def _row_units(ctx, cells, units):
-    values = set().union(*(_cell_values(c) for c in cells))
-    named = {u for u in units if isinstance(u, URIRef) and str(u) in values}
-    if named:
-        return named
-    identified = {u for u in units if any(_identity_in(ctx, u, _cell_values(c)) for c in cells)}
-    if identified:
-        return identified
-    # The final alternative in the fifth bullet is a hyperlink, not merely a
-    # filename printed as text. Resolve it like the existing rendition rules.
-    links = {entry_named(e.get("href")) for c in cells for e in c.iter()
-             if _list_tag(e) == "a" and e.get("href")}
-    links.discard(None)
+    text = _row_text(cells)
+    named = {u for u in units if isinstance(u, URIRef) and _contains(text, u)}
+    identified = {u for u in units if _identity_in(ctx, u, text)}
+    # Resolve index.html links as _pointed_at does: the list is at the root.
+    links = set()
+    for cell in cells:
+        for element in cell.iter():
+            value = (element.get("href") or "").strip()
+            if _list_tag(element) == "a" and value and not value.startswith(("#", "//")) \
+                    and not _SCHEME.match(value):
+                name = entry_named(value[1:] if value.startswith("/") else value)
+                if name and name != CONTENT_LIST and ctx.package.has(name):
+                    links.add(name)
     referenced = {u for u in units for r in ctx.values(u, T.has_rendition)
                   if "application/pdf" in {str(f) for f in ctx.values(r, T.fmt)}
                   and any(entry_named(str(s)) in links for s in ctx.values(r, T.source))}
     if len(referenced) > 1:
-        # 6.10.1 permits several units to share a rendition. Their title and
-        # language data can distinguish the rows without inventing file names.
         referenced = {u for u in referenced
-                      if any(str(t) in values for t in ctx.values(u, T.title))
-                      and {str(v).lower() for v in ctx.values(u, T.language)}
-                      <= {v.lower() for v in values}}
-    return referenced
+                      if any(_contains(text, t) for t in ctx.values(u, T.title))}
+        if len(referenced) > 1:
+            referenced = set()
+    return named | identified | referenced
 
 
 @rule("R68", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
@@ -205,7 +213,7 @@ def _data_columns(ctx, cells, unit):
         languages = {str(v).lower() for v in ctx.values(unit, T.language)}
         if languages and languages <= {v.lower() for v in values}:
             slots[1].add(position)
-        if any(_node_names(ctx, v) & values or _identity_in(ctx, v, values)
+        if any(_node_names(ctx, v) & values or _identity_in(ctx, v, " ".join(values))
                for v in ctx.values(unit, T.relates_to_product_variant)):
             slots[2].add(position)
         categories = list(ctx.values(unit, T.hov_has_document_category)) \

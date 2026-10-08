@@ -815,3 +815,48 @@ def test_h2b_population_leaves_forbidden_units_to_the_h_metadata_rule(tmp_path, 
     package = h2b_review_package(tmp_path, "baseline", metadata=metadata)
     assert findings(package, "R68") == []
     assert findings(package, "M15.11a")
+
+
+H2B_IDENTITY = '<rdf:Description rdf:about="urn:test:doc2"><iirds:has-identity><iirds:Identity><iirds:identifier>DOC-1</iirds:identifier><iirds:has-identity-domain rdf:resource="urn:test:document-domain"/></iirds:Identity></iirds:has-identity></rdf:Description><iirds:IdentityDomain rdf:about="urn:test:document-domain"/>'
+
+
+@pytest.mark.parametrize("reference", [
+    '<td>DOC-1 (urn:test:document-domain)</td>',
+    '<td>DOC-1</td><td>urn:test:document-domain</td>',
+    '<td>Reference: urn:test:doc2 (delivered)</td>',
+    '<td><span>urn:test:</span><span>doc2</span></td>',
+])
+def test_h2b_identification_uses_whole_row_text(tmp_path, reference):
+    metadata = H2B_REVIEW_METADATA.replace('</rdf:RDF>', H2B_IDENTITY + '</rdf:RDF>')
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('<td>urn:test:doc2</td>', reference)
+    assert findings(h2b_review_package(tmp_path, 'baseline', body, metadata), 'R68') == []
+
+
+@pytest.mark.parametrize("reference", ['DOC-1', 'xurn:test:doc2x'])
+def test_h2b_identification_needs_domain_and_text_boundaries(tmp_path, reference):
+    metadata = H2B_REVIEW_METADATA.replace('</rdf:RDF>', H2B_IDENTITY + '</rdf:RDF>')
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('urn:test:doc2</td>', reference + '</td>')
+    assert findings(h2b_review_package(tmp_path, 'baseline', body, metadata), 'R68')
+
+
+def test_h2b_identification_combines_iri_and_identity_alternatives(tmp_path):
+    metadata = H2B_REVIEW_METADATA.replace('</rdf:RDF>', H2B_IDENTITY.replace('urn:test:doc2', 'urn:test:doc3') + '</rdf:RDF>')
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('urn:test:doc2</td>', 'urn:test:doc2 DOC-1 (urn:test:document-domain)</td>')
+    got = findings(h2b_review_package(tmp_path, 'baseline', body, metadata), 'R68')
+    assert any(f.violation.message == 'a row refers to more than one document' for f in got)
+    assert any('row 1' in (f.violation.detail or '') for f in got)
+
+
+def test_h2b_identification_shared_pdf_uses_title_with_suffix_and_not_language_spelling(tmp_path):
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('>en<', '>English<')
+    for n in (2, 3):
+        body = body.replace('Operating instructions %d</td>' % n, 'Operating instructions %d (revision 2)</td>' % n)
+        body = body.replace('urn:test:doc%d</td>' % n, '<a href="/content/doc1.pdf#page=%d">Open</a></td>' % n)
+    assert findings(h2b_review_package(tmp_path, 'baseline', body), 'R68') == []
+
+
+def test_h2b_identification_ambiguous_shared_pdf_does_not_identify_a_document(tmp_path):
+    body = content_list([('Summary', '<a href="content/doc1.pdf">Open</a>')], headers=()).replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+    got = findings(h2b_review_package(tmp_path, 'baseline', body), 'R68')
+    assert len(got) == 2
+    assert all('has no row identifying document' in f.violation.message for f in got)

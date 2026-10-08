@@ -9,6 +9,11 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
+iiRDS/H content lists now report elements outside the five permitted XHTML
+sections, tables without one row per information unit, and columns missing
+the required document data. These content findings are warnings in iiRDS/H;
+`check -W` rejects such packages with exit 1.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

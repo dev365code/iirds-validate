@@ -286,7 +286,10 @@
    "R42",
    "R43",
    "R44",
-   "R45"
+   "R45",
+   "R67",
+   "R68",
+   "R69"
   ],
   "version": [
    "M16.1",
@@ -310,7 +313,7 @@
   "info": 0,
   "rulesChecked": 199,
   "rulesNotImplemented": 0,
-  "rulesSkipped": 33,
+  "rulesSkipped": 36,
   "warnings": 0
  },
  "suppressed": {},

@@ -1,15 +1,16 @@
 {
  "counts": {
   "branch": 2,
-  "finding": 1,
+  "finding": 2,
   "other": 1,
-  "silent": 26
+  "silent": 28
  },
  "tree": {
-  "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
-  "container.py": "33d54589897c06bdcf7413d7641a7deec1b8c23af033c24d2eabb1d191467c8b",
+  "__init__.py": "dafe2711248f941643b440700453e1f296a8b0966c86e7ff42ae0bbc789975cf",
+  "container.py": "8f7f6ecfe7fd34f3ee33e622eb19c1a8be25d64d918f20852b8240360176214e",
   "content.py": "54d98659937aa33c618c8a91106a9db5971f6660f3b59b62044b38b37f497642",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
+  "handover_list.py": "48780b97cf71d11a04092c345abc6c7655e159829175168deed6a2a6fd3eea09",
   "lint.py": "528b2321fb0d54d0661d53cac2636651310ad397c60cc05b1f32fc771410c0f8",
   "requirements.py": "bcaa968f8d96941825489f2f781200d91394ed76a08b753b3062f1eee7e97a58",
   "schema.py": "f0900772469aacb21791943ff88ee74209c76fdbe96f766c4706863fb7558666",
@@ -39,6 +40,11 @@
    "_unescape_attribute :: return None [1]": "silent",
    "_unescape_attribute :: return None [3]": "silent",
    "_unescape_attribute :: return None [4]": "silent"
+  },
+  "handover_list.py": {
+   "_list_tables :: continue": "silent",
+   "r67_content_list_elements :: yield Violation(\"the content list must have an html document element\",": "finding",
+   "r69_content_list_columns :: continue": "silent"
   },
   "lint.py": {
    "_suggest :: return None [1]": "silent",

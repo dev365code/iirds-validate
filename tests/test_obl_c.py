@@ -59,7 +59,7 @@ def test_a_pdf_the_metadata_calls_something_else_is_named_pdf(make_package):
 
 def test_a_pdf_a_page_links_to_is_named_pdf(make_package):
     report = _linked(make_package, '<a href="manual.bin">manual</a>',
-                     (("content/manual.bin", PDF),), "c2.iirds")
+                     (("content/manual.bin", PDF),), "linked-pdf.iirds")
     assert _subjects(report, "R41") == ["content/manual.bin"], sorted(f.rule.id for f in report.findings)
 
 
@@ -580,6 +580,8 @@ def test_a_missing_local_stylesheet_is_reported_once(make_package):
     report = _linked(make_package, '<link rel="stylesheet" href="missing.css"/>', (),
                      "missing-stylesheet.iirds")
     assert _subjects(report, "R74") == ["content/missing.css"]
+    assert next(f.violation.message for f in report.findings if f.rule.id == "R74") == (
+        "the linked stylesheet is not in the package")
 
 
 def test_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
@@ -623,10 +625,11 @@ def test_relations_specific_to_a_or_area_do_not_describe_document_metadata(
 
 
 def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make_package):
-    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as"
+    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as MP3 (ISO/IEC 11172-3, ISO/IEC 13818-3)."
     A registered audio brand alone cannot establish the required MP3 encoding.
     """
     from pathlib import Path
+
     from iirds_validate.rules import content
 
     phrase = "MPEG-4 files whose brand is registered for audio"
@@ -662,3 +665,73 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
             "BOM or `@charset`", "is not itself a finding",
             "errors in iiRDS/A", "warnings in other readings"):
         assert statement in paragraph
+
+
+def test_an_unread_graphic_is_not_classified_after_the_budget_is_spent(make_package, monkeypatch):
+    """Raster bytes that were not read cannot establish a format violation."""
+    from iirds_validate import package as package_module
+
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 512)
+    report = _linked(make_package, '<img src="figure.bin" alt=""/>',
+                     (("content/figure.bin", b"unidentified graphic" + b" " * 5000),),
+                     "unread-graphic.iirds")
+    assert _subjects(report, "S9") == ["content/figure.bin"]
+    assert not _subjects(report, "R43")
+    assert not _subjects(report, "S3")
+    assert not report.ok
+
+
+@pytest.mark.parametrize("refusal", ["budget", "per-file"])
+def test_an_unread_stylesheet_is_not_classified_as_another_format(
+        make_package, monkeypatch, refusal):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    S9/S16 report refused reads; R74 cannot treat unread bytes as a format.
+    """
+    from iirds_validate import package as package_module
+    from iirds_validate.rules import content
+
+    if refusal == "budget":
+        monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 512)
+    else:
+        monkeypatch.setattr(content, "MAX_CONTENT_BYTES", 512)
+    body = b"\x89PNG\r\n\x1a\n" + b" " * 5000
+    report = _linked(make_package, '<link rel="stylesheet" href="style.bin"/>',
+                     (("content/style.bin", body),), "unread-stylesheet.iirds")
+    assert _subjects(report, "S9" if refusal == "budget" else "S16") == ["content/style.bin"]
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "S3")
+    assert not report.ok
+
+
+@pytest.mark.parametrize("raw,expected", [
+    (b'@charset "iso-8859-1";\xe9', '@charset "iso-8859-1";\u00e9'),
+    (b'@charset "not-an-encoding";\xff', '@charset "not-an-encoding";\ufffd'),
+    (b'@charset "\x00";p{}', '@charset "\x00";p{}'),
+    (b'@charset "utf-16";p{}', '@charset "utf-16";p{}'),
+    (b'@charset "utf-16le";p{}', '@charset "utf-16le";p{}'),
+    (b'@charset "utf-16be";p{}', '@charset "utf-16be";p{}'),
+    (b'@charset "rot13";p{}', '@charset "rot13";p{}'),
+    (b'\xef\xbb\xbf@charset "iso-8859-1";\xc3\xa9', '@charset "iso-8859-1";\u00e9'),
+    (b'\xff\xfe' + '<?xml?>'.encode('utf-16-le'), '<?xml?>'),
+    (b'\xfe\xff' + '<?xml?>'.encode('utf-16-be'), '<?xml?>'),
+    (b' @charset "iso-8859-1";\xe9', ' @charset "iso-8859-1";\ufffd'),
+    (b"@charset 'iso-8859-1';\xe9", "@charset 'iso-8859-1';\ufffd"),
+    (b'@charset "' + b' ' * 1010 + b'iso-8859-1";\xe9',
+     '@charset "' + ' ' * 1010 + 'iso-8859-1";\ufffd'),
+])
+def test_stylesheet_decoding_respects_bom_and_the_exact_charset_prefix(raw, expected):
+    """CSS Syntax 3 §3.2 restricts the prefix to the first 1024 bytes."""
+    from iirds_validate.rules.content import _stylesheet_text
+
+    assert _stylesheet_text(raw) == expected
+
+
+@pytest.mark.parametrize("label", [b"unknown-encoding", b"bad\x00label"])
+def test_unknown_stylesheet_charset_labels_do_not_crash_or_identify_another_format(
+        make_package, label):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    body = b'@charset "' + label + b'"; p { color: red; }'
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "unknown-charset-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "S3")

@@ -3,12 +3,12 @@
   "branch": 2,
   "finding": 1,
   "other": 1,
-  "silent": 28
+  "silent": 24
  },
  "tree": {
   "__init__.py": "8c90471e4ea5fe8f7b9217be150cadc306e79e9981ea50c2785f021c3dec9a50",
   "container.py": "33d54589897c06bdcf7413d7641a7deec1b8c23af033c24d2eabb1d191467c8b",
-  "content.py": "e82eb9061248f9d43ccc2fd5d9d6ca9a02146c239de3d4941edc78245e23ad11",
+  "content.py": "75ee9a10d2b30cdbebc429e1f03dbeecd14d8adcc999dba4ea03040c5cea848a",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
   "lint.py": "528b2321fb0d54d0661d53cac2636651310ad397c60cc05b1f32fc771410c0f8",
   "requirements.py": "bcaa968f8d96941825489f2f781200d91394ed76a08b753b3062f1eee7e97a58",
@@ -32,15 +32,11 @@
    "_entity_at :: return None [1]": "silent",
    "_entity_at :: return None [2]": "silent",
    "_first_element :: return None [1]": "silent",
-   "_first_element :: return None [5]": "silent",
    "_first_element :: return None [7]": "silent",
    "_gunzipped :: return None": "silent",
-   "_name_at :: return None, position": "silent",
    "_unescape_attribute :: return None [1]": "silent",
    "_unescape_attribute :: return None [3]": "silent",
-   "_unescape_attribute :: return None [4]": "silent",
-   "r43_raster_formats :: continue [2]": "silent",
-   "r74_stylesheet_format :: continue [4]": "silent"
+   "_unescape_attribute :: return None [4]": "silent"
   },
   "lint.py": {
    "_suggest :: return None [1]": "silent",

@@ -719,7 +719,7 @@ def _stylesheet_text(raw):
     if declaration:
         try:
             candidate = codecs.lookup(declaration.group(1).decode("ascii")).name
-        except LookupError:
+        except (LookupError, ValueError):
             candidate = "utf-8"
         if candidate not in ("utf-16", "utf-16-le", "utf-16-be"):
             encoding = candidate

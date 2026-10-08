@@ -636,3 +636,58 @@ def test_content_identification_uses_the_ebcdic_byte_signature(make_package, ele
     report = runner.check(make_package(metadata=A_PROFILE,
                                       extra=(("content/ebcdic.bin", raw),)))
     assert [f.violation.subject for f in report.findings if f.rule.id == rule] == ["content/ebcdic.bin"]
+
+
+@pytest.fixture
+def windows_31j_older_alias_table(monkeypatch):
+    """Model the older alias table while keeping the cp932 codec available."""
+    original = codecs.lookup
+
+    def older_lookup(label):
+        if label.lower().replace("-", "_") in {"windows_31j", "cswindows31j"}:
+            raise LookupError(label)
+        return original(label)
+
+    monkeypatch.setattr(codecs, "lookup", older_lookup)
+    with pytest.raises(LookupError):
+        codecs.lookup("windows_31j")
+    assert codecs.lookup("cp932").name == "cp932"
+    assert codecs.lookup("ms932").name == "cp932"
+
+
+@pytest.mark.parametrize("declared", ["Windows-31J", "csWindows31J"])
+def test_windows_31j_resolves_with_an_older_alias_table(windows_31j_older_alias_table, declared):
+    """Registered Windows-31J names select the same Microsoft code page."""
+    from iirds import _metadata
+
+    assert _metadata._registered(declared) is not None
+    label = _metadata._codec_for(declared)
+    assert label is not None
+    assert codecs.lookup(label).name == "cp932"
+
+
+def test_windows_31j_preserves_code_page_extensions(windows_31j_older_alias_table, make_package):
+    """The declared codec preserves characters outside plain Shift_JIS."""
+    title = "A topic① ㈱"
+    with pytest.raises(UnicodeEncodeError):
+        title.encode("shift_jis")
+    raw = ('<?xml version="1.0" encoding="Windows-31J"?>\n'
+           + BODY.replace("A topic", title)).encode("cp932")
+    graph, error = parsed(raw)
+    assert graph is not None and error is None, error
+    assert any(str(value) == title for value in graph.objects())
+    report = runner.check(make_package(metadata=raw))
+    assert report.ok, [(f.rule.id, f.violation.detail) for f in report.findings]
+
+
+@pytest.mark.parametrize("declared", ["cp932", "ms932", "windows_31j"])
+def test_unregistered_windows_31j_codec_spellings_stay_unreadable(declared):
+    """A codec fallback does not register Python's private spellings."""
+    from iirds import _metadata
+
+    assert _metadata._registered(declared) is None
+    assert _metadata._codec_for(declared) is None
+    raw = ('<?xml version="1.0" encoding="%s"?>\n' % declared + BODY).encode("cp932")
+    graph, error = parsed(raw)
+    assert graph is None and iirds.UNREADABLE_ENCODING in error, error
+    assert "not an IANA-registered encoding name" in error and "4.3.3" in error

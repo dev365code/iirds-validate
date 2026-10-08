@@ -52,7 +52,8 @@ inside the package, stays work. The denominator stays 280.
   including legacy multibyte encodings, where the declaration and the stored
   bytes agree; see [the decoding limits](docs/divergences.md#metadata-in-an-encoding-this-reader-does-not-decode)
   for the EBCDIC view and byte-order limits. Unregistered spellings are now
-  refused across all encoding families.
+  refused across all encoding families. Windows-31J and its registered alias
+  are read with the same cp932 codec on every supported Python version.
 - Generic UTF-16 without a byte order mark is now refused; explicit byte-order
   labels retain their existing behavior.
 - UCS-2 declarations over supplementary characters are now refused.

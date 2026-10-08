@@ -458,6 +458,9 @@ _IANA_NAMES = {name.lower(): record for record in _CHARSETS
 _UNICODE_FORMS = {106: "UTF-8", 1000: "UTF-16", 1001: "UTF-32",
                   1013: "UTF-16BE", 1014: "UTF-16LE", 1015: "UTF-16",
                   1017: "UTF-32", 1018: "UTF-32BE", 1019: "UTF-32LE"}
+# CPython 3.13 encodings.aliases: windows_31j -> cp932.
+# Derived by comparing 3.9/3.13 codec resolution across all IANA records.
+_REGISTERED_CODEC_FALLBACKS = {"Windows-31J": "cp932"}
 
 
 def _registered(name):
@@ -487,7 +490,13 @@ def _codec_for(name):
         except (LookupError, UnicodeError):
             continue
         return label
-    return None
+    label = _REGISTERED_CODEC_FALLBACKS.get(record["name"])
+    if label is not None:
+        try:
+            codecs.lookup(label)
+        except (LookupError, UnicodeError):
+            return None
+    return label
 
 
 #: The forms each first-bytes reading agrees with: its family's name in

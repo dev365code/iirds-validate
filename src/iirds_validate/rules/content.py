@@ -662,7 +662,7 @@ def b11_no_scripting_urls(ctx):
                                                    value[:60]))
 
 
-@rule("B5", covers=("b-5-2-document-metadata#1",), kind="content", prio="MUST", versions=(), variants=(),
+@rule("B5", covers=("b-5-2-document-metadata#1", "b-5-2-document-metadata#3"), kind="content", prio="MUST", versions=(), variants=(),
       title="link must be used only with rel=\"stylesheet\"",
        fix="Use rel=\"stylesheet\", or delete the element. Other relations describe a document's place among others, and in iiRDS the metadata graph carries that; a consumer reads the graph and never sees this.")
 def b5_link_rel(ctx):
@@ -677,6 +677,55 @@ def b5_link_rel(ctx):
             if rel != "stylesheet":
                 yield Violation("<link> must be used only with rel=\"stylesheet\"",
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
+
+
+@rule("R74", covers=(), kind="content", prio="MUST", versions=(), variants=(),
+      title="an iiRDS XHTML5 stylesheet must be in CSS format",
+      fix="Replace the linked file with a CSS stylesheet and update every reference to it. "
+          "If the file is missing, include it at the path the link names.")
+def r74_stylesheet_format(ctx):
+    """B.1: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+
+    Reject known non-CSS bytes and text that is not UTF-8, without a CSS
+    parser. Other UTF-8 text passes, so this does not claim the whole sentence.
+    Resolve local links as `_pointed_at` does; no other B rule reports missing
+    stylesheet targets. External resources are not opened.
+    """
+    files = set()
+    for page, root in _walk(ctx):
+        for element in root.iter():
+            if (_local(element.tag) != "link"
+                    or (element.get("rel") or "").strip().lower() != "stylesheet"):
+                continue
+            value = (element.get("href") or "").strip()
+            if not value or value.startswith(("#", "//")) or _SCHEME.match(value):
+                continue
+            path = value[1:] if value.startswith("/") else posixpath.join(
+                posixpath.dirname(page), value)
+            name = entry_named(path)
+            if name:
+                files.add(name)
+    for name in sorted(files):
+        if not ctx.package.has(name):
+            yield Violation("the linked stylesheet is not in the package", subject=name)
+            continue
+        raw, unread = _bytes_of(ctx, name)
+        if unread:
+            # S9/S14/S16 report refusals; no format was determined.
+            continue
+        head = raw.lstrip(b" \t\r\n\f")
+        if head.startswith(b"\xef\xbb\xbf"):
+            head = head[3:].lstrip(b" \t\r\n\f")
+        non_css = head.startswith((b"<", b"%PDF-", b"PK\x03\x04", b"PK\x05\x06",
+                                   b"PK\x07\x08", b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff",
+                                   b"GIF87a", b"GIF89a", b"\xff\xfe", b"\xfe\xff"))
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            non_css = True
+        if non_css:
+            yield Violation("the linked stylesheet has bytes incompatible with CSS text",
+                            subject=name)
 
 
 @rule("B6", covers=("b-3-conformance-criteria#5", "x8-2-1-1-text-formats#2"), kind="content", prio="MUST", versions=(), variants=(),
@@ -1109,36 +1158,56 @@ def _raster_other_than_jpeg_or_png(head: bytes):
 
 @rule("R43", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a file in an iiRDS/A package must not be a GIF, TIFF, WebP or BMP graphic",
+      title="a graphic used in an iiRDS/A package must be JPEG, PNG or SVG; "
+            "identified GIF, TIFF, WebP and BMP files are also refused",
       fix="Convert the graphic to PNG, or to JPEG for photographs, and update whatever "
           "points at it. Section 8.2.1.2 allows JPEG and PNG as raster formats in iiRDS/A, "
           "so that a consumer needs to render no other.")
 def r43_raster_formats(ctx):
     """What each file is, rather than what its name or the metadata says: a
     GIF named .png is a GIF, whether a rendition declares it or a page points
-    at it. It reads twelve bytes of a file.
+    at it. Its all-file signature check reads twelve bytes of a file.
 
     It recognises GIF, TIFF, WebP and BMP, and a raster format it has no
     signature for passes -- which is why it claims no sentence. "Raster
     graphics MUST be encoded as" JPEG or PNG would need every other raster
     format recognised, and "Only JPG and PNG graphics according to this
     section MUST be used" is one of section 8.2.1.2's restrictions on SVG,
-    about the graphics an SVG uses; this does not open SVGs.
+    about the graphics an SVG uses; this does not open SVGs. Files used by
+    XHTML's `img src` or declared with an image/ media type are also read:
+    anything not identified as JPEG, PNG or SVG is reported. An undeclared,
+    unused raster with an unknown signature still passes, and SVG's own
+    resources are still not examined, so neither sentence is claimed.
     """
     renditions = set(_renditions_declared_as(ctx))
-    for name in sorted(ctx.package.files):
-        if name == "mimetype" or name.startswith("META-INF/"):
-            continue
+    reported = set()
+    for name in _content_files(ctx):
         head, unread = _head(ctx, name, 12, rendition=name in renditions)
         if unread:
+            reported.add(name)
             yield Violation("this file could not be read, so whether it is a GIF, TIFF, "
                             "WebP or BMP graphic is not known", subject=name, detail=unread)
         if head is None:
             continue
         found = _raster_other_than_jpeg_or_png(head)
         if found:
+            reported.add(name)
             yield Violation("a %s graphic, where iiRDS/A allows JPEG and PNG" % found,
                             subject=name)
+    used = set(_renditions_declared_as(ctx, "image/"))
+    used.update(name for kind, attribute, name in _pointed_at(ctx)
+                if kind == "img" and attribute == "src")
+    for name in sorted(used - reported):
+        head = _sniff(ctx, name)
+        if head is None:
+            continue
+        if head.startswith((b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n")):
+            continue
+        body = ctx.__dict__.get("_inflated", {}).get(name) if head[:2] == GZIP_MAGIC else head
+        if body is not None and _first_element(body) == (b"http://www.w3.org/2000/svg", b"svg"):
+            continue
+        yield Violation("a graphic could not be identified as JPEG or PNG, or as SVG",
+                        subject=name)
 
 
 #: ISO base media files whose major brand says they hold something other than
@@ -1175,7 +1244,7 @@ def _is_mp3(head: bytes) -> bool:
             and (head[2] >> 2) & 3 != 3)
 
 
-def _media(ctx, family, element, recognised, others, other_element, other_recognised):
+def _media(ctx, family, element, recognised, others, other_recognised):
     """Every file that is `family` content: declared so, played by a page's
     `element` -- its `src`, or a `<source>` inside it -- or recognised by its
     first bytes. A file the package or its bytes give to another family is left
@@ -1183,7 +1252,9 @@ def _media(ctx, family, element, recognised, others, other_element, other_recogn
     with a caption track is how a page shows captioned audio, and a file the
     metadata declares as audio and that is MP3 is not a video that failed to be
     an MPEG-4. Nor is an audio-only MPEG-4 declared as audio a video for
-    carrying the boxes a video does."""
+    carrying the boxes a video does. Byte identification is independent of
+    declarations and page elements, so a conflicting declaration cannot
+    remove an identified file from its family."""
     found = set(_renditions_declared_as(ctx, family))
     declared_elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
     for kind, attribute, name in _pointed_at(ctx):
@@ -1191,10 +1262,8 @@ def _media(ctx, family, element, recognised, others, other_element, other_recogn
             head = _sniff(ctx, name)
             if head is None or not other_recognised(head):
                 found.add(name)
-    elsewhere = declared_elsewhere | {name for kind, _attribute, name in _pointed_at(ctx)
-                                      if kind == other_element}
     for name in _content_files(ctx):
-        if name in found or name in elsewhere:
+        if name in found:
             continue
         head = _sniff(ctx, name)
         if head is not None and recognised(head):
@@ -1202,10 +1271,10 @@ def _media(ctx, family, element, recognised, others, other_element, other_recogn
     return found
 
 
-def _named_for_its_family(ctx, family, extension, what, element, recognised, others, other_element,
+def _named_for_its_family(ctx, family, extension, what, element, recognised, others,
                           other_recognised):
     """Every file that is `family` content, not named `extension`."""
-    for name in sorted(_media(ctx, family, element, recognised, others, other_element,
+    for name in sorted(_media(ctx, family, element, recognised, others,
                               other_recognised)):
         if not name.lower().endswith(extension):
             yield Violation("%s content does not use the %s file extension" % (what, extension),
@@ -1214,8 +1283,9 @@ def _named_for_its_family(ctx, family, extension, what, element, recognised, oth
 
 @rule("R44", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as video in an iiRDS/A package must use the .mp4 extension",
-      fix="Name the video file .mp4 and update every iirds:source that points at it. Section "
+      title="a video file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, must use the .mp4 extension",
+      fix="Name the video file .mp4 and update every reference to it, including iirds:source. Section "
           "8.2.1.3 fixes the extension, and a video in another container is the thing the "
           "section's encoding sentence also rules out.")
 def r44_video_extension(ctx):
@@ -1230,13 +1300,14 @@ def r44_video_extension(ctx):
     beside it either, which the index holds without the codecs that complete
     it."""
     yield from _named_for_its_family(ctx, "video/", ".mp4", "video", "video", _is_mp4_video,
-                                     ("audio/", "image/"), "audio", _is_audio_by_bytes)
+                                     ("audio/", "image/"), _is_audio_by_bytes)
 
 
 @rule("R45", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as audio in an iiRDS/A package must use the .mp3 extension",
-      fix="Name the audio file .mp3 and update every iirds:source that points at it. Section "
+      title="an audio file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, must use the .mp3 extension",
+      fix="Name the audio file .mp3 and update every reference to it, including iirds:source. Section "
           "8.2.1.4 fixes the extension alongside the encoding.")
 def r45_audio_extension(ctx):
     """As R44, for audio/, for `<audio>` on a page, and for a file that opens
@@ -1244,9 +1315,10 @@ def r45_audio_extension(ctx):
     it claims no sentence: audio in a format with no signature here, declared
     as something else and played by no page, is not recognised. Whether the
     bytes are MP3 to ISO/IEC 11172-3 throughout is a question for a
-    decoder."""
-    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_mp3,
-                                     ("video/", "image/"), "video", _is_mp4_video)
+    decoder. An audio-only MPEG-4 brand also identifies audio, even without a
+    rendition declaration."""
+    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_audio_by_bytes,
+                                     ("video/", "image/"), _is_mp4_video)
 
 
 @rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),

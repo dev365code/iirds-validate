@@ -960,3 +960,35 @@ def test_h2b_public_descriptions_match_the_checked_scope(tmp_path, capsys):
     body = H2B_REVIEW_LISTS['package_row_missing'].replace('</body>', '<video/></body>')
     got = findings(h2b_review_package(tmp_path, 'baseline', body), 'R67')
     assert got[0].violation.message == 'index.html contains <video>, which section 8.3.1.1 excludes.'
+
+
+def test_h2b_branches_record_no_new_silent_paths():
+    import json
+    from conftest import ROOT
+
+    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 26
+
+
+@pytest.mark.parametrize('body', [
+    '<html><body><table/></body></html>',
+    '<html xmlns:f="urn:foreign"><body><table><tbody><f:tr><f:td>urn:test:doc2</f:td></f:tr></tbody></table></body></html>',
+])
+def test_h2b_branches_empty_and_foreign_rows_do_not_identify_documents(tmp_path, body):
+    package = h2b_review_package(tmp_path, 'baseline', body)
+    assert len(findings(package, 'R68')) == 2
+    assert findings(package, 'R69') == []
+
+
+@pytest.mark.parametrize('span', ['0', 'invalid'])
+def test_h2b_branches_rowspan_to_end_and_invalid_span_fallback(tmp_path, span):
+    body = H2B_REVIEW_LISTS['rowspan_product'].replace('rowspan="3"', 'rowspan="%s"' % span)
+    package = h2b_review_package(tmp_path, 'baseline', body)
+    assert findings(package, 'R68') == []
+    assert bool(findings(package, 'R69')) == (span == 'invalid')
+
+
+def test_h2b_branches_shared_pdf_with_two_matching_titles_identifies_neither(tmp_path):
+    body = '<html><body><table><tbody><tr><td>Operating instructions 2; Operating instructions 3 <a href="content/doc1.pdf">Open</a></td></tr></tbody></table></body></html>'
+    got = findings(h2b_review_package(tmp_path, 'baseline', body), 'R68')
+    assert len(got) == 2
+    assert all('has no row identifying document' in f.violation.message for f in got)

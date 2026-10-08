@@ -625,8 +625,7 @@ def listed_handover(tmp_path, name, rows=None, body=None, metadata=None):
 
 @pytest.mark.parametrize("element", ["video", "audio", "p", "div", "ins", "custom"])
 def test_content_list_elements_outside_its_allowed_sections_are_reported(tmp_path, element):
-    """x8-3-1-1-mandatory-content-list#4\n
-    The content list MUST be based on iiRDS XHTML 5 and only contain elements listed in sections:"""
+    """Only the element restriction is checked; the full XHTML claim is withdrawn."""
     body = content_list(list_rows(), extra="<%s/>" % element)
     package = listed_handover(tmp_path, "element.iirds", body=body)
     got = findings(package, "R67")
@@ -672,8 +671,7 @@ def test_content_list_without_tabular_data_is_reported(tmp_path):
 
 @pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
 def test_content_list_missing_a_data_cell_is_reported(tmp_path, column):
-    """x8-3-1-1-mandatory-content-list#6\n
-    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):"""
+    """Five nonempty cells are checked; the full data-role claim is withdrawn."""
     rows = [r[:column] + r[column + 1:] for r in list_rows()]
     headers = LIST_COLUMNS[:column] + LIST_COLUMNS[column + 1:]
     package = listed_handover(tmp_path, "missing-column.iirds", body=content_list(rows, headers))
@@ -734,7 +732,7 @@ def test_missing_content_list_is_reported_by_the_shared_claimant(tmp_path):
                             jsonld=as_jsonld(HANDOVER), content=(),
                             extra=(("content/doc1.pdf", b"%PDF-1.4"),))
     fired = {f.rule.id for f in runner.check(package).findings}
-    for suffix in ("#4", "#5", "#6"):
+    for suffix in ("#1", "#2", "#5"):
         claim = "x8-3-1-1-mandatory-content-list" + suffix
         assert fired & {r.id for r in all_rules() if claim in r.covers}
     assert {"R67", "R68", "R69"}.isdisjoint(fired)

@@ -3,7 +3,7 @@
 
 [![CI](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml/badge.svg)](https://github.com/dev365code/iirds-validate/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/iirds?label=PyPI&color=2f6fb3)](https://pypi.org/project/iirds/)
-[![spec obligations](https://img.shields.io/badge/spec_obligations-187_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
+[![spec obligations](https://img.shields.io/badge/spec_obligations-185_of_280_covered_·_a_floor-a8721c)](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json)
 [![license](https://img.shields.io/badge/license-Apache--2.0-5f6a75)](https://github.com/dev365code/iirds-validate/blob/main/LICENSE)
 
 &nbsp;**Apache-2.0**&nbsp;·&nbsp;**Python 3.9–3.13**&nbsp;·&nbsp;**Linux · macOS · Windows**&nbsp;·&nbsp;**zero network, by design**
@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=6685f940" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=bbcbeaae" alt="Coverage: 185 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -191,7 +191,7 @@ Coverage of the catalogue is not coverage of the standard. The specification sta
 **280 absolute obligations**, counted by
 [`tools/extract_requirements.py`](https://github.com/dev365code/iirds-validate/blob/main/tools/extract_requirements.py) and listed in
 [docs/requirements.json](https://github.com/dev365code/iirds-validate/blob/main/docs/requirements.json); the rules currently cover
-**187 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
+**185 of them — a floor, not a ceiling** ([docs/rule-coverage.json](https://github.com/dev365code/iirds-validate/blob/main/docs/rule-coverage.json)),
 re-measured on every release.
 
 > [!IMPORTANT]

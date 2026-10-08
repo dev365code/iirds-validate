@@ -36,13 +36,25 @@ def test_content_extension_verdict_movement_is_recorded():
     The note has to name byte identification beyond declared renditions,
     the recognized formats, extension rules and the newly refused shape.
     """
-    note = next(body for release, _rest, body in entries((ROOT / "CHANGELOG.md").read_text())
+    note = next(body for release, _rest, body in entries((ROOT / "CHANGELOG.md").read_text("utf-8"))
                 if release == "0.9.0")
     paragraphs = [" ".join(p.split()) for p in note.split("\n\n")]
     required = ("declared rendition", "bytes", "PDF 1.x", "2.0", "SVG", "XHTML",
                 "XML tokens", "8.2.1", "B6", "R41", "R42", "now refused", ".bin")
     assert any(all(term in p for term in required) for p in paragraphs), (
         "the release note does not describe the content extension verdict movement")
+
+
+def test_content_release_note_is_read_on_a_cp1252_host(monkeypatch):
+    """The committed changelog is UTF-8 even when the host defaults to cp1252."""
+    original = Path.read_text
+
+    def cp1252_default(path, encoding=None, errors=None):
+        return original(path, encoding=encoding or "cp1252", errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", cp1252_default)
+    test_content_extension_verdict_movement_is_recorded()
+
 
 #: Every `## ` line, whatever it says. Deliberately loose in three ways: a
 #: heading this file cannot read has to reach an assertion that names it

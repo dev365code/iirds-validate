@@ -89,33 +89,71 @@ def _list_tag(element):
     return _local(element.tag)
 
 
-def _list_tables(root):
-    """Direct table rows, excluding header groups and rows made only of headers.
+def _span(cell, attribute, maximum):
+    value = cell.get(attribute, "1")
+    if not value.isdecimal():
+        return 1
+    number = int(value)
+    if attribute == "rowspan" and number == 0:
+        return maximum
+    return min(max(number, 1), maximum)
 
-    Do not count nested tables' rows as their enclosing table's rows. Rowspan
-    and colspan do not change the number of physical information-unit rows.
-    """
+
+def _list_tables(root):
+    """Candidate rows in the logical grid; thead and tfoot are not data rows."""
     if root is None:
         return
     for table in (e for e in root.iter() if _list_tag(e) == "table"):
-        rows = []
+        candidates = []
         for child in table:
             tag = _list_tag(child)
-            candidates = [child] if tag == "tr" else list(child) if tag in ("tbody", "tfoot") else []
-            for row in candidates:
-                if _list_tag(row) != "tr":
-                    continue
-                cells = [e for e in row if _list_tag(e) in ("td", "th")]
-                if any(_list_tag(e) == "td" for e in cells):
-                    rows.append(cells)
-        yield rows
+            rows = [child] if tag == "tr" else list(child) if tag == "tbody" else []
+            candidates.extend(row for row in rows if _list_tag(row) == "tr")
+        active = {}
+        grid_rows = []
+        for index, row in enumerate(candidates):
+            grid = {position: cell for position, (cell, remaining) in active.items()}
+            following = {position: (cell, remaining - 1)
+                         for position, (cell, remaining) in active.items() if remaining > 1}
+            column = 0
+            for cell in (e for e in row if _list_tag(e) in ("td", "th")):
+                # HTML5 limits colspan to 1000; rowspan cannot outlive these rows.
+                width = _span(cell, "colspan", 1000)
+                height = _span(cell, "rowspan", len(candidates) - index)
+                while any(column + offset in grid for offset in range(width)):
+                    column += 1
+                for offset in range(width):
+                    position = column + offset
+                    grid[position] = cell
+                    if height > 1:
+                        following[position] = (cell, height - 1)
+                column += width
+            grid_rows.append([grid[position] for position in sorted(grid)])
+            active = following
+        yield grid_rows
+
+
+def _cell_elements(cell):
+    yield cell
+    for child in cell:
+        if _list_tag(child) != "table":
+            yield from _cell_elements(child)
+
+
+def _cell_text(cell):
+    parts = [cell.text or ""]
+    for child in cell:
+        if _list_tag(child) != "table":
+            parts.append(_cell_text(child))
+        parts.append(child.tail or "")
+    return "".join(parts)
 
 
 def _cell_values(cell):
     """Visible values and actual link targets, without guessing header meanings."""
     values = set()
-    for element in cell.iter():
-        text = " ".join("".join(element.itertext()).split())
+    for element in _cell_elements(cell):
+        text = " ".join(_cell_text(element).split())
         if text:
             values.add(text)
         if _list_tag(element) == "a" and element.get("href"):
@@ -128,7 +166,7 @@ def _contains(text, value):
 
 
 def _row_text(cells):
-    return " ".join(" ".join("".join(cell.itertext()).split()) for cell in cells)
+    return " ".join(" ".join(_cell_text(cell).split()) for cell in cells)
 
 
 def _identity_in(ctx, subject, text):
@@ -145,7 +183,7 @@ def _row_units(ctx, cells, units):
     # Resolve index.html links as _pointed_at does: the list is at the root.
     links = set()
     for cell in cells:
-        for element in cell.iter():
+        for element in _cell_elements(cell):
             value = (element.get("href") or "").strip()
             if _list_tag(element) == "a" and value and not value.startswith(("#", "//")) \
                     and not _SCHEME.match(value):

@@ -373,15 +373,12 @@ def test_xml_identification_refuses_an_uppercase_hex_reference(make_package):
     assert not _subjects(report, "R42")
 
 
-# C2: these checks retain the documented distinction between identifying a
-# format and covering every package that breaks its sentence.
-
 @pytest.mark.parametrize("name,body,rule_id", [
     ("clip.mov", MP4, "R44"),
     ("tone.audio", MP3, "R45"),
     ("tone.m4a", MP4.replace(b"isom", b"M4A ", 1), "R45"),
 ])
-def test_c2_undeclared_media_is_named_for_its_bytes(make_package, name, body, rule_id):
+def test_undeclared_media_is_named_for_its_bytes(make_package, name, body, rule_id):
     """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
     x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
     No rendition declares these files and no page plays them.
@@ -395,13 +392,13 @@ def test_c2_undeclared_media_is_named_for_its_bytes(make_package, name, body, ru
     ("audio/mpeg", MP4, "R44"),
     ("video/mp4", MP3, "R45"),
 ])
-def test_c2_a_conflicting_media_declaration_does_not_erase_the_bytes(
+def test_a_conflicting_media_declaration_does_not_erase_the_bytes(
         make_package, media_type, body, rule_id):
     """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
     x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
     A rendition's declaration cannot remove an identified file from its family.
     """
-    report = _declared(make_package, "content/media.bin", body, media_type, "c2-media.iirds")
+    report = _declared(make_package, "content/media.bin", body, media_type, "conflicting-media.iirds")
     assert _subjects(report, rule_id) == ["content/media.bin"]
     assert [(f.rule.id, f.violation.subject) for f in report.findings
             if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
@@ -457,7 +454,7 @@ def test_media_bytes_choose_one_family_despite_the_playback_element(
             if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
 
 
-def test_c2_media_extensions_alone_make_no_format_claim(make_package):
+def test_media_extensions_alone_make_no_format_claim(make_package):
     """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
     x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
     Identified files with the required names pass; names alone identify nothing.
@@ -472,19 +469,19 @@ def test_c2_media_extensions_alone_make_no_format_claim(make_package):
 @pytest.mark.parametrize("body", [
     b"RIFF\x00\x00\x00\x00WEBP", HEIC, b"unidentified graphic", b"",
 ])
-def test_c2_an_image_used_by_xhtml_must_have_allowed_graphic_bytes(make_package, body):
+def test_an_image_used_by_xhtml_must_have_allowed_graphic_bytes(make_package, body):
     """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
     The following list in the anchor allows PNG 1.2 or higher and JPEG or higher.
     Calling a file .png cannot make it one of those formats.
     """
     report = _linked(make_package, '<img src="figure.png" alt=""/>',
-                     (("content/figure.png", body),), "c2-image.iirds")
+                     (("content/figure.png", body),), "linked-graphic.iirds")
     assert _subjects(report, "R43") == ["content/figure.png"]
 
 
-def test_c2_a_declared_image_in_an_unknown_format_is_reported(make_package):
+def test_a_declared_image_in_an_unknown_format_is_reported(make_package):
     """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"""
-    report = _declared(make_package, "content/photo.heic", HEIC, "image/heic", "c2-heic.iirds")
+    report = _declared(make_package, "content/photo.heic", HEIC, "image/heic", "declared-heic.iirds")
     assert _subjects(report, "R43") == ["content/photo.heic"]
     assert "could not be identified as JPEG or PNG" in next(
         f.violation.message for f in report.findings if f.rule.id == "R43")
@@ -494,16 +491,16 @@ def test_c2_a_declared_image_in_an_unknown_format_is_reported(make_package):
     ("photo.bin", JPEG), ("figure.png", b"\x89PNG\r\n\x1a\n"),
     ("figure.svg", SVG), ("figure.svgz", SVGZ),
 ])
-def test_c2_allowed_graphics_are_decided_by_bytes(make_package, name, body):
+def test_allowed_graphics_are_decided_by_bytes(make_package, name, body):
     """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
     SVG is governed by the vector sentence, not this raster restriction.
     """
     report = _linked(make_package, '<img src="%s" alt=""/>' % name,
-                     (("content/" + name, body),), "c2-good-image.iirds")
+                     (("content/" + name, body),), "supported-graphic.iirds")
     assert not _subjects(report, "R43")
 
 
-def test_c2_unused_names_do_not_identify_graphics_but_known_rasters_still_report(make_package):
+def test_unused_names_do_not_identify_graphics_but_known_rasters_still_report(make_package):
     """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
     Keep the existing all-file GIF check; an unused .gif name proves nothing.
     """
@@ -527,10 +524,10 @@ def test_c2_unused_names_do_not_identify_graphics_but_known_rasters_still_report
      "XML or HTML document"),
     ("style.bom", b"\xef\xbb\xbf<html/>", "XML or HTML document"),
 ])
-def test_c2_a_stylesheet_with_non_css_bytes_is_reported(make_package, name, body, format_name):
+def test_a_stylesheet_in_another_identifiable_format_is_reported(make_package, name, body, format_name):
     """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
     report = _linked(make_package, '<link rel="stylesheet" href="%s"/>' % name,
-                     (("content/" + name, body),), "c2-style.iirds")
+                     (("content/" + name, body),), "non-css-stylesheet.iirds")
     assert _subjects(report, "R74") == ["content/" + name]
     finding = next(f for f in report.findings if f.rule.id == "R74")
     assert finding.violation.message == "the linked stylesheet is a%s %s, not CSS" % (
@@ -568,27 +565,27 @@ def test_leading_cdo_tokens_do_not_hide_an_xml_stylesheet(make_package):
 
 
 @pytest.mark.parametrize("href", ["../style%20sheet.css?x=1#part", "/style%20sheet.css"])
-def test_c2_a_utf8_stylesheet_resolves_like_other_content_references(make_package, href):
+def test_a_utf8_stylesheet_resolves_like_other_content_references(make_package, href):
     """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
     report = _linked(make_package, '<link rel="STYLESHEET" href="%s"/>' % href,
                      (("style sheet.css", b"p { color: red; } /* caf\xc3\xa9 */"),),
-                     "c2-good-style.iirds")
+                     "relative-stylesheet.iirds")
     assert not _subjects(report, "R74")
 
 
-def test_c2_a_missing_local_stylesheet_is_reported_once(make_package):
+def test_a_missing_local_stylesheet_is_reported_once(make_package):
     """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
     No existing B rule reports a missing link target.
     """
     report = _linked(make_package, '<link rel="stylesheet" href="missing.css"/>', (),
-                     "c2-missing-style.iirds")
+                     "missing-stylesheet.iirds")
     assert _subjects(report, "R74") == ["content/missing.css"]
 
 
-def test_c2_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
+def test_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
     """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
     report = _linked(make_package, '<link rel="stylesheet" href="//cdn/style.css"/>',
-                     (("content/cdn/style.css", b"<html/>"),), "c2-remote-style.iirds")
+                     (("content/cdn/style.css", b"<html/>"),), "remote-stylesheet.iirds")
     assert not _subjects(report, "R74")
 
 
@@ -596,12 +593,12 @@ def test_c2_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
     (element, rel) for element in ("a", "area")
     for rel in ("alternate", "author", "help", "license", "next", "prefetch", "prev", "search")
 ] + [("link", "next"), ("a", "NEXT"), ("area", "nofollow\tPREV next")])
-def test_c2_document_relations_are_reported_by_a_rule_claiming_the_sentence(
+def test_document_relations_are_reported_by_a_rule_claiming_the_sentence(
         make_package, element, rel):
     """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
     markup = '<%s rel="%s" href="next.xhtml"/>' % (element, rel)
     report = _linked(make_package, markup, (),
-                     "c2-next.iirds")
+                     "document-relation.iirds")
     findings = [f for f in report.findings if f.rule.id == "B5"]
     assert len(findings) == 1
     assert "b-5-2-document-metadata#3" in findings[0].rule.covers
@@ -609,7 +606,7 @@ def test_c2_document_relations_are_reported_by_a_rule_claiming_the_sentence(
         assert "<%s rel=" % element in findings[0].violation.message
         assert "metadata graph" in findings[0].violation.message
     sibling = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
-                      (("content/style.css", b"p { color: red; }"),), "c2-stylesheet.iirds")
+                      (("content/style.css", b"p { color: red; }"),), "stylesheet-relation.iirds")
     assert not _subjects(sibling, "B5")
 
 

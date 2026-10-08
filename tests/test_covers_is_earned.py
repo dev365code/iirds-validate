@@ -875,7 +875,7 @@ NAMED_CASES = {
         "test_obl_c:test_an_xhtml_page_a_page_links_to_is_named_xhtml",
 
     "b-5-2-document-metadata#3":
-        "test_obl_c:test_c2_document_relations_are_reported_by_a_rule_claiming_the_sentence",
+        "test_obl_c:test_document_relations_are_reported_by_a_rule_claiming_the_sentence",
 
 }
 

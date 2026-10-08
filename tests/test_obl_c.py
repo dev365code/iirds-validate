@@ -518,7 +518,9 @@ def test_unused_names_do_not_identify_graphics_but_known_rasters_still_report(ma
     ("style.rdf", b"<rdf:RDF/>", "XML or HTML document"),
     ("style.pdf", PDF, "PDF file"), ("style.zip", b"PK\x03\x04", "ZIP file"),
     ("style.png", b"\x89PNG\r\n\x1a\n", "PNG file"),
-    ("style.jpg", JPEG, "JPEG file"), ("style.gif", b"GIF89a", "GIF file"),
+    ("style.jpg", JPEG, "JPEG file"), ("style.gif", bytes.fromhex(
+        "47494638396101000100800000000000ffffff2c00000000010001000002024401003b"),
+     "GIF file"),
     ("style.gz", b"\x1f\x8b", "gzip file"),
     ("style.wide-xml", b"\xff\xfe" + '<?xml version="1.0"?><style/>'.encode("utf-16-le"),
      "XML or HTML document"),
@@ -735,3 +737,19 @@ def test_unknown_stylesheet_charset_labels_do_not_crash_or_identify_another_form
                      (("content/style.css", body),), "unknown-charset-stylesheet.iirds")
     assert not _subjects(report, "R74")
     assert not _subjects(report, "S3")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a { color: red; }\np { color: blue; }",
+    b"p { color: blue; }",
+    b"GIF89a",
+    b"GIF89a\x00",
+    b"GIF89a { color: red; }\x00",
+])
+def test_a_gif_identifier_does_not_identify_a_stylesheet_as_an_image(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A GIF prefix can be a CSS type selector; a partial header proves no image.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "gif-selector-stylesheet.iirds")
+    assert not _subjects(report, "R74")

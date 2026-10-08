@@ -765,8 +765,13 @@ def r74_stylesheet_format(ctx):
         if unread:
             # S9/S14/S16 report refusals; no format was determined.
             continue
+        # GIF87a/GIF89a can be CSS identifiers. Require the seven-byte
+        # logical screen descriptor and a non-whitespace control byte in it.
         binary = next((kind for signature, kind in _NON_CSS_SIGNATURES
-                       if raw.startswith(signature)), None)
+                       if raw.startswith(signature)
+                       and (kind != "GIF" or (len(raw) >= 13 and any(
+                           byte <= 8 or 14 <= byte <= 31 or byte == 127
+                           for byte in raw[6:13])))), None)
         if binary:
             yield Violation("the linked stylesheet is a %s file, not CSS" % binary,
                             subject=name)

@@ -717,8 +717,10 @@ PDF_MAGIC = b"%PDF-"
 
 @rule("R41", covers=("x8-2-1-1-text-formats#5",), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as PDF in an iiRDS/A package must use the .pdf extension",
-      fix="Rename the file to end in .pdf and update every iirds:source that points at it. "
+      title="a PDF file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, must use the .pdf extension",
+      fix="Rename the file to end in .pdf and update every reference to it, including "
+          "iirds:source. "
           "Section 8.2.1.1 names the extension, and a consumer choosing a viewer by it opens "
           "anything else as a file it does not recognise.")
 def r41_pdf_extension(ctx):
@@ -1033,10 +1035,10 @@ def _head(ctx, name, size, *, rendition):
 
 @rule("R42", covers=("x8-2-1-2-graphics-formats#3",), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as SVG in an iiRDS/A package must be named .svg, or .svgz "
-            "when gzip-compressed",
+      title="an SVG file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, must be named .svg, or .svgz when gzip-compressed",
       fix="Name an uncompressed SVG .svg and a gzip-compressed one .svgz, and update every "
-          "iirds:source that points at it. A consumer decides whether to decompress by the "
+          "reference to it, including iirds:source. A consumer decides whether to decompress by the "
           "extension, so a gzip-compressed file named .svg arrives as bytes it cannot parse.")
 def r42_svg_extension(ctx):
     """The extension depends on the bytes, so this reads the first of them.

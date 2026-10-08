@@ -943,3 +943,20 @@ def test_h2b_elements_do_not_claim_the_unchecked_attribute_whitelist(tmp_path):
 def test_h2b_elements_report_a_non_html_root(tmp_path):
     package = h2b_review_package(tmp_path, 'baseline', '<body/>')
     assert any('html document element' in f.violation.message for f in findings(package, 'R67'))
+
+
+def test_h2b_public_descriptions_match_the_checked_scope(tmp_path, capsys):
+    from iirds_validate.cli import main
+
+    for rule, title, remedy in [
+        ('R67', 'the content list follows the XHTML element restrictions', 'Replace the element named in this finding.'),
+        ('R68', 'the content list identifies each delivered document in a table row', 'Add a row for the named document, or correct its reference.'),
+        ('R69', 'the content list gives each document row five data cells', 'Provide document-title, language, product-reference, category or classification, and unit-reference data for the named document.'),
+    ]:
+        assert main(['rules', rule, '-v']) == 0
+        output = capsys.readouterr().out
+        assert title in output
+        assert remedy in output
+    body = H2B_REVIEW_LISTS['package_row_missing'].replace('</body>', '<video/></body>')
+    got = findings(h2b_review_package(tmp_path, 'baseline', body), 'R67')
+    assert got[0].violation.message == 'index.html contains <video>, which section 8.3.1.1 excludes.'

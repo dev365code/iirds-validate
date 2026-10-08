@@ -1,8 +1,8 @@
 """Section 8.3.1.1: the human-readable content list in iiRDS/H.
 
-The specification names data, not header strings or a column order. Read the
-cells against the metadata; an English caption alone proves nothing about a
-column. Appendix B supplies the element inventory and the bounded XML reader.
+Delivered documents are identified by row references. The logical table grid
+supplies a structural five-cell check; human-readable data roles and attribute
+whitelists are outside these rules' coverage claims.
 """
 from __future__ import annotations
 
@@ -38,11 +38,11 @@ def _list_root(ctx):
 
 
 @rule("R67", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
-      title="the content list uses only its five permitted XHTML sections",
+      title="the content list follows the XHTML element restrictions",
       spec=_CONTENT_LIST_SECTION, covers=(),
-      fix="Write index.html as iiRDS XHTML5 using only Main Root, Document Metadata, "
-          "Sections, Text-Level Semantics and Tabular Data. Replace grouping, embedded "
-          "content and edit elements with elements from those five sections.")
+      fix="Use elements from Main Root, Document Metadata, Sections, Text-Level "
+          "Semantics and Tabular Data. Replace the element named in this finding. "
+          "For a parse error, correct the XML at the reported location.")
 def r67_content_list_elements(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
@@ -61,7 +61,7 @@ def r67_content_list_elements(ctx):
             and not element.tag.startswith(XHTML_NS)
         if tag and (tag not in LIST_ELEMENTS or foreign) and element.tag not in reported:
             reported.add(element.tag)
-            yield Violation("<%s> is outside the content list's permitted XHTML sections" % tag,
+            yield Violation("index.html contains <%s>, which section 8.3.1.1 excludes." % tag,
                             subject=CONTENT_LIST, detail=str(element.tag))
 
 
@@ -173,11 +173,11 @@ def _row_units(ctx, cells, units):
 
 
 @rule("R68", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
-      title="the content list has one table row per information unit",
+      title="the content list identifies each delivered document in a table row",
       spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#5",),
-      fix="Provide a table in index.html with one row for each information unit. "
-          "Identify each unit by its IRI, its complex identity (value and domain), "
-          "or a hyperlink to its PDF/A rendition; remove duplicate unit rows.")
+      fix="Add a row for the named document, or correct its reference. Use its IRI, "
+          "a complex identity with its domain, or a link to its PDF/A rendition. "
+          "Keep summary rows separate from document rows.")
 def r68_content_list_rows(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
@@ -208,12 +208,11 @@ def _document_rows(ctx, documents):
 
 
 @rule("R69", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
-      title="the content list provides all five required data columns",
+      title="the content list gives each document row five data cells",
       spec=_CONTENT_LIST_SECTION, covers=(),
-      fix="Provide columns in index.html for the document title, languages, product "
-          "instance reference or complex identity, document category or external "
-          "classification, and unit IRI, complex identity or PDF/A hyperlink. Fill "
-          "each row with the corresponding metadata; captions alone do not provide data.")
+      fix="Provide document-title, language, product-reference, category or classification, "
+          "and unit-reference data for the named document. Keep these data roles in "
+          "consistent table columns.")
 def r69_content_list_columns(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.

@@ -9,10 +9,14 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
-iiRDS/H content lists now report elements outside the five permitted XHTML
-sections, tables without one row per information unit, and columns missing
-the required document data. These content findings are warnings in iiRDS/H;
-`check -W` rejects such packages with exit 1.
+iiRDS/H content lists now report excluded XHTML elements, a missing or
+repeated row identifying a document by its IRI, complex identity or PDF/A
+link, and a document row with fewer than five nonempty data cells. The list
+is read as the standard's own example shows it: one row per delivered
+document, none for the package itself. These findings are warnings in
+iiRDS/H; `check -W` rejects such packages with exit 1. A missing list remains
+a container error (C11.2). Review index.html and provide a reference and five
+data cells for each delivered document.
 
 ## 0.9.0 — 2026-10-08
 

@@ -732,9 +732,9 @@ ivs:M13.2 a sh:NodeShape ;
   sh:or ( [ sh:class iirds:RangeSelector ] [ sh:property [ sh:path <http://purl.org/dc/terms/conformsTo> ; sh:minCount 1 ; sh:maxCount 1 ] ] ) .
 
 ivs:M14.1 a sh:NodeShape ;
-  rdfs:label "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
+  rdfs:label "A RangeSelector MUST have one iirds:has-start-selector; M14.2 checks has-end-selector" ;
   sh:severity sh:Violation ;
-  sh:message "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
+  sh:message "A RangeSelector MUST have one iirds:has-start-selector; M14.2 checks has-end-selector" ;
   ivm:ruleId "M14.1" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable." ;
@@ -745,7 +745,7 @@ ivs:M14.1 a sh:NodeShape ;
   sh:targetClass iirds:RangeSelector ;
   sh:property ivs:M14.1-p .
 ivs:M14.1-p a sh:PropertyShape ;
-  sh:message "A RangeSelector MUST have one iirds:has-start-selector, paired with iirds:has-end-selector" ;
+  sh:message "A RangeSelector MUST have one iirds:has-start-selector; M14.2 checks has-end-selector" ;
   sh:severity sh:Violation ;
   ivm:ruleId "M14.1" ;
   sh:description "Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable." ;
@@ -755,9 +755,9 @@ ivs:M14.1-p a sh:PropertyShape ;
   sh:maxCount 1 .
 
 ivs:M14.2 a sh:NodeShape ;
-  rdfs:label "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
+  rdfs:label "A RangeSelector MUST have one iirds:has-end-selector; M14.1 checks has-start-selector" ;
   sh:severity sh:Violation ;
-  sh:message "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
+  sh:message "A RangeSelector MUST have one iirds:has-end-selector; M14.1 checks has-start-selector" ;
   ivm:ruleId "M14.2" ;
   ivm:ruleSource "catalogue" ;
   sh:description "Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular." ;
@@ -768,7 +768,7 @@ ivs:M14.2 a sh:NodeShape ;
   sh:targetClass iirds:RangeSelector ;
   sh:property ivs:M14.2-p .
 ivs:M14.2-p a sh:PropertyShape ;
-  sh:message "A RangeSelector MUST have one iirds:has-end-selector, paired with iirds:has-start-selector" ;
+  sh:message "A RangeSelector MUST have one iirds:has-end-selector; M14.1 checks has-start-selector" ;
   sh:severity sh:Violation ;
   ivm:ruleId "M14.2" ;
   sh:description "Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular." ;

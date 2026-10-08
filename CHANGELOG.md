@@ -4,6 +4,11 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.9.1 — unreleased
+
+Windows-31J and its registered alias are read with the same cp932 codec on
+every supported Python version.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it
@@ -52,8 +57,7 @@ inside the package, stays work. The denominator stays 280.
   including legacy multibyte encodings, where the declaration and the stored
   bytes agree; see [the decoding limits](docs/divergences.md#metadata-in-an-encoding-this-reader-does-not-decode)
   for the EBCDIC view and byte-order limits. Unregistered spellings are now
-  refused across all encoding families. Windows-31J and its registered alias
-  are read with the same cp932 codec on every supported Python version.
+  refused across all encoding families.
 - Generic UTF-16 without a byte order mark is now refused; explicit byte-order
   labels retain their existing behavior.
 - UCS-2 declarations over supplementary characters are now refused.

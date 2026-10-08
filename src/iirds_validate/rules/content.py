@@ -1279,16 +1279,14 @@ def _is_mp3(head: bytes) -> bool:
 
 
 def _media(ctx, family, element, recognised, others, other_recognised):
-    """Every file that is `family` content: declared so, played by a page's
-    `element` -- its `src`, or a `<source>` inside it -- or recognised by its
-    first bytes. A file the package or its bytes give to another family is left
-    to that family, whatever element plays it: `<video src="narration.mp3">`
-    with a caption track is how a page shows captioned audio, and a file the
-    metadata declares as audio and that is MP3 is not a video that failed to be
-    an MPEG-4. Nor is an audio-only MPEG-4 declared as audio a video for
-    carrying the boxes a video does. Byte identification is independent of
-    declarations and page elements, so a conflicting declaration cannot
-    remove an identified file from its family."""
+    """Recognised bytes choose the media family regardless of declarations
+    or playback elements. Files recognised as the other family are excluded;
+    files with unidentified bytes retain their declared or played family.
+
+    A page's `element` reaches its `src` and a `<source>` inside it. A
+    `<video src="narration.mp3">` with a caption track remains audio when its
+    bytes identify MP3, even if the metadata declares video.
+    """
     found = set(_renditions_declared_as(ctx, family))
     declared_elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
     for kind, attribute, name in _pointed_at(ctx):
@@ -1302,6 +1300,10 @@ def _media(ctx, family, element, recognised, others, other_recognised):
         head = _sniff(ctx, name)
         if head is not None and recognised(head):
             found.add(name)
+    for name in tuple(found):
+        head = _sniff(ctx, name)
+        if head is not None and other_recognised(head):
+            found.discard(name)
     return found
 
 
@@ -1311,17 +1313,26 @@ def _named_for_its_family(ctx, family, extension, what, element, recognised, oth
     for name in sorted(_media(ctx, family, element, recognised, others,
                               other_recognised)):
         if not name.lower().endswith(extension):
+            declarations = sorted({
+                _media_type(value)
+                for rendition in ctx.instances_of(T.Rendition)
+                if any(entry_named(str(source)) == name
+                       for source in ctx.values(rendition, T.source))
+                for value in ctx.values(rendition, T.fmt)
+            })
             yield Violation("%s content does not use the %s file extension" % (what, extension),
-                            subject=name)
+                            subject=name,
+                            detail="; ".join("declared " + value for value in declarations))
 
 
 @rule("R44", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="a video file in an iiRDS/A package, identified by its bytes or declared as a "
             "rendition, must use the .mp4 extension",
-      fix="Name the video file .mp4 and update every reference to it, including iirds:source. Section "
-          "8.2.1.3 fixes the extension, and a video in another container is the thing the "
-          "section's encoding sentence also rules out.")
+      fix="Check the media content and its iirds:format declaration. "
+          "Correct a conflicting declaration, or convert the content to the intended format. "
+          "Save iiRDS/A video in the required MP4 encoding with a .mp4 filename "
+          "and update every reference, including iirds:source.")
 def r44_video_extension(ctx):
     """Video content is what a rendition declares with a video/ media type,
     any subtype; what a page plays with `<video>`; and a file whose first box
@@ -1341,8 +1352,10 @@ def r44_video_extension(ctx):
       variants=("A",),
       title="an audio file in an iiRDS/A package, identified by its bytes or declared as a "
             "rendition, must use the .mp3 extension",
-      fix="Name the audio file .mp3 and update every reference to it, including iirds:source. Section "
-          "8.2.1.4 fixes the extension alongside the encoding.")
+      fix="Check the media content and its iirds:format declaration. "
+          "Correct a conflicting declaration, or convert the content to MP3 for iiRDS/A audio. "
+          "Save the MP3 file with a .mp3 filename and update every reference, "
+          "including iirds:source.")
 def r45_audio_extension(ctx):
     """As R44, for audio/, for `<audio>` on a page, and for a file that opens
     with an ID3 tag or an MPEG audio Layer III frame -- and for R44's reason

@@ -403,6 +403,58 @@ def test_c2_a_conflicting_media_declaration_does_not_erase_the_bytes(
     """
     report = _declared(make_package, "content/media.bin", body, media_type, "c2-media.iirds")
     assert _subjects(report, rule_id) == ["content/media.bin"]
+    assert [(f.rule.id, f.violation.subject) for f in report.findings
+            if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
+
+
+@pytest.mark.parametrize("media_type", ["audio/mpeg", "video/mp4", None])
+@pytest.mark.parametrize("body,rule_id,extension", [
+    (MP3, "R45", ".mp3"), (MP4, "R44", ".mp4"),
+    (MP4.replace(b"isom", b"M4A ", 1), "R45", ".mp3"),
+])
+@pytest.mark.parametrize("suffix", [".bin", ".mp3", ".mp4"])
+def test_media_bytes_choose_one_family_despite_the_declaration(
+        make_package, media_type, body, rule_id, extension, suffix):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    Each recognised byte family owns the file regardless of its declaration.
+    """
+    source = "content/media" + suffix
+    report = (_declared(make_package, source, body, media_type, "declared-media.iirds")
+              if media_type else runner.check(make_package(
+                  metadata=A_PROFILE, extra=((source, body),))))
+    findings = [f for f in report.findings if f.rule.id in ("R44", "R45")]
+    expected = [] if suffix == extension else [(rule_id, source)]
+    assert [(f.rule.id, f.violation.subject) for f in findings] == expected
+    if findings and media_type:
+        assert "declared " + media_type in findings[0].violation.detail
+    for finding in findings:
+        if finding.rule.id == "R44":
+            assert finding.rule.fix == (
+                "Check the media content and its iirds:format declaration. "
+                "Correct a conflicting declaration, or convert the content to the intended format. "
+                "Save iiRDS/A video in the required MP4 encoding with a .mp4 filename "
+                "and update every reference, including iirds:source.")
+        else:
+            assert finding.rule.fix == (
+                "Check the media content and its iirds:format declaration. "
+                "Correct a conflicting declaration, or convert the content to MP3 for iiRDS/A audio. "
+                "Save the MP3 file with a .mp3 filename and update every reference, "
+                "including iirds:source.")
+
+
+@pytest.mark.parametrize("element,body,rule_id", [
+    ("audio", MP4, "R44"), ("video", MP3, "R45"),
+])
+def test_media_bytes_choose_one_family_despite_the_playback_element(
+        make_package, element, body, rule_id):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    """
+    report = _linked(make_package, '<%s src="media.bin"/>' % element,
+                     (("content/media.bin", body),), "played-media.iirds")
+    assert [(f.rule.id, f.violation.subject) for f in report.findings
+            if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
 
 
 def test_c2_media_extensions_alone_make_no_format_claim(make_package):

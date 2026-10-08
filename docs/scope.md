@@ -56,9 +56,12 @@ Written down so that none of these gets built by drift.
   its named graphs take the file past it -- the limit is the file's, its graphs
   together -- L9 says the files were not compared. Either names the limit.
 
-Content-file identification reads at most 64 KiB for an XML-looking prefix
+Content-file identification examines at most 64 KiB of an XML-looking prefix
 (a byte order mark or decoded text beginning with `<`). Other signatures use
-4096 bytes. XML identification skips declarations, comments, processing
+4096 bytes. These are analysis limits, not limits on total bytes read: the
+initial probe, lookahead bytes and a widened read from the start can read
+more than the prefix limit, and gzip output is charged as well.
+XML identification skips declarations, comments, processing
 instructions and a DOCTYPE internal subset before reading the root's
 namespace attributes. Every identification read, including unreferenced files
 and gzip output, counts towards the run's content budget.

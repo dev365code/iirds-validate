@@ -56,6 +56,31 @@ def test_content_release_note_is_read_on_a_cp1252_host(monkeypatch):
     test_content_extension_verdict_movement_is_recorded()
 
 
+def test_jsonld_and_nesting_verdict_movements_are_recorded():
+    """New placement and child-declaration failures need a release-note remedy."""
+    note = next(body for release, _rest, body in entries((ROOT / "CHANGELOG.md").read_text("utf-8"))
+                if release == "0.9.0")
+    paragraphs = [" ".join(p.split()) for p in note.split("\n\n")]
+    placement = ("C16.2", "JSON-LD", "META-INF/metadata.jsonld", "metadata.rdf")
+    nesting = ("R60", "is-part-of-package", "exactly one", "parent", "streaming",
+               "data descriptors", "ZIP64", "component tree")
+    assert any(all(term in p for term in placement) for p in paragraphs), (
+        "the release note does not describe the package JSON-LD placement remedy")
+    assert any(all(term in p for term in nesting) for p in paragraphs), (
+        "the release note does not describe the child declaration and nesting remedy")
+
+
+def test_xml_declaration_verdict_movements_are_recorded():
+    """Name the two newly refused forms without claiming every malformed form moved."""
+    note = next(body for release, _rest, body in entries((ROOT / "CHANGELOG.md").read_text("utf-8"))
+                if release == "0.9.0")
+    paragraphs = [" ".join(p.split()) for p in note.split("\n\n")]
+    required = ('version="2.0"', "byte order mark", "UTF-8", "before version",
+                "VersionNum", "version first", "now refused", "stored bytes")
+    assert any(all(term in p for term in required) for p in paragraphs), (
+        "the release note does not describe the two XML declaration verdict movements")
+
+
 #: Every `## ` line, whatever it says. Deliberately loose in three ways: a
 #: heading this file cannot read has to reach an assertion that names it
 #: rather than falling out of the search and reading as an entry nobody

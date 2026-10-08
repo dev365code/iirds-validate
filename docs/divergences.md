@@ -166,17 +166,19 @@ to add the property to the root, which leaves the finding where it was. A
 remedy is printed under a finding and has to resolve that finding; it now says
 to remove the property from the node named.
 
-The correction is that **M24.6 does not cover the title's sentence either**, so
-that sentence is unchecked. M24.6 asks whether *a* root with the property
+The correction is that **M24.6 does not cover the title's sentence either**.
+Until 0.9.0 that sentence was unchecked. M24.6 asks whether *a* root with the
+property
 exists — one existential check for the whole graph — while 6.9.1's first
 sentence binds every root. A package with two directory structures, the second
-of whose roots carries no structure type, is reported by nothing: M24.5 is
-silent because that node is not reachable from another, M24.6 is satisfied by
+of whose roots carries no structure type, used to be reported by nothing:
+M24.5 is silent because that node is not reachable from another, M24.6 is satisfied by
 the first root, and L3 says something adjacent but is a lint and does not run
-under `check`. It is recorded here rather than fixed, because the fix is a
-rule about what a root is, and this project has one already — `_linked_nodes`
-computes exactly the set — but a new MUST is not something to add inside a
-commit about a remedy.
+under `check`. From 0.9.0, R47 checks every directory root: a DirectoryNode
+that no other DirectoryNode points at through `has-first-child` or
+`has-next-sibling`, excluding level terminators. A second root, an isolated
+root or one only a topic or package points at without the property is now
+reported under `check`.
 
 `dateOfStatus` deserves a note: taking the wording for both M21.4 and M21.5
 would mean checking `purpose` twice and never checking `dateOfStatus` at all.
@@ -332,9 +334,11 @@ the whole document.
 Generic `UTF-16` and its registered alias require a byte order mark. Unmarked
 `UTF-16LE`, `UTF-16BE`, `ISO-10646-UCS-2` and `csUnicode` retain the order
 shown by their first bytes. The UCS-2 labels refuse decoded characters outside
-the BMP. LE/BE labels with a mark keep their existing behavior; the separate
-labeling recommendation in [RFC 2781 section 3.3](https://www.rfc-editor.org/rfc/rfc2781.html#section-3.3)
-has not been turned into another refusal.
+the BMP. [RFC 2781 section 3.3](https://www.rfc-editor.org/rfc/rfc2781.html#section-3.3)
+says, "Systems labelling UTF-16BE text MUST NOT prepend a BOM to the text."
+The same prohibition applies to UTF-16LE. Keeping the existing acceptance of
+LE/BE labels with a matching mark is this project's choice to defer another
+refusal; it does not follow that prohibition.
 
 The XML declaration follows productions [23]–[26], [32], [80] and [81].
 `VersionNum` must match `1.` followed by digits; accepted `1.x` declarations
@@ -1211,8 +1215,11 @@ nodes they share, and a graph repeating that description whole counts once,
 whatever order the graphs come in. Trees are compared directly; a non-tree
 whole bundle is compared by rdflib graph isomorphism within the same blank-node
 limit and document search allowance. A graph repeating one part alone makes
-second nodes, which L9 reports. Past the comparison limit a repeat is a second
-copy, which L9 reports. And where a file's statements are split
+second nodes, which L9 reports. Past the comparison limit, the files are not
+compared: a source the merge refuses is "not compared with the metadata before
+it, so left out" (C16.2), or L9 reports that named graphs prevented comparison.
+An uncollapsed repeat is not a copy proved different by comparison. And where
+a file's statements are split
 between its default graph and named graphs, and the default graph holds such a
 node, the merge, which reads default graphs, holds that node beside
 `metadata.rdf`'s: a rule that looks at it reports it twice, a count rule as a
@@ -1711,3 +1718,6 @@ XML-looking files have a 64 KiB identification window; other file signatures
 use 4096 bytes. If no complete root start tag fits in that window, B6 and R42
 make no format claim. Identification reads and bounded gzip output count
 towards the run's content budget even when no rendition names the file.
+The identification decoder uses the first-byte/BOM view rather than every
+codec an XML declaration can name, so legacy non-UTF-8 bytes before the root
+can leave identification silent even inside the window.

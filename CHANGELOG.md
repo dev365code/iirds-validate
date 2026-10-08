@@ -49,8 +49,10 @@ inside the package, stays work. The denominator stays 280.
 - Unmarked UTF-32 with a matching registered declaration is now read;
   undeclared or contradictory wide text stays refused.
 - Registered IANA names and aliases with a Python text codec are now read,
-  including legacy multibyte encodings; unregistered spellings are now refused
-  across all encoding families.
+  including legacy multibyte encodings, where the declaration and the stored
+  bytes agree; see [the decoding limits](docs/divergences.md#metadata-in-an-encoding-this-reader-does-not-decode)
+  for the EBCDIC view and byte-order limits. Unregistered spellings are now
+  refused across all encoding families.
 - Generic UTF-16 without a byte order mark is now refused; explicit byte-order
   labels retain their existing behavior.
 - UCS-2 declarations over supplementary characters are now refused.
@@ -70,6 +72,33 @@ XML tokens. The identified formats receive the extension checks in section
 8.2.1 (B6, R41 and R42). An otherwise valid iiRDS/A package with an undeclared
 PDF in a `.bin` file is now refused; give each identified file the extension
 its format requires.
+
+In iiRDS 1.3, JSON-LD describing a package is now checked for its required
+location. If it is provided elsewhere while `META-INF/metadata.jsonld` is
+absent or describes no package, C16.2 reports it. An otherwise valid package
+with only that misplaced JSON-LD is now refused; put the package's JSON-LD
+metadata at that exact path and retain `META-INF/metadata.rdf`. Declared
+JSON-LD renditions are excluded from this location search, as is extension
+data that does not describe an iiRDS package.
+
+In iiRDS 1.3, each nested container is now checked for a declaration in its
+parent's metadata. In that parent's `metadata.rdf`, the child's `iirds:Package`
+must be related by `iirds:is-part-of-package` to exactly one `iirds:Package`.
+R60 reports missing declarations or relations that do not meet this
+requirement. An otherwise valid package with an undeclared child is now
+refused; declare the child under its own package IRI and supply that relation.
+Nested containers produced by streaming ZIP writers, including data
+descriptors and ZIP64, are now recognised and reach the existing nesting
+checks. An iiRDS/H package must remove nested containers and express the
+hierarchy with a component tree.
+
+XML declarations are now checked against the XML 1.0 grammar, including
+declarations behind a byte order mark. Two previously accepted forms are now
+refused: `version="2.0"`, and an encoding pseudo-attribute before version
+behind a UTF-8 byte order mark. Correct the exporter's declaration: put
+version first and use a VersionNum beginning with `1.` followed by digits.
+Attribute order, repetition and encoding-name syntax are checked before
+parsing; keep the declared encoding consistent with the stored bytes.
 
 ## 0.8.0 — 2026-09-30
 

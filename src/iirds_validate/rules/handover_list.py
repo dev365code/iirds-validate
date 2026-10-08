@@ -164,14 +164,30 @@ def _row_units(ctx, cells, units):
 def r68_content_list_rows(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
-    units = set(ctx.instances_of(T.InformationUnit))
+    documents = set(ctx.instances_of(T.Document))
+    occurrences = {document: [] for document in documents}
+    for number, cells, targets in _document_rows(ctx, documents):
+        if len(targets) > 1:
+            yield Violation("a row refers to more than one document", subject=CONTENT_LIST,
+                            detail="row %d" % number)
+        elif targets:
+            occurrences[next(iter(targets))].append(number)
+    for document in sorted(documents, key=str):
+        rows = occurrences[document]
+        if not rows:
+            yield Violation("index.html has no row identifying document %s" % document,
+                            subject=CONTENT_LIST)
+        elif len(rows) > 1:
+            yield Violation("index.html lists document %s more than once" % document,
+                            subject=CONTENT_LIST, detail="rows " + ", ".join(map(str, rows)))
+
+
+def _document_rows(ctx, documents):
+    number = 0
     for rows in _list_tables(_list_root(ctx)):
-        targets = [_row_units(ctx, cells, units) for cells in rows]
-        if len(rows) == len(units) and all(len(t) == 1 for t in targets) \
-                and set().union(*targets) == units:
-            return
-    yield Violation("the content list must contain a table with one row per information unit",
-                    subject=CONTENT_LIST, detail="%d information units in metadata" % len(units))
+        for cells in rows:
+            number += 1
+            yield number, cells, _row_units(ctx, cells, documents)
 
 
 def _node_names(ctx, node):

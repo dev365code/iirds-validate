@@ -1405,6 +1405,17 @@ settle it, this document said otherwise, and the entry now says so. What
 remains interpretation there is the exemption it grants, not the finding it
 makes.
 
+### The iiRDS/H content list
+
+Section 8.3.1.1 says "one row per information unit". Read literally with the
+ontology, this includes the enclosing Package, a subclass of InformationUnit.
+The same section's Example 62 lists only delivered documents, and section
+8.3.2 specifies Package and Document metadata separately: a Package has no
+mandatory title, language or document category. This validator reads a content
+list row as a row for a delivered Document, with no row required for the
+Package itself. Topic and Fragment instances are reported by M15.11a under
+section 8.3.2.1 and are outside the list's row population.
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

@@ -9,6 +9,14 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
+iiRDS/A graphics used by XHTML images or declared as image renditions now
+draw a finding when their bytes identify neither JPEG, PNG nor SVG. Audio-only
+MPEG-4 files and media whose declared family conflicts with their bytes are
+also checked for the required filename extension; rename the file and update
+every reference to it, including `iirds:source`. Linked XHTML stylesheets
+with known non-CSS bytes, invalid UTF-8, or a missing local file are reported;
+replace them with CSS and update the links.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

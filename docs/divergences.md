@@ -1405,6 +1405,12 @@ settle it, this document said otherwise, and the entry now says so. What
 remains interpretation there is the exemption it grants, not the finding it
 makes.
 
+### R74 — stylesheet bytes exclude known non-CSS formats
+
+R74 rejects known non-CSS signatures and text that does not decode as UTF-8;
+it does not prove that other text is CSS, so it leaves B.1’s stylesheet
+obligation unclaimed.
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

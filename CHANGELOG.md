@@ -10,11 +10,17 @@ Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
 iiRDS/A graphics used by XHTML images or declared as image renditions now
-draw a finding when their bytes identify neither JPEG, PNG nor SVG. MPEG-4 files whose brand is registered for audio and media whose declared family conflicts with their bytes are
-also checked for the required filename extension; rename the file and update
-every reference to it, including `iirds:source`. Linked XHTML stylesheets
-with known non-CSS bytes, invalid UTF-8, or a missing local file are reported;
-replace them with CSS and update the links.
+draw a finding when their bytes identify neither JPEG, PNG nor SVG. Media
+bytes determine the media family, including MPEG-4 files whose brand is
+registered for audio. A file declared as another family is checked once under
+that byte family, with its declaration in the finding when its extension is
+wrong. Correct the declaration or convert the content to the intended format,
+then save it with the required extension and update every reference, including
+`iirds:source`. Linked XHTML stylesheets that are another identifiable format
+(PDF, ZIP, images, gzip, XML or HTML) or missing from the package are reported;
+a stylesheet's encoding is read the way CSS reads it, by BOM or `@charset`,
+and is not itself a finding. Stylesheet findings are errors in iiRDS/A and
+warnings in other readings.
 
 ## 0.9.0 — 2026-10-08
 

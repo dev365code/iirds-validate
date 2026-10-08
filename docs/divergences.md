@@ -1407,9 +1407,7 @@ makes.
 
 ### R74 — stylesheet bytes exclude known non-CSS formats
 
-R74 rejects known non-CSS signatures and text that does not decode as UTF-8;
-it does not prove that other text is CSS, so it leaves B.1’s stylesheet
-obligation unclaimed.
+R74 examines linked local files for identifiable non-CSS content and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.
 
 ### B4 — the attribute whitelist is narrowed to scripting
 

@@ -644,3 +644,24 @@ def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make
     unreleased = Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0]
     assert phrase in " ".join(unreleased.split())
     assert "audio-only" not in unreleased.lower()
+
+
+def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
+    """B.1 requires CSS format; bytes identify other formats, not all CSS syntax."""
+    from pathlib import Path
+
+    expected = (
+        "R74 examines linked local files for identifiable non-CSS content and missing files. "
+        "It does not parse all CSS syntax or fetch external stylesheets, so it leaves "
+        "B.1's stylesheet obligation unclaimed.")
+    assert expected in Path("docs/divergences.md").read_text()
+    paragraph = " ".join(Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0].split())
+    assert "invalid UTF-8" not in paragraph
+    assert "rename the file" not in paragraph
+    for statement in (
+            "bytes determine the media family", "once under that byte family",
+            "declaration in the finding", "convert the content",
+            "PDF, ZIP, images, gzip, XML or HTML", "missing from the package",
+            "BOM or `@charset`", "is not itself a finding",
+            "errors in iiRDS/A", "warnings in other readings"):
+        assert statement in paragraph

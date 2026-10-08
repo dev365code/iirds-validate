@@ -623,3 +623,24 @@ def test_relations_specific_to_a_or_area_do_not_describe_document_metadata(
     report = _linked(make_package, '<%s%s href="next.xhtml"/>' % (element, attribute), (),
                      "ordinary-hyperlink.iirds")
     assert not _subjects(report, "B5")
+
+
+def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make_package):
+    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as"
+    A registered audio brand alone cannot establish the required MP3 encoding.
+    """
+    from pathlib import Path
+    from iirds_validate.rules import content
+
+    phrase = "MPEG-4 files whose brand is registered for audio"
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/branded.bin", MP4.replace(b"isom", b"M4A ", 1)),)))
+    finding = next(f for f in report.findings if f.rule.id == "R45")
+    assert phrase in finding.rule.title
+    assert phrase in " ".join(content.r45_audio_extension.__doc__.split())
+    assert "tracks and codecs are not inspected" in content._is_mp4_audio.__doc__
+    source = Path(content.__file__).read_text()
+    assert "audio-only" not in source.lower()
+    unreleased = Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0]
+    assert phrase in " ".join(unreleased.split())
+    assert "audio-only" not in unreleased.lower()

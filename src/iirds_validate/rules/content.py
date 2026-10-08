@@ -1262,7 +1262,7 @@ def r43_raster_formats(ctx):
 
 
 #: ISO base media files whose major brand says they hold something other than
-#: video: audio-only MPEG-4, and the still-image formats built on the same boxes.
+#: video: registered audio brands, and still-image formats built on the same boxes.
 _AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P ", b"F4A ", b"F4B "))
 _IMAGE_BRANDS = frozenset((b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm",
                            b"hevs", b"mif1", b"msf1", b"avif", b"avis"))
@@ -1270,13 +1270,16 @@ _IMAGE_BRANDS = frozenset((b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis",
 
 def _is_mp4_video(head: bytes) -> bool:
     """An ISO base media file -- `ftyp` in its first box -- whose brand is
-    neither audio-only nor a still image."""
+    neither registered for audio nor a still image."""
     return (len(head) >= 12 and head[4:8] == b"ftyp"
             and head[8:12] not in _AUDIO_BRANDS | _IMAGE_BRANDS)
 
 
 def _is_mp4_audio(head: bytes) -> bool:
-    """An ISO base media file whose brand says audio-only MPEG-4."""
+    """MPEG-4 files whose brand is registered for audio.
+
+    Only the brand is read; tracks and codecs are not inspected.
+    """
     return len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in _AUDIO_BRANDS
 
 
@@ -1353,7 +1356,7 @@ def _named_for_its_family(ctx, family, extension, what, element, recognised, oth
 def r44_video_extension(ctx):
     """Video content is what a rendition declares with a video/ media type,
     any subtype; what a page plays with `<video>`; and a file whose first box
-    is an MPEG-4 file type that is not audio-only or a still image.
+    is an MPEG-4 file type whose brand is not registered for audio or still images.
 
     It claims no sentence. "The file extension MUST be .mp4" binds every
     video, and a video in a format with no signature here -- WebM, Ogg --
@@ -1368,7 +1371,8 @@ def r44_video_extension(ctx):
 @rule("R45", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
       title="an audio file in an iiRDS/A package, identified by its bytes or declared as a "
-            "rendition, must use the .mp3 extension",
+            "rendition, including MPEG-4 files whose brand is registered for audio, "
+            "must use the .mp3 extension",
       fix="Check the media content and its iirds:format declaration. "
           "Correct a conflicting declaration, or convert the content to MP3 for iiRDS/A audio. "
           "Save the MP3 file with a .mp3 filename and update every reference, "
@@ -1379,8 +1383,8 @@ def r45_audio_extension(ctx):
     it claims no sentence: audio in a format with no signature here, declared
     as something else and played by no page, is not recognised. Whether the
     bytes are MP3 to ISO/IEC 11172-3 throughout is a question for a
-    decoder. An audio-only MPEG-4 brand also identifies audio, even without a
-    rendition declaration."""
+    decoder. MPEG-4 files whose brand is registered for audio are included,
+    even without a rendition declaration; their tracks and codecs are not read."""
     yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_audio_by_bytes,
                                      ("video/", "image/"), _is_mp4_video)
 

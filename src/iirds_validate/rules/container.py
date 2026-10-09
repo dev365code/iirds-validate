@@ -278,7 +278,6 @@ def c11_1h_content_in_root_handover(ctx):
 
 
 @rule("C11.2", covers=("x8-3-1-1-mandatory-content-list#1", "x8-3-1-1-mandatory-content-list#2",
-                      "x8-3-1-1-mandatory-content-list#5",
                       ),
        fix="Add index.html in the root of the archive. An iiRDS/H package is meant to be openable by a person with a browser and no iiRDS tooling at all, and that file is the way in.")
 def c11_2_handover_content_list(ctx):

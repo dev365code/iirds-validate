@@ -732,7 +732,7 @@ def test_missing_content_list_is_reported_by_the_shared_claimant(tmp_path):
                             jsonld=as_jsonld(HANDOVER), content=(),
                             extra=(("content/doc1.pdf", b"%PDF-1.4"),))
     fired = {f.rule.id for f in runner.check(package).findings}
-    for suffix in ("#1", "#2", "#5"):
+    for suffix in ("#1", "#2"):
         claim = "x8-3-1-1-mandatory-content-list" + suffix
         assert fired & {r.id for r in all_rules() if claim in r.covers}
     assert {"R67", "R68", "R69"}.isdisjoint(fired)
@@ -1081,3 +1081,37 @@ def test_h2b_regression_tabular_data_is_required_even_without_documents(tmp_path
     got = findings(package, 'R68')
     assert bool(got) == (not table)
     assert findings(package, 'R69') == []
+
+
+def test_data_roles_are_not_verified(tmp_path):
+    """x8-3-1-1-mandatory-content-list#5 / #6
+    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):
+    The row identifies the document but supplies none of the other data roles.
+    """
+    body = content_list([('urn:test:doc1', 'approved', 'page 1', 'note A', 'note B')])
+    package = listed_handover(tmp_path, 'unverified-data.iirds', body=body, metadata=HANDOVER)
+    assert findings(package, 'R68') == []
+    assert findings(package, 'R69') == []
+    assert findings(package, 'C11.2') == []
+
+
+def test_content_list_partial_checks_do_not_claim_the_data_sentence():
+    from iirds_validate.registry import all_rules
+    from test_covers_is_earned import NAMED_CASES
+
+    claim = 'x8-3-1-1-mandatory-content-list#5'
+    rules = {rule.id: rule for rule in all_rules()}
+    assert rules['R68'].covers == ()
+    assert claim not in rules['C11.2'].covers
+    assert claim not in NAMED_CASES
+    assert not any(claim in rule.covers for rule in rules.values())
+
+
+def test_content_list_claim_totals_exclude_unverified_data():
+    from test_covers_is_earned import CLAIMED, UNAUDITED, held
+    from test_requirement_coverage import CLAIMED as rule_claims
+
+    assert len(CLAIMED) == 184
+    assert len(held()) == 149
+    assert len(UNAUDITED) == 35
+    assert sum(len(ids) for ids in rule_claims.values()) == 211

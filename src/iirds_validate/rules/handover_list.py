@@ -176,7 +176,7 @@ def _row_units(ctx, cells, units):
 
 @rule("R68", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
       title="the content list identifies each delivered document in a table row",
-      spec=_CONTENT_LIST_SECTION, covers=("x8-3-1-1-mandatory-content-list#5",),
+      spec=_CONTENT_LIST_SECTION, covers=(),
       fix="Add a row for the named document, or correct its reference. Use its IRI, "
           "a complex identity with its domain, or a link to its PDF/A rendition. "
           "Keep summary rows separate from document rows.")

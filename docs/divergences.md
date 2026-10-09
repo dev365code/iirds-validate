@@ -1424,6 +1424,13 @@ provide or their human-readable spelling: language names, abbreviated IRIs
 and titles with revision notes remain readable to a person. Neither R69 nor
 C11.2 claims section 8.3.1.1's complete column-data obligation (#6).
 
+The content-list sentence contains both the row requirement and the five
+required data roles: title, language, product reference, classification and
+unit reference. This validator checks that a table exists, that each delivered
+document has one identifying row, and that a document row has five nonempty
+cells. It does not verify the contents of those five data roles, so it does
+not claim to cover the complete sentence (#5 or #6).
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

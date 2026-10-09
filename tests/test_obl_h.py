@@ -967,7 +967,7 @@ def test_content_list_branches_record_no_new_silent_paths():
 
     from conftest import ROOT
 
-    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 26
+    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 25
 
 
 @pytest.mark.parametrize('body', [
@@ -1160,3 +1160,81 @@ def test_content_list_header_and_footer_rows_do_not_identify_documents(tmp_path,
         body = body.replace('</table>', '<tfoot>' + extra_row + '</tfoot></table>')
     package = listed_handover(tmp_path, 'table-row-groups.iirds', body=body, metadata=HANDOVER)
     assert [(f.rule.id, f.violation.message) for f in runner.check(package).findings] == []
+
+
+def content_list_with_compression(tmp_path, body, compression):
+    import zipfile
+
+    package = listed_handover(tmp_path, 'document-element.iirds', body=body, metadata=HANDOVER)
+    with zipfile.ZipFile(package) as archive:
+        entries = [(info, archive.read(info)) for info in archive.infolist()]
+    with zipfile.ZipFile(package, 'w') as archive:
+        for info, data in entries:
+            if info.filename == 'index.html':
+                info.compress_type = compression
+            archive.writestr(info, data)
+    return package
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body, detail', [
+    pytest.param('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<catalog xmlns="urn:example:catalog">\n'
+                 '  <note><![CDATA[<html>]]></note>\n</catalog>',
+                 'document element is catalog', id='html-in-cdata'),
+    pytest.param('<svg xmlns="http://www.w3.org/2000/svg" data-x="&lt;html&gt;"/>',
+                 'document element is svg', id='html-in-svg-attribute'),
+    pytest.param('<root><html/></root>', 'document element is root', id='html-child'),
+    pytest.param('', 'no element found', id='empty'),
+    pytest.param(b'\x89PNG\r\n\x1a\n', 'no element found', id='png-header'),
+    pytest.param('plain text, not a content list', 'no element found', id='plain-text'),
+    pytest.param('<title>Documents</title><html>', 'first tag is title', id='title-first'),
+    pytest.param('<htmlish><html/></htmlish>', 'document element is htmlish',
+                 id='different-element-name'),
+    pytest.param('<?xml version="1.0" <html', 'no element found',
+                 id='unfinished-declaration'),
+    pytest.param('<!-- <html', 'no element found', id='unfinished-comment'),
+    pytest.param('<!DOCTYPE html [<html', 'no element found', id='unfinished-doctype'),
+    pytest.param('<>', 'no element found', id='missing-tag-name'),
+])
+def test_content_list_html_sentence_requires_an_html_document_element(tmp_path, body, detail,
+                                                                     compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    fired = {finding.rule.id for finding in report.findings}
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & fired
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.message == 'the content list index.html must be an HTML document'
+    assert got[0].violation.detail == detail
+
+
+@pytest.mark.parametrize('body, parse_error', [
+    pytest.param('\ufeff<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+                 '<!-- first --><!-- second -->'
+                 '<html xmlns="http://www.w3.org/1999/xhtml"><head/><body/></html>',
+                 False, id='xml-prologue'),
+    pytest.param('\ufeff<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+                 '<!-- first --><!-- second -->'
+                 '<html xmlns="http://www.w3.org/1999/xhtml"><head>'
+                 '<meta charset="utf-8"></head><body></body></html>',
+                 True, id='html-prologue'),
+    pytest.param('<HTML/>', False, id='uppercase-html'),
+    pytest.param(' \t\r\n<html/>', False, id='leading-whitespace'),
+    pytest.param('<h:html xmlns:h="http://www.w3.org/1999/xhtml"/>', False,
+                 id='namespace-prefix'),
+    pytest.param('<html lang=en><head><title>Documents</title></head><body></body></html>',
+                 True, id='html-attribute-syntax'),
+])
+def test_content_list_document_element_accepts_html_prologues_and_names(tmp_path, body,
+                                                                       parse_error):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    package = listed_handover(tmp_path, 'html-document.iirds', body=body, metadata=HANDOVER)
+    assert findings(package, 'C11.2') == []
+    parse_findings = [finding for finding in findings(package, 'R67')
+                      if finding.violation.message ==
+                      'the content list could not be read as iiRDS XHTML5']
+    assert bool(parse_findings) == parse_error

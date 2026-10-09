@@ -20,9 +20,9 @@ from .content import (
     ALLOWED_ELEMENTS,
     XHTML_NS,
     _local,
-    _walk,
 )
 from .handover import _CONTENT_LIST_SECTION
+from .handover_html import _list_root
 
 # 8.3.1.1 selects B.5.1/2/3/5/9 from B's inventory. The other permitted
 # sections in that inventory are B.5.4 (grouping), B.5.6 (embedded content)
@@ -31,10 +31,6 @@ LIST_ELEMENTS = ALLOWED_ELEMENTS.difference((
     "dd", "div", "dl", "dt", "figcaption", "figure", "li", "ol", "p", "pre", "ul",
     "area", "audio", "img", "map", "source", "track", "video", "ins", "del",
 ))
-
-
-def _list_root(ctx):
-    return dict(_walk(ctx)).get(CONTENT_LIST)
 
 
 @rule("R67", kind="content", prio="MUST", versions=("1.3",), variants=("H",),

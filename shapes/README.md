@@ -133,8 +133,10 @@ Their constraints come from the specification. The ontology carries no OWL
 axioms, its `rdfs:domain`/`range` are entailment hints rather than constraints, and
 [models' own open issues](https://github.com/iirds-consortium/models/issues)
 document defects that ontology-derived shapes would faithfully encode.
-R61 reads sibling classes from the bundled hierarchy to apply the disjointness
-that section 6.11.1 states explicitly.
+R61 applies section 6.11.1 for iiRDS 1.3 through the bundled hierarchy and
+subclass declarations in the package, including equivalent classes. Its
+SHACL-AF functions follow ancestors without adding schema triples to the
+data graph. A class typed alongside its own subclass remains allowed.
 
 **The caveat that matters: these shapes encode one documented reading of the
 specification.** Where prose underdetermines a rule, the choice made here is
@@ -181,7 +183,7 @@ each listed with its reason in `MANIFEST.json`:
 ## Why you can trust the translation
 
 **These shapes are the iiRDS 1.3 rule set, and they carry no version gate.**
-44 of them encode a rule that does not apply to every edition -- from 1.1,
+45 of them encode a rule that does not apply to every edition -- from 1.1,
 from 1.2, or 1.3 alone -- so running them against a package that declares an older edition
 reports rules that edition does not have. The Python validator gates on the
 declared version and stays silent on those. Gating the shapes themselves would

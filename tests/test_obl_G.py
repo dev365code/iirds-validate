@@ -13,6 +13,8 @@ from __future__ import annotations
 import importlib.util
 
 import pytest
+from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import DCTERMS, OWL, RDF, RDFS
 
 from conftest import MINIMAL_RDF, build_package
 from iirds_validate import runner
@@ -411,3 +413,213 @@ def test_a_document_also_typed_as_a_topic_changes_the_exit_code(tmp_path):
     assert {f.rule.id for f in report.findings if str(f.severity) == "error"} == {"R61"}
     assert main(["check", str(clean), "-q"]) == 0
     assert main(["check", str(broken), "-q"]) == 1
+
+
+CORE = Namespace(IIRDS)
+MACHINERY = Namespace("http://iirds.tekom.de/iirds/domain/machinery#")
+HANDOVER = Namespace("http://iirds.tekom.de/iirds/domain/handover#")
+EXAMPLE = Namespace("https://example.org/classes/")
+
+# Types and declarations are input facts, separate from the implementation's
+# hierarchy and conflict detector. The last field is the expected verdict.
+DISJOINT_PROBES = [
+    ("document-topic", (CORE.Document, CORE.Topic), (), True),
+    ("topic-fragment", (CORE.Topic, CORE.Fragment), (), True),
+    ("package-document", (CORE.Package, CORE.Document), (), True),
+    ("product-siblings", (CORE.ProductVariant, CORE.Component), (), True),
+    ("machinery-siblings", (MACHINERY.SetupTime, CORE.WorkingTime), (), True),
+    ("handover-siblings", (HANDOVER.DocumentCategory, CORE.DocumentType), (), True),
+    ("administrative-siblings", (CORE.Identity, CORE.Party), (), True),
+    ("document-rendition", (CORE.Document, CORE.Rendition), (), True),
+    ("topic-rendition", (CORE.Topic, CORE.Rendition), (), True),
+    ("document-selector", (CORE.Document, CORE.FragmentSelector), (), True),
+    ("document-concept", (CORE.Document, CORE.Concept), (), True),
+    ("machinery-action", (MACHINERY.SetupTime, CORE.Action), (), True),
+    ("proprietary-topic", (EXAMPLE.MyTopic, CORE.Document),
+     ((EXAMPLE.MyTopic, RDFS.subClassOf, CORE.Topic),), True),
+    ("proprietary-siblings", (EXAMPLE.FirstTopic, EXAMPLE.SecondTopic),
+     ((EXAMPLE.FirstTopic, RDFS.subClassOf, CORE.Topic),
+      (EXAMPLE.SecondTopic, RDFS.subClassOf, CORE.Topic)), True),
+    ("parent-child", (CORE.Document, CORE.InformationUnit), (), False),
+    ("external-class", (CORE.Document, EXAMPLE.Unrelated), (), False),
+    ("repeated-type", (CORE.Document, CORE.Document), (), False),
+    ("multiple-parents", (MACHINERY.ConsumableSupply,), (), False),
+    ("equivalent-document", (EXAMPLE.AliasDocument, CORE.Document),
+     ((EXAMPLE.AliasDocument, OWL.equivalentClass, CORE.Document),), False),
+    ("equivalent-topic", (EXAMPLE.AliasTopic, CORE.Document),
+     ((EXAMPLE.AliasTopic, OWL.equivalentClass, CORE.Topic),), True),
+    ("transitive-extension", (EXAMPLE.LeafTopic, CORE.Document),
+     ((EXAMPLE.LeafTopic, RDFS.subClassOf, EXAMPLE.MiddleTopic),
+      (EXAMPLE.MiddleTopic, RDFS.subClassOf, CORE.Topic)), True),
+    ("equivalent-parent", (EXAMPLE.FirstTopic, EXAMPLE.SecondTopic),
+     ((EXAMPLE.FirstTopic, RDFS.subClassOf, EXAMPLE.TopicAlias),
+      (EXAMPLE.TopicAlias, OWL.equivalentClass, CORE.Topic),
+      (EXAMPLE.SecondTopic, RDFS.subClassOf, CORE.Topic)), True),
+    ("equivalent-cycle", (EXAMPLE.AliasDocument, CORE.Document),
+     ((EXAMPLE.AliasDocument, OWL.equivalentClass, EXAMPLE.OtherAlias),
+      (EXAMPLE.OtherAlias, OWL.equivalentClass, CORE.Document),
+      (CORE.Document, OWL.equivalentClass, EXAMPLE.AliasDocument)), False),
+    ("subclass-cycle", (EXAMPLE.MyTopic, EXAMPLE.OtherTopic),
+     ((EXAMPLE.MyTopic, RDFS.subClassOf, EXAMPLE.OtherTopic),
+      (EXAMPLE.OtherTopic, RDFS.subClassOf, EXAMPLE.MyTopic),
+      (EXAMPLE.MyTopic, RDFS.subClassOf, CORE.Topic)), False),
+    ("outside-siblings", (EXAMPLE.FirstTopic, EXAMPLE.SecondTopic),
+     ((EXAMPLE.FirstTopic, RDFS.subClassOf, EXAMPLE.Outside),
+      (EXAMPLE.SecondTopic, RDFS.subClassOf, EXAMPLE.Outside)), False),
+]
+
+
+def _disjoint_probe_metadata(types, declarations=(), version="1.3"):
+    graph = Graph().parse(data=MINIMAL_RDF, format="xml")
+    package = URIRef("urn:test:package")
+    graph.set((package, CORE.iiRDSVersion, Literal(version)))
+    subject = package if CORE.Package in types else URIRef("urn:test:mixed")
+    for cls in types:
+        graph.add((subject, RDF.type, cls))
+    # Keep ancillary requirements constant and satisfied while changing types.
+    graph.set((subject, CORE["title"], Literal("A resource")))
+    graph.add((subject, RDFS.label, Literal("A resource", lang="en")))
+    rendition = URIRef("urn:test:probe-rendition")
+    if CORE.Package not in types:
+        graph.add((subject, CORE["has-rendition"], rendition))
+    graph.add((rendition, RDF.type, CORE.Rendition))
+    for resource in (subject, rendition):
+        graph.add((resource, CORE["format"], Literal("application/xhtml+xml")))
+        graph.add((resource, CORE.source, Literal("content/topic1.xhtml")))
+    graph.add((subject, CORE["has-document-type"], CORE.AssemblyInstructions))
+    graph.add((subject, RDF.value, Literal("page=1")))
+    graph.add((subject, DCTERMS.conformsTo, URIRef("http://tools.ietf.org/rfc/rfc3778")))
+    graph.add((subject, CORE.identifier, Literal("resource-1")))
+    domain = URIRef("urn:test:probe-domain")
+    identity_type = URIRef("urn:test:probe-identity-type")
+    graph.add((subject, CORE["has-identity-domain"], domain))
+    graph.add((domain, RDF.type, CORE.IdentityDomain))
+    graph.add((domain, RDFS.label, Literal("Identifier domain", lang="en")))
+    graph.add((domain, CORE["has-identity-type"], identity_type))
+    graph.add((identity_type, RDF.type, CORE.IdentityType))
+    graph.add((identity_type, RDFS.label, Literal("Identifier type", lang="en")))
+    graph.add((subject, CORE["has-party-role"], CORE.Author))
+    if CORE.Party in types:
+        card = URIRef("urn:test:probe-card")
+        vcard = Namespace("http://www.w3.org/2006/vcard/ns#")
+        graph.add((subject, CORE["relates-to-vcard"], card))
+        graph.add((card, RDF.type, vcard.Individual))
+        graph.add((card, vcard.fn, Literal("A person")))
+    for triple in declarations:
+        graph.add(triple)
+    for cls in {node for triple in declarations for node in (triple[0], triple[2])
+                if str(node).startswith(str(EXAMPLE))}:
+        graph.add((cls, RDF.type, RDFS.Class))
+        graph.add((cls, RDFS.label, Literal("Extension class", lang="en")))
+    metadata = graph.serialize(format="xml")
+    duplicates = {cls: types.count(cls) - 1 for cls in set(types) if types.count(cls) > 1}
+    if duplicates:
+        from copy import deepcopy
+        from xml.etree.ElementTree import fromstring, tostring
+
+        tree = fromstring(metadata)
+        for description in tree:
+            if description.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about") == str(subject):
+                for statement in list(description):
+                    if statement.tag == "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}type":
+                        cls = URIRef(statement.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource"))
+                        for _ in range(duplicates.get(cls, 0)):
+                            description.append(deepcopy(statement))
+        metadata = tostring(tree, encoding="unicode")
+    return metadata
+
+
+@pytest.mark.parametrize("name,types,declarations,expected", DISJOINT_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_PROBES])
+def test_disjoint_probe_python(tmp_path, name, types, declarations, expected):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_probe_metadata(types, declarations)
+    report = runner.run(build_package(tmp_path, name + ".iirds", metadata=metadata), runner.ALL_KINDS)
+    found = {finding.rule.id for finding in report.findings}
+    unrelated = {finding.rule.id for finding in report.findings
+                 if str(finding.severity) == "error"} - {"R61"}
+    # M1 forbids explicit InformationUnit even alongside its subclass. That
+    # separate prohibition does not make the two classes disjoint.
+    assert unrelated == ({"M1"} if CORE.InformationUnit in types else set()), (name, unrelated)
+    assert ("R61" in found) is expected, (name, sorted(found))
+    if expected:
+        assert claimants("x6-11-1-disjointness#1") & found
+
+
+@pytest.mark.parametrize("name,types,declarations,expected", DISJOINT_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_PROBES])
+def test_disjoint_probe_shacl(tmp_path, name, types, declarations, expected):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from conftest import shacl_or_skip
+    shacl_or_skip()
+    from test_shapes_parity import shacl_fired
+    metadata = _disjoint_probe_metadata(types, declarations)
+    found = fired(tmp_path, name + ".iirds", metadata)
+    shacl = shacl_fired(metadata)
+    assert ("R61" in shacl) == ("R61" in found) == expected, (name, sorted(found), sorted(shacl))
+
+
+@pytest.mark.parametrize("version", ("1.0", "1.0.1", "1.1", "1.2", "1.3"))
+def test_disjoint_probe_is_scoped_to_the_verified_edition(tmp_path, version):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_probe_metadata((CORE.Document, CORE.Topic), version=version)
+    report = runner.run(build_package(tmp_path, "edition.iirds", metadata=metadata), runner.ALL_KINDS)
+    assert ("R61" in {f.rule.id for f in report.findings}) == (version == "1.3")
+
+
+def test_disjoint_probe_detail_names_types_and_disjoint_ancestors(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_probe_metadata((CORE.Document, CORE.Rendition))
+    report = runner.run(build_package(tmp_path, "detail.iirds", metadata=metadata), runner.ALL_KINDS)
+    details = [f.violation.detail for f in report.findings if f.rule.id == "R61"]
+    assert len(details) == 1
+    assert all(str(cls) in details[0] for cls in (CORE.Document, CORE.Rendition, CORE.InformationUnit))
+
+
+@pytest.mark.parametrize("rule_id,endpoint", [("M14.1", "start"), ("M14.2", "end")])
+def test_range_endpoint_titles_name_the_whole_joint_obligation(rule_id, endpoint):
+    """rdfrelations_core_has-start-selector#1
+    rdfrelations_core_has-end-selector#1
+    Description: A range selector MUST reference one start and one end selector.
+    """
+    rule = next(rule for rule in all_rules() if rule.id == rule_id)
+    assert rule.title == ("A RangeSelector MUST have exactly one iirds:has-start-selector "
+                          "and one iirds:has-end-selector (%s check)" % endpoint)
+    assert rule.fix == ("Add the missing endpoint selector, or keep one correct endpoint selector "
+                        "if several are present. A range needs one start and one end to select "
+                        "a definite portion of the content.")
+
+
+def test_joint_endpoint_titles_do_not_hide_an_unrelated_property(monkeypatch):
+    """Joint endpoint claims leave the crossed purpose/dateOfStatus title detectable."""
+    from dataclasses import replace
+
+    import test_cardinality_rules_fire as cardinality
+
+    rules = [replace(rule, title="MUST NOT have more than one property iirds:purpose")
+             if rule.id == "M21.4" else rule for rule in all_rules()]
+    monkeypatch.setattr(cardinality, "all_rules", lambda: rules)
+    with pytest.raises(AssertionError, match="purpose"):
+        cardinality.test_a_cardinality_rule_names_the_property_it_reads()
+
+
+def test_repeated_type_probe_contains_two_explicit_statements():
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from xml.etree.ElementTree import fromstring
+
+    metadata = _disjoint_probe_metadata((CORE.Document, CORE.Document))
+    written = [node for node in fromstring(metadata).iter("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}type")
+               if node.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource") == str(CORE.Document)]
+    assert len(written) == 2
+    graph = Graph().parse(data=metadata, format="xml")
+    assert set(graph.objects(URIRef("urn:test:mixed"), RDF.type)) == {CORE.Document}

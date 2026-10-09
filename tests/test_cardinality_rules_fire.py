@@ -403,7 +403,7 @@ def _labels_by_rule():
 
 
 def test_a_cardinality_rule_names_the_property_it_reads():
-    """A title that names a property the rule does not read.
+    """A title names properties read by its claimants of the same sentence.
 
     M21.4's title said "MUST NOT have more than one property iirds:purpose"
     and its body reads `iirds:dateOfStatus`; M21.5 is the rule that reads
@@ -416,7 +416,8 @@ def test_a_cardinality_rule_names_the_property_it_reads():
     Only properties, and only the ones this ontology defines: these titles
     name classes too, and a title naming `iirds:Party` beside
     `iirds:has-party-role` is saying what the rule is about, not what it
-    reads.
+    reads. When two cardinality rules jointly claim a sentence, their
+    titles can name the properties those claimants collectively read.
     """
     ontology = load()
     properties = set()
@@ -426,14 +427,18 @@ def test_a_cardinality_rule_names_the_property_it_reads():
 
     rules = {r.id: r for r in all_rules()}
     wrong = []
-    for rule_id, labels in sorted(_labels_by_rule().items()):
+    labels_by_rule = _labels_by_rule()
+    for rule_id, labels in sorted(labels_by_rule.items()):
         reads = {label.split(":")[-1] for label in labels}
+        for other_id, other_labels in labels_by_rule.items():
+            if set(rules[rule_id].covers) & set(rules[other_id].covers):
+                reads.update(label.split(":")[-1] for label in other_labels)
         named = {m for m in re.findall(r"iirds:([\w-]+)", rules[rule_id].title)
                  if m in properties}
         if named and not named <= reads:
             wrong.append((rule_id, sorted(named - reads), sorted(reads)))
     assert wrong == [], (
-        "these rules' titles name a property the rule does not read: %s" % wrong)
+        "these rules' titles name a property their sentence's claimants do not read: %s" % wrong)
 
 
 def test_the_ontology_defines_every_class_and_property_the_rows_name():

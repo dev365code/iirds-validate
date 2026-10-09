@@ -440,6 +440,12 @@ VERSION_GATED_EXTRAS = {
     # the cached specification and this file declares 1.0, so the rule
     # stands down here while the shape, which has no version, does not.
     "metadata_iirds_sample-M5_false.rdf": ["R5"],
+    # These declare 1.0. R61 implements section 6.11.1 only for 1.3;
+    # its edition-blind shape sees the disjoint ancestors in their types.
+    "metadata_iirds_sample_pass-M37_false.rdf": ["R61"],
+    "metadata_iirds_sample_pass-M37_false_no_attribute.rdf": ["R61"],
+    "metadata_iirds_sample_pass-M38_false.rdf": ["R61"],
+    "metadata_iirds_sample_pass-M49_false.rdf": ["R61"],
 }
 
 

@@ -37,6 +37,8 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote
 
+from rdflib import Literal, URIRef
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -48,7 +50,7 @@ from iirds_validate.registry import PROVENANCE, all_rules  # noqa: E402
 from iirds_validate.rules.lint import abstract_terms, relation_properties  # noqa: E402
 from iirds_validate.rules.schema import (  # noqa: E402
     FRAGMENT_SPECIFICATIONS,
-    _disjoint_class_groups,
+    _disjoint_class_roots,
 )
 from iirds_validate.rules.schema_tables import MUST_HAVE_IRI  # noqa: E402
 
@@ -725,10 +727,114 @@ for _rid, _cls in (("R34", "InformationObject"),
           || !REGEX(STR(?value), "^[A-Za-z][A-Za-z0-9+.-]*:")
           || STR(?value) = "urn:iirds:package:") }""" % _cls])
 
+# Functions keep the bundled hierarchy in query tables, not in the data graph.
+# In particular, adding schema triples to that graph would change what M30 sees.
+R61_ANCESTORS = "https://iirds.dev/shapes#R61Ancestors"
+R61_EQUIVALENTS = "https://iirds.dev/shapes#R61Equivalents"
+
+
+def _r61_edge_table(child, parent, edges):
+    return "\nUNION\n".join(
+        "{ BIND (<%s> AS %s) BIND (<%s> AS %s) }" % (first, child, second, parent)
+        for first, second in sorted(set(edges), key=lambda pair: tuple(map(str, pair))))
+
+
+def _r61_closure_function(iri, predicate):
+    from rdflib.namespace import OWL, RDFS
+
+    edges = set(_ONTOLOGY.graph.subject_objects(OWL.equivalentClass))
+    edges |= {(second, first) for first, second in edges}
+    paths = "<%s>|^<%s>" % (OWL.equivalentClass, OWL.equivalentClass)
+    if predicate == RDFS.subClassOf:
+        edges |= set(_ONTOLOGY.graph.subject_objects(RDFS.subClassOf))
+        paths = "<%s>|%s" % (RDFS.subClassOf, paths)
+    parents = {}
+    for child, parent in edges:
+        parents.setdefault(child, set()).add(parent)
+    # A string table preserves the bundled closure without schema triples in
+    # the data graph. Only package edges require recursive evaluation.
+    from urllib.parse import quote
+
+    from iirds_validate.rules.schema import _reachable
+
+    nodes = {node for edge in edges for node in edge}
+    table = "".join("!%s!%s!" % (
+        quote(str(node), safe="-._~"),
+        "".join("|%s|" % quote(str(ancestor), safe="-._~")
+                for ancestor in sorted(_reachable(parents, node), key=str)))
+        for node in sorted(nodes, key=str))
+    key = 'CONCAT("!", ENCODE_FOR_URI(STR(?cls)), "!")'
+    token = 'CONCAT("|", ENCODE_FOR_URI(STR(?cls)), "|")'
+    base = 'IF(CONTAINS(%s, %s), STRBEFORE(STRAFTER(%s, %s), "!"), %s)' % (
+        Literal(table).n3(), key, Literal(table).n3(), key, token)
+    # The aggregate isolates local graph-pattern bindings before recursion;
+    # otherwise pySHACL would carry ?step into the next call. A visited set
+    # includes the complete bundled closure and terminates package cycles.
+    query = """SELECT (IF(CONTAINS(?seen, %s), "",
+  CONCAT(?base, COALESCE(?suffix, ""))) AS ?result)
+WHERE {
+  BIND (%s AS ?base)
+  { SELECT (GROUP_CONCAT(?part; separator="") AS ?suffix) WHERE {
+    { SELECT (SAMPLE(?step) AS ?child) (SAMPLE(?newSeen) AS ?visited) WHERE {
+      BIND (%s AS ?localBase)
+      ?source (%s) ?step .
+      FILTER (CONTAINS(?localBase, CONCAT("|", ENCODE_FOR_URI(STR(?source)), "|")))
+      FILTER (!CONTAINS(?seen, %s))
+      BIND (CONCAT(?seen, ?localBase) AS ?newSeen)
+    } GROUP BY ?step }
+    BIND (<%s>(?child, ?visited) AS ?part)
+  } }
+}""" % (token, base, base, paths, token, iri)
+    return '''<%s> a sh:SPARQLFunction ;
+  sh:parameter [ sh:path <https://iirds.dev/shapes#cls> ; sh:order 0 ] ;
+  sh:parameter [ sh:path <https://iirds.dev/shapes#seen> ; sh:order 1 ] ;
+  sh:returnType <http://www.w3.org/2001/XMLSchema#string> ;
+  sh:select """%s""" .
+''' % (iri, query)
+
+
+_R61_TYPED_PAIR = """{ SELECT $this ?value ?firstAncestors ?secondAncestors WHERE {
+  { SELECT $this ?value ?first ?second WHERE {
+    ?value <%(rdf)stype> ?first, ?second . FILTER (?first != ?second)
+  } }
+  BIND (<%(r61_ancestors)s>(?first, "") AS ?firstAncestors)
+  BIND (<%(r61_ancestors)s>(?second, "") AS ?secondAncestors)
+  FILTER (!CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?second)), "|")))
+  FILTER (!CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?first)), "|")))
+} }"""
+_R61_FIRST_SIBLING = """{ SELECT $this ?value ?firstAncestors ?secondAncestors
+                                 ?basisFirst ?parentFirst WHERE {
+  """ + _R61_TYPED_PAIR + """
+  { { ?basisFirst <%(rdfs)ssubClassOf> ?parentFirst }
+    UNION { %(r61_first_edges)s } }
+  FILTER (CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
+} }"""
+_R61_SIBLING_PAIR = """{ SELECT $this ?value ?basisFirst ?basisSecond
+                                 ?parentFirst ?parentSecond WHERE {
+  """ + _R61_FIRST_SIBLING + """
+  { { ?basisSecond <%(rdfs)ssubClassOf> ?parentSecond }
+    UNION { %(r61_second_edges)s } }
+  FILTER (CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+} }"""
 SPARQL_FORMS["R61"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
-  ?value <%(rdf)stype> ?first, ?second .
-  FILTER (?first != ?second)
-  FILTER (%(disjoint_groups)s) }"""])
+  { { SELECT $this ?value ?basisFirst ?basisSecond WHERE {
+    """ + _R61_TYPED_PAIR + """
+    { %(r61_root_pairs)s }
+    FILTER (CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
+    FILTER (CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+  } } }
+  UNION
+  { { SELECT $this ?value ?basisFirst ?basisSecond WHERE {
+    """ + _R61_SIBLING_PAIR + """
+    BIND (<%(r61_equivalents)s>(?parentFirst, "") AS ?equivalentParents)
+    FILTER (CONTAINS(?equivalentParents, CONCAT("|", ENCODE_FOR_URI(STR(?parentSecond)), "|")))
+    BIND (<%(r61_ancestors)s>(?parentFirst, "") AS ?parentAncestors)
+    FILTER (%(r61_eligible_parent)s)
+  } } }
+  BIND (<%(r61_equivalents)s>(?basisFirst, "") AS ?equivalentClasses)
+  FILTER (!CONTAINS(?equivalentClasses, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+}"""])
+
 
 
 #: Expressible but deferred past v1: the softenings (undescribed-vcard tests,
@@ -1271,9 +1377,18 @@ def build() -> dict:
                  "selector_classes": _term_list(_ONTOLOGY.subclasses_of(T.Selector)),
                  # R48's: the classes an information unit is typed with.
                  "information_units": _term_list(_ONTOLOGY.subclasses_of(T.InformationUnit)),
-                 "disjoint_groups": " ||\n".join(
-                     "(?first IN (%s) && ?second IN (%s))" % (_term_list(group), _term_list(group))
-                     for group in _disjoint_class_groups(_ONTOLOGY)),
+                 "r61_ancestors": R61_ANCESTORS,
+                 "r61_equivalents": R61_EQUIVALENTS,
+                 "r61_root_pairs": _r61_edge_table("?basisFirst", "?basisSecond",
+                     ((first, second) for first in _disjoint_class_roots(_ONTOLOGY)
+                      for second in _disjoint_class_roots(_ONTOLOGY) if first != second)),
+                 "r61_first_edges": _r61_edge_table("?basisFirst", "?parentFirst",
+                     _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "subClassOf"))),
+                 "r61_second_edges": _r61_edge_table("?basisSecond", "?parentSecond",
+                     _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "subClassOf"))),
+                 "r61_eligible_parent": " || ".join(
+                     'CONTAINS(?parentAncestors, CONCAT("|", ENCODE_FOR_URI(STR(<%s>)), "|"))' % root
+                     for root in sorted(_disjoint_class_roots(_ONTOLOGY))),
                  "fragment_specifications": ", ".join(
                      '"%s"' % iri for iri in sorted(FRAGMENT_SPECIFICATIONS))}
         lines = ["%s a sh:NodeShape ;" % sid]
@@ -1300,6 +1415,10 @@ def build() -> dict:
         target = ("iirds-handover-sparql.ttl" if "H" in (rule.variants or ())
                   else "iirds-sparql.ttl")
         sparql_files[target].append(emit_sparql_shape(rule))
+        if rid == "R61":
+            from rdflib.namespace import OWL, RDFS
+            sparql_files[target].append(_r61_closure_function(R61_ANCESTORS, RDFS.subClassOf))
+            sparql_files[target].append(_r61_closure_function(R61_EQUIVALENTS, OWL.equivalentClass))
         sparql_emitted.append(rid)
 
     outputs = {

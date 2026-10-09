@@ -54,6 +54,9 @@ SCOPED = {
     "R9":    (("1.3",),
               "sections 8.3.1.2 and 6.7.3 are the handover profile's, and the string "
               "iiRDS/H does not occur in the cached 1.0 at all"),
+    "R61":   (("1.3",),
+              "section 6.11 exists in the cached 1.3 and not in the cached 1.0; "
+              "1.0.1, 1.1 and 1.2 are not on hand, so only 1.3 is verified"),
     "R60":   (("1.3",),
               "section 6.3.3 once more, both of its sentences this claims; the cached "
               "1.0 has no nesting chapter"),

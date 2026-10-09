@@ -7,8 +7,11 @@ from the two tools can be compared directly.
 """
 from __future__ import annotations
 
+from collections import defaultdict
+from itertools import combinations
+
 from rdflib import BNode, Literal, URIRef
-from rdflib.namespace import RDF, RDFS
+from rdflib.namespace import OWL, RDF, RDFS
 
 from .. import terms as T
 from ..context import container_packages, package_nodes
@@ -56,54 +59,89 @@ def _at_most_one(ctx, cls, prop, label):
                                                       ", ".join(v[:40] for v in listed)))
 
 
-def _disjoint_class_groups(ontology):
-    """Section 6.11.1's eight classes and their siblings in the vocabulary.
+def _disjoint_class_roots(ontology):
+    """The eight classes named in section 6.11.1, as vocabulary IRIs."""
+    return {T.AdministrativeMetadata, T.DirectoryNode, IIRDS["DocumentationMetadata"],
+            T.InformationObject, IIRDS["InformationType"], T.InformationUnit,
+            T.Rendition, T.Selector} & ontology.classes()
 
-    Siblings share a direct rdfs:subClassOf parent. Walk the vocabulary below
-    the eight named classes to include siblings at every depth, without
-    adding inferred types to the package or putting a parent beside its child.
+
+def _reachable(parents, start):
+    """Reflexive closure, terminating even on cycles in package declarations."""
+    seen, pending = set(), [start]
+    while pending:
+        node = pending.pop()
+        if node not in seen:
+            seen.add(node)
+            pending.extend(parents.get(node, ()))
+    return seen
+
+
+def _disjoint_class_hierarchy(ontology, graph):
+    """Merge equivalent classes, then derive ancestors and direct siblings.
+
+    Both the bundled hierarchy and the package's extensions define the class
+    population. Domain markers outside the eight branches are not eligible
+    parents merely because several classes inherit from them.
     """
-    classes = ontology.classes()
-    roots = {T.AdministrativeMetadata, T.DirectoryNode, IIRDS["DocumentationMetadata"],
-             T.InformationObject, IIRDS["InformationType"], T.InformationUnit,
-             T.Rendition, T.Selector} & classes
-    parents = {parent for root in roots for parent in ontology.subclasses_of(root)}
-    groups = [frozenset(roots)]
-    for parent in sorted(parents):
-        children = set(ontology.graph.subjects(RDFS.subClassOf, parent)) & classes
-        if len(children) > 1:
-            groups.append(frozenset(children))
-    return groups
+    roots = _disjoint_class_roots(ontology)
+    nodes = roots | set(graph.objects(None, RDF.type))
+    subclass, equivalent = set(), defaultdict(set)
+    for source in (ontology.graph, graph):
+        for child, parent in source.subject_objects(RDFS.subClassOf):
+            subclass.add((child, parent))
+            nodes.update((child, parent))
+        for first, second in source.subject_objects(OWL.equivalentClass):
+            equivalent[first].add(second)
+            equivalent[second].add(first)
+            nodes.update((first, second))
+    representatives = {node: min(_reachable(equivalent, node), key=str) for node in nodes}
+    parents = defaultdict(set)
+    for child, parent in subclass:
+        parents[representatives[child]].add(representatives[parent])
+    ancestors = {node: _reachable(parents, representatives[node]) for node in nodes}
+    root_classes = {representatives[root] for root in roots}
+    groups = [root_classes]
+    for parent in sorted(set().union(*parents.values()), key=str):
+        if ancestors[parent] & root_classes:
+            children = {child for child, direct in parents.items() if parent in direct}
+            if len(children) > 1:
+                groups.append(children)
+    return representatives, ancestors, groups
 
 
-@rule("R61", kind="schema", prio="MUST",
-      versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"), variants=(),
+@rule("R61", kind="schema", prio="MUST", versions=("1.3",), variants=(),
       covers=("x6-11-1-disjointness#1",),
       title="disjoint iiRDS classes must not have instances in common",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#x6-11-1-disjointness",
-      fix="Give the resource types from one class branch. A topic and a document, or a "
-          "rendition and a selector, describe different things; use separate resources "
-          "when both are needed.")
+      fix="Remove a type assertion that does not describe the resource accurately. "
+          "If it combines two distinct things, give each its own resource and link "
+          "them with the appropriate iiRDS relation.")
 def r61_disjoint_classes_have_no_common_instance(ctx):
     """Section 6.11.1: "Disjoint classes MUST NOT have instances in common."
 
-    Compare the types the package states explicitly with disjoint groups
-    derived from the bundled ontology. A subclass and its parent are not
-    siblings, and no inferred rdf:type statements are added to this check.
+    Compare distinct explicit types through their ancestors, merging classes
+    linked by owl:equivalentClass. A class and its own subclass may be typed
+    together. The package graph is read without adding rdf:type triples.
     """
-    groups = _disjoint_class_groups(ctx.ontology)
+    representatives, ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
     for subject in sorted(set(ctx.graph.subjects(RDF.type)), key=ctx.ref):
-        types = set(ctx.values(subject, RDF.type))
-        conflicts = set()
-        for group in groups:
-            common = types & group
-            if len(common) > 1:
-                conflicts.update(common)
+        conflicts = []
+        for first, second in combinations(sorted(set(ctx.values(subject, RDF.type)), key=str), 2):
+            first_ancestors, second_ancestors = ancestors[first], ancestors[second]
+            if representatives[first] in second_ancestors or representatives[second] in first_ancestors:
+                continue
+            evidence = next(((left, right) for group in groups
+                             for left in sorted(first_ancestors & group, key=str)
+                             for right in sorted(second_ancestors & group, key=str)
+                             if left != right), None)
+            if evidence:
+                conflicts.append("explicit types %s + %s; disjoint ancestors %s + %s" %
+                                 tuple(ctx.ref(node) for node in (first, second, *evidence)))
         if conflicts:
             yield Violation("a resource is an instance of disjoint iiRDS classes",
-                            subject=ctx.ref(subject),
-                            detail=", ".join(sorted(ctx.ref(cls) for cls in conflicts)))
+                            subject=ctx.ref(subject), detail="; ".join(conflicts))
 
 
 # --------------------------------------------------------------------------
@@ -383,18 +421,18 @@ def r49_selector_names_a_listed_specification(ctx):
 
 @rule("M14.1", covers=("rdfrelations_core_has-start-selector#1",
                        "rdfrelations_core_has-end-selector#1"),
-       title="A RangeSelector MUST have one iirds:has-start-selector; "
-             "M14.2 checks has-end-selector",
-       fix="Add iirds:has-start-selector to the RangeSelector. A range is defined by its two endpoints, so one missing leaves it unresolvable.")
+       title="A RangeSelector MUST have exactly one iirds:has-start-selector "
+             "and one iirds:has-end-selector (start check)",
+       fix="Add the missing endpoint selector, or keep one correct endpoint selector if several are present. A range needs one start and one end to select a definite portion of the content.")
 def m14_1_range_start(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_start_selector, "iirds:has-start-selector")
 
 
 @rule("M14.2", covers=("rdfrelations_core_has-start-selector#1",
                        "rdfrelations_core_has-end-selector#1"),
-       title="A RangeSelector MUST have one iirds:has-end-selector; "
-             "M14.1 checks has-start-selector",
-       fix="Add iirds:has-end-selector to the RangeSelector. A range with only a start selects from there to nowhere in particular.")
+       title="A RangeSelector MUST have exactly one iirds:has-start-selector "
+             "and one iirds:has-end-selector (end check)",
+       fix="Add the missing endpoint selector, or keep one correct endpoint selector if several are present. A range needs one start and one end to select a definite portion of the content.")
 def m14_2_range_end(ctx):
     yield from _exactly_one(ctx, T.RangeSelector, T.has_end_selector, "iirds:has-end-selector")
 
@@ -1063,11 +1101,8 @@ def _points_at_an_instance_of(ctx, prop, cls, message):
 #             A document related only to a proprietary type breaks it and
 #             neither half reports that -- R19's remedy text used to recommend
 #             it. The standardised clause is a third rule nobody has written.
-#   the two selector rows carry one sentence between them, "A range selector
-#             MUST reference one start and one end selector", stated once per
-#             property. A range with a start and no end breaks the start row
-#             and is reported by M14.2, which claims the end row. Neither
-#             claimant of either id reports it.
+#   M14.1 and M14.2 jointly claim both repeated endpoint sentences;
+#   R20/R21 check target classes separately.
 #   x6-8-1#3, x6-8-4#7 are cardinality: "MUST point to exactly one domain by
 #             the property". The class of the domain is the *next* sentence,
 #             which carries no keyword and is not an extracted requirement.
@@ -1223,15 +1258,7 @@ r21 = _target_rule(
 
 r23 = _target_rule(
     "R23", (T.has_classification_domain,), T.ClassificationDomain,
-    # Not `rdfclasses_core_ExternalClassification#1`. That appendix row's
-    # second sentence -- "Each classification MUST be related to the
-    # classification domain within which it is unambiguous" -- is this same
-    # obligation, and both halves would have to claim it. M96.1's title is the
-    # catalogue's wording, which says "An external classification" in prose, so
-    # the name heuristic in `test_requirement_coverage` cannot see the class in
-    # it. Rewriting somebody else's sentence to satisfy a heuristic is what that
-    # gate's own docstring warns against, so the row stays unclaimed and this
-    # says why.
+    # The title heuristic mechanically blocks this claim; the source obligation is the same.
     (), "M96.1", ("1.2", "1.3"),
     ("iirds:has-classification-domain",), "iirds:ClassificationDomain",
     "The domain is what makes the classification unambiguous, which is what the "

@@ -1269,9 +1269,11 @@ def r43_raster_formats(ctx):
                         subject=name)
 
 
-#: ISO base media files whose major brand says they hold something other than
-#: video: registered audio brands, and still-image formats built on the same boxes.
-_AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P ", b"F4A ", b"F4B "))
+#: Brands classified separately from the default ISO base media video probe:
+#: audio-related registrations and still-image formats built on the same boxes.
+#: https://mp4ra.org/registered-types/brands — M4A$20, M4B$20, M4P$20:
+#: iTunes audio-related brands; M4A/M4B can also contain video tracks.
+_AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P "))
 _IMAGE_BRANDS = frozenset((b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm",
                            b"hevs", b"mif1", b"msf1", b"avif", b"avis"))
 

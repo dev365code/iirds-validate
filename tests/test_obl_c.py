@@ -626,7 +626,8 @@ def test_relations_specific_to_a_or_area_do_not_describe_document_metadata(
     assert not _subjects(report, "B5")
 
 
-def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make_package):
+@pytest.mark.parametrize("brand", [b"M4A ", b"M4B ", b"M4P "])
+def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make_package, brand):
     """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as MP3 (ISO/IEC 11172-3, ISO/IEC 13818-3)."
     A registered audio brand alone cannot establish the required MP3 encoding.
     """
@@ -635,8 +636,9 @@ def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make
     from iirds_validate.rules import content
 
     phrase = "MPEG-4 files whose brand is registered for audio"
+    assert frozenset((b"M4A ", b"M4B ", b"M4P ")) == content._AUDIO_BRANDS
     report = runner.check(make_package(metadata=A_PROFILE, extra=(
-        ("content/branded.bin", MP4.replace(b"isom", b"M4A ", 1)),)))
+        ("content/branded.bin", MP4.replace(b"isom", brand, 1)),)))
     finding = next(f for f in report.findings if f.rule.id == "R45")
     assert phrase in finding.rule.title
     assert phrase in " ".join(content.r45_audio_extension.__doc__.split())
@@ -775,3 +777,18 @@ def test_extended_document_relations_leave_the_whole_sentence_unclaimed(make_pac
                      "extended-document-relation.iirds")
     assert not _subjects(report, "B5")
     assert all("b-5-2-document-metadata#3" not in rule.covers for rule in all_rules())
+
+
+@pytest.mark.parametrize("brand", [b"F4A ", b"F4B "])
+def test_unconfirmed_audio_brands_are_outside_the_registered_audio_set(make_package, brand):
+    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as MP3 (ISO/IEC 11172-3, ISO/IEC 13818-3)."
+    A brand without a confirmed audio registration does not prove audio tracks.
+    """
+    from iirds_validate.rules import content
+
+    body = MP4.replace(b"isom", brand, 1)
+    assert not content._is_mp4_audio(body)
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/unconfirmed.bin", body),)))
+    assert _subjects(report, "R44") == ["content/unconfirmed.bin"]
+    assert not _subjects(report, "R45")

@@ -623,3 +623,132 @@ def test_repeated_type_probe_contains_two_explicit_statements():
     assert len(written) == 2
     graph = Graph().parse(data=metadata, format="xml")
     assert set(graph.objects(URIRef("urn:test:mixed"), RDF.type)) == {CORE.Document}
+
+
+MIXED_DECLARATIONS = ((EXAMPLE.Mixed, RDFS.subClassOf, CORE.Document),
+                      (EXAMPLE.Mixed, RDFS.subClassOf, CORE.Topic))
+DISJOINT_CLOSURE_PROBES = [
+    ("mixed-single", (EXAMPLE.Mixed,), MIXED_DECLARATIONS, True,
+     (CORE.Document, CORE.Topic)),
+    ("mixed-with-parent", (EXAMPLE.Mixed, CORE.Document), MIXED_DECLARATIONS, True,
+     (CORE.Document, CORE.Topic)),
+    ("ordinary-parent-child", (CORE.Document, CORE.InformationUnit), (), False, ()),
+    ("rdfs-equivalent-mixed", (EXAMPLE.First,),
+     ((EXAMPLE.First, RDFS.subClassOf, EXAMPLE.Second),
+      (EXAMPLE.Second, RDFS.subClassOf, EXAMPLE.First),
+      (EXAMPLE.First, RDFS.subClassOf, CORE.Topic),
+      (EXAMPLE.Second, RDFS.subClassOf, CORE.Document)), True, (CORE.Document, CORE.Topic)),
+    ("deep-mixed", (EXAMPLE.MixedProduct,),
+     ((EXAMPLE.MixedProduct, RDFS.subClassOf, CORE.ProductVariant),
+      (EXAMPLE.MixedProduct, RDFS.subClassOf, CORE.Component)), True,
+     (CORE.ProductVariant, CORE.Component)),
+    ("comparable-siblings", (EXAMPLE.Child,),
+     ((EXAMPLE.Parent, RDFS.subClassOf, CORE.Topic),
+      (EXAMPLE.Child, RDFS.subClassOf, CORE.Topic),
+      (EXAMPLE.Child, RDFS.subClassOf, EXAMPLE.Parent)), False, ()),
+    ("equivalent-mixed", (EXAMPLE.MixedAlias,),
+     MIXED_DECLARATIONS + ((EXAMPLE.MixedAlias, OWL.equivalentClass, EXAMPLE.Mixed),),
+     True, (CORE.Document, CORE.Topic)),
+    ("mixed-roots", (EXAMPLE.MixedRoots,),
+     ((EXAMPLE.MixedRoots, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.MixedRoots, RDFS.subClassOf, CORE.Rendition)), True,
+     (CORE.InformationUnit, CORE.Rendition)),
+]
+
+
+@pytest.mark.parametrize("name,types,declarations,expected,basis", DISJOINT_CLOSURE_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_CLOSURE_PROBES])
+def test_disjoint_closure_python(tmp_path, name, types, declarations, expected, basis):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_probe_metadata(types, declarations)
+    report = runner.run(build_package(tmp_path, name + ".iirds", metadata=metadata), runner.ALL_KINDS)
+    findings = [f for f in report.findings if f.rule.id == "R61"]
+    assert len(findings) == int(expected), (name, findings)
+    unrelated = {f.rule.id for f in report.findings
+                 if str(f.severity) == "error"} - {"R61"}
+    assert unrelated == ({"M1"} if CORE.InformationUnit in types else set())
+    if expected:
+        detail = findings[0].violation.detail
+        assert all(str(cls) in detail for cls in (*types, *basis)), detail
+        assert "explicit type(s)" in detail and "disjoint ancestors" in detail, detail
+        assert "->" in detail, detail
+
+
+@pytest.mark.parametrize("name,types,declarations,expected,basis", DISJOINT_CLOSURE_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_CLOSURE_PROBES])
+def test_disjoint_closure_shacl(tmp_path, name, types, declarations, expected, basis):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    metadata = _disjoint_probe_metadata(types, declarations)
+    python = fired(tmp_path, name + ".iirds", metadata)
+    _ok, results, _text = pyshacl.validate(Graph().parse(data=metadata, format="xml"),
+                                         shacl_graph=SHAPES, advanced=True, inference="none")
+    r61 = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+           if str(source).rsplit("#", 1)[-1] == "R61"}
+    assert len(r61) == int(expected), (name, _text)
+    assert ("R61" in python) == bool(r61) == expected
+
+
+@pytest.mark.parametrize("version", ("1.0", "1.0.1", "1.1", "1.2"))
+def test_disjoint_closure_keeps_previous_editions_silent_python(tmp_path, version):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_probe_metadata((EXAMPLE.Mixed,), MIXED_DECLARATIONS, version=version)
+    assert "R61" not in fired(tmp_path, "mixed-old.iirds", metadata)
+
+
+@pytest.mark.parametrize("version", ("1.0", "1.0.1", "1.1", "1.2"))
+def test_disjoint_closure_keeps_previous_editions_silent_shacl(tmp_path, version):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from conftest import shacl_or_skip
+    shacl_or_skip()
+    from test_shapes_parity import _applicable, shacl_fired
+
+    metadata = _disjoint_probe_metadata((EXAMPLE.Mixed,), MIXED_DECLARATIONS, version=version)
+    python = fired(tmp_path, "mixed-old.iirds", metadata)
+    raw = shacl_fired(metadata)
+    # Shapes encode 1.3; the repository compares rules applicable to the edition.
+    assert "R61" in raw
+    applicable = raw & _applicable(version, "")
+    assert ("R61" in applicable) == ("R61" in python)
+    assert "R61" not in applicable
+
+
+@pytest.mark.parametrize("declares_subclass", [False, True], ids=["bundled", "package-axioms"])
+def test_disjoint_closure_uses_package_functions_only_for_package_axioms(monkeypatch,
+                                                                       declares_subclass):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    declarations = ((EXAMPLE.Outside, RDFS.subClassOf, EXAMPLE.Other),) if declares_subclass else ()
+    graph = Graph().parse(data=_disjoint_probe_metadata((CORE.Document,), declarations), format="xml")
+    original_query = Graph.query
+    package_functions = []
+
+    def observed_query(self, query, *args, **kwargs):
+        if "cls" in (kwargs.get("initBindings") or {}):
+            package_functions.append(query)
+        return original_query(self, query, *args, **kwargs)
+
+    monkeypatch.setattr(Graph, "query", observed_query)
+    _ok, results, _text = pyshacl.validate(graph, shacl_graph=SHAPES,
+                                         advanced=True, inference="none")
+    assert not any(str(source).rsplit("#", 1)[-1] == "R61"
+                   for _result, _p, source in results.triples((None, SH.sourceShape, None)))
+    assert bool(package_functions) == declares_subclass

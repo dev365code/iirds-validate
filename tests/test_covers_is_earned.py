@@ -880,7 +880,7 @@ NAMED_CASES = {
         "test_obl_G:test_a_range_with_zero_or_two_endpoint_selectors_is_reported",
 
     "x6-11-1-disjointness#1":
-        "test_obl_G:test_disjoint_probe_python",
+        "test_obl_G:test_disjoint_closure_python",
 
 }
 

@@ -133,10 +133,11 @@ Their constraints come from the specification. The ontology carries no OWL
 axioms, its `rdfs:domain`/`range` are entailment hints rather than constraints, and
 [models' own open issues](https://github.com/iirds-consortium/models/issues)
 document defects that ontology-derived shapes would faithfully encode.
-R61 applies section 6.11.1 for iiRDS 1.3 through the bundled hierarchy and
-subclass declarations in the package, including equivalent classes. Its
+R61 applies section 6.11.1 for iiRDS 1.3 to the closure of all declared types
+through the bundled hierarchy and the package's subclass and equivalence
+declarations. One declared type can inherit two disjoint branches. Its
 SHACL-AF functions follow ancestors without adding schema triples to the
-data graph. A class typed alongside its own subclass remains allowed.
+data graph. A class and its own subclass are not disjoint.
 
 **The caveat that matters: these shapes encode one documented reading of the
 specification.** Where prose underdetermines a rule, the choice made here is

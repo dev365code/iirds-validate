@@ -9,7 +9,7 @@ changes in the library is recorded beside what changes in the checker.
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
 
-For iiRDS 1.3, R61 reports a resource whose types fall under two of section 6.11.1's disjoint classes: two of the eight named classes, or two classes sharing a direct parent at any depth below them, including subclasses of either and subclasses the package declares itself. Examples are a Document with a Topic, a Document with a Rendition, and a Rendition with a Selector. R61 does not treat a class and its own subclass as disjoint. If the package previously passed and this is its only error, validation now exits 1. Remove an incorrect type assertion, or represent distinct things as separate resources connected by the appropriate iiRDS relation.
+For iiRDS 1.3, R61 reports a resource whose declared type, or combination of declared types, places it under two of section 6.11.1's eight named classes or under two classes sharing a direct parent at any depth below them, following the bundled ontology and the package's own subclass and equivalence declarations. R61 does not treat a class and its own subclass as disjoint. If the package previously passed and this is its only error, validation now exits 1. Remove an incorrect type assertion, or represent distinct things as separate resources connected by the appropriate iiRDS relation.
 
 ## 0.9.0 — 2026-10-08
 

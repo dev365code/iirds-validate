@@ -121,27 +121,27 @@ def _disjoint_class_hierarchy(ontology, graph):
 def r61_disjoint_classes_have_no_common_instance(ctx):
     """Section 6.11.1: "Disjoint classes MUST NOT have instances in common."
 
-    Compare distinct explicit types through their ancestors, merging classes
-    linked by owl:equivalentClass. A class and its own subclass may be typed
-    together. The package graph is read without adding rdf:type triples.
+    Close all declared types over the bundled and package class hierarchy,
+    merging classes linked by owl:equivalentClass. Check disjoint pairs inside
+    that closure, including when one declared type inherits both branches.
+    A class and its own subclass are not disjoint. No rdf:type triples are added.
     """
-    representatives, ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
+    _representatives, ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
     for subject in sorted(set(ctx.graph.subjects(RDF.type)), key=ctx.ref):
-        conflicts = []
-        for first, second in combinations(sorted(set(ctx.values(subject, RDF.type)), key=str), 2):
-            first_ancestors, second_ancestors = ancestors[first], ancestors[second]
-            if representatives[first] in second_ancestors or representatives[second] in first_ancestors:
-                continue
-            evidence = next(((left, right) for group in groups
-                             for left in sorted(first_ancestors & group, key=str)
-                             for right in sorted(second_ancestors & group, key=str)
-                             if left != right), None)
-            if evidence:
-                conflicts.append("explicit types %s + %s; disjoint ancestors %s + %s" %
-                                 tuple(ctx.ref(node) for node in (first, second, *evidence)))
-        if conflicts:
+        types = sorted(set(ctx.values(subject, RDF.type)), key=str)
+        closure = set().union(*(ancestors[cls] for cls in types))
+        evidence = next(((first, second) for group in groups
+                         for first, second in combinations(sorted(closure & group, key=str), 2)
+                         if first not in ancestors[second] and second not in ancestors[first]), None)
+        if evidence:
+            first, second = evidence
+            origins = [next(cls for cls in types if ancestor in ancestors[cls])
+                       for ancestor in evidence]
+            detail = "explicit type(s) %s; %s -> %s + %s -> %s; disjoint ancestors %s + %s" % (
+                ", ".join(ctx.ref(cls) for cls in types),
+                *(ctx.ref(node) for node in (origins[0], first, origins[1], second, first, second)))
             yield Violation("a resource is an instance of disjoint iiRDS classes",
-                            subject=ctx.ref(subject), detail="; ".join(conflicts))
+                            subject=ctx.ref(subject), detail=detail)
 
 
 # --------------------------------------------------------------------------

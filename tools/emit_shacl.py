@@ -739,15 +739,14 @@ def _r61_edge_table(child, parent, edges):
         for first, second in sorted(set(edges), key=lambda pair: tuple(map(str, pair))))
 
 
-def _r61_closure_function(iri, predicate):
+def _r61_bundled_closure(predicate, term):
+    """A lookup in the bundled closure, shared by the query and its function."""
     from rdflib.namespace import OWL, RDFS
 
     edges = set(_ONTOLOGY.graph.subject_objects(OWL.equivalentClass))
     edges |= {(second, first) for first, second in edges}
-    paths = "<%s>|^<%s>" % (OWL.equivalentClass, OWL.equivalentClass)
     if predicate == RDFS.subClassOf:
         edges |= set(_ONTOLOGY.graph.subject_objects(RDFS.subClassOf))
-        paths = "<%s>|%s" % (RDFS.subClassOf, paths)
     parents = {}
     for child, parent in edges:
         parents.setdefault(child, set()).add(parent)
@@ -763,10 +762,20 @@ def _r61_closure_function(iri, predicate):
         "".join("|%s|" % quote(str(ancestor), safe="-._~")
                 for ancestor in sorted(_reachable(parents, node), key=str)))
         for node in sorted(nodes, key=str))
-    key = 'CONCAT("!", ENCODE_FOR_URI(STR(?cls)), "!")'
-    token = 'CONCAT("|", ENCODE_FOR_URI(STR(?cls)), "|")'
-    base = 'IF(CONTAINS(%s, %s), STRBEFORE(STRAFTER(%s, %s), "!"), %s)' % (
+    key = 'CONCAT("!", ENCODE_FOR_URI(STR(%s)), "!")' % term
+    token = 'CONCAT("|", ENCODE_FOR_URI(STR(%s)), "|")' % term
+    return 'IF(CONTAINS(%s, %s), STRBEFORE(STRAFTER(%s, %s), "!"), %s)' % (
         Literal(table).n3(), key, Literal(table).n3(), key, token)
+
+
+def _r61_closure_function(iri, predicate):
+    from rdflib.namespace import OWL, RDFS
+
+    paths = "<%s>|^<%s>" % (OWL.equivalentClass, OWL.equivalentClass)
+    if predicate == RDFS.subClassOf:
+        paths = "<%s>|%s" % (RDFS.subClassOf, paths)
+    base = _r61_bundled_closure(predicate, "?cls")
+    token = 'CONCAT("|", ENCODE_FOR_URI(STR(?cls)), "|")'
     # The aggregate isolates local graph-pattern bindings before recursion;
     # otherwise pySHACL would carry ?step into the next call. A visited set
     # includes the complete bundled closure and terminates package cycles.
@@ -793,46 +802,56 @@ WHERE {
 ''' % (iri, query)
 
 
-_R61_TYPED_PAIR = """{ SELECT $this ?value ?firstAncestors ?secondAncestors WHERE {
-  { SELECT $this ?value ?first ?second WHERE {
-    ?value <%(rdf)stype> ?first, ?second . FILTER (?first != ?second)
-  } }
-  BIND (<%(r61_ancestors)s>(?first, "") AS ?firstAncestors)
-  BIND (<%(r61_ancestors)s>(?second, "") AS ?secondAncestors)
-  FILTER (!CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?second)), "|")))
-  FILTER (!CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?first)), "|")))
-} }"""
-_R61_FIRST_SIBLING = """{ SELECT $this ?value ?firstAncestors ?secondAncestors
+_R61_TYPE_CLOSURE = """{ SELECT $this ?value
+                                 (GROUP_CONCAT(?ancestors; separator="") AS ?closure) WHERE {
+  ?value <%(rdf)stype> ?type .
+  BIND (IF(EXISTS {
+    ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
+  }, <%(r61_ancestors)s>(?type, ""), %(r61_type_base)s) AS ?ancestors)
+} GROUP BY $this ?value }"""
+_R61_FIRST_SIBLING = """{ SELECT $this ?value ?closure
                                  ?basisFirst ?parentFirst WHERE {
-  """ + _R61_TYPED_PAIR + """
+  """ + _R61_TYPE_CLOSURE + """
   { { ?basisFirst <%(rdfs)ssubClassOf> ?parentFirst }
     UNION { %(r61_first_edges)s } }
-  FILTER (CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
+  FILTER (CONTAINS(?closure, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
 } }"""
 _R61_SIBLING_PAIR = """{ SELECT $this ?value ?basisFirst ?basisSecond
                                  ?parentFirst ?parentSecond WHERE {
   """ + _R61_FIRST_SIBLING + """
   { { ?basisSecond <%(rdfs)ssubClassOf> ?parentSecond }
     UNION { %(r61_second_edges)s } }
-  FILTER (CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+  FILTER (CONTAINS(?closure, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+  FILTER (STR(?basisFirst) < STR(?basisSecond))
 } }"""
 SPARQL_FORMS["R61"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
   { { SELECT $this ?value ?basisFirst ?basisSecond WHERE {
-    """ + _R61_TYPED_PAIR + """
+    """ + _R61_TYPE_CLOSURE + """
     { %(r61_root_pairs)s }
-    FILTER (CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
-    FILTER (CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+    FILTER (CONTAINS(?closure, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
+    FILTER (CONTAINS(?closure, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
   } } }
   UNION
   { { SELECT $this ?value ?basisFirst ?basisSecond WHERE {
     """ + _R61_SIBLING_PAIR + """
-    BIND (<%(r61_equivalents)s>(?parentFirst, "") AS ?equivalentParents)
+    BIND (IF(EXISTS {
+    ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
+  }, <%(r61_equivalents)s>(?parentFirst, ""), %(r61_parent_equivalents_base)s) AS ?equivalentParents)
     FILTER (CONTAINS(?equivalentParents, CONCAT("|", ENCODE_FOR_URI(STR(?parentSecond)), "|")))
-    BIND (<%(r61_ancestors)s>(?parentFirst, "") AS ?parentAncestors)
+    BIND (IF(EXISTS {
+    ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
+  }, <%(r61_ancestors)s>(?parentFirst, ""), %(r61_parent_ancestors_base)s) AS ?parentAncestors)
     FILTER (%(r61_eligible_parent)s)
   } } }
-  BIND (<%(r61_equivalents)s>(?basisFirst, "") AS ?equivalentClasses)
-  FILTER (!CONTAINS(?equivalentClasses, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+  FILTER (?basisFirst != ?basisSecond)
+  BIND (IF(EXISTS {
+    ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
+  }, <%(r61_ancestors)s>(?basisFirst, ""), %(r61_first_base)s) AS ?firstAncestors)
+  FILTER (!CONTAINS(?firstAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))
+  BIND (IF(EXISTS {
+    ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
+  }, <%(r61_ancestors)s>(?basisSecond, ""), %(r61_second_base)s) AS ?secondAncestors)
+  FILTER (!CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
 }"""])
 
 
@@ -1379,9 +1398,16 @@ def build() -> dict:
                  "information_units": _term_list(_ONTOLOGY.subclasses_of(T.InformationUnit)),
                  "r61_ancestors": R61_ANCESTORS,
                  "r61_equivalents": R61_EQUIVALENTS,
+                 "r61_type_base": _r61_bundled_closure(URIRef(RDFS_ + "subClassOf"), "?type"),
+                 "r61_parent_equivalents_base": _r61_bundled_closure(
+                     URIRef("http://www.w3.org/2002/07/owl#equivalentClass"), "?parentFirst"),
+                 "r61_parent_ancestors_base": _r61_bundled_closure(
+                     URIRef(RDFS_ + "subClassOf"), "?parentFirst"),
+                 "r61_first_base": _r61_bundled_closure(URIRef(RDFS_ + "subClassOf"), "?basisFirst"),
+                 "r61_second_base": _r61_bundled_closure(URIRef(RDFS_ + "subClassOf"), "?basisSecond"),
                  "r61_root_pairs": _r61_edge_table("?basisFirst", "?basisSecond",
                      ((first, second) for first in _disjoint_class_roots(_ONTOLOGY)
-                      for second in _disjoint_class_roots(_ONTOLOGY) if first != second)),
+                      for second in _disjoint_class_roots(_ONTOLOGY) if str(first) < str(second))),
                  "r61_first_edges": _r61_edge_table("?basisFirst", "?parentFirst",
                      _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "subClassOf"))),
                  "r61_second_edges": _r61_edge_table("?basisSecond", "?parentSecond",

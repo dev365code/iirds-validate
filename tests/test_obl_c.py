@@ -939,3 +939,23 @@ def test_gif_boundary_mutations_are_registered_with_their_package_evidence():
         assert rows[name][1] == "src/iirds_validate/rules/content.py"
         assert rows[name][4] == ["tests/test_obl_c.py"]
         assert "def " + test + "(" in Path(__file__).read_text()
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a" + b"\x01\x00\x01\x00" + bytes([0x00, 0x00, 0x3B]),
+    b"GIF89a" + b"\x01\x00\x01\x00" + bytes([0x80, 0x00, 0x00])
+    + bytes([0, 0, 0, 0, 0, 0x3B]),
+], ids=["aspect-byte", "color-byte"])
+def test_a_stream_that_ends_inside_its_logical_screen_is_not_a_gif(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a Appendix B requires a separate trailer after the logical screen.
+    """
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="damaged"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "logical-screen-without-trailer.iirds")
+    assert not _subjects(report, "R74")
+    assert _subjects(report, "R43") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message

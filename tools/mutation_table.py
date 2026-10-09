@@ -60,9 +60,16 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("content/gif-screen-byte-is-a-trailer",
+     "src/iirds_validate/rules/content.py",
+     '    return trailer and offset == len(raw)',
+     '    return offset == len(raw) and raw[-1] == 0x3B',
+     ["tests/test_obl_c.py"],
+     "a semicolon ending the screen descriptor or color table is mistaken for a trailer"),
+
     ('content/gif-trailer-not-required',
      "src/iirds_validate/rules/content.py",
-     '    return offset == len(raw) and raw[-1] == 0x3B',
+     '    return trailer and offset == len(raw)',
      '    return True',
      ['tests/test_obl_c.py'],
      'a missing trailer or trailing byte is accepted as a complete GIF stream'),

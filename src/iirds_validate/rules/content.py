@@ -1203,10 +1203,12 @@ def _is_gif_data_stream(raw: bytes) -> bool:
         return False
     packed = raw[10]
     offset = 13 + (3 * (1 << ((packed & 7) + 1)) if packed & 0x80 else 0)
+    trailer = False
     while offset < len(raw):
         introducer = raw[offset]
         offset += 1
         if introducer == 0x3B:
+            trailer = True
             break
         if introducer == 0x21:
             if offset >= len(raw):
@@ -1232,7 +1234,7 @@ def _is_gif_data_stream(raw: bytes) -> bool:
             offset += size
         else:
             return False
-    return offset == len(raw) and raw[-1] == 0x3B
+    return trailer and offset == len(raw)
 
 
 def _raster_other_than_jpeg_or_png(head: bytes):

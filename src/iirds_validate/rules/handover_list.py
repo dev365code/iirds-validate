@@ -166,12 +166,15 @@ def _row_units(ctx, cells, units):
     referenced = {u for u in units for r in ctx.values(u, T.has_rendition)
                   if "application/pdf" in {str(f) for f in ctx.values(r, T.fmt)}
                   and any(entry_named(str(s)) in links for s in ctx.values(r, T.source))}
+    ambiguous_pdf = set()
     if len(referenced) > 1:
+        candidates = referenced
         referenced = {u for u in referenced
                       if any(_contains(text, t) for t in ctx.values(u, T.title))}
-        if len(referenced) > 1:
+        if len(referenced) != 1:
+            ambiguous_pdf = referenced or candidates
             referenced = set()
-    return named | identified | referenced
+    return named | identified | referenced, ambiguous_pdf
 
 
 @rule("R68", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
@@ -188,17 +191,25 @@ def r68_content_list_rows(ctx):
         yield Violation("index.html must contain a table", subject=CONTENT_LIST,
                         fix="Add an XHTML table to index.html.")
     occurrences = {document: [] for document in documents}
-    for number, _cells, targets in _document_rows(ctx, documents):
+    unresolved_pdf_rows = {document: [] for document in documents}
+    for number, _cells, targets, ambiguous_pdf in _document_rows(ctx, documents):
         if len(targets) > 1:
             yield Violation("a row refers to more than one document", subject=CONTENT_LIST,
                             detail="row %d" % number)
         elif targets:
             occurrences[next(iter(targets))].append(number)
+        else:
+            for document in ambiguous_pdf:
+                unresolved_pdf_rows[document].append(number)
     for document in sorted(documents, key=str):
         rows = occurrences[document]
         if not rows:
+            detail = "; ".join(
+                "the PDF link in row %d is shared by documents that this row does not "
+                "distinguish; add a document IRI or a complex identity with its domain" % number
+                for number in unresolved_pdf_rows[document]) or None
             yield Violation("index.html has no row identifying document %s" % document,
-                            subject=CONTENT_LIST)
+                            subject=CONTENT_LIST, detail=detail)
         elif len(rows) > 1:
             yield Violation("index.html lists document %s more than once" % document,
                             subject=CONTENT_LIST, detail="rows " + ", ".join(map(str, rows)))
@@ -209,7 +220,8 @@ def _document_rows(ctx, documents):
     for rows in _list_tables(_list_root(ctx)):
         for cells in rows:
             number += 1
-            yield number, cells, _row_units(ctx, cells, documents)
+            targets, ambiguous_pdf = _row_units(ctx, cells, documents)
+            yield number, cells, targets, ambiguous_pdf
 
 
 @rule("R69", kind="content", prio="MUST", versions=("1.3",), variants=("H",),
@@ -222,7 +234,7 @@ def r69_content_list_columns(ctx):
     if not ctx.package.has(CONTENT_LIST):
         return  # C11.2 owns the missing list.
     documents = set(ctx.instances_of(T.Document))
-    for number, cells, targets in _document_rows(ctx, documents):
+    for number, cells, targets, _ambiguous_pdf in _document_rows(ctx, documents):
         if len(targets) == 1:
             nonempty = sum(bool(_cell_text(cell).strip())
                            or any(e.get("href") for e in _cell_elements(cell)) for cell in cells)

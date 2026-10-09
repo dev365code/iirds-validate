@@ -1115,3 +1115,30 @@ def test_content_list_claim_totals_exclude_unverified_data():
     assert len(held()) == 149
     assert len(UNAUDITED) == 35
     assert sum(len(ids) for ids in rule_claims.values()) == 211
+
+
+@pytest.mark.parametrize('distinguished', [False, True])
+def test_shared_pdf_rows_explain_unresolved_document_references(tmp_path, distinguished):
+    titles = ['Operating instructions 2', 'Operating instructions 3']
+    metadata = H2B_REVIEW_METADATA
+    if not distinguished:
+        for title in titles:
+            metadata = metadata.replace(title, 'Shared instructions')
+        titles = ['Shared instructions', 'Shared instructions']
+    rows = [(title, 'English', 'urn:test:variant', 'iirdsHov:Operation',
+             '<a href="content/doc1.pdf">Open</a>') for title in titles]
+    body = content_list(rows).replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+    package = h2b_review_package(tmp_path, 'baseline', body, metadata)
+    got = findings(package, 'R68')
+    if distinguished:
+        assert got == []
+    else:
+        assert len(got) == 2
+        assert all('has no row identifying document' in f.violation.message for f in got)
+        for finding in got:
+            for number in (1, 2):
+                assert ('the PDF link in row %d is shared by documents that this row '
+                        'does not distinguish; add a document IRI or a complex identity '
+                        'with its domain' % number) in (finding.violation.detail or '')
+    assert findings(package, 'R69') == []
+    assert findings(package, 'C11.2') == []

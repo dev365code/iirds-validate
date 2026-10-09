@@ -1142,3 +1142,21 @@ def test_shared_pdf_rows_explain_unresolved_document_references(tmp_path, distin
                         'with its domain' % number) in (finding.violation.detail or '')
     assert findings(package, 'R69') == []
     assert findings(package, 'C11.2') == []
+
+
+@pytest.mark.parametrize('group', ['thead', 'tfoot'])
+@pytest.mark.parametrize('cell_count', [5, 1])
+def test_content_list_header_and_footer_rows_do_not_identify_documents(tmp_path, group, cell_count):
+    data = ['Operating instructions', 'en', 'urn:test:variant',
+            'iirdsHov:Operation', 'urn:test:doc1']
+    cells = data if cell_count == 5 else [data[-1]]
+    element = 'th' if group == 'thead' else 'td'
+    extra_row = '<tr>' + ''.join('<%s>%s</%s>' % (element, value, element)
+                                for value in cells) + '</tr>'
+    body = content_list([data])
+    if group == 'thead':
+        body = body.replace('</thead>', extra_row + '</thead>')
+    else:
+        body = body.replace('</table>', '<tfoot>' + extra_row + '</tfoot></table>')
+    package = listed_handover(tmp_path, 'table-row-groups.iirds', body=body, metadata=HANDOVER)
+    assert [(f.rule.id, f.violation.message) for f in runner.check(package).findings] == []

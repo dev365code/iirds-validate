@@ -900,3 +900,23 @@ def test_a_gif_candidate_refused_during_full_read_is_reported(make_package, monk
     [finding] = [f for f in report.findings if f.rule.id == "R43"]
     assert "could not be read" in finding.violation.message
     assert "synthetic full-read refusal" in finding.violation.detail
+
+
+def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    changelog = (root / "CHANGELOG.md").read_text()
+    paragraph = " ".join(changelog.split("## 0.9.1 — unreleased", 1)[1]
+                         .split("## 0.9.0", 1)[0].split())
+    for statement in (
+            "XHTML a and area links using the shared document relation types",
+            "Express those relations in RDF and remove the rel tokens while retaining the hyperlinks.",
+            "MPEG-4 brand detection treats M4A, M4B and M4P as audio-related.",
+            "including F4A and F4B, follow the MP4 video extension check",
+            "requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.",
+            "complete GIF data stream from header to trailer",
+            "a damaged GIF is reported where a page or rendition uses it as a graphic."):
+        assert statement in paragraph
+    divergences = " ".join((root / "docs/divergences.md").read_text().split())
+    assert "six-letter ASCII header can be a legal CSS identifier" in divergences
+    assert "truncated GIF streams or files with bytes after their trailer" in divergences

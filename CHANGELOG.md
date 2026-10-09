@@ -22,6 +22,19 @@ a stylesheet's encoding is taken from its BOM or `@charset` and otherwise
 assumed to be UTF-8; it is not itself a finding. Stylesheet findings are errors in iiRDS/A and
 warnings in other readings.
 
+
+XHTML a and area links using the shared document relation types, such as next
+and prev, are now reported. Express those relations in RDF and remove the rel
+tokens while retaining the hyperlinks.
+
+MPEG-4 brand detection treats M4A, M4B and M4P as audio-related. Other non-image
+brands, including F4A and F4B, follow the MP4 video extension check, which
+requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.
+
+A file is identified as a GIF only when its bytes form a complete GIF data stream
+from header to trailer. Text that merely begins with GIF89a is not a GIF; a
+damaged GIF is reported where a page or rendition uses it as a graphic.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

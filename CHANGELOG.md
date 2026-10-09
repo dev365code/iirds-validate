@@ -18,8 +18,8 @@ wrong. Correct the declaration or convert the content to the intended format,
 then save it with the required extension and update every reference, including
 `iirds:source`. Linked XHTML stylesheets that are another identifiable format
 (PDF, ZIP, images, gzip, XML or HTML) or missing from the package are reported;
-a stylesheet's encoding is read the way CSS reads it, by BOM or `@charset`,
-and is not itself a finding. Stylesheet findings are errors in iiRDS/A and
+a stylesheet's encoding is taken from its BOM or `@charset` and otherwise
+assumed to be UTF-8; it is not itself a finding. Stylesheet findings are errors in iiRDS/A and
 warnings in other readings.
 
 ## 0.9.0 — 2026-10-08

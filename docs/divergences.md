@@ -1419,6 +1419,11 @@ represented by link to be expressed by RDF.
 
 R74 examines linked local files for identifiable non-CSS content and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.
 
+For this partial format check, a BOM or an exact @charset declaration selects
+the encoding through Python's codecs; otherwise UTF-8 is assumed. The referring document's environment encoding is not implemented,
+and Python's codec labels are not the Encoding Standard's label mappings.
+Decoding errors alone are not findings.
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

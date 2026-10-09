@@ -656,7 +656,15 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
         "R74 examines linked local files for identifiable non-CSS content and missing files. "
         "It does not parse all CSS syntax or fetch external stylesheets, so it leaves "
         "B.1's stylesheet obligation unclaimed.")
-    assert expected in Path("docs/divergences.md").read_text()
+    divergence = Path("docs/divergences.md").read_text()
+    assert expected in divergence
+    assert "The referring document's environment encoding is not implemented" in divergence
+    assert "Python's codec labels are not the Encoding Standard's label mappings" in divergence
+    from iirds_validate.rules import content
+
+    decoding = " ".join(content._stylesheet_text.__doc__.split())
+    assert "environment encoding is not implemented" in decoding
+    assert "UTF-8 is used instead" in decoding
     paragraph = " ".join(Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0].split())
     assert "invalid UTF-8" not in paragraph
     assert "rename the file" not in paragraph
@@ -664,7 +672,8 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
             "bytes determine the media family", "once under that byte family",
             "declaration in the finding", "convert the content",
             "PDF, ZIP, images, gzip, XML or HTML", "missing from the package",
-            "BOM or `@charset`", "is not itself a finding",
+            "a stylesheet's encoding is taken from its BOM or `@charset`",
+            "and otherwise assumed to be UTF-8; it is not itself a finding",
             "errors in iiRDS/A", "warnings in other readings"):
         assert statement in paragraph
 

@@ -706,10 +706,12 @@ _NON_CSS_SIGNATURES = (
 
 
 def _stylesheet_text(raw):
-    """CSS Syntax 3 section 3.2: BOM, exact @charset prefix, then UTF-8.
+    """Partial stylesheet decoding: BOM, exact @charset prefix, then UTF-8.
 
-    Local links supply neither protocol nor environment encodings. Decode
-    with replacement; an encoding cannot establish that a file is not CSS.
+    CSS Syntax 3 section 3.2's referring document environment encoding is not
+    implemented; UTF-8 is used instead. Labels use Python's codecs rather than
+    the Encoding Standard's mappings. Decode with replacement; an encoding
+    cannot establish that a file is not CSS.
     """
     for bom, encoding in ((b"\xef\xbb\xbf", "utf-8"), (b"\xff\xfe", "utf-16-le"),
                           (b"\xfe\xff", "utf-16-be")):

@@ -741,8 +741,9 @@ def _stylesheet_text(raw):
 def r74_stylesheet_format(ctx):
     """B.1: "iiRDS XHTML5 stylesheets MUST be in CSS format."
 
-    Identify binary signatures and XML/HTML after CSS decoding, without a
-    CSS parser. Other text passes, so this does not claim the whole sentence.
+    Identify binary signatures, complete GIF data streams and XML/HTML after
+    CSS decoding, without a CSS parser. Other text passes, so this does not
+    claim the whole sentence.
     Resolve local links as `_pointed_at` does; no other B rule reports missing
     stylesheet targets. External resources are not opened.
     """
@@ -768,13 +769,9 @@ def r74_stylesheet_format(ctx):
         if unread:
             # S9/S14/S16 report refusals; no format was determined.
             continue
-        # GIF87a/GIF89a can be CSS identifiers. Require the seven-byte
-        # logical screen descriptor and a non-whitespace control byte in it.
         binary = next((kind for signature, kind in _NON_CSS_SIGNATURES
                        if raw.startswith(signature)
-                       and (kind != "GIF" or (len(raw) >= 13 and any(
-                           byte <= 8 or 14 <= byte <= 31 or byte == 127
-                           for byte in raw[6:13])))), None)
+                       and (kind != "GIF" or _is_gif_data_stream(raw))), None)
         if binary:
             yield Violation("the linked stylesheet is a %s file, not CSS" % binary,
                             subject=name)
@@ -1195,11 +1192,56 @@ def r42_svg_extension(ctx):
             yield Violation("an SVG that is not gzip-compressed is not named .svg", subject=name)
 
 
+def _is_gif_data_stream(raw: bytes) -> bool:
+    """Walk GIF89a Appendix B's stream framing, without decoding LZW data.
+
+    A header, logical screen and any color tables must be complete. Image
+    and extension sub-block chains end at zero; the trailer ends the file.
+    GIF87a shares this framing. A six-letter CSS identifier proves none of it.
+    """
+    if len(raw) < 13 or raw[:6] not in (b"GIF87a", b"GIF89a"):
+        return False
+    packed = raw[10]
+    offset = 13 + (3 * (1 << ((packed & 7) + 1)) if packed & 0x80 else 0)
+    while offset < len(raw):
+        introducer = raw[offset]
+        offset += 1
+        if introducer == 0x3B:
+            break
+        if introducer == 0x21:
+            if offset >= len(raw):
+                return False
+            offset += 1  # Extension label; its data uses the same sub-blocks.
+        elif introducer == 0x2C:
+            if offset + 9 > len(raw):
+                return False
+            packed = raw[offset + 8]
+            offset += 9
+            if packed & 0x80:
+                offset += 3 * (1 << ((packed & 7) + 1))
+            if offset >= len(raw):
+                return False
+            offset += 1  # LZW minimum code size; compressed data is not decoded.
+        else:
+            return False
+        while offset < len(raw):
+            size = raw[offset]
+            offset += 1
+            if size == 0:
+                break
+            offset += size
+        else:
+            return False
+    return offset == len(raw) and raw[-1] == 0x3B
+
+
 def _raster_other_than_jpeg_or_png(head: bytes):
     """The raster format these bytes open with, when it is one section 8.2.1.2
     does not allow; None when it is JPEG, PNG, or not a format known here.
 
-    Only signatures strong enough not to be met by accident. BMP's is two
+    GIF's six-letter prefix is only a candidate, verified by reading its
+    complete stream in the caller. The other signatures identify formats.
+    BMP's is two
     letters, and a text file beginning "BM" would carry them, so BMP is only
     recognised with the four reserved header bytes that follow its size, which
     the format fixes at zero.
@@ -1225,7 +1267,8 @@ def _raster_other_than_jpeg_or_png(head: bytes):
 def r43_raster_formats(ctx):
     """What each file is, rather than what its name or the metadata says: a
     GIF named .png is a GIF, whether a rendition declares it or a page points
-    at it. Its all-file signature check reads twelve bytes of a file.
+    at it. Its all-file check reads twelve bytes initially, then reads a GIF
+    candidate in full to verify its stream from header to final trailer.
 
     It recognises GIF, TIFF, WebP and BMP, and a raster format it has no
     signature for passes -- which is why it claims no sentence. "Raster
@@ -1249,6 +1292,15 @@ def r43_raster_formats(ctx):
         if head is None:
             continue
         found = _raster_other_than_jpeg_or_png(head)
+        if found == "GIF":
+            raw, unread = _bytes_of(ctx, name)
+            if unread:
+                reported.add(name)
+                yield Violation("this file could not be read, so whether it is a GIF, TIFF, "
+                                "WebP or BMP graphic is not known", subject=name, detail=unread)
+                continue
+            if not _is_gif_data_stream(raw):
+                continue
         if found:
             reported.add(name)
             yield Violation("a %s graphic, where iiRDS/A allows JPEG and PNG" % found,

@@ -506,7 +506,7 @@ def test_unused_names_do_not_identify_graphics_but_known_rasters_still_report(ma
     """
     report = runner.check(make_package(metadata=A_PROFILE, extra=(
         ("content/unused.gif", b"ordinary text"),
-        ("content/identified.bin", b"GIF89a"))))
+        ("content/identified.bin", b"GIF89a\x01\x00\x01\x00\x00\x00\x00;"))))
     assert _subjects(report, "R43") == ["content/identified.bin"]
 
 
@@ -764,6 +764,7 @@ def test_a_gif_identifier_does_not_identify_a_stylesheet_as_an_image(make_packag
     report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
                      (("content/style.css", body),), "gif-selector-stylesheet.iirds")
     assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
 
 @pytest.mark.parametrize("element", ["a", "area"])
 def test_extended_document_relations_leave_the_whole_sentence_unclaimed(make_package, element):
@@ -792,3 +793,110 @@ def test_unconfirmed_audio_brands_are_outside_the_registered_audio_set(make_pack
         ("content/unconfirmed.bin", body),)))
     assert _subjects(report, "R44") == ["content/unconfirmed.bin"]
     assert not _subjects(report, "R45")
+
+
+_GIF_SCREEN = b"\x01\x00\x01\x00\x00\x00\x00"
+_GIF_IMAGE = b"," + b"\x00\x00\x00\x00\x01\x00\x01\x00\x00" + b"\x02\x02\x44\x01\x00"
+_GIF_MINIMAL = b"GIF89a" + _GIF_SCREEN + b";"
+_GIF_PRINTABLE = b"GIF89a" + b" " * 7 + _GIF_IMAGE + b";"
+_GIF_TABLES = (b"GIF89a" + b"\x01\x00\x01\x00\x80\x00\x00"
+               + b"\x00\x00\x00\xff\xff\xff"
+               + b"!\xfe\x03one\x03two\x00"
+               + b"!\xf9\x04\x00\x00\x00\x00\x00" + _GIF_IMAGE + b";")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a/*\x0e*/ { color: red; }\np { color: blue; }",
+    b"GIF89a/*\x00*/ { color: red; }\np { color: blue; }",
+    b'GIF89a[x="\x0e"] { color: red; }',
+    b"GIF89a .abcde, x { color: red; }",
+])
+def test_css_comments_and_strings_do_not_identify_a_gif(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A control byte in a CSS comment or string does not prove a GIF stream.
+    """
+    def check(value, name):
+        return _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                       (("content/style.css", value), ("content/unused.bin", value)), name)
+    report = check(body, "css-gif-identifier.iirds")
+    sibling = check(b"p { color: blue; }", "ordinary-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
+    assert report.ok and sibling.ok
+    assert [(f.rule.id, f.violation.subject) for f in report.findings] == [
+        (f.rule.id, f.violation.subject) for f in sibling.findings]
+
+
+@pytest.mark.parametrize("body", [
+    _GIF_PRINTABLE,
+    b"GIF87a" + _GIF_SCREEN + _GIF_IMAGE + b";",
+    _GIF_TABLES,
+    _GIF_MINIMAL,
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:9] + b"\x80"
+    + b"\x00\x00\x00\xff\xff\xff" + b"\xff\x00;",
+])
+def test_a_complete_gif_stream_is_identified_in_both_content_checks(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    Complete GIF streams are identified without decoding their LZW data.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "complete-gif-stream.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    # The all-file population also includes the linked stylesheet itself.
+    assert _subjects(report, "R43") == ["content/style.css", "content/unused.bin"]
+    assert all("GIF file" in f.violation.message for f in report.findings if f.rule.id == "R74")
+    assert all("a GIF graphic" in f.violation.message for f in report.findings if f.rule.id == "R43")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a", b"GIF89a" + _GIF_SCREEN,
+    b"GIF89a" + _GIF_SCREEN + _GIF_IMAGE[:-2],
+    _GIF_MINIMAL + b"x",
+    b"GIF89a" + _GIF_SCREEN + b"?;",
+    b"GIF89a" + _GIF_SCREEN + b"!",
+    b"GIF89a" + _GIF_SCREEN + b"!\xfe",
+    b"GIF89a" + _GIF_SCREEN + b"!\xfe\x03ab",
+    b"GIF89a" + _GIF_SCREEN + b",\x00",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:10],
+    b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00;",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:9] + b"\x80\x00;",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:10] + b"\x02\x00",
+])
+def test_an_incomplete_or_trailing_gif_stream_is_not_identified(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A prefix, unfinished block, or bytes after the trailer are inconclusive.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "incomplete-gif-stream.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
+
+
+def test_an_incomplete_gif_used_as_a_graphic_is_still_reported(make_package):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
+    Usage establishes the population even when a GIF cannot be identified.
+    """
+    report = _linked(make_package, '<img src="damaged.bin" alt="damaged"/>',
+                     (("content/damaged.bin", b"GIF89a" + _GIF_SCREEN),),
+                     "damaged-used-graphic.iirds")
+    assert _subjects(report, "R43") == ["content/damaged.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message
+
+
+def test_a_gif_candidate_refused_during_full_read_is_reported(make_package, monkeypatch):
+    from iirds_validate.rules import content
+    original = content._bytes_of
+    def refuse(ctx, name):
+        if name == "content/candidate.bin":
+            return b"", "not read: synthetic full-read refusal"
+        return original(ctx, name)
+    monkeypatch.setattr(content, "_bytes_of", refuse)
+    report = _linked(make_package, "text", (("content/candidate.bin", _GIF_MINIMAL),),
+                     "unread-gif-candidate.iirds")
+    assert _subjects(report, "R43") == ["content/candidate.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be read" in finding.violation.message
+    assert "synthetic full-read refusal" in finding.violation.detail

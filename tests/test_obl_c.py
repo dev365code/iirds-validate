@@ -920,3 +920,22 @@ def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose()
     divergences = " ".join((root / "docs/divergences.md").read_text().split())
     assert "six-letter ASCII header can be a legal CSS identifier" in divergences
     assert "truncated GIF streams or files with bytes after their trailer" in divergences
+
+
+def test_gif_boundary_mutations_are_registered_with_their_package_evidence():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import mutation_table
+    expected = {
+        "content/gif-trailer-not-required": "test_an_incomplete_or_trailing_gif_stream_is_not_identified",
+        "content/gif-raster-prefix-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+        "content/gif-stylesheet-control-byte-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+        "content/gif-image-introducer-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+    }
+    rows = {row[0]: row for row in mutation_table.TABLE}
+    assert expected.keys() <= rows.keys()
+    for name, test in expected.items():
+        assert rows[name][1] == "src/iirds_validate/rules/content.py"
+        assert rows[name][4] == ["tests/test_obl_c.py"]
+        assert "def " + test + "(" in Path(__file__).read_text()

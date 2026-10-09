@@ -60,6 +60,34 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ('content/gif-trailer-not-required',
+     "src/iirds_validate/rules/content.py",
+     '    return offset == len(raw) and raw[-1] == 0x3B',
+     '    return True',
+     ['tests/test_obl_c.py'],
+     'a missing trailer or trailing byte is accepted as a complete GIF stream'),
+
+    ('content/gif-raster-prefix-is-conclusive',
+     "src/iirds_validate/rules/content.py",
+     '            if not _is_gif_data_stream(raw):',
+     '            if False:',
+     ['tests/test_obl_c.py'],
+     'CSS beginning with a GIF identifier is reported as a GIF graphic'),
+
+    ('content/gif-stylesheet-control-byte-is-conclusive',
+     "src/iirds_validate/rules/content.py",
+     '                       and (kind != "GIF" or _is_gif_data_stream(raw))), None)',
+     '                       and (kind != "GIF" or (len(raw) >= 13 and any(\n                           byte <= 8 or 14 <= byte <= 31 or byte == 127\n                           for byte in raw[6:13])))), None)',
+     ['tests/test_obl_c.py'],
+     'control bytes in CSS comments cause a non-CSS finding'),
+
+    ('content/gif-image-introducer-is-conclusive',
+     "src/iirds_validate/rules/content.py",
+     '        elif introducer == 0x2C:\n            if offset + 9 > len(raw):',
+     '        elif introducer == 0x2C:\n            return True\n            if offset + 9 > len(raw):',
+     ['tests/test_obl_c.py'],
+     'a comma in CSS is mistaken for a complete image without walking its sub-blocks'),
+
     ("metadata/ebcdic-signature-not-detected",
      METADATA,
      '    if raw[:4] == b"\\x4c\\x6f\\xa7\\x94":',

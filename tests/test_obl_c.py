@@ -617,7 +617,7 @@ def test_shared_document_relations_are_reported_without_claiming_the_whole_sente
 @pytest.mark.parametrize("element", ["a", "area"])
 @pytest.mark.parametrize("rel", [None, "bookmark", "nofollow", "noreferrer", "tag",
                                 "icon", "stylesheet", "nofollow noreferrer"])
-def test_relations_specific_to_a_or_area_do_not_describe_document_metadata(
+def test_relations_outside_the_shared_document_types_are_not_reported(
         make_package, element, rel):
     """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
     attribute = '' if rel is None else ' rel="%s"' % rel

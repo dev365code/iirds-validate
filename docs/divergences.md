@@ -1433,7 +1433,7 @@ not claim to cover the complete sentence (#5 or #6).
 
 To recognise an iiRDS/H content list as HTML, this validator requires an html
 document element, parsed as XML or identified after its prologue; documents
-with HTML5's omitted html tag are not treated as iiRDS/H content lists.
+with HTML5's omitted html start tag are not treated as iiRDS/H content lists.
 
 ### B4 — the attribute whitelist is narrowed to scripting
 

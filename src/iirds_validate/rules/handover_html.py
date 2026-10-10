@@ -37,17 +37,36 @@ def _first_list_tag(ctx):
     if text.startswith("<", position):
         name, end = _name_at(text, position + 1)
         if name and (end == len(text) or text[end] in " \t\r\n/>"):
-            return name
+            quote = None
+            for character in text[end:]:
+                if quote:
+                    if character == quote:
+                        quote = None
+                elif character in "\"'":
+                    quote = character
+                elif character == ">":
+                    return name, True
+            return name, False
     return None
 
 
 def content_list_document(ctx):
-    from .content import _local
+    from .content import XHTML_NS, _local
 
     root = _list_root(ctx)
     if root is not None:
         name = _local(root.tag)
-        return name.lower() == "html", "document element is %s" % name
-    name = _first_list_tag(ctx)
-    return (name is not None and name.lower() == "html",
-            "first tag is %s" % name if name else "no element found")
+        namespace = root.tag[1:].partition("}")[0] if root.tag.startswith("{") else ""
+        html_namespace = namespace in ("", XHTML_NS[1:-1])
+        detail = "document element is %s" % name
+        if name.lower() == "html" and not html_namespace:
+            detail += " in namespace %s" % namespace
+        return name.lower() == "html" and html_namespace, detail
+    first = _first_list_tag(ctx)
+    if first is None:
+        return False, "no element found"
+    name, complete = first
+    detail = "first tag is %s" % name
+    if not complete:
+        detail += ", unterminated"
+    return name.lower() == "html" and complete, detail

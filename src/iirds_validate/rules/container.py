@@ -306,9 +306,9 @@ def c11_2_handover_content_list(ctx):
         # Its own remedy: the file is there, so "add it" is already done.
         yield Violation("the content list index.html must be an HTML document",
                         subject=CONTENT_LIST, detail=detail,
-                        fix="Write index.html as an HTML document, beginning with an <html> "
-                            "element. The file is present and a browser will not render it as "
-                            "a page, which is the one thing it exists to do.")
+                        fix="Write index.html with an explicit <html> document element after "
+                            "any allowed prologue. The iiRDS/H content list uses XHTML syntax; "
+                            "browser recovery alone does not establish that format.")
 
 
 @rule("C12",

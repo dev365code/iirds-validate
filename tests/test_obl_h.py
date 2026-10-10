@@ -1238,3 +1238,65 @@ def test_content_list_document_element_accepts_html_prologues_and_names(tmp_path
                       if finding.violation.message ==
                       'the content list could not be read as iiRDS XHTML5']
     assert bool(parse_findings) == parse_error
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    '<?xml version="1.0" encoding="UTF-8"?><f:html xmlns:f="urn:example:catalog"/>',
+    '<html xmlns="urn:example:catalog"/>',
+], ids=['prefixed-foreign-namespace', 'default-foreign-namespace'])
+def test_an_html_element_outside_the_xhtml_namespace_is_not_the_content_list(tmp_path,
+                                                                           body, compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & {
+        finding.rule.id for finding in report.findings}
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.detail == 'document element is html in namespace urn:example:catalog'
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    b'<html', b'<html ', b'<html lang="en"', b'<html data-x="a>b"', b"<html data-x='a>b",
+], ids=['name-only', 'space-after-name', 'attribute-without-end',
+        'quoted-greater-than', 'unclosed-quote-with-greater-than'])
+def test_the_content_list_needs_a_complete_html_start_tag(tmp_path, body, compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & {
+        finding.rule.id for finding in report.findings}
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.detail == 'first tag is html, unterminated'
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    '<h:html xmlns:h="http://www.w3.org/1999/xhtml"><h:head/><h:body/></h:html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head/><body/></html>',
+    '<html><head/><body/></html>', '<html lang=en>', '<html\n  lang="en">',
+    '<html data-x="a>b">', '<html data-x=\'a>b\'>',
+], ids=['xhtml-prefix', 'xhtml-default', 'no-namespace', 'html-attribute',
+        'multiline-tag', 'double-quoted-greater-than', 'single-quoted-greater-than'])
+def test_complete_html_document_elements_keep_the_content_list_usable(tmp_path, body,
+                                                                    compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    package = content_list_with_compression(tmp_path, body, compression)
+    assert findings(package, 'C11.2') == []
+
+
+def test_the_content_list_remedy_requires_an_explicit_html_start_tag(tmp_path):
+    body = '<title>Documents</title><body>A browser supplies the html element.</body>'
+    package = listed_handover(tmp_path, 'omitted-html-start.iirds', body=body, metadata=HANDOVER)
+    got = findings(package, 'C11.2')
+    assert len(got) == 1
+    assert 'explicit <html> document element' in got[0].fix
+    assert 'XHTML syntax' in got[0].fix
+    assert 'browser will not render' not in got[0].fix

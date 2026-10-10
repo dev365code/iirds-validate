@@ -17,8 +17,10 @@ document, none for the package itself. These findings are warnings in
 iiRDS/H; `check -W` rejects such packages with exit 1. A missing list remains
 a container error (C11.2). Review index.html and provide a reference and five
 data cells for each delivered document.
-HTML content lists are now identified by their document element, so a
-different root is rejected even when its text or a child contains `<html>`.
+C11.2 now requires an explicit html document element in the XHTML namespace
+or no namespace, with a complete start tag, so a different root, a foreign
+namespace or an unfinished `<html` tag is rejected even when `<html` appears
+in the file.
 
 ## 0.9.0 — 2026-10-08
 

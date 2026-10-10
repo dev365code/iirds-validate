@@ -731,6 +731,7 @@ for _rid, _cls in (("R34", "InformationObject"),
 # In particular, adding schema triples to that graph would change what M30 sees.
 R61_ANCESTORS = "https://iirds.dev/shapes#R61Ancestors"
 R61_EQUIVALENTS = "https://iirds.dev/shapes#R61Equivalents"
+R61_SUPERPROPERTIES = "https://iirds.dev/shapes#R61SuperProperties"
 
 
 def _r61_edge_table(child, parent, edges):
@@ -743,10 +744,13 @@ def _r61_bundled_closure(predicate, term):
     """A lookup in the bundled closure, shared by the query and its function."""
     from rdflib.namespace import OWL, RDFS
 
-    edges = set(_ONTOLOGY.graph.subject_objects(OWL.equivalentClass))
-    edges |= {(second, first) for first, second in edges}
-    if predicate == RDFS.subClassOf:
-        edges |= set(_ONTOLOGY.graph.subject_objects(RDFS.subClassOf))
+    if predicate == RDFS.subPropertyOf:
+        edges = set(_ONTOLOGY.graph.subject_objects(RDFS.subPropertyOf))
+    else:
+        edges = set(_ONTOLOGY.graph.subject_objects(OWL.equivalentClass))
+        edges |= {(second, first) for first, second in edges}
+        if predicate == RDFS.subClassOf:
+            edges |= set(_ONTOLOGY.graph.subject_objects(RDFS.subClassOf))
     parents = {}
     for child, parent in edges:
         parents.setdefault(child, set()).add(parent)
@@ -774,6 +778,8 @@ def _r61_closure_function(iri, predicate):
     paths = "<%s>|^<%s>" % (OWL.equivalentClass, OWL.equivalentClass)
     if predicate == RDFS.subClassOf:
         paths = "<%s>|%s" % (RDFS.subClassOf, paths)
+    elif predicate == RDFS.subPropertyOf:
+        paths = "<%s>" % RDFS.subPropertyOf
     base = _r61_bundled_closure(predicate, "?cls")
     token = 'CONCAT("|", ENCODE_FOR_URI(STR(?cls)), "|")'
     # The aggregate isolates local graph-pattern bindings before recursion;
@@ -802,9 +808,31 @@ WHERE {
 ''' % (iri, query)
 
 
+_R61_PROPERTY_CLOSURE = """BIND (IF(EXISTS {
+    ?child <%(rdfs)ssubPropertyOf> ?parent
+  }, <%(r61_superproperties)s>(?usedProperty, ""), %(r61_property_base)s) AS ?properties)"""
+_R61_MEMBERSHIPS = """{ ?value <%(rdf)stype> ?type }
+  UNION {
+    ?value ?usedProperty ?object .
+    """ + _R61_PROPERTY_CLOSURE + """
+    { { ?domainProperty <%(rdfs)sdomain> ?type }
+      UNION { %(r61_domains)s } }
+    FILTER (CONTAINS(?properties, CONCAT("|", ENCODE_FOR_URI(STR(?domainProperty)), "|")))
+  }
+  UNION {
+    ?source ?usedProperty ?value .
+    """ + _R61_PROPERTY_CLOSURE + """
+    { { ?rangeProperty <%(rdfs)srange> ?type }
+      UNION { %(r61_ranges)s } }
+    FILTER (CONTAINS(?properties, CONCAT("|", ENCODE_FOR_URI(STR(?rangeProperty)), "|")))
+    FILTER (?type NOT IN (%(r61_datatypes)s)
+            && !STRSTARTS(STR(?type), "http://www.w3.org/2001/XMLSchema#")
+            && NOT EXISTS { ?type <%(rdf)stype> <%(rdfs)sDatatype> })
+  }"""
 _R61_TYPE_CLOSURE = """{ SELECT $this ?value
                                  (GROUP_CONCAT(?ancestors; separator="") AS ?closure) WHERE {
-  ?value <%(rdf)stype> ?type .
+  { """ + _R61_MEMBERSHIPS + """ }
+  FILTER (!isLiteral(?type))
   BIND (IF(EXISTS {
     ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
   }, <%(r61_ancestors)s>(?type, ""), %(r61_type_base)s) AS ?ancestors)
@@ -842,7 +870,6 @@ SPARQL_FORMS["R61"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
     ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
   }, <%(r61_ancestors)s>(?parentFirst, ""), %(r61_parent_ancestors_base)s) AS ?parentAncestors)
     FILTER (%(r61_eligible_parent)s)
-  } } }
   FILTER (?basisFirst != ?basisSecond)
   BIND (IF(EXISTS {
     ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
@@ -852,6 +879,7 @@ SPARQL_FORMS["R61"] = ("fixed", ["""SELECT DISTINCT $this ?value WHERE {
     ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
   }, <%(r61_ancestors)s>(?basisSecond, ""), %(r61_second_base)s) AS ?secondAncestors)
   FILTER (!CONTAINS(?secondAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisFirst)), "|")))
+  } } }
 }"""])
 
 
@@ -1398,6 +1426,18 @@ def build() -> dict:
                  "information_units": _term_list(_ONTOLOGY.subclasses_of(T.InformationUnit)),
                  "r61_ancestors": R61_ANCESTORS,
                  "r61_equivalents": R61_EQUIVALENTS,
+                 "r61_superproperties": R61_SUPERPROPERTIES,
+                 "r61_property_base": _r61_bundled_closure(
+                     URIRef(RDFS_ + "subPropertyOf"), "?usedProperty"),
+                 "r61_domains": _r61_edge_table("?domainProperty", "?type",
+                     _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "domain"))),
+                 "r61_ranges": _r61_edge_table("?rangeProperty", "?type",
+                     _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "range"))),
+                 "r61_datatypes": ", ".join("<%s>" % cls for cls in sorted(
+                     {URIRef(RDFS_ + "Literal"), URIRef(RDF_ + "XMLLiteral"),
+                      URIRef(RDF_ + "langString"), URIRef(RDF_ + "HTML")} |
+                     set(_ONTOLOGY.graph.subjects(URIRef(RDF_ + "type"),
+                                                 URIRef(RDFS_ + "Datatype"))), key=str)),
                  "r61_type_base": _r61_bundled_closure(URIRef(RDFS_ + "subClassOf"), "?type"),
                  "r61_parent_equivalents_base": _r61_bundled_closure(
                      URIRef("http://www.w3.org/2002/07/owl#equivalentClass"), "?parentFirst"),
@@ -1445,6 +1485,7 @@ def build() -> dict:
             from rdflib.namespace import OWL, RDFS
             sparql_files[target].append(_r61_closure_function(R61_ANCESTORS, RDFS.subClassOf))
             sparql_files[target].append(_r61_closure_function(R61_EQUIVALENTS, OWL.equivalentClass))
+            sparql_files[target].append(_r61_closure_function(R61_SUPERPROPERTIES, RDFS.subPropertyOf))
         sparql_emitted.append(rid)
 
     outputs = {

@@ -78,36 +78,71 @@ def _reachable(parents, start):
 
 
 def _disjoint_class_hierarchy(ontology, graph):
-    """Merge equivalent classes, then derive ancestors and direct siblings.
+    """Preserve class identities and close subclass and equivalence paths.
 
-    Both the bundled hierarchy and the package's extensions define the class
-    population. Domain markers outside the eight branches are not eligible
-    parents merely because several classes inherit from them.
+    Package declarations can connect the eight disjoint roots, but cannot
+    revoke their disjointness. Equivalent parents still share sibling groups.
     """
     roots = _disjoint_class_roots(ontology)
     nodes = roots | set(graph.objects(None, RDF.type))
-    subclass, equivalent = set(), defaultdict(set)
+    parents, equivalent = defaultdict(set), defaultdict(set)
+    subclass = set()
     for source in (ontology.graph, graph):
         for child, parent in source.subject_objects(RDFS.subClassOf):
             subclass.add((child, parent))
+            parents[child].add(parent)
             nodes.update((child, parent))
         for first, second in source.subject_objects(OWL.equivalentClass):
             equivalent[first].add(second)
             equivalent[second].add(first)
+            parents[first].add(second)
+            parents[second].add(first)
             nodes.update((first, second))
-    representatives = {node: min(_reachable(equivalent, node), key=str) for node in nodes}
-    parents = defaultdict(set)
-    for child, parent in subclass:
-        parents[representatives[child]].add(representatives[parent])
-    ancestors = {node: _reachable(parents, representatives[node]) for node in nodes}
-    root_classes = {representatives[root] for root in roots}
-    groups = [root_classes]
-    for parent in sorted(set().union(*parents.values()), key=str):
-        if ancestors[parent] & root_classes:
-            children = {child for child, direct in parents.items() if parent in direct}
+        nodes.update(source.objects(None, RDFS.domain))
+        nodes.update(source.objects(None, RDFS.range))
+    ancestors = {node: _reachable(parents, node) for node in nodes}
+    groups = [roots]
+    for parent in sorted({parent for _child, parent in subclass}, key=str):
+        if ancestors[parent] & roots:
+            aliases = _reachable(equivalent, parent)
+            children = {child for child, direct in subclass if direct in aliases}
             if len(children) > 1:
                 groups.append(children)
-    return representatives, ancestors, groups
+    return ancestors, groups
+
+
+def _disjoint_memberships(ctx):
+    """RDFS domain/range membership, including superproperties, without mutation."""
+    domains, ranges, parents = defaultdict(set), defaultdict(set), defaultdict(set)
+    datatypes = {RDFS.Literal, RDF.XMLLiteral, RDF.langString, URIRef(str(RDF) + "HTML")}
+    for source in (ctx.ontology.graph, ctx.graph):
+        datatypes.update(source.subjects(RDF.type, RDFS.Datatype))
+        for prop, domain in source.subject_objects(RDFS.domain):
+            domains[prop].add(domain)
+        for prop, range_ in source.subject_objects(RDFS.range):
+            ranges[prop].add(range_)
+        for prop, parent in source.subject_objects(RDFS.subPropertyOf):
+            parents[prop].add(parent)
+    superproperties = {prop: _reachable(parents, prop) for prop in set(ctx.graph.predicates())}
+    memberships, origins = defaultdict(set), defaultdict(set)
+    for resource, cls in ctx.graph.subject_objects(RDF.type):
+        memberships[resource].add(cls)
+        origins[resource, cls].add("explicit type %s" % ctx.ref(cls))
+    for subject, prop, obj in ctx.graph:
+        for superproperty in superproperties[prop]:
+            via = " via rdfs:subPropertyOf from %s" % ctx.ref(prop) if superproperty != prop else ""
+            for cls in domains.get(superproperty, ()):
+                memberships[subject].add(cls)
+                origins[subject, cls].add("%s inferred from the domain of %s%s" %
+                                         (ctx.ref(cls), ctx.ref(superproperty), via))
+            for cls in ranges.get(superproperty, ()):
+                if (not isinstance(cls, (URIRef, BNode)) or cls in datatypes
+                        or str(cls).startswith("http://www.w3.org/2001/XMLSchema#")):
+                    continue
+                memberships[obj].add(cls)
+                origins[obj, cls].add("%s inferred from the range of %s%s" %
+                                     (ctx.ref(cls), ctx.ref(superproperty), via))
+    return memberships, origins
 
 
 @rule("R61", kind="schema", prio="MUST", versions=("1.3",), variants=(),
@@ -115,34 +150,38 @@ def _disjoint_class_hierarchy(ontology, graph):
       title="disjoint iiRDS classes must not have instances in common",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#x6-11-1-disjointness",
-      fix="Remove a type assertion that does not describe the resource accurately. "
-          "If it combines two distinct things, give each its own resource and link "
-          "them with the appropriate iiRDS relation.")
+      fix="Remove an inaccurate type assertion, correct the package's class declarations, "
+          "or classify the resource under the appropriate branch. If it combines two "
+          "distinct things, give each its own resource and link them with the "
+          "appropriate iiRDS relation.")
 def r61_disjoint_classes_have_no_common_instance(ctx):
     """Section 6.11.1: "Disjoint classes MUST NOT have instances in common."
 
-    Close all declared types over the bundled and package class hierarchy,
-    merging classes linked by owl:equivalentClass. Check disjoint pairs inside
-    that closure, including when one declared type inherits both branches.
-    A class and its own subclass are not disjoint. No rdf:type triples are added.
+    Close declared and RDFS domain/range types over the bundled and package
+    hierarchy. Superproperties contribute their domains and class ranges.
+    Package declarations cannot cancel the eight roots' disjointness. Only
+    sibling pairs exclude a class and its ancestor. No graph triples are added.
     """
-    _representatives, ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
-    for subject in sorted(set(ctx.graph.subjects(RDF.type)), key=ctx.ref):
-        types = sorted(set(ctx.values(subject, RDF.type)), key=str)
+    ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
+    memberships, origins = _disjoint_memberships(ctx)
+    for subject in sorted(memberships, key=ctx.ref):
+        types = sorted(memberships[subject], key=str)
         closure = set().union(*(ancestors[cls] for cls in types))
-        evidence = next(((first, second) for group in groups
+        root_pair = next(combinations(sorted(closure & groups[0], key=str), 2), None)
+        evidence = root_pair or next(((first, second) for group in groups[1:]
                          for first, second in combinations(sorted(closure & group, key=str), 2)
                          if first not in ancestors[second] and second not in ancestors[first]), None)
         if evidence:
             first, second = evidence
-            origins = [next(cls for cls in types if ancestor in ancestors[cls])
+            sources = [next(cls for cls in types if ancestor in ancestors[cls])
                        for ancestor in evidence]
+            declared = sorted(ctx.values(subject, RDF.type), key=str)
             detail = "explicit type(s) %s; %s -> %s + %s -> %s; disjoint ancestors %s + %s" % (
-                ", ".join(ctx.ref(cls) for cls in types),
-                *(ctx.ref(node) for node in (origins[0], first, origins[1], second, first, second)))
+                ", ".join(ctx.ref(cls) for cls in declared) or "(none)",
+                min(origins[subject, sources[0]]), ctx.ref(first),
+                min(origins[subject, sources[1]]), ctx.ref(second), ctx.ref(first), ctx.ref(second))
             yield Violation("a resource is an instance of disjoint iiRDS classes",
                             subject=ctx.ref(subject), detail=detail)
-
 
 # --------------------------------------------------------------------------
 # Information units

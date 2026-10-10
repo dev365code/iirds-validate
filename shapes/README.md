@@ -129,15 +129,17 @@ keeps the catalogue's rule wording, that text is MIT © plusmeta GmbH; the
 remedy texts (`sh:description`) are this project's own throughout. See
 `THIRD-PARTY-NOTICES.md` beside this file.
 
-Their constraints come from the specification. The ontology carries no OWL
-axioms, its `rdfs:domain`/`range` are entailment hints rather than constraints, and
-[models' own open issues](https://github.com/iirds-consortium/models/issues)
-document defects that ontology-derived shapes would faithfully encode.
-R61 applies section 6.11.1 for iiRDS 1.3 to the closure of all declared types
-through the bundled hierarchy and the package's subclass and equivalence
-declarations. One declared type can inherit two disjoint branches. Its
-SHACL-AF functions follow ancestors without adding schema triples to the
-data graph. A class and its own subclass are not disjoint.
+Their constraints come from the specification. The ontology's `rdfs:domain`
+and `rdfs:range` are entailment hints, which other rules do not validate as
+constraints. R61 uses the membership those hints imply when applying section
+6.11.1 for iiRDS 1.3. Declared types, domains, class ranges and superproperties
+from the bundled ontology and the package contribute types; datatype ranges
+are excluded. Subclass and equivalence paths close that membership without
+adding triples to the data graph. The eight named classes remain disjoint
+even when package declarations connect them. Only sibling comparisons allow
+a class alongside its own subclass. The ontology's
+[open issues](https://github.com/iirds-consortium/models/issues) document defects
+that ontology-derived shapes would faithfully encode.
 
 **The caveat that matters: these shapes encode one documented reading of the
 specification.** Where prose underdetermines a rule, the choice made here is

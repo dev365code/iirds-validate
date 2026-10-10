@@ -66,7 +66,6 @@ HANDOVER = """<?xml version="1.0" encoding="utf-8"?>
        what the reference's own passing fixture does; the type is required of
        a product variant's domains (M15.7b, M15.7d), not of this one. -->
   <iirds:InformationObject rdf:about="urn:test:io1">
-    <iirds:title>Operating instructions</iirds:title>
     <iirds:has-identity rdf:resource="urn:test:identity-object"/>
   </iirds:InformationObject>
 
@@ -189,10 +188,8 @@ NAMED_PARTY_REMOVALS = [
 REMOVALS = NAMED_PARTY_REMOVALS + [
     ("M15.2",  '    <hov:has-document-category rdf:resource="%sOperatingInstructions"/>\n' % HOV),
     ("M15.3",  "    <iirds:language>en</iirds:language>\n"),
-    # The Document's title, anchored on the language line below it and that
-    # line put back: the information object carries the same title text, and
-    # this removal has been taking whichever came first in the file. It was
-    # the right one, by the order the fixture happens to be written in.
+    # The Document's title, anchored on its language line and that line put
+    # back. A title belongs to an InformationUnit, not its InformationObject.
     ("M15.4",  "    <iirds:title>Operating instructions</iirds:title>\n"
                "    <iirds:language>en</iirds:language>\n",
                "    <iirds:language>en</iirds:language>\n"),

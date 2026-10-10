@@ -442,14 +442,23 @@ def test_the_relations_a_must_already_covers_are_the_ones_named(tmp_path):
     rules, because the question is what a package provokes and not what a
     `covers=` tuple says.
     """
+    from rdflib import URIRef
+    from rdflib.namespace import RDFS
+
     from iirds_validate.ontology import load
     from iirds_validate.rules.lint import relation_properties
 
+    ontology = load()
     covered = {}
-    for index, prop in enumerate(sorted(relation_properties(load()), key=str)):
+    for index, prop in enumerate(sorted(relation_properties(ontology), key=str)):
         name = str(prop).split("#")[-1]
-        body = ('  <rdf:Description rdf:about="urn:test:topic1">\n'
-                "    <iirds:%s>text</iirds:%s>\n  </rdf:Description>\n" % (name, name))
+        # InformationUnit relations need the typed unit; other domains must
+        # not give that unit an incompatible type merely by using a property.
+        subject = "urn:test:topic1" if (
+            prop, RDFS.domain, URIRef(IIRDS + "InformationUnit")) in ontology.graph \
+            else "urn:test:relation-subject"
+        body = ('  <rdf:Description rdf:about="%s">\n'
+                "    <iirds:%s>text</iirds:%s>\n  </rdf:Description>\n" % (subject, name, name))
         metadata = MINIMAL_RDF.replace("</rdf:RDF>", body + "</rdf:RDF>")
         package = build_package(tmp_path, "m%d.iirds" % index, metadata=metadata)
         fired = {f.rule.id for f in runner.run(package, runner.CONFORMANCE_KINDS).findings}

@@ -446,6 +446,9 @@ VERSION_GATED_EXTRAS = {
     "metadata_iirds_sample_pass-M37_false_no_attribute.rdf": ["R61"],
     "metadata_iirds_sample_pass-M38_false.rdf": ["R61"],
     "metadata_iirds_sample_pass-M49_false.rdf": ["R61"],
+    # Declared 1.0: the 1.3 shape infers both DirectoryNode (next-sibling
+    # range) and InformationUnit (relates-to-information-unit range).
+    "Example 38 - Table of contents-M35.1_false.rdf": ["R61"],
 }
 
 

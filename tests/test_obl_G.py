@@ -476,30 +476,46 @@ def _disjoint_probe_metadata(types, declarations=(), version="1.3"):
     subject = package if CORE.Package in types else URIRef("urn:test:mixed")
     for cls in types:
         graph.add((subject, RDF.type, cls))
-    # Keep ancillary requirements constant and satisfied while changing types.
-    graph.set((subject, CORE["title"], Literal("A resource")))
+    # Ancillary properties must describe the same class as the probe resource.
+    from iirds_validate.ontology import Ontology
+
+    hierarchy = Ontology("1.3").graph
+    for first, predicate, second in declarations:
+        if predicate == RDFS.subClassOf:
+            hierarchy.add((first, predicate, second))
+        elif predicate == OWL.equivalentClass:
+            hierarchy.add((first, RDFS.subClassOf, second))
+            hierarchy.add((second, RDFS.subClassOf, first))
+    classes = set().union(*(set(hierarchy.transitive_objects(cls, RDFS.subClassOf)) for cls in types))
+    if CORE.InformationUnit in classes:
+        graph.set((subject, CORE["title"], Literal("A resource")))
     graph.add((subject, RDFS.label, Literal("A resource", lang="en")))
     rendition = URIRef("urn:test:probe-rendition")
-    if CORE.Package not in types:
+    if CORE.InformationUnit in classes and CORE.Package not in types:
         graph.add((subject, CORE["has-rendition"], rendition))
     graph.add((rendition, RDF.type, CORE.Rendition))
-    for resource in (subject, rendition):
+    for resource in ((subject, rendition) if CORE.Rendition in classes else (rendition,)):
         graph.add((resource, CORE["format"], Literal("application/xhtml+xml")))
         graph.add((resource, CORE.source, Literal("content/topic1.xhtml")))
-    graph.add((subject, CORE["has-document-type"], CORE.AssemblyInstructions))
-    graph.add((subject, RDF.value, Literal("page=1")))
-    graph.add((subject, DCTERMS.conformsTo, URIRef("http://tools.ietf.org/rfc/rfc3778")))
-    graph.add((subject, CORE.identifier, Literal("resource-1")))
+    if CORE.Document in classes:
+        graph.add((subject, CORE["has-document-type"], CORE.AssemblyInstructions))
+    if CORE.Selector in classes:
+        graph.add((subject, RDF.value, Literal("page=1")))
+        graph.add((subject, DCTERMS.conformsTo, URIRef("http://tools.ietf.org/rfc/rfc3778")))
+    if CORE.Identity in classes:
+        graph.add((subject, CORE.identifier, Literal("resource-1")))
     domain = URIRef("urn:test:probe-domain")
     identity_type = URIRef("urn:test:probe-identity-type")
-    graph.add((subject, CORE["has-identity-domain"], domain))
+    if CORE.Identity in classes:
+        graph.add((subject, CORE["has-identity-domain"], domain))
     graph.add((domain, RDF.type, CORE.IdentityDomain))
     graph.add((domain, RDFS.label, Literal("Identifier domain", lang="en")))
     graph.add((domain, CORE["has-identity-type"], identity_type))
     graph.add((identity_type, RDF.type, CORE.IdentityType))
     graph.add((identity_type, RDFS.label, Literal("Identifier type", lang="en")))
-    graph.add((subject, CORE["has-party-role"], CORE.Author))
-    if CORE.Party in types:
+    if CORE.Party in classes:
+        graph.add((subject, CORE["has-party-role"], CORE.Author))
+    if CORE.Party in classes:
         card = URIRef("urn:test:probe-card")
         vcard = Namespace("http://www.w3.org/2006/vcard/ns#")
         graph.add((subject, CORE["relates-to-vcard"], card))
@@ -752,3 +768,134 @@ def test_disjoint_closure_uses_package_functions_only_for_package_axioms(monkeyp
     assert not any(str(source).rsplit("#", 1)[-1] == "R61"
                    for _result, _p, source in results.triples((None, SH.sourceShape, None)))
     assert bool(package_functions) == declares_subclass
+
+
+MEMBERSHIP_SUBJECT = URIRef("urn:test:membership")
+MEMBERSHIP_PACKAGE = URIRef("urn:test:package")
+MEMBERSHIP_SCHEMA = Namespace("https://schema.org/")
+DISJOINT_MEMBERSHIP_PROBES = [
+    ("domain", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (MEMBERSHIP_SUBJECT, CORE["format"], Literal("text/html"))), True, "domain", CORE["format"]),
+    ("range", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.Holder, CORE["has-rendition"], MEMBERSHIP_SUBJECT)), True, "range", CORE["has-rendition"]),
+    ("subproperty", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderFormat, RDFS.subPropertyOf, CORE["format"]),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.renderFormat, Literal("text/html"))),
+     True, "subPropertyOf", EXAMPLE.renderFormat),
+    ("root-cycle", MEMBERSHIP_PACKAGE,
+     ((MEMBERSHIP_PACKAGE, RDF.type, EXAMPLE.RootAlias),
+      (EXAMPLE.RootAlias, RDFS.subClassOf, CORE.InformationUnit),
+      (EXAMPLE.RootAlias, RDFS.subClassOf, CORE.Rendition),
+      (CORE.InformationUnit, RDFS.subClassOf, EXAMPLE.RootAlias)), True, "explicit", EXAMPLE.RootAlias),
+    ("root-equivalence", MEMBERSHIP_PACKAGE,
+     ((CORE.InformationUnit, OWL.equivalentClass, CORE.Rendition),), True, "explicit", CORE.Package),
+    ("rendition-format", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Rendition),
+      (MEMBERSHIP_SUBJECT, CORE["format"], Literal("text/html"))), False, "", CORE["format"]),
+    ("no-domain", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.freeProperty, Literal("text/html"))), False, "", EXAMPLE.freeProperty),
+    ("datatype-range", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.Holder, CORE["format"], MEMBERSHIP_SUBJECT)), False, "", CORE["format"]),
+    ("domain-includes", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderFormat, MEMBERSHIP_SCHEMA.domainIncludes, CORE.Rendition),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.renderFormat, Literal("text/html"))), False, "", EXAMPLE.renderFormat),
+    ("package-domain", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderFormat, RDFS.domain, CORE.Rendition),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.renderFormat, Literal("text/html"))), True, "domain", EXAMPLE.renderFormat),
+    ("package-range", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderLink, RDFS.range, CORE.Rendition),
+      (EXAMPLE.Holder, EXAMPLE.renderLink, MEMBERSHIP_SUBJECT)), True, "range", EXAMPLE.renderLink),
+    ("inferred-only", MEMBERSHIP_SUBJECT,
+     ((EXAMPLE.documentProperty, RDFS.domain, CORE.Document),
+      (EXAMPLE.renderProperty, RDFS.domain, CORE.Rendition),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.documentProperty, Literal("document")),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.renderProperty, Literal("rendition"))), True, "domain", EXAMPLE.renderProperty),
+    ("subproperty-cycle", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderFormat, RDFS.subPropertyOf, EXAMPLE.parentFormat),
+      (EXAMPLE.parentFormat, RDFS.subPropertyOf, EXAMPLE.renderFormat),
+      (EXAMPLE.parentFormat, RDFS.subPropertyOf, CORE["format"]),
+      (MEMBERSHIP_SUBJECT, EXAMPLE.renderFormat, Literal("text/html"))),
+     True, "subPropertyOf", EXAMPLE.renderFormat),
+    ("custom-datatype", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.TextType, RDF.type, RDFS.Datatype),
+      (EXAMPLE.renderLink, RDFS.range, EXAMPLE.TextType),
+      (EXAMPLE.Holder, EXAMPLE.renderLink, MEMBERSHIP_SUBJECT)), False, "", EXAMPLE.renderLink),
+    ("xsd-datatype", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderLink, RDFS.range, URIRef("http://www.w3.org/2001/XMLSchema#string")),
+      (EXAMPLE.Holder, EXAMPLE.renderLink, MEMBERSHIP_SUBJECT)), False, "", EXAMPLE.renderLink),
+    ("literal-range", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.renderLink, RDFS.range, Literal("Rendition")),
+      (EXAMPLE.Holder, EXAMPLE.renderLink, MEMBERSHIP_SUBJECT)), False, "", EXAMPLE.renderLink),
+    ("same-as", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (EXAMPLE.OtherResource, RDF.type, CORE.Rendition),
+      (MEMBERSHIP_SUBJECT, OWL.sameAs, EXAMPLE.OtherResource)), False, "", OWL.sameAs),
+    ("explicit-siblings", MEMBERSHIP_SUBJECT,
+     ((MEMBERSHIP_SUBJECT, RDF.type, CORE.Document),
+      (MEMBERSHIP_SUBJECT, RDF.type, CORE.Topic)), True, "explicit", CORE.Document),
+]
+
+
+def _disjoint_membership_metadata(triples):
+    graph = Graph()
+    graph.add((MEMBERSHIP_PACKAGE, RDF.type, CORE.Package))
+    graph.add((MEMBERSHIP_PACKAGE, CORE.iiRDSVersion, Literal("1.3")))
+    graph.add((MEMBERSHIP_PACKAGE, CORE.title, Literal("Package")))
+    for triple in triples:
+        graph.add(triple)
+    return graph.serialize(format="xml")
+
+
+@pytest.mark.parametrize("name,subject,triples,expected,path,property_", DISJOINT_MEMBERSHIP_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_MEMBERSHIP_PROBES])
+def test_disjoint_membership_python(tmp_path, name, subject, triples, expected, path, property_):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    metadata = _disjoint_membership_metadata(triples)
+    report = runner.run(build_package(tmp_path, name + ".iirds", metadata=metadata), runner.ALL_KINDS)
+    findings = [f for f in report.findings if f.rule.id == "R61"]
+    assert len(findings) == int(expected), (name, findings)
+    if expected:
+        assert findings[0].violation.subject == str(subject)
+        detail = findings[0].violation.detail
+        assert path in detail and str(property_) in detail, detail
+        assert "disjoint ancestors" in detail
+        if name != "explicit-siblings":
+            assert all(str(cls) in detail for cls in (CORE.InformationUnit, CORE.Rendition)), detail
+        assert claimants("x6-11-1-disjointness#1") & {f.rule.id for f in findings}
+
+
+@pytest.mark.parametrize("name,subject,triples,expected,path,property_", DISJOINT_MEMBERSHIP_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_MEMBERSHIP_PROBES])
+def test_disjoint_membership_shacl(tmp_path, name, subject, triples, expected, path, property_):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    metadata = _disjoint_membership_metadata(triples)
+    found = fired(tmp_path, name + ".iirds", metadata)
+    _ok, results, text = pyshacl.validate(Graph().parse(data=metadata, format="xml"),
+                                        shacl_graph=SHAPES, advanced=True, inference="none")
+    r61 = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+           if str(source).rsplit("#", 1)[-1] == "R61"}
+    assert len(r61) == int(expected), (name, text)
+    if expected:
+        assert {results.value(result, SH.value) for result in r61} == {subject}
+    assert ("R61" in found) == bool(r61) == expected

@@ -60,6 +60,54 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("earned/r61-domain-membership-omitted",
+     "src/iirds_validate/rules/schema.py",
+     "            for cls in domains.get(superproperty, ()):",
+     "            for cls in ():",
+     ["tests/test_obl_G.py"],
+     "a Document using iirds:format is also a Rendition, even without that type assertion"),
+
+    ("earned/r61-superproperty-membership-omitted",
+     "src/iirds_validate/rules/schema.py",
+     "    superproperties = {prop: _reachable(parents, prop) for prop in set(ctx.graph.predicates())}",
+     "    superproperties = {prop: {prop} for prop in set(ctx.graph.predicates())}",
+     ["tests/test_obl_G.py"],
+     "a package subproperty loses the domain of its iiRDS superproperty"),
+
+    ("earned/r61-comparable-roots-exempted",
+     "src/iirds_validate/rules/schema.py",
+     "        root_pair = next(combinations(sorted(closure & groups[0], key=str), 2), None)",
+     "        root_pair = next(((first, second) for first, second in "
+     "combinations(sorted(closure & groups[0], key=str), 2) "
+     "if first not in ancestors[second] and second not in ancestors[first]), None)",
+     ["tests/test_obl_G.py"],
+     "a package subclass cycle cannot cancel the disjointness of the eight named classes"),
+
+    ("earned/r61-shacl-domain-membership-omitted",
+     "tools/emit_shacl.py",
+     '  UNION {\n    ?value ?usedProperty ?object .\n    """ + _R61_PROPERTY_CLOSURE',
+     '  UNION {\n    FILTER (false)\n    ?value ?usedProperty ?object .\n    """ + _R61_PROPERTY_CLOSURE',
+     ["tools/emit_shacl.py", "tests/test_obl_G.py"],
+     "the generated constraint misses a resource placed in disjoint classes by a property domain"),
+
+    ("earned/r61-shacl-superproperty-membership-omitted",
+     "tools/emit_shacl.py",
+     '_R61_PROPERTY_CLOSURE = """BIND (IF(EXISTS {\n'
+     '    ?child <%(rdfs)ssubPropertyOf> ?parent\n'
+     '  }, <%(r61_superproperties)s>(?usedProperty, ""), %(r61_property_base)s) AS ?properties)"""',
+     '_R61_PROPERTY_CLOSURE = """BIND (CONCAT("|", ENCODE_FOR_URI(STR(?usedProperty)), "|") AS ?properties)"""',
+     ["tools/emit_shacl.py", "tests/test_obl_G.py"],
+     "the generated constraint drops the domain inherited through a package subproperty"),
+
+    ("earned/r61-shacl-comparable-roots-exempted",
+     "tools/emit_shacl.py",
+     "    { %(r61_root_pairs)s }",
+     '    { %(r61_root_pairs)s }\n'
+     '    BIND (<%(r61_ancestors)s>(?basisFirst, "") AS ?rootAncestors)\n'
+     '    FILTER (!CONTAINS(?rootAncestors, CONCAT("|", ENCODE_FOR_URI(STR(?basisSecond)), "|")))',
+     ["tools/emit_shacl.py", "tests/test_obl_G.py"],
+     "the generated constraint lets a package declaration erase a named disjoint pair"),
+
     ("metadata/ebcdic-signature-not-detected",
      METADATA,
      '    if raw[:4] == b"\\x4c\\x6f\\xa7\\x94":',

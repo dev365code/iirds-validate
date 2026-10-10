@@ -54,7 +54,7 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
   </iirds:Rendition>
 
   <iirds:InformationObject rdf:about="urn:acme:io">
-    <iirds:title>Operating instructions</iirds:title>
+    <rdfs:label>Operating instructions</rdfs:label>
   </iirds:InformationObject>
 
   <iirds:Topic rdf:about="urn:acme:t1">

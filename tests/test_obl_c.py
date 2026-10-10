@@ -536,7 +536,8 @@ def test_a_stylesheet_in_another_identifiable_format_is_reported(make_package, n
         "n" if format_name == "XML or HTML document" else "", format_name)
     assert "not CSS" not in finding.violation.message
     assert finding.rule.fix == (
-        "Replace a file identified as another format with a CSS stylesheet. "
+        "Link a file that is only a CSS stylesheet; a file whose bytes identify another "
+        "format is refused even when they also parse as CSS. "
         "If the stylesheet is missing, include it at the linked path or correct the link. "
         "Update references when its path changes.")
 
@@ -661,6 +662,7 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
         "B.1's stylesheet obligation unclaimed.")
     divergence = Path("docs/divergences.md").read_text()
     assert expected in divergence
+    assert "This checker refuses a linked stylesheet whose bytes identify another format" in divergence
     assert "The referring document's environment encoding is not implemented" in divergence
     assert "Python's codec labels are not the Encoding Standard's label mappings" in divergence
     from iirds_validate.rules import content
@@ -677,7 +679,10 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
             "PDF, ZIP, images, gzip, XML or HTML", "missing from the package",
             "a stylesheet's encoding is taken from its BOM or `@charset`",
             "and otherwise assumed to be UTF-8; it is not itself a finding",
-            "errors in iiRDS/A", "warnings in other readings"):
+            "errors in iiRDS/A", "warnings in other readings",
+            "As a checker policy, a linked stylesheet identified as another format",
+            "is refused even if it also parses as CSS",
+            "link a file that is only a CSS stylesheet."):
         assert statement in paragraph
 
 
@@ -916,7 +921,10 @@ def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose()
             "including F4A and F4B, follow the MP4 video extension check",
             "requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.",
             "GIF identification walks the header, logical screen, extension block sizes",
-            "and block order allowed by GIF89a's grammar, ending at a separately consumed trailer.",
+            "and block order allowed by GIF89a's grammar",
+            "including other extensions between a graphic control extension",
+            "and the image or text it controls, which section 23 allows",
+            "ending at a separately consumed trailer.",
             "Image data and extension payloads are not decoded.",
             "In iiRDS/A, a damaged GIF used by a page or an image rendition is reported",
             "when its bytes identify neither JPEG, PNG nor SVG."):
@@ -925,7 +933,9 @@ def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose()
     assert "six-letter ASCII header can be a legal CSS identifier" in divergences
     assert "truncated GIF streams or files with bytes after their trailer" in divergences
     assert "whole-file identification policy" in divergences
-    assert "same bytes also parse as a stylesheet" in divergences
+    assert "same bytes also parse as CSS" in divergences
+    assert "Appendix B.1 does not expressly make the formats mutually exclusive" in divergences
+    assert "the refusal is this checker's additional policy" in divergences
     assert "In iiRDS/A, a damaged GIF" in divergences
 
 
@@ -996,15 +1006,15 @@ def test_a_stylesheet_that_is_also_a_complete_gif_stream_is_reported_as_a_gif(ma
     b"!\xff\x05abcde\x00;",
     b"!\x01\x03abc\x00;",
     _GIF_CONTROL + _GIF_CONTROL + _GIF_IMAGE + b";",
-    _GIF_CONTROL + b"!\xfe\x01x\x00;",
+    _GIF_CONTROL + b"!\xfe\x01x\x00;",  # No rendering block follows the comment.
     _GIF_CONTROL + _GIF_APPLICATION + b";",
     b"!\xf9", b"!\xf9\x04\x00", b"!\xf9\x04" + bytes(4),
     b"!\xf9\x04" + bytes(4) + b"\x01;",
     b"!\x01", b"!\x01\x0c" + bytes(11),
     b"!\xff", b"!\xff\x0b" + bytes(10),
 ], ids=["control-size", "control-size-with-image", "control-without-rendering", "undefined-extension",
-        "application-size", "plain-text-size", "two-controls", "control-then-comment",
-        "control-then-application", "missing-control-size", "short-control-body",
+        "application-size", "plain-text-size", "two-controls", "control-then-comment-without-rendering",
+        "control-then-application-without-rendering", "missing-control-size", "short-control-body",
         "missing-control-terminator", "nonzero-control-terminator",
         "missing-text-size", "short-text-body", "missing-application-size",
         "short-application-body"])
@@ -1047,3 +1057,45 @@ def test_gif_graphic_and_special_purpose_blocks_are_identified_without_decoding(
     [finding] = [f for f in report.findings if f.rule.id == "R74"]
     assert finding.violation.message == "the linked stylesheet is a GIF file"
     assert "not CSS" not in finding.violation.message
+
+
+_GIF_COMMENT = b"!\xfe\x03abc\x00"
+
+
+@pytest.mark.parametrize("blocks", [
+    _GIF_CONTROL + _GIF_COMMENT + _GIF_IMAGE,
+    _GIF_CONTROL + _GIF_APPLICATION + _GIF_TEXT,
+    _GIF_CONTROL + _GIF_COMMENT + _GIF_COMMENT + _GIF_IMAGE,
+], ids=["control-comment-image", "control-application-text", "control-two-comments-image"])
+def test_a_gif_graphic_control_can_have_other_extensions_before_its_rendering_block(make_package, blocks):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a section 23(d) permits other extensions between control and rendering.
+    The checker identifies GIF even when these bytes are linked as a stylesheet.
+    """
+    body = b"GIF89a" + _GIF_SCREEN + blocks + b";"
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="graphic"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "gif-control-with-intervening-extensions.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    assert _subjects(report, "R43") == ["content/style.css", "content/unused.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R74"]
+    assert str(finding.severity) == "error"
+    assert finding.violation.message == "the linked stylesheet is a GIF file"
+
+
+def test_an_intervening_extension_does_not_permit_a_second_gif_graphic_control(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a section 23(a) permits at most one control before a rendering block.
+    """
+    body = b"GIF89a" + _GIF_SCREEN + _GIF_CONTROL + _GIF_COMMENT + _GIF_CONTROL + _GIF_IMAGE + b";"
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="damaged"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "gif-duplicate-control-after-comment.iirds")
+    assert not _subjects(report, "R74")
+    assert _subjects(report, "R43") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message

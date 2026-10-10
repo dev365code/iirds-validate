@@ -20,7 +20,9 @@ then save it with the required extension and update every reference, including
 (PDF, ZIP, images, gzip, XML or HTML) or missing from the package are reported;
 a stylesheet's encoding is taken from its BOM or `@charset` and otherwise
 assumed to be UTF-8; it is not itself a finding. Stylesheet findings are errors in iiRDS/A and
-warnings in other readings.
+warnings in other readings. As a checker policy, a linked stylesheet identified
+as another format is refused even if it also parses as CSS; link a file that is
+only a CSS stylesheet.
 
 
 XHTML a and area links using the shared document relation types, such as next
@@ -32,8 +34,9 @@ brands, including F4A and F4B, follow the MP4 video extension check, which
 requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.
 
 GIF identification walks the header, logical screen, extension block sizes
-and block order allowed by GIF89a's grammar, ending at a separately consumed
-trailer. Image data and extension payloads are not decoded. A six-letter GIF
+and block order allowed by GIF89a's grammar, including other extensions between
+a graphic control extension and the image or text it controls, which section 23
+allows, ending at a separately consumed trailer. Image data and extension payloads are not decoded. A six-letter GIF
 prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
 page or an image rendition is reported when its bytes identify neither JPEG,
 PNG nor SVG.

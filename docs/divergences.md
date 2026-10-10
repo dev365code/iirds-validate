@@ -1418,8 +1418,9 @@ represented by link to be expressed by RDF.
 ### R43 — GIF identification checks block grammar and sizes
 
 The all-file raster check walks the header, logical screen, extension block
-sizes and block order allowed by GIF89a's grammar, and consumes a separate
-trailer. Image data, extension payload semantics and color values are not
+sizes and block order allowed by GIF89a's grammar, including other extensions
+between a graphic control extension and the image or text it controls, which
+section 23 allows, and consumes a separate trailer. Image data, extension payload semantics and color values are not
 decoded. The six-letter ASCII header can be a legal CSS identifier, so that
 prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
 page or an image rendition is reported when its bytes identify neither JPEG,
@@ -1436,7 +1437,7 @@ Decoding errors alone are not findings.
 
 R74 uses the same GIF block grammar and size check as R43, without decoding
 image data or extension payloads. It does not classify truncated GIF streams or files with bytes after their trailer as GIF; consuming a separate trailer at EOF is a whole-file identification policy.
-A file identified by that GIF check is reported even when the same bytes also parse as a stylesheet. CSS stylesheet parsing recovers from arbitrary input, so it cannot overturn positive format identification.
+This checker refuses a linked stylesheet whose bytes identify another format, even when the same bytes also parse as CSS. Appendix B.1 does not expressly make the formats mutually exclusive; the refusal is this checker's additional policy for such a stylesheet.
 
 ### B4 — the attribute whitelist is narrowed to scripting
 

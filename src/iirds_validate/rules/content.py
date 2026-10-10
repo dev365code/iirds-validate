@@ -735,7 +735,8 @@ def _stylesheet_text(raw):
 
 @rule("R74", covers=(), kind="content", prio="MUST", versions=(), variants=(),
       title="an iiRDS XHTML5 stylesheet must be in CSS format",
-      fix="Replace a file identified as another format with a CSS stylesheet. "
+      fix="Link a file that is only a CSS stylesheet; a file whose bytes identify another "
+          "format is refused even when they also parse as CSS. "
           "If the stylesheet is missing, include it at the linked path or correct the link. "
           "Update references when its path changes.")
 def r74_stylesheet_format(ctx):
@@ -743,9 +744,10 @@ def r74_stylesheet_format(ctx):
 
     Identify binary signatures, GIF grammar framing and XML/HTML after CSS
     decoding, without a CSS parser. GIF identification walks block sizes and
-    order, not image data or extension payload semantics. A stylesheet parse
-    does not undo positive format identification. Other text passes, so this
-    does not claim the whole sentence.
+    order, not image data or extension payload semantics. Refusing such a file
+    even if it also parses as CSS is additional checker policy; B.1 does not
+    expressly require format exclusivity. Other text passes, so this does not
+    claim the whole sentence.
     Resolve local links as `_pointed_at` does; no other B rule reports missing
     stylesheet targets. External resources are not opened.
     """
@@ -1199,6 +1201,8 @@ def _is_gif_data_stream(raw: bytes) -> bool:
 
     Graphic blocks are an optional control extension followed by an image or
     plain text; special-purpose blocks are application or comment extensions.
+    Section 23 allows those other extensions between control and rendering,
+    with the control still pending until the image or text block.
     Color tables and zero-terminated sub-blocks must fit, but their colors,
     image data and extension payload semantics are not decoded. GIF87a headers
     are also recognised. Consuming a separate trailer at EOF is this check's
@@ -1213,9 +1217,9 @@ def _is_gif_data_stream(raw: bytes) -> bool:
     while offset < len(raw):
         introducer = raw[offset]
         offset += 1
-        # <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
+        # Section 23 permits intervening special-purpose extensions while control is pending.
         if pending_control and not (introducer == 0x2C or (
-                introducer == 0x21 and offset < len(raw) and raw[offset] == 0x01)):
+                introducer == 0x21 and offset < len(raw) and raw[offset] in (0x01, 0xFE, 0xFF))):
             return False
         if introducer == 0x3B:
             trailer = True

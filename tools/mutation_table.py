@@ -60,6 +60,13 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ('content/gif-intervening-extensions-are-refused',
+     'src/iirds_validate/rules/content.py',
+     '                introducer == 0x21 and offset < len(raw) and raw[offset] in (0x01, 0xFE, 0xFF))):',
+     '                introducer == 0x21 and offset < len(raw) and raw[offset] == 0x01)):',
+     ['tests/test_obl_c.py'],
+     'a comment or application extension between graphic control and rendering prevents GIF identification'),
+
     ('content/gif-extension-fixed-size-not-checked',
      'src/iirds_validate/rules/content.py',
      '                if raw[offset] != fixed_size:',
@@ -72,7 +79,7 @@ TABLE = [
      '        if pending_control and not (introducer == 0x2C or (',
      '        if False and not (introducer == 0x2C or (',
      ['tests/test_obl_c.py'],
-     'a control extension is accepted before a trailer, another control or a special-purpose block'),
+     'a control extension that is never followed by a rendering block, or is followed by another control extension, is accepted'),
 
     ('content/gif-undefined-extension-is-data',
      'src/iirds_validate/rules/content.py',

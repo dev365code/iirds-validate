@@ -31,9 +31,12 @@ MPEG-4 brand detection treats M4A, M4B and M4P as audio-related. Other non-image
 brands, including F4A and F4B, follow the MP4 video extension check, which
 requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.
 
-A file is identified as a GIF only when its bytes form a complete GIF data stream
-from header to trailer. Text that merely begins with GIF89a is not a GIF; a
-damaged GIF is reported where a page or rendition uses it as a graphic.
+GIF identification walks the header, logical screen, extension block sizes
+and block order allowed by GIF89a's grammar, ending at a separately consumed
+trailer. Image data and extension payloads are not decoded. A six-letter GIF
+prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
+page or an image rendition is reported when its bytes identify neither JPEG,
+PNG nor SVG.
 
 ## 0.9.0 — 2026-10-08
 

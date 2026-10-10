@@ -741,9 +741,11 @@ def _stylesheet_text(raw):
 def r74_stylesheet_format(ctx):
     """B.1: "iiRDS XHTML5 stylesheets MUST be in CSS format."
 
-    Identify binary signatures, complete GIF data streams and XML/HTML after
-    CSS decoding, without a CSS parser. Other text passes, so this does not
-    claim the whole sentence.
+    Identify binary signatures, GIF grammar framing and XML/HTML after CSS
+    decoding, without a CSS parser. GIF identification walks block sizes and
+    order, not image data or extension payload semantics. A stylesheet parse
+    does not undo positive format identification. Other text passes, so this
+    does not claim the whole sentence.
     Resolve local links as `_pointed_at` does; no other B rule reports missing
     stylesheet targets. External resources are not opened.
     """
@@ -773,14 +775,14 @@ def r74_stylesheet_format(ctx):
                        if raw.startswith(signature)
                        and (kind != "GIF" or _is_gif_data_stream(raw))), None)
         if binary:
-            yield Violation("the linked stylesheet is a %s file, not CSS" % binary,
+            yield Violation("the linked stylesheet is a %s file" % binary,
                             subject=name)
             continue
         text = _stylesheet_text(raw).lstrip(" \t\r\n\f")
         while text.startswith("<!--"):
             text = text[4:].lstrip(" \t\r\n\f")
         if text.lower().startswith(("<?xml", "<!doctype", "<html", "<svg", "<rdf:rdf")):
-            yield Violation("the linked stylesheet is an XML or HTML document, not CSS",
+            yield Violation("the linked stylesheet is an XML or HTML document",
                             subject=name)
 
 
@@ -1193,27 +1195,61 @@ def r42_svg_extension(ctx):
 
 
 def _is_gif_data_stream(raw: bytes) -> bool:
-    """Walk GIF89a Appendix B's stream framing, without decoding LZW data.
+    """Walk GIF89a Appendix B's block grammar and fixed extension sizes.
 
-    A header, logical screen and any color tables must be complete. Image
-    and extension sub-block chains end at zero; the trailer ends the file.
-    GIF87a shares this framing. A six-letter CSS identifier proves none of it.
+    Graphic blocks are an optional control extension followed by an image or
+    plain text; special-purpose blocks are application or comment extensions.
+    Color tables and zero-terminated sub-blocks must fit, but their colors,
+    image data and extension payload semantics are not decoded. GIF87a headers
+    are also recognised. Consuming a separate trailer at EOF is this check's
+    whole-file identification policy, rather than a claim about embedded GIFs.
     """
     if len(raw) < 13 or raw[:6] not in (b"GIF87a", b"GIF89a"):
         return False
     packed = raw[10]
     offset = 13 + (3 * (1 << ((packed & 7) + 1)) if packed & 0x80 else 0)
     trailer = False
+    pending_control = False
     while offset < len(raw):
         introducer = raw[offset]
         offset += 1
+        # <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
+        if pending_control and not (introducer == 0x2C or (
+                introducer == 0x21 and offset < len(raw) and raw[offset] == 0x01)):
+            return False
         if introducer == 0x3B:
             trailer = True
             break
         if introducer == 0x21:
             if offset >= len(raw):
                 return False
-            offset += 1  # Extension label; its data uses the same sub-blocks.
+            label = raw[offset]
+            offset += 1
+            if label == 0xF9:  # Graphic Control Extension, section 23.
+                fixed_size = 4
+            elif label == 0x01:  # Plain Text Extension: a rendering block, section 25.
+                fixed_size = 12
+                pending_control = False
+            elif label == 0xFF:  # Application Extension: special-purpose, section 26.
+                fixed_size = 11
+            elif label == 0xFE:  # Comment Extension: special-purpose, section 24.
+                fixed_size = 0
+            else:
+                return False
+            if fixed_size:
+                if offset >= len(raw):
+                    return False
+                if raw[offset] != fixed_size:
+                    return False
+                offset += 1 + raw[offset]
+                if offset >= len(raw):
+                    return False
+            if label == 0xF9:
+                if raw[offset] != 0:
+                    return False
+                offset += 1
+                pending_control = True
+                continue
         elif introducer == 0x2C:
             if offset + 9 > len(raw):
                 return False
@@ -1224,6 +1260,7 @@ def _is_gif_data_stream(raw: bytes) -> bool:
             if offset >= len(raw):
                 return False
             offset += 1  # LZW minimum code size; compressed data is not decoded.
+            pending_control = False
         else:
             return False
         while offset < len(raw):
@@ -1242,7 +1279,7 @@ def _raster_other_than_jpeg_or_png(head: bytes):
     does not allow; None when it is JPEG, PNG, or not a format known here.
 
     GIF's six-letter prefix is only a candidate, verified by reading its
-    complete stream in the caller. The other signatures identify formats.
+    block grammar and sizes in the caller. The other signatures identify formats.
     BMP's is two
     letters, and a text file beginning "BM" would carry them, so BMP is only
     recognised with the four reserved header bytes that follow its size, which
@@ -1270,7 +1307,8 @@ def r43_raster_formats(ctx):
     """What each file is, rather than what its name or the metadata says: a
     GIF named .png is a GIF, whether a rendition declares it or a page points
     at it. Its all-file check reads twelve bytes initially, then reads a GIF
-    candidate in full to verify its stream from header to final trailer.
+    candidate in full to check GIF block grammar, extension sizes and a separate
+    trailer at EOF. Image data and extension payloads are not decoded.
 
     It recognises GIF, TIFF, WebP and BMP, and a raster format it has no
     signature for passes -- which is why it claims no sentence. "Raster

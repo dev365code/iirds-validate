@@ -1415,25 +1415,28 @@ also permits registered extension types. B5 does not read that open registry,
 so it does not claim the whole sentence requiring relations usually
 represented by link to be expressed by RDF.
 
-### R43 — GIF identification requires a complete stream
+### R43 — GIF identification checks block grammar and sizes
 
-The all-file raster check identifies a GIF only from a complete GIF data stream,
-including its final trailer. Its six-letter ASCII header can be a legal CSS
-identifier, so that prefix alone does not identify a graphic. A damaged GIF
-used by an XHTML image or an image rendition is still reported by the used
-graphics check when its bytes identify neither JPEG, PNG nor SVG.
+The all-file raster check walks the header, logical screen, extension block
+sizes and block order allowed by GIF89a's grammar, and consumes a separate
+trailer. Image data, extension payload semantics and color values are not
+decoded. The six-letter ASCII header can be a legal CSS identifier, so that
+prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
+page or an image rendition is reported when its bytes identify neither JPEG,
+PNG nor SVG.
 
-### R74 — stylesheet bytes exclude known non-CSS formats
+### R74 — stylesheet bytes identify other formats
 
-R74 examines linked local files for identifiable non-CSS content and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.
+R74 examines linked local files for identifiable formats and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.
 
 For this partial format check, a BOM or an exact @charset declaration selects
 the encoding through Python's codecs; otherwise UTF-8 is assumed. The referring document's environment encoding is not implemented,
 and Python's codec labels are not the Encoding Standard's label mappings.
 Decoding errors alone are not findings.
 
-R74 identifies GIF only from a complete GIF data stream; it does not classify
-truncated GIF streams or files with bytes after their trailer as GIF.
+R74 uses the same GIF block grammar and size check as R43, without decoding
+image data or extension payloads. It does not classify truncated GIF streams or files with bytes after their trailer as GIF; consuming a separate trailer at EOF is a whole-file identification policy.
+A file identified by that GIF check is reported even when the same bytes also parse as a stylesheet. CSS stylesheet parsing recovers from arbitrary input, so it cannot overturn positive format identification.
 
 ### B4 — the attribute whitelist is narrowed to scripting
 

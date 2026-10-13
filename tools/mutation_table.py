@@ -60,12 +60,35 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
-    ("earned/r61-type-subproperty-omitted",
-     "src/iirds_validate/rules/schema.py",
-     "            for parent in closure[prop] & predicates:",
-     "            for parent in (closure[prop] & predicates) - {RDF.type}:",
-     ["tests/test_obl_G.py"],
-     "a subproperty of rdf:type declares both Document and Topic membership"),
+    ('earned/r61-rdfs2-feedback-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs2" and obj == RDF.type):', ['tests/test_obl_G.py'], 'domain-implied types must feed schema and type statements'),
+
+    ('earned/r61-rdfs3-feedback-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs3" and obj == RDF.type):', ['tests/test_obl_G.py'], 'range-implied types must feed schema and type statements'),
+
+    ('earned/r61-rdfs5-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs5":', ['tests/test_obl_G.py'], 'a transitive property statement can also supply a type statement'),
+
+    ('earned/r61-rdfs9-feedback-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs9":', ['tests/test_obl_G.py'], 'ancestor types must feed subproperty declarations'),
+
+    ('earned/r61-rdfs11-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs11":', ['tests/test_obl_G.py'], 'transitive class consequences must remain available as schema facts'),
+
+    ('earned/r61-datatype-branch-exempted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs3" and (obj == RDFS.Literal or (obj, RDF.type, RDFS.Datatype) in facts or str(obj).startswith("http://www.w3.org/2001/XMLSchema#"))):', ['tests/test_obl_G.py'], 'a datatype connected to an iiRDS branch still contributes membership'),
+
+    ('earned/r61-rdfs1-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs1":', ['tests/test_obl_G.py'], 'recognized datatype typing can feed iiRDS membership'),
+
+    ('earned/r61-rdfs4-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs4":', ['tests/test_obl_G.py'], 'resource typing must respect package class declarations'),
+
+    ('earned/r61-rdfs6-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs6":', ['tests/test_obl_G.py'], 'property reflexivity supplies a reusable schema fact'),
+
+    ('earned/r61-rdfs8-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs8":', ['tests/test_obl_G.py'], 'class membership entails a subclass of Resource'),
+
+    ('earned/r61-rdfs10-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs10":', ['tests/test_obl_G.py'], 'class membership entails a reflexive subclass statement'),
+
+    ('earned/r61-rdfs12-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs12":', ['tests/test_obl_G.py'], 'container membership properties inherit member semantics'),
+
+    ('earned/r61-rdfs13-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs13":', ['tests/test_obl_G.py'], 'datatype classes inherit Literal when a package connects that class'),
+
+    ('earned/r61-shacl-literal-subject-included', 'tools/emit_shacl.py', '  FILTER (!isLiteral(?type) && !isLiteral(?value))', '  FILTER (!isLiteral(?type))', ['tools/emit_shacl.py', 'tests/test_obl_G.py'], 'literal values are not reported as resource subjects'),
+
+    ('earned/r61-type-subproperty-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs7" and prop == RDF.type):', ['tests/test_obl_G.py'], 'a subproperty of rdf:type declares both Document and Topic membership'),
 
     ("earned/r61-bundled-types-omitted",
      "src/iirds_validate/rules/schema.py",
@@ -93,19 +116,9 @@ TABLE = [
      ["tools/emit_shacl.py", "tests/test_obl_G.py"],
      "the generated query needs the known types of bundled resources used in the package"),
 
-    ("earned/r61-domain-membership-omitted",
-     "src/iirds_validate/rules/schema.py",
-     "            for cls in domains.get(superproperty, ()):",
-     "            for cls in ():",
-     ["tests/test_obl_G.py"],
-     "a Document using iirds:format is also a Rendition, even without that type assertion"),
+    ('earned/r61-domain-membership-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs2":', ['tests/test_obl_G.py'], 'a Document using iirds:format is also a Rendition, even without that type assertion'),
 
-    ("earned/r61-superproperty-membership-omitted",
-     "src/iirds_validate/rules/schema.py",
-     "    superproperties = {prop: _reachable(parents, prop) for prop in set(facts.predicates())}",
-     "    superproperties = {prop: {prop} for prop in set(facts.predicates())}",
-     ["tests/test_obl_G.py"],
-     "a package subproperty loses the domain of its iiRDS superproperty"),
+    ('earned/r61-superproperty-membership-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs7":', ['tests/test_obl_G.py'], 'a package subproperty loses the domain of its iiRDS superproperty'),
 
     ("earned/r61-comparable-roots-exempted",
      "src/iirds_validate/rules/schema.py",

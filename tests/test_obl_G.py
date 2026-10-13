@@ -1027,3 +1027,185 @@ def test_disjoint_rdfs7_facts_leave_the_package_graph_unchanged(tmp_path):
         assert len(findings) == 1
         assert set(ctx.graph) == before
         assert (EXAMPLE.x, RDF.type, CORE.Document) not in ctx.graph
+
+
+DISJOINT_FIXED_POINT_PROBES = [
+    ("rdfs2-feedback", EXAMPLE.x,
+     ((RDF.type, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.declare, RDFS.domain, RDF.type),
+      (EXAMPLE.asType, EXAMPLE.declare, EXAMPLE.marker),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Topic)), True, False),
+    ("rdfs5-feedback", EXAMPLE.p,
+     ((RDFS.subPropertyOf, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.p, RDFS.subPropertyOf, EXAMPLE.q),
+      (EXAMPLE.q, RDFS.subPropertyOf, CORE.Document),
+      (EXAMPLE.p, RDF.type, CORE.Topic)), True, False),
+    ("datatype-branch", EXAMPLE.x,
+     ((EXAMPLE.DocValue, RDF.type, RDFS.Datatype),
+      (EXAMPLE.DocValue, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.prop, RDFS.range, EXAMPLE.DocValue),
+      (EXAMPLE.holder, EXAMPLE.prop, EXAMPLE.x),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), True, False),
+    ("joint-feedback", EXAMPLE.p,
+     ((RDF.type, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (RDFS.subPropertyOf, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.declare, RDFS.domain, EXAMPLE.Meta),
+      (EXAMPLE.Meta, RDFS.subClassOf, RDFS.subPropertyOf),
+      (EXAMPLE.asSchema, EXAMPLE.declare, EXAMPLE.marker),
+      (EXAMPLE.p, EXAMPLE.asSchema, EXAMPLE.q),
+      (EXAMPLE.q, RDFS.subPropertyOf, CORE.Document),
+      (EXAMPLE.p, RDF.type, CORE.Topic)), True, False),
+    ("literal-object", EXAMPLE.holder,
+     ((EXAMPLE.prop, RDFS.range, CORE.Document),
+      (EXAMPLE.prop, RDFS.range, CORE.Topic),
+      (EXAMPLE.holder, EXAMPLE.prop, Literal("value"))), False, True),
+    ("ordinary-xsd", EXAMPLE.x,
+     ((EXAMPLE.prop, RDFS.range, URIRef("http://www.w3.org/2001/XMLSchema#string")),
+      (EXAMPLE.holder, EXAMPLE.prop, EXAMPLE.x),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), False, True),
+    ("unconnected-metamodel", EXAMPLE.x,
+     ((RDF.type, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.declare, RDFS.domain, EXAMPLE.Meta),
+      (EXAMPLE.Meta, RDFS.subClassOf, EXAMPLE.ParentMeta),
+      (EXAMPLE.asType, EXAMPLE.declare, EXAMPLE.marker),
+      (EXAMPLE.x, EXAMPLE.asType, EXAMPLE.External)), False, True),
+    ("rdfs3-feedback", EXAMPLE.x,
+     ((RDF.type, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.declare, RDFS.range, RDF.type),
+      (EXAMPLE.marker, EXAMPLE.declare, EXAMPLE.asType),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Topic)), True, False),
+    ("rdfs9-feedback", EXAMPLE.x,
+     ((RDF.type, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.asType, RDF.type, EXAMPLE.Meta),
+      (EXAMPLE.Meta, RDFS.subClassOf, RDF.type),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Topic)), True, False),
+    ("rdfs11-feedback", EXAMPLE.x,
+     ((RDFS.subClassOf, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.x, RDFS.subClassOf, EXAMPLE.Middle),
+      (EXAMPLE.Middle, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), True, True),
+    ("rdfs1-feedback", URIRef("http://www.w3.org/2001/XMLSchema#string"),
+     ((RDFS.Datatype, RDFS.subClassOf, CORE.Document),
+      (URIRef("http://www.w3.org/2001/XMLSchema#string"), RDF.type, CORE.Topic)), True, False),
+    ("rdfs4-feedback", EXAMPLE.x,
+     ((RDFS.Resource, RDFS.subClassOf, CORE.Document),
+      (RDFS.Resource, RDFS.subClassOf, CORE.Rendition),
+      (EXAMPLE.x, EXAMPLE.p, EXAMPLE.y)), True, False),
+    ("rdfs6-feedback", EXAMPLE.p,
+     ((EXAMPLE.p, RDF.type, RDF.Property),
+      (EXAMPLE.p, RDF.type, CORE.Topic),
+      (RDFS.subPropertyOf, RDFS.domain, CORE.Document)), True, False),
+    ("rdfs8-feedback", EXAMPLE.ValueClass,
+     ((EXAMPLE.ValueClass, RDF.type, RDFS.Class),
+      (EXAMPLE.ValueClass, RDF.type, CORE.Topic),
+      (RDFS.subClassOf, RDFS.range, CORE.Document),
+      (EXAMPLE.ValueClass, RDFS.domain, CORE.Document)), True, False),
+    ("rdfs10-feedback", EXAMPLE.ValueClass,
+     ((EXAMPLE.ValueClass, RDF.type, RDFS.Class),
+      (EXAMPLE.ValueClass, RDF.type, CORE.Topic),
+      (RDFS.subClassOf, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.ValueClass, RDFS.subClassOf, CORE.Document)), True, True),
+    ("rdfs12-feedback", EXAMPLE.x,
+     ((EXAMPLE.prop, RDF.type, RDFS.ContainerMembershipProperty),
+      (RDFS.member, RDFS.domain, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.prop, Literal("member")),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), True, False),
+    ("rdfs13-feedback", EXAMPLE.x,
+     ((EXAMPLE.ValueType, RDF.type, RDFS.Datatype),
+      (RDFS.Literal, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.x, RDF.type, EXAMPLE.ValueType),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), True, False),
+]
+
+
+@pytest.mark.parametrize("name,subject,triples,expected,supported", DISJOINT_FIXED_POINT_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_FIXED_POINT_PROBES])
+def test_disjoint_fixed_point_python(tmp_path, name, subject, triples, expected, supported):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    RDFS entailment patterns may feed type and schema consequences into each other.
+    """
+    package = build_package(tmp_path, name + ".iirds", metadata=_disjoint_membership_metadata(triples))
+    report = runner.run(package, runner.ALL_KINDS)
+    all_r61 = [finding for finding in report.findings if finding.rule.id == "R61"]
+    findings = [finding for finding in all_r61 if finding.violation.subject == str(subject)]
+    assert len(findings) == int(expected), (name, all_r61)
+    if expected:
+        detail = findings[0].violation.detail
+        witnesses = (CORE.InformationUnit, CORE.Rendition) if name == "rdfs4-feedback" else (CORE.Document, CORE.Topic)
+        assert all(str(cls) in detail for cls in witnesses), detail
+        assert claimants("x6-11-1-disjointness#1") & {finding.rule.id for finding in findings}
+        if name in {"rdfs2-feedback", "rdfs5-feedback", "datatype-branch", "joint-feedback"}:
+            assert len(all_r61) == 1, all_r61
+    else:
+        assert not all_r61, all_r61
+
+
+@pytest.mark.parametrize("name,subject,triples,expected,supported", DISJOINT_FIXED_POINT_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_FIXED_POINT_PROBES])
+def test_disjoint_fixed_point_shacl(tmp_path, name, subject, triples, expected, supported):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    The generated query has partial support; it does not materialize an RDFS fixed point.
+    """
+    from pathlib import Path
+
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    metadata = _disjoint_membership_metadata(triples)
+    python = fired(tmp_path, name + ".iirds", metadata)
+    _ok, results, text = pyshacl.validate(Graph().parse(data=metadata, format="xml"),
+                                        shacl_graph=SHAPES, advanced=True, inference="none")
+    found = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+             if str(source).rsplit("#", 1)[-1] == "R61"}
+    if supported:
+        assert ("R61" in python) == bool(found) == expected, (name, text)
+    else:
+        readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
+        assert name in readme, name
+        assert "R61" in python and not found, (name, text)
+
+
+def test_disjoint_fixed_point_schema_consequences_are_reusable(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    RDFS transitive schema conclusions must exist as facts for later rules.
+    """
+    from iirds_validate.context import load_context
+    from iirds_validate.package import Package
+    from iirds_validate.rules.schema import (
+        _disjoint_rdfs_facts,
+        r61_disjoint_classes_have_no_common_instance,
+    )
+
+    probe = next(probe for probe in DISJOINT_FIXED_POINT_PROBES if probe[0] == "rdfs5-feedback")
+    triples = probe[2] + ((EXAMPLE.A, RDFS.subClassOf, EXAMPLE.B),
+                         (EXAMPLE.B, RDFS.subClassOf, EXAMPLE.C),
+                         (EXAMPLE.ValueClass, RDF.type, RDFS.Class),
+                         (EXAMPLE.Property, RDF.type, RDF.Property),
+                         (RDFS.subClassOf, RDF.type, RDF.Property))
+    package = build_package(tmp_path, "schema-consequences.iirds",
+                            metadata=_disjoint_membership_metadata(triples))
+    with Package(package) as opened:
+        ctx = load_context(opened)
+        before = set(ctx.graph)
+        facts, _origins, direct = _disjoint_rdfs_facts(ctx)
+        assert (EXAMPLE.p, RDFS.subPropertyOf, CORE.Document) in facts
+        assert (EXAMPLE.p, RDF.type, CORE.Document) in facts
+        assert (EXAMPLE.A, RDFS.subClassOf, EXAMPLE.C) in facts
+        assert (EXAMPLE.ValueClass, RDFS.subClassOf, RDFS.Resource) in facts
+        assert (EXAMPLE.ValueClass, RDFS.subClassOf, EXAMPLE.ValueClass) in facts
+        assert (EXAMPLE.Property, RDFS.subPropertyOf, EXAMPLE.Property) in facts
+        assert (EXAMPLE.A, EXAMPLE.C) not in direct
+        findings = list(r61_disjoint_classes_have_no_common_instance(ctx))
+        assert len(findings) == 1 and findings[0].subject == str(EXAMPLE.p)
+        assert set(ctx.graph) == before

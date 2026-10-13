@@ -845,7 +845,7 @@ _R61_MEMBERSHIPS = """{ ?value <%(rdf)stype> ?type }
 _R61_TYPE_CLOSURE = """{ SELECT $this ?value
                                  (GROUP_CONCAT(?ancestors; separator="") AS ?closure) WHERE {
   { """ + _R61_MEMBERSHIPS + """ }
-  FILTER (!isLiteral(?type))
+  FILTER (!isLiteral(?type) && !isLiteral(?value))
   BIND (IF(EXISTS {
     ?child (<%(rdfs)ssubClassOf>|<http://www.w3.org/2002/07/owl#equivalentClass>) ?parent
   }, <%(r61_ancestors)s>(?type, ""), %(r61_type_base)s) AS ?ancestors)

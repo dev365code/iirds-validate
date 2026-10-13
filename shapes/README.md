@@ -131,22 +131,46 @@ remedy texts (`sh:description`) are this project's own throughout. See
 
 Their constraints come from the specification. The ontology's `rdfs:domain`
 and `rdfs:range` are entailment hints, which other rules do not validate as
-constraints. R61 uses the membership those hints imply when applying section
-6.11.1 for iiRDS 1.3. Declared types, known types of bundled resources used
-by the package, domains, class ranges and superproperties contribute types.
-The query also reads type, domain and range statements written using a
-subproperty of their RDF/RDFS predicates. Datatype ranges are excluded. Subclass and equivalence paths close that membership without
-adding triples to the data graph. The eight named classes remain disjoint
-even when package declarations connect them. Only sibling comparisons allow
-a class alongside its own subclass.
+constraints. Python R61 uses declared and RDFS-implied types when applying
+section 6.11.1 for iiRDS 1.3. Its local facts combine the package with bundled
+type and schema statements, including known types of bundled resources the
+package uses. The RDFS entailment patterns run to a joint fixed point:
+type, domain, range, subclass and subproperty consequences all feed one
+another. Equivalence declarations supply subclass edges in both directions.
+Datatype classes can contribute membership when connected to iiRDS classes;
+literal values are excluded as reported subjects. No triples are added to
+the package graph. The eight named classes remain disjoint even when package
+declarations connect them. Only sibling comparisons allow a class alongside
+its own subclass.
 
-The SPARQL form defers **rdfs7 schema normalization** for aliased subclass
-statements and for subproperty declarations themselves derived through
-another schema predicate. Those statements can require repeated schema
-normalization to a fixed point; Python R61 performs that local closure.
-The generated query uses declared subproperty paths and does not express
-that fixed point. Its partial support is pinned by named counterexamples
-in the Python/SHACL comparison, rather than treating those paths as conformant.
+The generated SPARQL form has partial support. It reads directly declared
+types and class paths, type/domain/range aliases using declared subproperty
+paths, and the known bundled type table. It does not materialize the joint
+RDFS fixed point. In particular, it defers **rdfs7 schema normalization** and
+feedback of derived type and transitive schema statements into later rules.
+These named probes assert Python R61 findings and raw SHACL silence:
+
+| Deferred probe | Missing path in the generated query |
+|---|---|
+| `class-alias` | Aliased subclass statement normalization |
+| `property-alias-fixed-point` | Derived subproperty statements |
+| `domain-fixed-point` | Derived subproperty followed by a domain declaration |
+| `rdfs2-feedback` | Domain type fed back into schema and type aliases |
+| `rdfs3-feedback` | Range type fed back into schema and type aliases |
+| `rdfs5-feedback` | Transitive subproperty statement used as a type statement |
+| `rdfs9-feedback` | Ancestor type fed back into subproperty declarations |
+| `joint-feedback` | Joint domain, subclass-type and subproperty-transitivity feedback |
+| `datatype-branch` | Datatype range connected to an iiRDS subclass |
+| `rdfs1-feedback` | Recognized datatype IRI typing fed into iiRDS membership |
+| `rdfs4-feedback` | Resource typing under package metamodel declarations |
+| `rdfs6-feedback` | Property reflexivity producing a schema statement |
+| `rdfs8-feedback` | Class-to-Resource statement producing range membership |
+| `rdfs12-feedback` | Container membership property's implicit superproperty |
+| `rdfs13-feedback` | Datatype-to-Literal subclass consequence |
+
+The comparison tests pin these limits rather than treating unsupported paths
+as conformant. This table describes paths within R61, not additional deferred
+rules. Direct type and schema paths continue to have Python/SHACL comparisons.
 The ontology's
 [open issues](https://github.com/iirds-consortium/models/issues) document defects
 that ontology-derived shapes would faithfully encode.

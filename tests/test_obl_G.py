@@ -899,3 +899,131 @@ def test_disjoint_membership_shacl(tmp_path, name, subject, triples, expected, p
     if expected:
         assert {results.value(result, SH.value) for result in r61} == {subject}
     assert ("R61" in found) == bool(r61) == expected
+
+
+DISJOINT_RDFS7_PROBES = [
+    ("type-alias", EXAMPLE.x,
+     ((EXAMPLE.asType, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.asType, RDFS.subPropertyOf, CORE.iirdsAttribute),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Topic)),
+     (CORE.Document, CORE.Topic), "subPropertyOf", True),
+    ("domain-alias", EXAMPLE.d,
+     ((EXAMPLE.dom, RDFS.subPropertyOf, RDFS.domain),
+      (EXAMPLE.p, EXAMPLE.dom, CORE.Rendition),
+      (EXAMPLE.d, RDF.type, CORE.Document),
+      (EXAMPLE.d, EXAMPLE.p, Literal("x"))),
+     (CORE.InformationUnit, CORE.Rendition), "domain", True),
+    ("bundled-conflict", CORE.Creator,
+     ((EXAMPLE.x, RDF.type, CORE.Document),
+      (EXAMPLE.x, CORE["has-document-type"], CORE.Creator)),
+     (CORE.AdministrativeMetadata, CORE.InformationType), "bundled", True),
+    ("type-compatible", EXAMPLE.x,
+     ((EXAMPLE.asType, RDFS.subPropertyOf, RDF.type),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document)), (), "", True),
+    ("domain-compatible", EXAMPLE.d,
+     ((EXAMPLE.dom, RDFS.subPropertyOf, RDFS.domain),
+      (EXAMPLE.p, EXAMPLE.dom, CORE.Document),
+      (EXAMPLE.d, RDF.type, CORE.Document),
+      (EXAMPLE.d, EXAMPLE.p, Literal("x"))), (), "", True),
+    ("bundled-compatible", CORE.Creator,
+     ((EXAMPLE.party, CORE["has-party-role"], CORE.Creator),), (), "", True),
+    ("range-alias", EXAMPLE.d,
+     ((EXAMPLE.ran, RDFS.subPropertyOf, RDFS.range),
+      (EXAMPLE.p, EXAMPLE.ran, CORE.Rendition),
+      (EXAMPLE.d, RDF.type, CORE.Document),
+      (EXAMPLE.holder, EXAMPLE.p, EXAMPLE.d)),
+     (CORE.InformationUnit, CORE.Rendition), "range", True),
+    ("class-alias", EXAMPLE.x,
+     ((EXAMPLE.extends, RDFS.subPropertyOf, RDFS.subClassOf),
+      (EXAMPLE.Mixed, EXAMPLE.extends, CORE.Document),
+      (EXAMPLE.Mixed, EXAMPLE.extends, CORE.Topic),
+      (EXAMPLE.x, RDF.type, EXAMPLE.Mixed)),
+     (CORE.Document, CORE.Topic), "explicit", False),
+    ("property-alias-fixed-point", EXAMPLE.x,
+     ((EXAMPLE.edge, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.asType, EXAMPLE.edge, RDF.type),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Document),
+      (EXAMPLE.x, EXAMPLE.asType, CORE.Topic)),
+     (CORE.Document, CORE.Topic), "subPropertyOf", False),
+    ("domain-fixed-point", EXAMPLE.d,
+     ((EXAMPLE.edge, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (EXAMPLE.dom, EXAMPLE.edge, RDFS.domain),
+      (EXAMPLE.p, EXAMPLE.dom, CORE.Rendition),
+      (EXAMPLE.d, RDF.type, CORE.Document),
+      (EXAMPLE.d, EXAMPLE.p, Literal("x"))),
+     (CORE.InformationUnit, CORE.Rendition), "domain", False),
+]
+
+
+@pytest.mark.parametrize("name,subject,triples,witnesses,origin,supported", DISJOINT_RDFS7_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_RDFS7_PROBES])
+def test_disjoint_rdfs7_python(tmp_path, name, subject, triples, witnesses, origin, supported):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    package = build_package(tmp_path, name + ".iirds", metadata=_disjoint_membership_metadata(triples))
+    report = runner.run(package, runner.ALL_KINDS)
+    findings = [finding for finding in report.findings if finding.rule.id == "R61"]
+    assert len(findings) == bool(witnesses), (name, findings)
+    if witnesses:
+        assert findings[0].violation.subject == str(subject)
+        detail = findings[0].violation.detail
+        assert all(str(cls) in detail for cls in witnesses), detail
+        assert origin in detail, detail
+        if name == "type-alias":
+            assert str(EXAMPLE.asType) in detail
+        if name == "bundled-conflict":
+            assert str(CORE.PartyRole) in detail and str(CORE["has-document-type"]) in detail
+        assert claimants("x6-11-1-disjointness#1") & {finding.rule.id for finding in findings}
+
+
+@pytest.mark.parametrize("name,subject,triples,witnesses,origin,supported", DISJOINT_RDFS7_PROBES,
+                         ids=[probe[0] for probe in DISJOINT_RDFS7_PROBES])
+def test_disjoint_rdfs7_shacl(tmp_path, name, subject, triples, witnesses, origin, supported):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from pathlib import Path
+
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    metadata = _disjoint_membership_metadata(triples)
+    python = fired(tmp_path, name + ".iirds", metadata)
+    _ok, results, text = pyshacl.validate(Graph().parse(data=metadata, format="xml"),
+                                        shacl_graph=SHAPES, advanced=True, inference="none")
+    found = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+             if str(source).rsplit("#", 1)[-1] == "R61"}
+    if supported:
+        assert len(found) == bool(witnesses), (name, text)
+        if witnesses:
+            assert {results.value(result, SH.value) for result in found} == {subject}
+        assert ("R61" in python) == bool(found) == bool(witnesses)
+    else:
+        # These schema paths require normalization beyond the emitted query.
+        # The named counterexamples pin the documented partial SHACL support.
+        readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
+        assert "rdfs7 schema normalization" in readme
+        assert "R61" in python and not found, (name, text)
+
+
+def test_disjoint_rdfs7_facts_leave_the_package_graph_unchanged(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+    """
+    from iirds_validate.context import load_context
+    from iirds_validate.package import Package
+    from iirds_validate.rules.schema import r61_disjoint_classes_have_no_common_instance
+
+    probe = next(probe for probe in DISJOINT_RDFS7_PROBES if probe[0] == "property-alias-fixed-point")
+    package = build_package(tmp_path, "unchanged.iirds", metadata=_disjoint_membership_metadata(probe[2]))
+    with Package(package) as opened:
+        ctx = load_context(opened)
+        before = set(ctx.graph)
+        findings = list(r61_disjoint_classes_have_no_common_instance(ctx))
+        assert len(findings) == 1
+        assert set(ctx.graph) == before
+        assert (EXAMPLE.x, RDF.type, CORE.Document) not in ctx.graph

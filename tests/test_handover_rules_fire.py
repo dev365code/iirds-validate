@@ -66,6 +66,7 @@ HANDOVER = """<?xml version="1.0" encoding="utf-8"?>
        what the reference's own passing fixture does; the type is required of
        a product variant's domains (M15.7b, M15.7d), not of this one. -->
   <iirds:InformationObject rdf:about="urn:test:io1">
+    <rdfs:label>Operating instructions</rdfs:label>
     <iirds:has-identity rdf:resource="urn:test:identity-object"/>
   </iirds:InformationObject>
 

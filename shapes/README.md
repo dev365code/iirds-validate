@@ -132,12 +132,22 @@ remedy texts (`sh:description`) are this project's own throughout. See
 Their constraints come from the specification. The ontology's `rdfs:domain`
 and `rdfs:range` are entailment hints, which other rules do not validate as
 constraints. R61 uses the membership those hints imply when applying section
-6.11.1 for iiRDS 1.3. Declared types, domains, class ranges and superproperties
-from the bundled ontology and the package contribute types; datatype ranges
-are excluded. Subclass and equivalence paths close that membership without
+6.11.1 for iiRDS 1.3. Declared types, known types of bundled resources used
+by the package, domains, class ranges and superproperties contribute types.
+The query also reads type, domain and range statements written using a
+subproperty of their RDF/RDFS predicates. Datatype ranges are excluded. Subclass and equivalence paths close that membership without
 adding triples to the data graph. The eight named classes remain disjoint
 even when package declarations connect them. Only sibling comparisons allow
-a class alongside its own subclass. The ontology's
+a class alongside its own subclass.
+
+The SPARQL form defers **rdfs7 schema normalization** for aliased subclass
+statements and for subproperty declarations themselves derived through
+another schema predicate. Those statements can require repeated schema
+normalization to a fixed point; Python R61 performs that local closure.
+The generated query uses declared subproperty paths and does not express
+that fixed point. Its partial support is pinned by named counterexamples
+in the Python/SHACL comparison, rather than treating those paths as conformant.
+The ontology's
 [open issues](https://github.com/iirds-consortium/models/issues) document defects
 that ontology-derived shapes would faithfully encode.
 

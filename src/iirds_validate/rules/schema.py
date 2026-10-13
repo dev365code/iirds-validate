@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from itertools import combinations
 
-from rdflib import BNode, Literal, URIRef
+from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.namespace import OWL, RDF, RDFS
 
 from .. import terms as T
@@ -111,11 +111,40 @@ def _disjoint_class_hierarchy(ontology, graph):
     return ancestors, groups
 
 
-def _disjoint_memberships(ctx):
-    """RDFS domain/range membership, including superproperties, without mutation."""
+def _disjoint_rdfs7_facts(ctx):
+    """Normalize type and schema statements to a finite, local rdfs7 fixed point."""
+    predicates = {RDF.type, RDFS.domain, RDFS.range,
+                  RDFS.subClassOf, RDFS.subPropertyOf, OWL.equivalentClass}
+    facts = Graph()
+    for triple in ctx.graph:
+        facts.add(triple)
+    for predicate in predicates:
+        for triple in ctx.ontology.graph.triples((None, predicate, None)):
+            facts.add(triple)
+    origins = {triple: {triple[1]} for triple in facts}
+    while True:
+        parents = defaultdict(set)
+        for child, parent in facts.subject_objects(RDFS.subPropertyOf):
+            parents[child].add(parent)
+        closure = {prop: _reachable(parents, prop) for prop in set(facts.predicates())}
+        added = {}
+        for subject, prop, obj in facts:
+            for parent in closure[prop] & predicates:
+                triple = subject, parent, obj
+                if triple not in facts:
+                    added.setdefault(triple, set()).update(origins[subject, prop, obj])
+        if not added:
+            return facts, origins
+        for triple, source in added.items():
+            facts.add(triple)
+            origins[triple] = source
+
+
+def _disjoint_memberships(ctx, facts, fact_origins):
+    """Declared, referenced bundled and RDFS types; never mutate the package graph."""
     domains, ranges, parents = defaultdict(set), defaultdict(set), defaultdict(set)
     datatypes = {RDFS.Literal, RDF.XMLLiteral, RDF.langString, URIRef(str(RDF) + "HTML")}
-    for source in (ctx.ontology.graph, ctx.graph):
+    for source in (ctx.ontology.graph, facts):
         datatypes.update(source.subjects(RDF.type, RDFS.Datatype))
         for prop, domain in source.subject_objects(RDFS.domain):
             domains[prop].add(domain)
@@ -123,25 +152,38 @@ def _disjoint_memberships(ctx):
             ranges[prop].add(range_)
         for prop, parent in source.subject_objects(RDFS.subPropertyOf):
             parents[prop].add(parent)
-    superproperties = {prop: _reachable(parents, prop) for prop in set(ctx.graph.predicates())}
+    superproperties = {prop: _reachable(parents, prop) for prop in set(facts.predicates())}
+    used = set(ctx.graph.subjects()) | set(ctx.graph.objects())
     memberships, origins = defaultdict(set), defaultdict(set)
-    for resource, cls in ctx.graph.subject_objects(RDF.type):
+    for resource, cls in facts.subject_objects(RDF.type):
+        if resource not in used:
+            continue
         memberships[resource].add(cls)
-        origins[resource, cls].add("explicit type %s" % ctx.ref(cls))
-    for subject, prop, obj in ctx.graph:
+        if (resource, RDF.type, cls) in ctx.graph:
+            origin = "explicit type %s" % ctx.ref(cls)
+        elif (resource, RDF.type, cls) in ctx.ontology.graph:
+            origin = "%s known from the bundled type of %s" % (ctx.ref(cls), ctx.ref(resource))
+        else:
+            prop = min(fact_origins[resource, RDF.type, cls], key=str)
+            origin = "%s inferred from %s via rdfs:subPropertyOf of rdf:type" % (
+                ctx.ref(cls), ctx.ref(prop))
+        origins[resource, cls].add(origin)
+    for subject, prop, obj in facts:
         for superproperty in superproperties[prop]:
             via = " via rdfs:subPropertyOf from %s" % ctx.ref(prop) if superproperty != prop else ""
             for cls in domains.get(superproperty, ()):
-                memberships[subject].add(cls)
-                origins[subject, cls].add("%s inferred from the domain of %s%s" %
-                                         (ctx.ref(cls), ctx.ref(superproperty), via))
+                if subject in used:
+                    memberships[subject].add(cls)
+                    origins[subject, cls].add("%s inferred from the domain of %s%s" %
+                                             (ctx.ref(cls), ctx.ref(superproperty), via))
             for cls in ranges.get(superproperty, ()):
                 if (not isinstance(cls, (URIRef, BNode)) or cls in datatypes
                         or str(cls).startswith("http://www.w3.org/2001/XMLSchema#")):
                     continue
-                memberships[obj].add(cls)
-                origins[obj, cls].add("%s inferred from the range of %s%s" %
-                                     (ctx.ref(cls), ctx.ref(superproperty), via))
+                if obj in used:
+                    memberships[obj].add(cls)
+                    origins[obj, cls].add("%s inferred from the range of %s%s" %
+                                         (ctx.ref(cls), ctx.ref(superproperty), via))
     return memberships, origins
 
 
@@ -150,20 +192,23 @@ def _disjoint_memberships(ctx):
       title="disjoint iiRDS classes must not have instances in common",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#x6-11-1-disjointness",
-      fix="Remove an inaccurate type assertion, correct the package's class declarations, "
+      fix="Remove an inaccurate type assertion or property statement, "
+          "correct the package's class declarations, "
           "or classify the resource under the appropriate branch. If it combines two "
           "distinct things, give each its own resource and link them with the "
           "appropriate iiRDS relation.")
 def r61_disjoint_classes_have_no_common_instance(ctx):
     """Section 6.11.1: "Disjoint classes MUST NOT have instances in common."
 
-    Close declared and RDFS domain/range types over the bundled and package
-    hierarchy. Superproperties contribute their domains and class ranges.
+    Close declared, referenced bundled and RDFS domain/range types over the
+    bundled and package hierarchy. A local rdfs7 fixed point normalizes type
+    and schema predicates, including newly derived subproperty declarations.
     Package declarations cannot cancel the eight roots' disjointness. Only
     sibling pairs exclude a class and its ancestor. No graph triples are added.
     """
-    ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, ctx.graph)
-    memberships, origins = _disjoint_memberships(ctx)
+    facts, fact_origins = _disjoint_rdfs7_facts(ctx)
+    ancestors, groups = _disjoint_class_hierarchy(ctx.ontology, facts)
+    memberships, origins = _disjoint_memberships(ctx, facts, fact_origins)
     for subject in sorted(memberships, key=ctx.ref):
         types = sorted(memberships[subject], key=str)
         closure = set().union(*(ancestors[cls] for cls in types))

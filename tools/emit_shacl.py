@@ -813,21 +813,34 @@ _R61_PROPERTY_CLOSURE = """BIND (IF(EXISTS {
   }, <%(r61_superproperties)s>(?usedProperty, ""), %(r61_property_base)s) AS ?properties)"""
 _R61_MEMBERSHIPS = """{ ?value <%(rdf)stype> ?type }
   UNION {
+    ?value ?typeProperty ?type .
+    ?typeProperty <%(rdfs)ssubPropertyOf>* <%(rdf)stype> .
+  }
+  UNION {
+    { %(r61_bundled_types)s }
+    FILTER EXISTS { { ?bundledResource ?used ?object }
+                    UNION { ?source ?used ?bundledResource } }
+    BIND (?bundledResource AS ?value)
+  }
+  UNION {
     ?value ?usedProperty ?object .
     """ + _R61_PROPERTY_CLOSURE + """
-    { { ?domainProperty <%(rdfs)sdomain> ?type }
+    { { ?domainProperty ?domainPredicate ?type .
+        ?domainPredicate <%(rdfs)ssubPropertyOf>* <%(rdfs)sdomain> }
       UNION { %(r61_domains)s } }
     FILTER (CONTAINS(?properties, CONCAT("|", ENCODE_FOR_URI(STR(?domainProperty)), "|")))
   }
   UNION {
     ?source ?usedProperty ?value .
     """ + _R61_PROPERTY_CLOSURE + """
-    { { ?rangeProperty <%(rdfs)srange> ?type }
+    { { ?rangeProperty ?rangePredicate ?type .
+        ?rangePredicate <%(rdfs)ssubPropertyOf>* <%(rdfs)srange> }
       UNION { %(r61_ranges)s } }
     FILTER (CONTAINS(?properties, CONCAT("|", ENCODE_FOR_URI(STR(?rangeProperty)), "|")))
     FILTER (?type NOT IN (%(r61_datatypes)s)
             && !STRSTARTS(STR(?type), "http://www.w3.org/2001/XMLSchema#")
-            && NOT EXISTS { ?type <%(rdf)stype> <%(rdfs)sDatatype> })
+            && NOT EXISTS { ?type ?datatypeProperty <%(rdfs)sDatatype> .
+                            ?datatypeProperty <%(rdfs)ssubPropertyOf>* <%(rdf)stype> })
   }"""
 _R61_TYPE_CLOSURE = """{ SELECT $this ?value
                                  (GROUP_CONCAT(?ancestors; separator="") AS ?closure) WHERE {
@@ -1429,6 +1442,8 @@ def build() -> dict:
                  "r61_superproperties": R61_SUPERPROPERTIES,
                  "r61_property_base": _r61_bundled_closure(
                      URIRef(RDFS_ + "subPropertyOf"), "?usedProperty"),
+                 "r61_bundled_types": _r61_edge_table("?bundledResource", "?type",
+                     _ONTOLOGY.graph.subject_objects(URIRef(RDF_ + "type"))),
                  "r61_domains": _r61_edge_table("?domainProperty", "?type",
                      _ONTOLOGY.graph.subject_objects(URIRef(RDFS_ + "domain"))),
                  "r61_ranges": _r61_edge_table("?rangeProperty", "?type",

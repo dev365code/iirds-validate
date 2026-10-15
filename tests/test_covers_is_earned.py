@@ -87,9 +87,11 @@ def fired(tmp_path, name, **kwargs) -> set:
 # ---------------------------------------------------------------------------
 # The counterexamples
 #
-# Each is a package that breaks exactly one sentence. Kept as data so the
-# table reads as what it is: the evidence behind seven rows of a published
-# coverage figure.
+# Each is a package that breaks the sentence it is listed under. The handover
+# ones break the other named-party sentences too, because one vcard serves
+# every party in the fixture; a row asks only for a rule claiming its own.
+# Kept as data so the table reads as what it is: the evidence behind rows of a
+# published coverage figure.
 # ---------------------------------------------------------------------------
 
 def _handover(kind):
@@ -127,10 +129,11 @@ def _handover(kind):
         ).replace("</vcard:Organization>", "</rdf:Description>")
     if kind == "a vocabulary term":
         # A name out of a published vocabulary: not a vcard, and not a pointer
-        # at nothing either. Neither the five nor R4 speak for it -- R4 must
-        # not, because "this package never describes it" is false about
-        # `iirds:Topic` and its remedy would send the reader to write one.
-        # R12 reports it, which is why R12 claims these sentences beside them.
+        # at nothing either. Neither the named-party rules nor R4 speak for it
+        # -- R4 must not, because "this package never describes it" is false
+        # about `iirds:Topic` and its remedy would send the reader to write
+        # one. R12 reports it, which is why R12 claims these sentences beside
+        # them.
         return HANDOVER.replace(
             '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>',
             '<iirds:relates-to-vcard '
@@ -144,19 +147,54 @@ def _handover(kind):
             '<iirds:relates-to-vcard>https://suppco.example/about'
             '</iirds:relates-to-vcard>')
     if kind == "undescribed":
-        # The pointer resolves to nothing. The five named-party rules soften
-        # here by agreement and R4 owns it -- which is why R4 has to claim
-        # the same three sentences they do.
+        # The pointer resolves to nothing. The named-party rules soften here
+        # by agreement and R4 owns it -- which is why R4 has to claim every
+        # sentence they do, the Package's two among them.
         return HANDOVER.replace(
             '  <vcard:Organization rdf:about="urn:test:supplier-card">\n'
             "    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n"
             "  </vcard:Organization>\n", "")
+    if kind == "no manufacturer role":
+        # The sentence's other conjunct: the card is an organisation with a
+        # name, and the party holding it has no role at all. Only the
+        # Manufacturer sentences break here; the Creator one, #13, does not.
+        return HANDOVER.replace(
+            '    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n',
+            "")
     raise AssertionError(kind)
 
 
 #: requirement id -> (what the package does wrong, how to build it)
 #: The builders take tmp_path and return the set of rule ids that fired.
 COUNTEREXAMPLES = {
+    # Section 8.3.2 states the two Manufacturer sentences twice, once in the
+    # Package's list (#3, #6) and once in the Document's (#9, #12), and the
+    # same packages break both copies -- which
+    # `test_the_two_halves_of_section_8_3_2_are_claimed_alike` holds them to.
+    "x8-3-2-metadata-requirements#3": [
+        ("the product variant the package names has an instance-identity "
+         "domain naming a manufacturer whose vcard is typed vcard:Individual",
+         "individual"),
+        ("...whose vcard carries no vcard class at all", "untyped"),
+        ("...whose vcard the package never describes", "undescribed"),
+        ("...whose vcard reference names a vocabulary term instead",
+         "a vocabulary term"),
+        ("...whose vcard reference is a literal, so it points at no vcard",
+         "a literal"),
+        ("...whose party holds no Manufacturer role", "no manufacturer role"),
+    ],
+    "x8-3-2-metadata-requirements#6": [
+        ("the product variant the package names has a ProductType domain "
+         "naming a manufacturer whose vcard is typed vcard:Individual",
+         "individual"),
+        ("...whose vcard carries no vcard class at all", "untyped"),
+        ("...whose vcard the package never describes", "undescribed"),
+        ("...whose vcard reference names a vocabulary term instead",
+         "a vocabulary term"),
+        ("...whose vcard reference is a literal, so it points at no vcard",
+         "a literal"),
+        ("...whose party holds no Manufacturer role", "no manufacturer role"),
+    ],
     "x8-3-2-metadata-requirements#9": [
         ("a product variant's instance-identity domain names a manufacturer "
          "whose vcard is typed vcard:Individual", "individual"),
@@ -166,6 +204,7 @@ COUNTEREXAMPLES = {
          "a vocabulary term"),
         ("...whose vcard reference is a literal, so it points at no vcard",
          "a literal"),
+        ("...whose party holds no Manufacturer role", "no manufacturer role"),
     ],
     "x8-3-2-metadata-requirements#12": [
         ("a product variant's ProductType domain names a manufacturer whose "
@@ -176,6 +215,7 @@ COUNTEREXAMPLES = {
          "a vocabulary term"),
         ("...whose vcard reference is a literal, so it points at no vcard",
          "a literal"),
+        ("...whose party holds no Manufacturer role", "no manufacturer role"),
     ],
     "x8-3-2-metadata-requirements#13": [
         ("an information object's identity domain names a creator whose vcard "
@@ -559,6 +599,8 @@ NAMED_CASES = {
     # Section 8.3.2's Package list: the six sentences its Document list
     # repeats word for word, and which nothing read until R13 to R16.
     # The Document half of #1 and #4, held by the same package as they are.
+    # The two Manufacturer sentences, #3 and #6, are not here: they are in
+    # COUNTEREXAMPLES beside their Document copies, held by the same shapes.
     "x8-3-2-metadata-requirements#7":
         "test_package_product_variant:test_a_variant_identity_without_a_domain_is_reported_for_both_classes",
     "x8-3-2-metadata-requirements#10":
@@ -568,14 +610,10 @@ NAMED_CASES = {
     "x8-3-2-metadata-requirements#2":
         "test_package_product_variant:"
         "test_the_conformant_fixture_needs_the_packages_own_variant",
-    "x8-3-2-metadata-requirements#3":
-        "test_package_product_variant:test_the_manufacturer_bullets_are_reported",
     "x8-3-2-metadata-requirements#4":
         "test_package_product_variant:test_each_package_bullet_is_reported",
     "x8-3-2-metadata-requirements#5":
         "test_package_product_variant:test_each_package_bullet_is_reported",
-    "x8-3-2-metadata-requirements#6":
-        "test_package_product_variant:test_the_manufacturer_bullets_are_reported",
     # Two cardinality sentences -- "MUST point to exactly one domain by the
     # property" -- held by the package that has two. They were first held by a
     # package pointing at one domain of the wrong class, which has exactly one
@@ -1444,6 +1482,19 @@ def test_the_two_halves_of_section_8_3_2_are_claimed_alike(package_half):
         % (package_half, sorted(claimed_here) or "nobody",
            document_half, sorted(claimed_there) or "nobody"))
 
+    # Claimed alike was not enough. #9 stood on five shapes and #3 on one, and
+    # three of those five were reported only by rules that claimed #9 and not
+    # #3 -- so a package breaking #3 in those shapes passed every rule claiming
+    # it, while asking the question above went on answering yes. One sentence
+    # is broken by the same packages whichever class it is stated for, so
+    # where the table holds either half by counterexamples it holds both, by
+    # the same ones. A pair the table holds neither half of is not compared.
+    shapes_here = [kind for _what, kind in COUNTEREXAMPLES.get(package_half, ())]
+    shapes_there = [kind for _what, kind in COUNTEREXAMPLES.get(document_half, ())]
+    assert shapes_here == shapes_there, (
+        "%s is held by the shapes %s and the identical %s by %s"
+        % (package_half, shapes_here or "none", document_half, shapes_there or "none"))
+
 
 #: How a statement about a claim's status can be written so the gate above
 #: misses it. Each is a real sentence, placed or worded a way the first
@@ -1567,3 +1618,71 @@ def test_a_claim_is_held_by_every_case_of_its_test_not_by_one():
 
     for requirement, wanted in keys.items():
         assert wanted, "%s is held by an empty set of cases" % requirement
+
+
+# ---------------------------------------------------------------------------
+# The structure behind section 8.3.2's two halves. A rule that asks
+# `_names_an_organisation` stays quiet when the vcard is a pointer at nothing,
+# a literal or a term of a vocabulary, and R4 and R12 report those instead --
+# so a sentence such a rule claims is earned only if R4 and R12 claim it as
+# well. The Package's list was a rule joining that softening without its
+# sentences joining them, and the symmetry test catches only that pair. This
+# asks it of every rule that reaches the softening, read off the source rather
+# than off a list of names, because a list of names is what the Package's list
+# was missing from.
+# ---------------------------------------------------------------------------
+
+def _softening_rules():
+    """Rule ids whose function reaches `_names_an_organisation`, directly or
+    through any helper that does."""
+    import ast
+
+    calls, rule_of = {}, {}
+    for path in sorted((ROOT / "src" / "iirds_validate" / "rules").glob("*.py")):
+        for node in ast.parse(path.read_text("utf-8")).body:
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            calls[node.name] = {n.func.id for n in ast.walk(node)
+                                if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+            for decorator in node.decorator_list:
+                if (isinstance(decorator, ast.Call)
+                        and getattr(decorator.func, "id", None) == "rule"
+                        and decorator.args and isinstance(decorator.args[0], ast.Constant)):
+                    rule_of[node.name] = decorator.args[0].value
+    reaching = {"_names_an_organisation"}
+    while True:
+        more = {name for name, called in calls.items() if called & reaching} - reaching
+        if not more:
+            break
+        reaching |= more
+    return sorted(rule_of[name] for name in reaching if name in rule_of)
+
+
+def test_a_sentence_a_softening_rule_claims_is_claimed_by_the_rules_that_report_it():
+    by_id = {rule.id: rule for rule in all_rules()}
+    softening = _softening_rules()
+    # The reading is of the source, so it has to find what is known to be there
+    # before its silence about anything else means something.
+    assert {"M15.7b", "M15.7d", "M15.10", "R14", "R16"} <= set(softening), softening
+    owners = set(by_id["R4"].covers) & set(by_id["R12"].covers)
+    unowned = {rule_id: sorted(set(by_id[rule_id].covers) - owners) for rule_id in softening}
+    unowned = {rule_id: ids for rule_id, ids in unowned.items() if ids}
+    assert not unowned, (
+        "these rules stay quiet about a vcard that is a pointer at nothing, a literal "
+        "or a vocabulary term, and R4 and R12, which report those, do not claim what "
+        "they claim: %s" % unowned)
+
+
+def test_every_softening_rule_is_on_the_spelling_row_of_the_leniency_table():
+    """The same set, asked of `docs/divergences.md`. The lower-case spelling
+    `vcard:organization` is accepted wherever `_names_an_organisation` is
+    asked, and the table's row for that leniency names the rules that accept
+    it -- R14 and R16 were missing from it from the day they were written,
+    and nothing read the row for completeness."""
+    text = (ROOT / "docs" / "divergences.md").read_text("utf-8")
+    rows = [line for line in text.splitlines()
+            if line.startswith("| ") and "**a spelling**" in line and "vcard:organization" in line]
+    assert len(rows) == 1, rows
+    named = set(re.findall(r"\b[CMLBRS]\d+(?:\.\d+[a-z]?)?(?![\w/])", rows[0].split("|")[1]))
+    missing = sorted(set(_softening_rules()) - named)
+    assert not missing, "accept the spelling and are not on its row: %s" % missing

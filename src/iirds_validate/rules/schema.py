@@ -1361,6 +1361,8 @@ rule("M36", covers=("x6-8-1-complex-identity#3",),
 
 @rule("R12", kind="schema", prio="MUST", versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"),
       variants=(), covers=("x6-8-3-parties-and-roles#3",
+                            "x8-3-2-metadata-requirements#3",
+                            "x8-3-2-metadata-requirements#6",
                             "x8-3-2-metadata-requirements#9",
                             "x8-3-2-metadata-requirements#12",
                             "x8-3-2-metadata-requirements#13"),

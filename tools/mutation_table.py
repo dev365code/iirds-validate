@@ -401,6 +401,23 @@ TABLE = [
      "`de` and `DE` are two statements, L9 reports a difference that is none, and the merge "
      "reads both"),
 
+    ("covers/r4-claims-only-the-document-copies-of-the-manufacturer-sentences",
+     "src/iirds_validate/rules/handover.py",
+     '@rule("R4", covers=("x8-3-2-metadata-requirements#3", "x8-3-2-metadata-requirements#6",',
+     '@rule("R4", covers=(',
+     ["tests/test_covers_is_earned.py"],
+     "a package naming a manufacturer whose vcard it never describes breaks section 8.3.2 "
+     "#3 and #6, and every rule claiming them stays quiet"),
+
+    ("covers/r12-claims-only-the-document-copies-of-the-manufacturer-sentences",
+     "src/iirds_validate/rules/schema.py",
+     '                            "x8-3-2-metadata-requirements#3",\n'
+     '                            "x8-3-2-metadata-requirements#6",\n',
+     "",
+     ["tests/test_covers_is_earned.py"],
+     "a manufacturer's vcard written as a string or as a vocabulary term breaks section "
+     "8.3.2 #3 and #6, and every rule claiming them stays quiet"),
+
     # The canary. It has to survive: if it dies, the harness is reporting red
     # for everything and the rows above prove nothing.
     ("canary/a-comment-nobody-reads",

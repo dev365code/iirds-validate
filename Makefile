@@ -73,6 +73,9 @@ fix:
 generated:
 	$(PYTHON) tools/iana_charsets.py --check
 	$(PYTHON) tools/propose_class_rules.py --check
+# Every rule names its section of the standard or says it has none. Derived
+# from what the rules claim, so a claim that moves takes its link with it.
+	$(PYTHON) tools/rule_sections.py --check
 # The front page's two pictures. Held to a real run by tests/test_readme_front.py
 # and held to nothing at all here until this line: every figure that moved was
 # edited into the picture to satisfy that test, and the generator fell fifteen

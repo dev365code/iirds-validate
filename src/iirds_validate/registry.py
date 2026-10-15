@@ -15,8 +15,13 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from . import resources
 from .model import Rule, rule_source
+from .sections import NO_SECTION, SECTIONS
 
 _registry: Dict[str, Rule] = {}
+#: The link each rule was registered with -- given here or by the catalogue
+#: -- before `sections.py` filled the rest. `tools/rule_sections.py` derives
+#: that table from this, so it must not read its own output back.
+_own_spec: Dict[str, Optional[str]] = {}
 
 
 def _load_catalog():
@@ -46,6 +51,8 @@ def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
     def decorator(fn: Callable) -> Callable:
         if rule_id in _registry:
             raise ValueError(f"duplicate rule id: {rule_id}")
+        own = spec or meta.get("spec")
+        _own_spec[rule_id] = own
         _registry[rule_id] = Rule(
             id=rule_id,
             kind=kind or meta.get("kind") or "lint",
@@ -53,12 +60,13 @@ def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
             title=title or meta.get("en") or rule_id,
             versions=tuple(versions if versions is not None else meta.get("versions", ())),
             variants=tuple(variants if variants is not None else meta.get("variants", ())),
-            spec=spec or meta.get("spec"),
+            spec=own or SECTIONS.get(rule_id),
             fn=fn,
             conformance=conformance,
             fix=fix,
             covers=tuple(covers),
             diagnosis=diagnosis,
+            no_section="" if own else NO_SECTION.get(rule_id, ""),
         )
         return fn
 
@@ -76,6 +84,13 @@ def _ensure_registered() -> None:
     only this module.
     """
     from . import rules  # noqa: F401  -- importing registers every rule
+
+
+def own_spec(rule_id: str) -> Optional[str]:
+    """The link a rule carries of its own, or None where `sections.py` gave it
+    one."""
+    _ensure_registered()
+    return _own_spec.get(rule_id)
 
 
 def all_rules() -> List[Rule]:

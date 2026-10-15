@@ -387,10 +387,15 @@ def test_the_complete_files_are_exactly_their_parts():
                             "iirds-handover-core.ttl", "iirds-handover-sparql.ttl"))
 
 
-def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
+def test_every_shape_carries_a_spec_link():
     """The README's dcterms:source claim drifted three times in a
     row (all → all-but-four → the measured truth). Claims about coverage
-    live here now, where drift turns red instead of stale."""
+    live here now, where drift turns red instead of stale.
+
+    It was six rules and fifty-two shapes without a link until every rule
+    named its section or said it had none: `tools/rule_sections.py` gave L7,
+    L10, L16, S4, S5 and M97.1 the section they read, and a rule with no
+    section behind it has no shape. The set and the count stay, at none."""
     from rdflib import Graph, Namespace
 
     DCT = Namespace("http://purl.org/dc/terms/")
@@ -422,8 +427,8 @@ def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
                 shapes_without += 1
                 rule_id = graph.value(shape, IVM.ruleId)
                 missing.add(str(rule_id) if rule_id else str(shape).rsplit("#", 1)[-1])
-    assert missing == {"L7", "L10", "L16", "S4", "S5", "M97.1"}, sorted(missing)
-    assert shapes_without == 52, shapes_without
+    assert missing == set(), sorted(missing)
+    assert shapes_without == 0, shapes_without
 
 
 def test_the_manifest_version_is_the_package_version():

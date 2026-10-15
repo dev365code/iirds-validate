@@ -182,6 +182,9 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
                       file=stream)
         if verbose and finding.rule.spec:
             print(paint("                      spec: %s" % finding.rule.spec, _DIM), file=stream)
+        elif verbose and finding.rule.no_section:
+            print(paint("                      spec: none -- %s" % finding.rule.no_section, _DIM),
+                  file=stream)
 
     # One rule, forty findings used to mean the same remedy paragraph forty
     # times — 246 lines for "forty files are missing", and nothing saying so.

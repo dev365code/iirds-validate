@@ -47,15 +47,19 @@
         },
         {
           "text": "every rule names its section, or says it has none",
-          "done": false
+          "done": true,
+          "evidence": {
+            "file": "tests/test_rule_sections.py",
+            "says": "names its section or says it has none"
+          }
         },
         {
           "text": "the line in the file",
           "done": false
         }
       ],
-      "now_text": "what, evidence, remedy",
-      "target_text": "+ every rule names its section, the line"
+      "now_text": "what, evidence, remedy, section",
+      "target_text": "+ the line"
     },
     {
       "key": "report",

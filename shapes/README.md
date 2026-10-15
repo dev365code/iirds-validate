@@ -101,12 +101,13 @@ edition.
 Every violation points at its shape via `sh:sourceShape`, and every shape —
 node shapes and their `…-p` property shapes alike — carries the machinery to
 act on it: `sh:message` (what is wrong), `sh:description` (what to change —
-the same remedy text the CLI prints), `sh:severity`, `ivm:ruleId`, and —
-for every rule that cites a specification sentence — `dcterms:source`. Five
-node shapes have no sentence to cite: L7, L10, S4 and S5 are this project's
-own judgement calls, and M97.1's catalogue row carries no reference (its
-sibling M97.2's does). A test pins that list. So the join back to the rule
-catalogue is one lookup: **read `ivm:ruleId` off the source shape**,
+the same remedy text the CLI prints), `sh:severity`, `ivm:ruleId`, and
+`dcterms:source`, the rule's link to the standard. Where that link lands on
+the sentence the rule enforces, so does this one; where the rule had no link
+of its own, it is the section `tools/rule_sections.py` derives -- of the first
+sentence the rule claims, or of the sentence its finding is about. Every shape
+carries one, and a test pins that none is without. So the join back to the
+rule catalogue is one lookup: **read `ivm:ruleId` off the source shape**,
 whichever shape the engine attributed. (Property-shape IRIs are the node
 shape's id plus `-p`, if you prefer string surgery; the annotation makes
 that unnecessary.)

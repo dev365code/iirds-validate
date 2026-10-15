@@ -224,7 +224,7 @@ def _cmd_rules(args) -> int:
     if args.format == "json":
         json.dump([{"id": r.id, "kind": r.kind, "priority": r.prio, "severity": str(r.severity),
                     "versions": list(r.versions), "variants": list(r.variants),
-                    "title": r.title, "spec": r.spec,
+                    "title": r.title, "spec": r.spec, "noSection": r.no_section or None,
                     "source": "catalogue" if r.id in CATALOG else "iirds-validate",
                     "covers": list(r.covers), "fix": r.fix} for r in rules],
                   sys.stdout, ensure_ascii=False, indent=2)
@@ -240,6 +240,8 @@ def _cmd_rules(args) -> int:
                   % (", ".join(r.versions) if r.versions else "all", source))
             if r.spec:
                 print("          spec: %s" % r.spec)
+            elif r.no_section:
+                print("          spec: none -- %s" % r.no_section)
             if r.covers:
                 print("          covers: %s" % ", ".join(r.covers))
             if r.fix:

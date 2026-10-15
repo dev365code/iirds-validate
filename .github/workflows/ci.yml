@@ -49,6 +49,7 @@ jobs:
       - run: pip install -e .
       - run: python tools/iana_charsets.py --check
       - run: python tools/propose_class_rules.py --check
+      - run: python tools/rule_sections.py --check
 
       # The front page's two pictures are drawn from a run of the checker, and
       # this is what holds the file that draws them. Two tests hold the picture

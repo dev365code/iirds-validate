@@ -170,6 +170,11 @@ flowchart LR
     paths: delivery.iirds
 ```
 
+No release carries this action yet, so the example names `main`, which runs the
+release that `main` is numbered for. This repository pins every action it uses
+to a commit, and the same holds here once a release carries it: name the
+release's tag, or its commit with the tag in a comment.
+
 The step prints what `iirds check` prints and returns the code it returns —
 `0` clean, `1` errors found, `2` could not run, `64` a command line it refused —
 so the job fails when the check does, and a job that reads the code can tell a
@@ -185,25 +190,28 @@ supplier's package from its own typo. To read the code rather than stop on it:
 ```
 
 `exit-code` is published either way; with the default, a failed step needs
-`continue-on-error: true` before the job reaches a line that reads it.
+`continue-on-error: true` on it, or a later step under `if: failure()`, before
+the job reaches a line that reads it.
 
 | Input | What it is |
 |---|---|
 | `paths` | the packages to check — files, unpacked directories, or directories to search — separated by spaces, or one per line to name a path with a space in it |
 | `command` | `check` (the default), `lint` or `all`: the command line's verbs that judge a package |
-| `version` | which release to install from PyPI. Left empty, it is the ref you pinned — `@v1.2.3` runs 1.2.3 — and at a branch or a commit, the version that tree is numbered for, which may not be on the index yet. **The rules travel with the release**: an older `version` is an older rule set |
+| `version` | which release to install from PyPI. Left empty, it is the ref you pinned — `@v1.2.3` runs 1.2.3 — and at a branch or a commit, the version that tree is numbered for, which may not be on the index yet. **The rules travel with the release**: an older `version` is an older rule set. Ask for 0.7.4 or later, which closes every advisory `SECURITY.md` lists |
 | `pyz` | an `iirds.pyz` you already have. Given, the step installs nothing and fetches nothing |
 | `sha256` | the SHA-256 `pyz` must have, for a file carried into a closed network |
 | `args` | anything else for the command, such as `-f json`, `-W` or `--fragment` |
-| `fail-on-finding` | `true` by default; `false` makes the step succeed and hand over `exit-code` |
+| `fail-on-finding` | `true` by default; `false` makes the step succeed on any verdict and hand over `exit-code` — a code that is no verdict, the checker not having run, still fails it |
 
 The outputs are `exit-code`, `version` — the release it installed — and `pyz`,
 the file it ran. The check opens no socket either way; installing is the one
 thing that reaches an index, and only when no `pyz` is given. What the step
-prints on stdout and stderr, and the code it returns, are the command's, byte
-for byte: `tools/action_parity.py` runs both over every file of the corpus and
-every fixture here and compares them, and CI runs it on every push over this
-tree, over the newest release and over the single file.
+prints on stdout and stderr, and the code it returns, are those of
+`iirds <command> <args> -- <paths>`, byte for byte — the `--` keeps a path that
+begins with a dash a path — and in report mode it adds one line that says so:
+`tools/action_parity.py` runs both over every file of the corpus and every
+fixture here and compares them, and CI runs it on every push over this tree,
+over the newest release and over the single file.
 
 ## Honest coverage
 

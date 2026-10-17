@@ -113,15 +113,16 @@ runs:
         fi
 
         version="$WANTED"
-        # The ref the caller wrote, when it is a release: this repository tags
-        # each release `v` and its version.
+        # The ref the caller wrote, when it names a release: this repository
+        # tags each release `v` and its three-part version. A shorter `v` ref is
+        # none of its tags, and is read as the tree it points at.
         if [ -z "$version" ]; then
           case "$ACTION_REF" in
-            v[0-9]*) version="${ACTION_REF#v}" ;;
+            v[0-9]*.[0-9]*.[0-9]*) version="${ACTION_REF#v}" ;;
           esac
         fi
         # A branch, a commit, or `./`: the version this tree is numbered for.
-        if [ -z "$version" ]; then
+        if [ -z "$version" ] && [ -f "$ACTION_PATH/pyproject.toml" ]; then
           version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$ACTION_PATH/pyproject.toml" | head -1)
         fi
         if [ -z "$version" ]; then
@@ -196,6 +197,14 @@ runs:
               exit 64
             fi
           fi
+          # The checker's single file, not just a file: Python runs an empty
+          # one and exits 0, a clean verdict on packages nothing looked at, and
+          # anything else it can open exits 1, "errors found".
+          if ! "$PY" -c 'import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); z.getinfo("__main__.py"); z.getinfo("iirds_validate/__init__.py")' "$PYZ" >/dev/null 2>&1; then
+            echo "::error::[$PYZ] is not the single file of this checker: no iirds_validate in a zip application"
+            exit 64
+          fi
+          echo "pyz=$PYZ" >> "$GITHUB_OUTPUT"
           set -- "$PY" "$PYZ" "$COMMAND"
         else
           # The checker itself, not only a directory: `python -m` on a module
@@ -205,6 +214,10 @@ runs:
             exit 64
           fi
           export PYTHONPATH="$TARGET"
+          # `python -m` puts the working directory first on the path, where an
+          # `rdflib.py` of the caller's would be imported in place of the
+          # checker's own. Python 3.11 and later leave it off for this.
+          export PYTHONSAFEPATH=1
           set -- "$PY" -m iirds_validate "$COMMAND"
         fi
 
@@ -220,6 +233,9 @@ runs:
         IFS=' '
         # shellcheck disable=SC2086
         set -- "$@" $EXTRA
+        # `--`, so a path that begins with a dash is a path: `paths: -h` would
+        # otherwise print the help and pass.
+        set -- "$@" --
         case $PATHS in
           *"$newline"*) IFS=$newline ;;
           *)            IFS=' ' ;;

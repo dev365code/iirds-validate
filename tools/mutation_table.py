@@ -308,6 +308,22 @@ TABLE = [
      "an install that left no checker is run anyway, and `python -m` on a missing module "
      "exits 1 -- errors found, about a package nothing looked at"),
 
+    ("action/the-check-step-runs-only-when-asked",
+     ACTION,
+     "    - id: check\n      shell: bash\n",
+     "    - id: check\n      if: inputs.pyz != ''\n      shell: bash\n",
+     [ACTION_SAYS],
+     "GitHub skips the check on the path every README reader takes and the step passes, "
+     "while a comparison that ran the script anyway would call it the command's"),
+
+    ("action/a-carried-file-is-hashed-by-its-name",
+     ACTION,
+     '              got=$(sha256sum < "$PYZ" | cut -d" " -f1)\n',
+     '              got=$(sha256sum "$PYZ" | cut -d" " -f1)\n',
+     [ACTION_BEHAVES],
+     "a hash tool handed a name with a backslash -- every path on a Windows runner -- puts "
+     "one before the hash, and the right file is refused"),
+
     ("action-parity/stdout-is-not-compared",
      ACTION_PARITY,
      "    if step.stdout != expected_out:\n",

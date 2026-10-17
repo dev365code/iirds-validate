@@ -75,6 +75,9 @@ def lines():
 LOCAL = "./"
 LOCAL_JOBS = {("ci.yml", "the-action-this-repo-offers"),
               ("ci.yml", "the-action-on-a-runner-as-it-comes")}
+#: A `uses: ./` line, with the comment a line may carry -- the sweep above reads
+#: one, and a job reader that did not would let `uses: ./  # …` in anywhere.
+LOCAL_USE = re.compile(r"^\s*(?:-\s*)?uses:\s*\./\s*(?:#.*)?$", re.M)
 
 ALL = [line for line in lines() if line[1] != LOCAL]
 
@@ -210,8 +213,9 @@ def test_the_repositorys_own_action_runs_only_in_the_jobs_that_test_it():
     being tested; anywhere else a local path is a place for a workflow to run
     code this file has not looked at."""
     used = {(path.name, name) for path in WORKFLOWS for name, block in jobs_of(path).items()
-            if re.search(r"^\s*(?:-\s*)?uses:\s*\./\s*$", block, re.M)}
+            if LOCAL_USE.search(block)}
     assert used == LOCAL_JOBS, used
+    assert LOCAL_USE.search("      - uses: ./   # this repository's own action"), LOCAL_USE.pattern
     local = [(path, ref) for path, action, ref, _comment in lines() if action == LOCAL]
     assert local and all(ref == "" for _path, ref in local), local
     assert all(not action.startswith(".") or action == LOCAL for _p, action, _r, _c in lines())

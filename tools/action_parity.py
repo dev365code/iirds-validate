@@ -11,16 +11,19 @@ every input assembled here is checked twice -- once by the command, run directly
 from the install being asked about, and once by the action's own step, run with
 the flags GitHub runs `shell: bash` with -- and stdout, stderr and the exit code
 are compared as bytes, and the code the step publishes has to be the code the
-command returned.
+command returned. The command is the one the step runs, `iirds <verb> <args> --
+<paths>`: the `--` keeps a path that begins with a dash a path, and changes
+nothing for any other.
 
 The inputs: every file the vendored corpus's manifest lists, as the bare
 metadata file it is (`--fragment`); every package `tools/make_fixture_package.py`
 knows how to build; and the cases that are about the door rather than the
 package -- a path that names nothing, a command line the checker refuses, a
-directory, a name with a space in it and one that looks like a pattern, two
-paths on one line, each verb, and the report options. Then a few again in report
-mode (`fail-on-finding: false`), where the step succeeds, publishes the code,
-and adds one line that says so -- that line, and nothing else.
+directory, a name with a space in it, one that looks like a pattern and one that
+begins with a dash, two paths on one line, each verb, and the report options.
+Then a few again in report mode (`fail-on-finding: false`), where the step
+succeeds, publishes the code, and adds one line that says so -- that line, and
+nothing else.
 
 Both runs share one environment, with the hash seed fixed: what is compared is
 the door, under the conditions the command had. Whether the engine answers the
@@ -67,7 +70,12 @@ class Unreadable(Exception):
     """`action.yml` has a shape this reader does not know."""
 
 
-Step = namedtuple("Step", "id if_ shell env run")
+Step = namedtuple("Step", "id if_ shell env run keys")
+
+#: The keys a step may have here. Anything else is something GitHub would act on
+#: and this comparison would not: `working-directory:` moves the step,
+#: `continue-on-error:` turns the gate off, and both would pass unseen.
+STEP_KEYS = {"id", "name", "if", "shell", "env", "run"}
 Action = namedtuple("Action", "using inputs outputs output_descriptions steps")
 
 
@@ -195,8 +203,16 @@ def read_action(text: str) -> Action:
                 continue
             if here.startswith("       "):
                 raise Unreadable("line %d is deeper than a step's keys" % (at + 1))
-            key, _, value = here.strip().partition(":")
+            key, colon, value = here.strip().partition(":")
+            if not colon or (value and not value.startswith(" ")):
+                # `shell:bash` is one plain scalar to YAML, not a key and its value.
+                raise Unreadable("line %d is not `key: value`" % (at + 1))
             value = value.strip()
+            if key not in STEP_KEYS:
+                raise Unreadable("line %d gives a step `%s:`, which this comparison does not model"
+                                 % (at + 1, key))
+            if key in keys or (key == "env" and env) or (key == "run" and run is not None):
+                raise Unreadable("line %d gives a step `%s:` twice" % (at + 1, key))
             if key == "env" and not value:
                 env, at = _mapping(lines, at + 1, 8)
             elif key == "run" and value == "|":
@@ -205,9 +221,33 @@ def read_action(text: str) -> Action:
                 keys[key], at = _scalar(value), at + 1
         if "id" not in keys or run is None:
             raise Unreadable("a step without an id or a `run: |` block")
-        steps.append(Step(keys["id"], keys.get("if"), keys.get("shell"), env, run))
+        present = frozenset(keys) | {"run"} | ({"env"} if env else set())
+        steps.append(Step(keys["id"], keys.get("if"), keys.get("shell"), env, run, present))
     return Action(using, inputs, {name: keys.get("value", "") for name, keys in outs.items()},
                   {name: keys.get("description", "") for name, keys in outs.items()}, steps)
+
+
+#: What the comparison takes for granted about the steps, and so refuses to run
+#: without: it plays the install step as run exactly when no `pyz` is given, and
+#: the check step as always run, in bash.
+OBTAIN_IF = "inputs.pyz == ''"
+
+
+def modelled(action) -> None:
+    """Refuse an action whose steps GitHub would run differently from the way
+    this plays them -- a condition on the check step would let GitHub skip it
+    while the comparison ran it and called the result the command's."""
+    if [s.id for s in action.steps] != ["obtain", "check"]:
+        raise Unreadable("the steps are %s, not obtain then check" % [s.id for s in action.steps])
+    for step in action.steps:
+        if step.shell != "bash":
+            raise Unreadable("%s runs in %r, and the comparison runs bash" % (step.id, step.shell))
+    obtain, check = action.steps
+    if obtain.if_ != OBTAIN_IF:
+        raise Unreadable("obtain runs if %r; the comparison plays it as %r" % (obtain.if_, OBTAIN_IF))
+    if check.if_ is not None:
+        raise Unreadable("check runs only if %r, and the comparison would run it regardless"
+                         % check.if_)
 
 
 def agrees_with_yaml(text: str):
@@ -222,8 +262,13 @@ def agrees_with_yaml(text: str):
     said = []
     if theirs["runs"]["using"] != mine.using:
         said.append("using")
+    def given(value):
+        """What GitHub hands a step for a default: text, and a YAML boolean as
+        the word it is written as."""
+        return ("true" if value else "false") if isinstance(value, bool) else str(value)
+
     for name, keys in theirs["inputs"].items():
-        if str(keys.get("default", "")) != mine.inputs.get(name):
+        if given(keys.get("default", "")) != mine.inputs.get(name):
             said.append("inputs.%s.default" % name)
     if set(theirs["inputs"]) != set(mine.inputs):
         said.append("the inputs")
@@ -236,6 +281,8 @@ def agrees_with_yaml(text: str):
     if [s.get("id") for s in steps] != [s.id for s in mine.steps]:
         said.append("the steps")
     for step, read in zip(steps, mine.steps):
+        if set(step) != set(read.keys):
+            said.append("%s.keys %s vs %s" % (read.id, sorted(step), sorted(read.keys)))
         for key, value in (("if", read.if_), ("shell", read.shell), ("run", read.run)):
             if step.get(key) != value:
                 said.append("%s.%s" % (read.id, key))
@@ -284,6 +331,8 @@ def inputs(work: Path) -> list:
         ("a name with a space in it", "check", [], ["with space/a package.iirds"]),
         ("a name that looks like a pattern", "check", [], ["patterned/a[1].iirds"]),
         ("a path that names nothing", "check", [], ["no/such/package.iirds"]),
+        ("a path that begins with a dash", "check", [], ["-h"]),
+        ("two packages in block form", "check", [], ["with space/a package.iirds", good]),
         ("a command line the checker refuses", "check", ["--iirds-version", "9.9"], [good]),
         ("the report as JSON", "check", ["-f", "json"], [bad]),
         ("the exit code only", "check", ["-q"], [bad]),
@@ -383,9 +432,21 @@ def _shims(work: Path) -> Path:
     return shims
 
 
+#: The files a step can write to change the job it runs in. Each case gets
+#: empty ones of its own, and they have to be empty after: what the step may
+#: change is nothing, and in CI these would otherwise be the comparing job's.
+JOB_FILES = ("GITHUB_ENV", "GITHUB_PATH", "GITHUB_STATE", "GITHUB_STEP_SUMMARY")
+
+
 def _base_env() -> dict:
+    """The environment both runs start from. No `PYTHONPATH`: each side gets the
+    one its door gives it -- the command from the door, the step from its own
+    `export` -- so a step that lost that line runs nothing, here as on a runner,
+    instead of finding the same code through a path the test run happened to
+    have. And no file of the job's: those are given per case."""
     env = dict(os.environ, PYTHONHASHSEED="0", PYTHONDONTWRITEBYTECODE="1")
-    env.pop("GITHUB_OUTPUT", None)
+    for name in ("PYTHONPATH", "GITHUB_OUTPUT", *JOB_FILES):
+        env.pop(name, None)
     return env
 
 
@@ -404,18 +465,23 @@ def _where(mine: bytes, theirs: bytes) -> str:
 def _one(index, case, door, action, script, shims, work):
     env = _base_env()
     env.update(door.env())
-    direct = subprocess.run([*door.argv(), case.command, *case.args, *case.paths],
+    direct = subprocess.run([*door.argv(), case.command, *case.args, "--", *case.paths],
                             cwd=work, env=env, capture_output=True, timeout=600)
     command = Run(direct.stdout, direct.stderr, direct.returncode, None)
 
     output = work / "outputs" / ("%04d" % index)
     output.write_text("", encoding="utf-8")
+    job_files = {name: work / "outputs" / ("%04d.%s" % (index, name)) for name in JOB_FILES}
+    for path in job_files.values():
+        path.write_text("", encoding="utf-8")
     env = _base_env()
     env.update(dict.fromkeys(next(s for s in action.steps if s.id == "check").env, ""))
     env.update(_step_env(action, case, door))
     env.update({"PATH": str(shims) + os.pathsep + env.get("PATH", ""), "GITHUB_OUTPUT": str(output)})
+    env.update({name: str(path) for name, path in job_files.items()})
     ran = subprocess.run([*GITHUB_BASH, str(script)], cwd=work, env=env, capture_output=True, timeout=600)
     step = Run(ran.stdout, ran.stderr, ran.returncode, _published(output))
+    wrote = [name for name, path in job_files.items() if path.read_bytes()]
 
     said = []
     expected_out = command.stdout
@@ -435,6 +501,8 @@ def _one(index, case, door, action, script, shims, work):
                     % (step.published.get("exit-code"), command.code))
     if step.published.get("pyz", "") != door.pyz:
         said.append("published pyz %r, the step ran %r" % (step.published.get("pyz"), door.pyz))
+    if wrote:
+        said.append("the step wrote to %s, which changes the job it runs in" % ", ".join(wrote))
     return case, command.code, ["%s: %s" % (case.label, s) for s in said]
 
 
@@ -443,6 +511,11 @@ def compare(cases, door, work: Path, step: str = None, workers: int = None) -> O
     work = Path(work)
     text = ACTION.read_text(encoding="utf-8")
     action = read_action(text)
+    modelled(action)
+    # Every case's environment, evaluated here, where a refusal stops the
+    # comparison before anything runs rather than inside a worker after all of it.
+    for case in cases:
+        _step_env(action, case, door)
     script = work / ("step-%d.sh" % os.getpid())
     script.write_text(check_step(text) if step is None else step, encoding="utf-8")
     (work / "outputs").mkdir(exist_ok=True)
@@ -476,10 +549,13 @@ def main(argv=None) -> int:
         return 2
     text = ACTION.read_text(encoding="utf-8")
     try:
-        read_action(text)
+        modelled(read_action(text))
         disagreeing = agrees_with_yaml(text)
     except Unreadable as refusal:
         print("cannot compare: action.yml is not in a shape this reads: %s" % refusal, file=sys.stderr)
+        return 2
+    except Exception as failure:          # pyyaml's own refusal of the file
+        print("cannot compare: action.yml does not parse: %s" % failure, file=sys.stderr)
         return 2
     if disagreeing is None and args.require_yaml:
         print("cannot compare: --require-yaml, and pyyaml is not installed", file=sys.stderr)
@@ -503,7 +579,11 @@ def main(argv=None) -> int:
 
     with tempfile.TemporaryDirectory(prefix="action-parity-") as tmp:
         work = Path(tmp)
-        outcome = compare(inputs(work), door, work)
+        try:
+            outcome = compare(inputs(work), door, work)
+        except Unreadable as refusal:
+            print("cannot compare: %s" % refusal, file=sys.stderr)
+            return 2
     for line in outcome.differences:
         print(line)
     asked = outcome.asked

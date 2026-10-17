@@ -18,7 +18,7 @@ import re
 
 import pytest
 
-from action_parity import ACTION, ROOT, read_action
+from action_parity import ACTION, ROOT, Unreadable, modelled, read_action
 
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 
@@ -50,6 +50,34 @@ def test_the_file_is_written_the_way_its_reader_reads_it(action):
         lines = [line for line in step.run.splitlines() if line.strip()]
         assert lines and not lines[0].startswith(" "), "%s is read with its indentation" % step.id
         assert step.run.endswith("\n") and not step.run.endswith("\n\n"), step.id
+
+
+def _with_check_line(line):
+    text = ACTION.read_text(encoding="utf-8")
+    changed = text.replace("    - id: check\n      shell: bash\n",
+                           "    - id: check\n      %s\n      shell: bash\n" % line, 1)
+    assert changed != text, "the check step no longer starts the way this edits it"
+    return changed
+
+
+@pytest.mark.parametrize("line", ["working-directory: ${{ github.action_path }}",
+                                  "continue-on-error: true", "timeout-minutes: 5"])
+def test_a_step_key_the_comparison_does_not_model_is_refused(line):
+    """`working-directory:` moves the step and `continue-on-error:` turns the
+    gate off, and the comparison would run the script as if neither were
+    there. So the reader refuses a step key it does not know, rather than
+    dropping it -- today's file has none, and that is what this asks."""
+    with pytest.raises(Unreadable, match="does not model"):
+        read_action(_with_check_line(line))
+
+
+def test_a_check_step_with_a_condition_is_not_compared():
+    """GitHub could skip a check step with an `if:` -- on the path every README
+    reader takes, the package would then pass unchecked -- while a comparison
+    that ran the script anyway called its output the command's."""
+    modelled(read_action(ACTION.read_text(encoding="utf-8")))
+    with pytest.raises(Unreadable, match="runs only if"):
+        modelled(read_action(_with_check_line("if: inputs.pyz != ''")))
 
 
 def test_the_action_uses_no_other_action(action):
@@ -254,6 +282,7 @@ def test_the_repository_uses_its_own_action_every_way_it_can_be_used():
     assert "version: ${{ steps.newest.outputs.version }}" in job, "the install path is never taken"
     assert "continue-on-error: true" in job, "nothing checks that errors fail the step"
     assert 'fail-on-finding: "false"' in job, "report mode is never exercised"
+    assert 'version: "0.8.0"' in job, "no release is asked for by a name the tree does not have"
     compared = "\n".join(_shells(job))
     for door in ("tools/action_parity.py --require-yaml\n",
                  'tools/action_parity.py --require-yaml --target "$RUNNER_TEMP/iirds-$WANT"',
@@ -264,9 +293,58 @@ def test_the_repository_uses_its_own_action_every_way_it_can_be_used():
 def test_the_shortest_example_runs_on_a_runner_as_it_comes():
     """The README's example is `uses:` and `paths:`. Every other use here comes
     after `setup-python` and a build, so the line a reader copies would be the
-    one nothing ran."""
+    one nothing ran -- and with a `version:` added it would still not be that
+    line: the branch of the install that reads the tree's own version is the one
+    the README's line takes."""
     job = _job("the-action-on-a-runner-as-it-comes")
     assert "uses: ./\n" in job and "setup-python" not in job
+    as_written = re.search(r"^      - name: [^\n]*\n        if: ([^\n]+)\n        uses: \./\n"
+                           r"        with:\n          paths: [^\n]+\n(?!          )", job, re.M)
+    assert as_written, "no step runs the README's line with nothing but `paths:`"
+    assert as_written.group(1) == "steps.tree.outputs.published == 'true'", as_written.group(1)
+
+
+def _readme_section():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    return readme.split("### In a workflow", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_example_names_a_release_once_a_release_carries_the_action():
+    """The example names `main` because no release has this file; the moment one
+    does, `main` is the moving reference this repository refuses for itself. The
+    tags answer which, so the README is held to them: `main` while no tag's tree
+    has an `action.yml`, and after that a tag whose tree does."""
+    import subprocess
+
+    tags = subprocess.run(["git", "tag", "--list", "v*"], cwd=ROOT, capture_output=True,
+                          text=True).stdout.split()
+    assert tags, "no release tags are visible here; this question needs them (fetch the tags)"
+    carrying = [tag for tag in tags if subprocess.run(
+        ["git", "cat-file", "-e", "%s:action.yml" % tag], cwd=ROOT, capture_output=True).returncode == 0]
+    refs = set(re.findall(r"uses: dev365code/[\w.-]+@(\S+)", _readme_section()))
+    assert refs, "the README's section shows no `uses:` line"
+    if carrying:
+        assert refs <= set(carrying), (
+            "a release carries the action now (%s) and the README still names %s"
+            % (", ".join(sorted(carrying)), sorted(refs)))
+    else:
+        assert refs == {"main"}, refs
+        assert "No release carries this action yet" in _readme_section()
+
+
+def test_the_release_the_readme_asks_for_closes_every_advisory():
+    """The README says which release to ask for at the least, and `SECURITY.md`
+    says which release fixed each advisory: the first is the last of the
+    second, or the advice is a release that is still open to one."""
+    def as_tuple(version):
+        return tuple(int(part) for part in version.split("."))
+
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    fixed = [as_tuple(v) for v in re.findall(r"fixed\s+in\s+(\d+\.\d+\.\d+)", security)]
+    assert fixed, "SECURITY.md names no release that fixed an advisory"
+    asked = re.search(r"Ask for (\d+\.\d+\.\d+) or later, which closes every advisory", _readme_section())
+    assert asked, "the README's `version` row no longer says which release to ask for"
+    assert as_tuple(asked.group(1)) == max(fixed), (asked.group(1), max(fixed))
 
 
 def test_the_workflow_only_interpolates_things_it_wrote_itself():

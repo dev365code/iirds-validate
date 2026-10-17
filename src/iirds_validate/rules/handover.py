@@ -127,7 +127,9 @@ def _needs_named_party(ctx, cls, role, what):
       title="a vcard a party points at must be described in the package",
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
-          "vcard:organization-name, or drop the iirds:relates-to-vcard. A pointer at "
+          "vcard:organization-name. Dropping the iirds:relates-to-vcard instead is no "
+          "repair: a party with no vcard at all is what M23 and the five named-party "
+          "rules report in this one's place. A pointer at "
           "an IRI nothing here describes leaves the party unidentifiable to anyone "
           "holding only the package — which in iiRDS/H is the reader the profile is "
           "written for, and is why the five named-party MUSTs are MUSTs there.")

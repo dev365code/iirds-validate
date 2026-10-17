@@ -364,19 +364,27 @@ processor agreement. In particular, the older claim that both processors
 refuse marked UTF-32 does not hold for the libxml2 version measured here.
 Java was unavailable for this measurement.
 
-## What this tool refuses to read, and why that is its own decision
+## What this tool refuses to read, and why
 
 **S14 — an entry compressed with anything but stored or deflate is not opened.**
 
-This is the one refusal here that no reading of the specification produces. The
-specification names a compression method for exactly one entry, `mimetype`,
-which is stored so that a consumer can identify the container without
-decompressing anything. About every other entry it is silent, and the archive
-format permits bzip2, lzma and several more. A package that uses them is not
-non-conformant by the specification's own words, and this tool refuses to read
-it anyway. The reason is not a reading of the standard; it is a property of
-reading itself, and it is stated here because a reader who meets `ERROR S14`
-deserves to find the argument rather than infer one.
+The specification says which methods, in a sentence without a keyword. Section
+5.2 has `mimetype` stored, so that a consumer can identify the container
+without decompressing anything, and section 5.2.2 has the rest: "All other files
+in the ZIP are either uncompressed ("Stored" compression mode) or compressed in
+"Deflated" mode." Everything in the specification not marked otherwise is
+normative, so that sentence is a requirement, and it names exactly the two
+methods this tool reads. The archive format permits bzip2, lzma and several
+more; iiRDS does not. Version 1.0 says the same in its section 5.3.2. The index
+holds no sentence for it -- it carries no keyword -- so S14 claims none, and
+links to the section.
+
+The refusal would stand without that sentence, and the reason it would is
+stated here because a reader who meets `ERROR S14` deserves to find the argument
+rather than infer one: it is a property of reading itself. What remains of a
+difference is how it is reported. S14 does not call the entry non-conformant;
+it says the entry was not read, and why, because not reading it is what the
+tool did.
 
 Every limit in this project is a limit on what a read hands back: 64 MiB per
 file, a total per run, a slice at a time for the damage check. Python's zip

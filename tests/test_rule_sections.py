@@ -95,10 +95,13 @@ def test_the_table_is_what_the_generator_writes():
      "L2 is in SENTENCE and in SECTION"),
     (lambda t: t["NONE"].__setitem__("S9", "about the ZIP format beneath the standard"),
      "S9 is in NONE for a reason of neither kind"),
+    # A third kind that begins like the second: the prefix has to be the kind.
+    (lambda t: t["NONE"].__setitem__("L15", "this project's own decision: what it reads"),
+     "L15 is in NONE for a reason of neither kind"),
 ], ids=["a rule left out", "an entry nobody needs", "a sentence the index lacks",
         "an entry for no rule", "a rule in two tables", "an anchor the specification lacks",
         "a reason that says nothing", "a rule in two tables of sections",
-        "a reason of a third kind"])
+        "a reason of a third kind", "a third kind that begins like the second"])
 def test_the_generator_refuses_a_table_that_is_wrong(monkeypatch, edit, complaint):
     rule_sections = _generator()
     # The anchors a cached copy of the specification would give, so the anchor

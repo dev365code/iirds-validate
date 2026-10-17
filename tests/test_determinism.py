@@ -399,3 +399,64 @@ def test_a_report_does_not_give_two_nodes_the_same_name(tmp_path):
         assert len(names) == len(set(names)), (
             "%s names the same node twice: %s"
             % (finding.rule.id, finding.violation.detail))
+
+
+#: A table of contents whose sibling list runs back on itself. Which of the two
+#: nodes a walk meets first decides which one the report names, so a walk whose
+#: order is the order a set happens to hash in names a different one per run.
+CYCLE_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
+  <iirds:DirectoryNode rdf:about="urn:test:toc">
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1"><iirds:has-next-sibling rdf:resource="urn:test:n2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n2"><iirds:has-next-sibling rdf:resource="urn:test:n1"/></iirds:DirectoryNode>
+</rdf:RDF>""")
+
+
+def test_a_loop_in_the_table_of_contents_is_named_the_same_way_across_hash_seeds(tmp_path):
+    """L4 reports the node at which a walk finds itself back where it has been,
+    and the walk began at whichever directory node a set produced first -- so the
+    same package named `n1` in one run and `n2` in the next."""
+    import subprocess
+    import sys
+
+    assert CYCLE_RDF != MINIMAL_RDF
+    package = build_package(tmp_path, "loop.iirds", metadata=CYCLE_RDF)
+    script = (
+        "import json, sys;"
+        "sys.path[:0] = [%r];"
+        "from iirds_validate import runner;"
+        "r = runner.run(%r, runner.ALL_KINDS).as_dict();"
+        "print(json.dumps([f for f in r['findings'] if f['rule'] == 'L4'], sort_keys=True))"
+        % (str(ROOT / "src"), str(package)))
+    reports = set()
+    for seed in ("0", "1", "2", "3", "4", "5", "6", "7"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        out = subprocess.run([sys.executable, "-c", script], env=env,
+                             capture_output=True, text=True, check=True).stdout
+        assert '"L4"' in out, "the loop was not reported at all: %s" % out
+        reports.add(out)
+    assert len(reports) == 1, "%d distinct L4 findings across eight seeds: %s" % (len(reports), sorted(reports))
+
+
+#: One loop, entered from a node with two edges into it. Which node the report
+#: names follows from the order the walk takes them in, and that order is the
+#: order of their names: the walk meets `n1` first and comes back to it.
+TWO_WAYS_IN_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
+  <iirds:DirectoryNode rdf:about="urn:test:a">
+    <iirds:has-first-child rdf:resource="urn:test:n1"/>
+    <iirds:has-next-sibling rdf:resource="urn:test:n2"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n1"><iirds:has-next-sibling rdf:resource="urn:test:n2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:n2"><iirds:has-next-sibling rdf:resource="urn:test:n1"/></iirds:DirectoryNode>
+</rdf:RDF>""")
+
+
+def test_the_node_a_loop_is_named_by_is_the_first_by_name(tmp_path):
+    """Not only the same node every run, but the one a reader can predict: the
+    walk starts from, and goes on through, nodes in the order of their names."""
+    assert TWO_WAYS_IN_RDF != MINIMAL_RDF
+    report = runner.run(build_package(tmp_path, "ways.iirds", metadata=TWO_WAYS_IN_RDF), runner.ALL_KINDS)
+    loops = [f for f in report.findings if f.rule.id == "L4"]
+    assert [f.violation.subject for f in loops] == ["urn:test:n1"], [
+        (f.violation.subject, f.violation.detail) for f in loops]

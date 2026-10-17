@@ -51,10 +51,10 @@ SECTIONS = {
 }
 
 NO_SECTION = {
-    'L1': "this project's advice about what a consumer can resolve, not a reading of a sentence of the standard",
-    'L8': "this project's note on what a consumer without network access cannot resolve, not a reading of a sentence of the standard",
+    'L1': "this project's advice: what a consumer can resolve, not a reading of a sentence of the standard",
+    'L8': "this project's advice: what a consumer without network access cannot resolve, not a reading of a sentence of the standard",
     'L11': 'about this run: where the iiRDS XHTML5 rules did not read a file through its rendition',
-    'L15': "this project's advice about the vocabulary of the declared edition, not a reading of a sentence of the standard",
+    'L15': "this project's advice: the vocabulary of the declared edition, not a reading of a sentence of the standard",
     'S1': 'about this run: the path could not be read',
     'S2': 'about this run: no metadata was read, so no rule about the graph ran',
     'S3': 'about this run: a rule raised instead of answering',

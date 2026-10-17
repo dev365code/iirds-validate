@@ -210,7 +210,10 @@ def l4_directory_cycles(ctx):
     state = {}                       # node -> "open" while on the current path
     reported = set()
 
-    for start in ctx.instances_of(T.DirectoryNode):
+    # In the order of their names, and each node's edges too: the node a walk
+    # meets twice is the one reported, so a walk in the order a set hashes in
+    # named a different node of one loop on every run.
+    for start in sorted(ctx.instances_of(T.DirectoryNode), key=ctx.ref):
         if state.get(start) == "done":
             continue
         # (node, trail) with an explicit close marker, so the trail unwinds
@@ -233,7 +236,7 @@ def l4_directory_cycles(ctx):
                 continue
             state[node] = "open"
             stack.append((_CLOSE, node))
-            for child in _children(ctx, node):
+            for child in sorted(_children(ctx, node), key=ctx.ref, reverse=True):
                 stack.append((child, trail + [node]))
 
 

@@ -357,6 +357,31 @@ def test_r4_reports_the_vcard_once_not_once_per_party(tmp_path):
     assert not FIVE & {f.rule.id for f in report.findings}
 
 
+def test_r4s_remedy_names_only_what_repairs_the_package(tmp_path):
+    """The remedy offered two repairs, and one of them was not: dropping the
+    `iirds:relates-to-vcard` leaves every party with no description at all,
+    and M23 and the five named-party MUSTs report that in R4's place. So each
+    repair is followed here, as written, and only the one that leaves the
+    package clean is one the remedy may name."""
+    from iirds_validate.registry import all_rules
+
+    pointer = '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>'
+    broken = HANDOVER.replace(ORGANISATION, "")
+    assert broken != HANDOVER and HANDOVER.count(pointer) == 3
+    assert "R4" in _ids(tmp_path, "broken.iirds", broken)
+    others = FIVE | {"M23", "R14", "R16"}
+
+    described = _ids(tmp_path, "described.iirds", HANDOVER)
+    assert "R4" not in described and not others & described, sorted(described)
+    dropped = _ids(tmp_path, "dropped.iirds", broken.replace(pointer, ""))
+    assert "R4" not in dropped and others & dropped, sorted(dropped)
+
+    fix = {r.id: r for r in all_rules()}["R4"].fix
+    assert fix.startswith("Describe the vcard in this package as a vcard:Organization carrying "
+                          "a vcard:organization-name."), fix
+    assert "or drop the iirds:relates-to-vcard" not in fix, fix
+
+
 def test_r4_leaves_a_described_but_unnamed_vcard_to_the_five(tmp_path):
     """A card the package describes is a different defect: the party is
     reachable and simply not named, which is what the five MUSTs say."""

@@ -434,6 +434,11 @@ def test_every_shape_carries_a_spec_link():
     # without its type, is a difference here -- a threshold let half through.
     reporting = set(graph.subjects(IVM.ruleId, None))
     assert reporting and read == reporting, (len(read), len(reporting))
+    # And those are every rule the shapes say they emit: the two sets above are
+    # read from one graph, so a file left out of the tuple shrank both alike.
+    manifest = json.loads((SHAPE_DIR.parent / "MANIFEST.json").read_text(encoding="utf-8"))
+    emitted = set(manifest["core_emitted"]) | set(manifest["sparql_emitted"])
+    assert {str(graph.value(shape, IVM.ruleId)) for shape in read} == emitted
     assert missing == set(), sorted(missing)
     assert shapes_without == 0, shapes_without
 

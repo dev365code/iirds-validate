@@ -77,8 +77,9 @@ SECTION = {
     "S4": "a-1-2-property-definitions",
     "S5": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
     # The ZIP format is the standard's by reference: "The ZIP archive file
-    # format is defined in [ZIP]", in 5.2. (C1 and C2 claim section 5's
-    # sentence that a package implements the archive, and link there.)
+    # format is defined in [ZIP]", in 5.2. (C1 claims section 5's sentence
+    # that a package implements the archive, C2's finding is about it, and both
+    # link there.)
     "S10": "x5-2-iirds-zip-archive",
     # "All other files in the ZIP are either uncompressed ("Stored"
     # compression mode) or compressed in "Deflated" mode" -- normative, and
@@ -91,17 +92,18 @@ SECTION = {
 }
 
 #: Rules with no section behind them, and why. Each is about the run itself or
-#: is this project's own advice, and its reason says which first -- the README
-#: and the examples page say there are those two kinds, and this holds them to it.
-KINDS = ("about this run: ", "this project's ")
+#: is this project's own advice, and its reason says which first, in those
+#: words -- the README and the examples page say there are those two kinds, and
+#: a prefix that only began like one let a third through.
+KINDS = ("about this run: ", "this project's advice: ")
 NONE = {
-    "L1": "this project's advice about what a consumer can resolve, not a reading "
+    "L1": "this project's advice: what a consumer can resolve, not a reading "
           "of a sentence of the standard",
-    "L8": "this project's note on what a consumer without network access cannot "
+    "L8": "this project's advice: what a consumer without network access cannot "
           "resolve, not a reading of a sentence of the standard",
     "L11": "about this run: where the iiRDS XHTML5 rules did not read a file "
            "through its rendition",
-    "L15": "this project's advice about the vocabulary of the declared edition, "
+    "L15": "this project's advice: the vocabulary of the declared edition, "
            "not a reading of a sentence of the standard",
     "S1": "about this run: the path could not be read",
     "S2": "about this run: no metadata was read, so no rule about the graph ran",

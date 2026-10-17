@@ -256,8 +256,7 @@ def test_the_front_page_is_right_about_which_rules_name_a_section():
     assert "each rule that has none is about the run itself or is this project's own advice" \
         in flat, "the page's account of the rules with none moved"
     kinds = {r.id: r.no_section.split(":")[0] for r in rules if r.no_section}
-    assert kinds and all(k == "about this run" or k.startswith("this project's ")
-                         for k in kinds.values()), kinds
+    assert kinds and set(kinds.values()) == {"about this run", "this project's advice"}, kinds
 
     c5 = next(r for r in rules if r.id == "C5")
     assert c5.spec or c5.covers, "the page cites `iirds rules C5 -v` as the case that shows one"

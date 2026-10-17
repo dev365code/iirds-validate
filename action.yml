@@ -180,10 +180,14 @@ runs:
             exit 64
           fi
           if [ -n "$WANT_SHA" ]; then
+            # From standard input, so the line names no file. Handed a name with
+            # a backslash in it -- every path on a Windows runner -- GNU
+            # sha256sum and shasum both escape the name and put a backslash
+            # before the hash, and the right file was then refused.
             if command -v sha256sum >/dev/null 2>&1; then
-              got=$(sha256sum "$PYZ" | cut -d" " -f1)
+              got=$(sha256sum < "$PYZ" | cut -d" " -f1)
             else
-              got=$(shasum -a 256 "$PYZ" | cut -d" " -f1)
+              got=$(shasum -a 256 < "$PYZ" | cut -d" " -f1)
             fi
             want=$(printf '%s' "$WANT_SHA" | tr 'A-Z' 'a-z' | tr -d '[:space:]')
             got=$(printf '%s' "$got" | tr 'A-Z' 'a-z')

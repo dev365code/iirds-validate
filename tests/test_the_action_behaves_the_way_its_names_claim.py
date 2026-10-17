@@ -223,12 +223,19 @@ def test_a_carried_file_can_be_held_to_a_hash(tmp_path):
     assert "hashes to" in log and "stub ran" not in log and published == {}
 
 
-def test_the_hash_it_is_held_to_is_the_files(tmp_path):
+@pytest.mark.parametrize("name", [
+    "iirds.pyz",
+    # Where a backslash can be part of a name. On Windows every path already has
+    # one, which is how CI found that a hash tool handed the name escapes it.
+    pytest.param("back\\slash.pyz", marks=pytest.mark.skipif(
+        os.name == "nt", reason="a backslash is the separator here; every path has one")),
+])
+def test_the_hash_it_is_held_to_is_the_files(tmp_path, name):
     """And the comparison is a comparison: the right hash, written in capitals
     with a newline after it the way a copied checksum often is, passes."""
     import hashlib
 
-    carried = tmp_path / "iirds.pyz"
+    carried = tmp_path / name
     carried.write_bytes(b"the file you were promised")
     digest = hashlib.sha256(carried.read_bytes()).hexdigest().upper() + "\n"
     status, published, log = _run(tmp_path, stub=_exits(0), pyz=carried, want_sha=digest)

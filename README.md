@@ -160,6 +160,49 @@ flowchart LR
 | `iirds diff` | anyone who kept a machine-readable report (`-f json`) from 0.7.1 or later | what changed since it, and what moved underneath the comparison |
 | `import iirds, iirds_validate` | Python programs | a reader and writer, and the judge as a function |
 | `iirds.pyz` | locked-down machines | one file, no install, byte-identical when rebuilt from one commit, one set of dependency versions and one `SOURCE_DATE_EPOCH` (a fixed date when unset) on the same kind of system — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
+| `action.yml` | a GitHub workflow | the command's own output and exit code, as a step — [below](#in-a-workflow) |
+
+### In a workflow
+
+```yaml
+- uses: dev365code/iirds-validate@main
+  with:
+    paths: delivery.iirds
+```
+
+The step prints what `iirds check` prints and returns the code it returns —
+`0` clean, `1` errors found, `2` could not run, `64` a command line it refused —
+so the job fails when the check does, and a job that reads the code can tell a
+supplier's package from its own typo. To read the code rather than stop on it:
+
+```yaml
+- uses: dev365code/iirds-validate@main
+  id: iirds
+  with:
+    paths: delivery.iirds
+    fail-on-finding: "false"
+- run: echo "iirds returned ${{ steps.iirds.outputs.exit-code }}"
+```
+
+`exit-code` is published either way; with the default, a failed step needs
+`continue-on-error: true` before the job reaches a line that reads it.
+
+| Input | What it is |
+|---|---|
+| `paths` | the packages to check — files, unpacked directories, or directories to search — separated by spaces, or one per line to name a path with a space in it |
+| `command` | `check` (the default), `lint` or `all`: the command line's verbs that judge a package |
+| `version` | which release to install from PyPI. Left empty, it is the ref you pinned — `@v1.2.3` runs 1.2.3 — and at a branch or a commit, the version that tree is numbered for, which may not be on the index yet. **The rules travel with the release**: an older `version` is an older rule set |
+| `pyz` | an `iirds.pyz` you already have. Given, the step installs nothing and fetches nothing |
+| `sha256` | the SHA-256 `pyz` must have, for a file carried into a closed network |
+| `args` | anything else for the command, such as `-f json`, `-W` or `--fragment` |
+| `fail-on-finding` | `true` by default; `false` makes the step succeed and hand over `exit-code` |
+
+The outputs are `exit-code`, `version` — the release it installed — and `pyz`,
+the file it ran. The check opens no socket either way; installing is the one
+thing that reaches an index, and only when no `pyz` is given. What the step
+prints on stdout and stderr, and the code it returns, are the command's, byte
+for byte: a test runs both over every file of the corpus and every fixture here
+and compares them.
 
 ## Honest coverage
 

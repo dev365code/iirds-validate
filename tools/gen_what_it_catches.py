@@ -415,12 +415,12 @@ def page() -> str:
                 "a case on this page quotes the words it lands on. Where a rule had no "
                 "link, `tools/rule_sections.py` derives one: a rule that claims "
                 "obligations links to the section of the first sentence it claims, "
-                "and a rule that claims none to the section its finding is about. A rule with no section behind "
-                "it -- one about the run itself, about the ZIP format beneath the "
-                "standard, or this project's own advice -- says so and why, in "
-                "`iirds rules <id> -v` and in a verbose report. A finding carries the "
-                "link in its `spec` field; the claim and the reason are the rule's, "
-                "and `iirds rules <id>` shows both."))
+                "and a rule that claims none to the section its finding is about. A "
+                "rule with no section behind it -- one about the run itself, or this "
+                "project's own advice -- says so and why, in `iirds rules <id> -v` "
+                "and in a verbose report. A finding carries the link in its `spec` "
+                "field; the claim and the reason are the rule's, and `iirds rules "
+                "<id>` shows both."))
             out.append("")
         for case in CASES:
             if AXIS_OF.get(case[0]) == axis["key"]:

@@ -61,11 +61,13 @@ SENTENCE = {
     "R43": "x8-2-1-2-graphics-formats#1",
     "R44": "x8-2-1-3-video-formats#2",
     "R45": "x8-2-1-4-audio-formats#2",
-    "S11": "x6-3-3-metadata-of-nested-iirds-packages#3",
+    "S6": "dfn-iirds-container#1",
+    "S11": "x6-2-information-units#5",
 }
 
 #: Rules that claim nothing and whose words have no keyword sentence to name:
-#: a vocabulary table, an example, the list of namespaces.
+#: a vocabulary table, an example, the list of namespaces, a sentence the
+#: specification states as normative without a keyword.
 SECTION = {
     "L6": "x7-3-1-adding-a-proprietary-instance",
     "L7": "a-1-1-class-definitions",
@@ -74,10 +76,18 @@ SECTION = {
     "L16": "a-1-3-relations",
     "S4": "a-1-2-property-definitions",
     "S5": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
+    # The ZIP format is the standard's by reference: "The ZIP archive file
+    # format is defined in [ZIP]", which is where C1 and C2 point too.
+    "S10": "x5-2-iirds-zip-archive",
+    # "All other files in the ZIP are either uncompressed ("Stored"
+    # compression mode) or compressed in "Deflated" mode" -- normative, and
+    # without a keyword, so the index does not hold it as a sentence.
+    "S14": "x5-2-2-content-encoding",
+    "S15": "x5-2-iirds-zip-archive",
 }
 
-#: Rules with no section behind them, and why. Each is about the run, about the
-#: ZIP format beneath the standard, or this project's own advice.
+#: Rules with no section behind them, and why. Each is about the run itself or
+#: is this project's own advice.
 NONE = {
     "L1": "this project's advice about what a consumer can resolve, not a reading "
           "of a sentence of the standard",
@@ -90,17 +100,9 @@ NONE = {
     "S1": "about this run: the path could not be read",
     "S2": "about this run: no metadata was read, so no rule about the graph ran",
     "S3": "about this run: a rule raised instead of answering",
-    "S6": "about where the container's paths lead: an entry name, or a link in an "
-          "unpacked container, that leaves it",
     "S9": "about this run: the content it decompressed reached its stated ceiling",
-    "S10": "about the ZIP format beneath the standard: the two records it keeps "
-           "for one entry disagree",
     "S12": "about this run: the search for the package's own ontology reached its "
            "ceiling",
-    "S14": "this project's own decision, argued in docs/divergences.md: the "
-           "standard names a compression method only for mimetype",
-    "S15": "about the ZIP format beneath the standard: its central directory "
-           "names one entry twice",
     "S16": "about this run: no content rule got a parsed document for the file",
 }
 
@@ -183,6 +185,9 @@ def derive():
             anchor_ok(rule.id, SECTION[rule.id])
             sections[rule.id] = "%s#%s" % (base, SECTION[rule.id])
         elif rule.id in NONE:
+            if not NONE[rule.id].strip():
+                problems.append("%s is in NONE with no reason" % rule.id)
+                continue
             none[rule.id] = NONE[rule.id]
         else:
             problems.append("%s carries no link, claims nothing, and is in none of "
@@ -210,12 +215,40 @@ def render(sections, none) -> str:
     return "\n".join(lines)
 
 
+#: What `sections.py` holds before anything has been derived. The registry
+#: imports the table this tool writes, so without one the tool could not start.
+EMPTY = "SECTIONS = {}\nNO_SECTION = {}\n"
+
+
+def _shown(path):
+    """A path as a reader of this repository would type it, where it is one."""
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
+
+
+def _readable(path) -> bool:
+    try:
+        compile(path.read_text("utf-8"), str(path), "exec")
+    except (OSError, SyntaxError, ValueError):
+        return False
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true",
                     help="regenerate in memory and compare with the committed file")
     args = ap.parse_args()
+
+    if not _readable(OUT):
+        if args.check:
+            print("  %s is missing or does not parse; run `python tools/rule_sections.py`"
+                  % _shown(OUT), file=sys.stderr)
+            return 1
+        OUT.write_text(EMPTY, "utf-8")
 
     sections, none, problems, unverified = derive()
     for line in problems:
@@ -226,17 +259,16 @@ def main() -> int:
     if unverified:
         print("  not verified without a cached specification: %s" % ", ".join(sorted(set(unverified))))
     if args.check:
-        current = OUT.read_text("utf-8") if OUT.exists() else ""
-        if current != text:
+        if OUT.read_text("utf-8") != text:
             print("  %s does not match what this generator writes; run "
-                  "`python tools/rule_sections.py`" % OUT.relative_to(ROOT), file=sys.stderr)
+                  "`python tools/rule_sections.py`" % _shown(OUT), file=sys.stderr)
             return 1
         print("  %d rules name a section here, %d say they have none"
               % (len(sections), len(none)))
         return 0
     OUT.write_text(text, "utf-8")
     print("  wrote %s: %d rules name a section here, %d say they have none"
-          % (OUT.relative_to(ROOT), len(sections), len(none)))
+          % (_shown(OUT), len(sections), len(none)))
     return 0
 
 

@@ -36,6 +36,14 @@ def _own_labels(text):
 
 def test_a_rule_the_page_calls_its_own_claims_no_obligation():
     rules = {rule.id: rule for rule in all_rules()}
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    from gen_what_it_catches import OWN_RULE
+
+    # The reader reads the label: without this, an empty result below could be
+    # a pattern that stopped matching rather than a page with no such case.
+    assert _own_labels("x " + OWN_RULE % "S10" + " y") == ["S10"]
     labelled = _own_labels(PAGE.read_text("utf-8"))
     # The page showed one such rule, L2, until every rule named its section or
     # said it had none: L2 now links to the section its finding is about, and

@@ -52,7 +52,10 @@ def test_a_rule_that_claims_names_the_section_of_the_first_sentence_it_claims():
     from iirds_validate.registry import own_spec
 
     derived = [r for r in all_rules() if own_spec(r.id) is None and r.covers]
-    assert derived, "no rule takes its section from its claims"
+    # Seventeen claim obligations and had no link. One of them, M97.1, has a
+    # catalogue row whose link is an empty string rather than none, and was
+    # missing from this list until that was read as what it is.
+    assert len(derived) == 17, sorted(r.id for r in derived)
     for r in derived:
         assert r.spec == "%s#%s" % (INDEX["_source"], ROWS[r.covers[0]]["section"]), r.id
 
@@ -79,10 +82,19 @@ def test_the_table_is_what_the_generator_writes():
     (lambda t: t["NONE"].__setitem__("M1", "no reason"), "M1 is in NONE, but it"),
     (lambda t: t["SENTENCE"].__setitem__("L1", "x9-9-nothing#1"), "is not in the index"),
     (lambda t: t["NONE"].__setitem__("Z99", "no such rule"), "no rule has that id"),
+    (lambda t: t["SECTION"].__setitem__("S9", "x5-2-iirds-zip-archive"), "S9 is in SECTION and in NONE"),
+    (lambda t: t["SECTION"].__setitem__("L6", "not-a-section-of-anything"),
+     "names not-a-section-of-anything, which is no section of the specification"),
+    (lambda t: t["NONE"].__setitem__("S9", "   "), "S9 is in NONE with no reason"),
 ], ids=["a rule left out", "an entry nobody needs", "a sentence the index lacks",
-        "an entry for no rule"])
+        "an entry for no rule", "a rule in two tables", "an anchor the specification lacks",
+        "a reason that says nothing"])
 def test_the_generator_refuses_a_table_that_is_wrong(monkeypatch, edit, complaint):
     rule_sections = _generator()
+    # The anchors a cached copy of the specification would give, so the anchor
+    # case asks the same question with or without one.
+    monkeypatch.setattr(rule_sections, "_cached_sections",
+                        lambda data: {"x6-1-the-iirds-rdf-schema-and-identifiers"})
     tables = {name: dict(getattr(rule_sections, name)) for name in ("SENTENCE", "SECTION", "NONE")}
     edit(tables)
     for name, table in tables.items():
@@ -138,3 +150,83 @@ def test_a_verbose_report_says_when_there_is_none(make_package):
     report.render_text(result, out, verbose=True)
     reason = {r.id: r for r in all_rules()}["L1"].no_section
     assert reason and ("spec: none -- %s" % reason) in out.getvalue(), out.getvalue()
+
+
+def test_the_check_fails_on_a_table_that_is_not_what_the_generator_writes(
+        tmp_path, monkeypatch, capsys):
+    """`--check` is the gate `make` and CI run, and nothing asked whether it can
+    fail: with its comparison switched off every test above still passed."""
+    rule_sections = _generator()
+    committed = rule_sections.OUT.read_text("utf-8")
+    stale = tmp_path / "sections.py"
+    stale.write_text(committed.replace("#x6-3-content-references-of-information-units",
+                                       "#x6-2-information-units", 1), "utf-8")
+    assert stale.read_text("utf-8") != committed
+    monkeypatch.setattr(rule_sections, "OUT", stale)
+    monkeypatch.setattr(sys, "argv", ["rule_sections.py", "--check"])
+    assert rule_sections.main() == 1
+    assert "does not match" in capsys.readouterr().err
+    stale.write_text(committed, "utf-8")
+    assert rule_sections.main() == 0
+
+
+def test_the_generator_rebuilds_a_table_it_cannot_read(tmp_path):
+    """The registry imports the table the generator writes, so a missing one
+    stopped the generator before it could write it."""
+    import shutil
+
+    for part in ("src", "docs/requirements.json", "tools/rule_sections.py"):
+        source, target = ROOT / part, tmp_path / part
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_dir():
+            shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__"))
+        else:
+            shutil.copy(source, target)
+    table = tmp_path / "src" / "iirds_validate" / "sections.py"
+    table.unlink()
+    env = {k: v for k, v in os.environ.items() if k != "IIRDS_REQUIRE_SPEC_CACHE"}
+    env.update(PYTHONPATH=str(tmp_path / "src"), PYTHONDONTWRITEBYTECODE="1")
+    tool = [sys.executable, str(tmp_path / "tools" / "rule_sections.py")]
+    checked = subprocess.run(tool + ["--check"], cwd=tmp_path, env=env,
+                             capture_output=True, text=True)
+    assert checked.returncode == 1 and "missing" in checked.stderr, checked.stderr
+    written = subprocess.run(tool, cwd=tmp_path, env=env, capture_output=True, text=True)
+    assert written.returncode == 0, written.stdout + written.stderr
+    assert table.read_text("utf-8") == (ROOT / "src" / "iirds_validate" / "sections.py").read_text("utf-8")
+
+
+def test_the_json_rule_listing_carries_the_reason(capsys):
+    assert cli.main(["rules", "S9", "R43", "--format", "json"]) == 0
+    listed = {row["id"]: row for row in json.loads(capsys.readouterr().out)}
+    reasons = {r.id: r.no_section for r in all_rules()}
+    assert listed["S9"]["noSection"] == reasons["S9"] and listed["S9"]["spec"] is None
+    assert listed["R43"]["noSection"] is None and listed["R43"]["spec"]
+
+
+def _three(make_package, extra):
+    """A topic that repeats `extra` three times, so the report groups its rule."""
+    from conftest import MINIMAL_RDF
+    from iirds_validate import runner
+
+    metadata = MINIMAL_RDF.replace("<iirds:title>A topic</iirds:title>",
+                                   "<iirds:title>A topic</iirds:title>\n" + extra, 1)
+    assert metadata != MINIMAL_RDF
+    return runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
+
+
+def test_a_verbose_report_says_it_for_a_run_of_findings_too(make_package):
+    """Three findings of one rule print as a group, and the group printed
+    neither the link nor the reason -- for any rule, before there were reasons."""
+    import io
+
+    from iirds_validate import report
+
+    result = _three(make_package, "".join(
+        '    <iirds:relates-to-product-variant rdf:resource="urn:test:nowhere%d"/>\n' % n
+        for n in range(3)))
+    assert sum(f.rule.id == "L1" for f in result.findings) >= report.GROUP_FROM
+    out = io.StringIO()
+    report.render_text(result, out, verbose=True)
+    text = out.getvalue()
+    reason = {r.id: r for r in all_rules()}["L1"].no_section
+    assert text.count("spec: none -- %s" % reason) == 1, text

@@ -194,8 +194,8 @@ class Rule:
     #: advisory.
     conformance: bool = False
     #: Why no section of the standard is behind this rule, for a rule whose
-    #: `spec` is empty: it is about the run, about the ZIP format beneath the
-    #: standard, or this project's own advice. Empty whenever `spec` is not.
+    #: `spec` is empty: it is about the run itself, or it is this project's own
+    #: advice. Empty whenever `spec` is not.
     #: Written by `tools/rule_sections.py` into `sections.py`, with the links
     #: it derives, so that every rule names its section or says it has none.
     no_section: str = ""

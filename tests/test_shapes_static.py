@@ -420,13 +420,16 @@ def test_every_shape_carries_a_spec_link():
     # namespace carries the distribution's former name, and the gate in
     # `test_product_name.py` is right to refuse a source file that spells it.
     IVM = Namespace(dict(graph.namespaces())["ivm"])
-    missing, shapes_without = set(), 0
+    missing, shapes_without, shapes_read = set(), 0, 0
     for kind in (SH_NS.NodeShape, SH_NS.PropertyShape):
         for shape in graph.subjects(RDF.type, kind):
+            shapes_read += 1
             if graph.value(shape, DCT.source) is None:
                 shapes_without += 1
                 rule_id = graph.value(shape, IVM.ruleId)
                 missing.add(str(rule_id) if rule_id else str(shape).rsplit("#", 1)[-1])
+    # None without a link means something only if shapes were read at all.
+    assert shapes_read > 100, shapes_read
     assert missing == set(), sorted(missing)
     assert shapes_without == 0, shapes_without
 

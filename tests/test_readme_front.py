@@ -247,6 +247,9 @@ def test_the_front_page_is_right_about_which_rules_name_a_section():
     # the command it cites, which is how the first version went wrong.
     s1 = next(r for r in rules if r.id == "S1")
     assert not s1.spec and not s1.covers, (s1.spec, s1.covers)
+    # And it prints why, which is what the page now says it does.
+    assert "or says why it has none" in flat, "the page's claim about rules with none moved"
+    assert s1.no_section, "the page says `iirds rules S1 -v` prints a reason, and S1 has none"
 
     c5 = next(r for r in rules if r.id == "C5")
     assert c5.spec or c5.covers, "the page cites `iirds rules C5 -v` as the case that shows one"

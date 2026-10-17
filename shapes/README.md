@@ -104,9 +104,10 @@ act on it: `sh:message` (what is wrong), `sh:description` (what to change —
 the same remedy text the CLI prints), `sh:severity`, `ivm:ruleId`, and
 `dcterms:source`, the rule's link to the standard. Where that link lands on
 the sentence the rule enforces, so does this one; where the rule had no link
-of its own, it is the section `tools/rule_sections.py` derives -- of the first
-sentence the rule claims, or of the sentence its finding is about. Every shape
-carries one, and a test pins that none is without. So the join back to the
+of its own, it is the section `tools/rule_sections.py` gives it -- of the
+first sentence the rule claims, of the sentence its finding is about, or a
+section named by its anchor where the words it reads carry no keyword. Every
+shape carries one, and a test pins that none is without. So the join back to the
 rule catalogue is one lookup: **read `ivm:ruleId` off the source shape**,
 whichever shape the engine attributed. (Property-shape IRIs are the node
 shape's id plus `-p`, if you prefer string surgery; the annotation makes

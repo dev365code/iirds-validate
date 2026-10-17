@@ -51,7 +51,7 @@ def rule(rule_id: str, kind: Optional[str] = None, prio: Optional[str] = None,
     def decorator(fn: Callable) -> Callable:
         if rule_id in _registry:
             raise ValueError(f"duplicate rule id: {rule_id}")
-        own = spec or meta.get("spec")
+        own = spec or meta.get("spec") or None   # the catalogue writes "" for none
         _own_spec[rule_id] = own
         _registry[rule_id] = Rule(
             id=rule_id,

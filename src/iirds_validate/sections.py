@@ -40,10 +40,14 @@ SECTIONS = {
     'R45': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x8-2-1-4-audio-formats',
     'S4': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#a-1-2-property-definitions',
     'S5': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x8-1-1-unrestricted-iirds-vs-restricted-iirds',
+    'S6': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-1-iirds-container',
     'S7': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-2-2-content-encoding',
     'S8': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-2-2-content-encoding',
-    'S11': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-3-3-metadata-of-nested-iirds-packages',
+    'S10': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-2-iirds-zip-archive',
+    'S11': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-2-information-units',
     'S13': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-iirds-package-and-container',
+    'S14': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-2-2-content-encoding',
+    'S15': 'https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-2-iirds-zip-archive',
 }
 
 NO_SECTION = {
@@ -54,11 +58,7 @@ NO_SECTION = {
     'S1': 'about this run: the path could not be read',
     'S2': 'about this run: no metadata was read, so no rule about the graph ran',
     'S3': 'about this run: a rule raised instead of answering',
-    'S6': "about where the container's paths lead: an entry name, or a link in an unpacked container, that leaves it",
     'S9': 'about this run: the content it decompressed reached its stated ceiling',
-    'S10': 'about the ZIP format beneath the standard: the two records it keeps for one entry disagree',
     'S12': "about this run: the search for the package's own ontology reached its ceiling",
-    'S14': "this project's own decision, argued in docs/divergences.md: the standard names a compression method only for mimetype",
-    'S15': 'about the ZIP format beneath the standard: its central directory names one entry twice',
     'S16': 'about this run: no content rule got a parsed document for the file',
 }

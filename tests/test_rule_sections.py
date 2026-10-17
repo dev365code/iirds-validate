@@ -71,10 +71,15 @@ def test_a_rule_with_its_own_link_keeps_it():
 
 
 def test_the_table_is_what_the_generator_writes():
+    from iirds_validate.sections import NO_SECTION, SECTIONS
+
     done = subprocess.run([sys.executable, str(ROOT / "tools" / "rule_sections.py"), "--check"],
                           cwd=ROOT, capture_output=True, text=True,
                           env=dict(os.environ, PYTHONPATH=str(ROOT / "src")))
     assert done.returncode == 0, done.stdout + done.stderr
+    # The line `make` prints is a count of the table it checked, not a figure.
+    assert "%d rules name a section here, %d say they have none" % (
+        len(SECTIONS), len(NO_SECTION)) in done.stdout, done.stdout
 
 
 @pytest.mark.parametrize("edit,complaint", [
@@ -86,9 +91,14 @@ def test_the_table_is_what_the_generator_writes():
     (lambda t: t["SECTION"].__setitem__("L6", "not-a-section-of-anything"),
      "names not-a-section-of-anything, which is no section of the specification"),
     (lambda t: t["NONE"].__setitem__("S9", "   "), "S9 is in NONE with no reason"),
+    (lambda t: t["SECTION"].__setitem__("L2", "x6-3-content-references-of-information-units"),
+     "L2 is in SENTENCE and in SECTION"),
+    (lambda t: t["NONE"].__setitem__("S9", "about the ZIP format beneath the standard"),
+     "S9 is in NONE for a reason of neither kind"),
 ], ids=["a rule left out", "an entry nobody needs", "a sentence the index lacks",
         "an entry for no rule", "a rule in two tables", "an anchor the specification lacks",
-        "a reason that says nothing"])
+        "a reason that says nothing", "a rule in two tables of sections",
+        "a reason of a third kind"])
 def test_the_generator_refuses_a_table_that_is_wrong(monkeypatch, edit, complaint):
     rule_sections = _generator()
     # The anchors a cached copy of the specification would give, so the anchor
@@ -152,15 +162,30 @@ def test_a_verbose_report_says_when_there_is_none(make_package):
     assert reason and ("spec: none -- %s" % reason) in out.getvalue(), out.getvalue()
 
 
+def _stale_reason(text):
+    at = text.index("NO_SECTION = {")
+    return text[:at] + text[at:].replace("about this run: ", "about this run, stale: ", 1)
+
+
+#: A table gone stale in each of its halves, written without naming any rule's
+#: link: the first version moved one rule's current link, so a table changed
+#: for good reason would have failed it for none, and a stale reason was not
+#: asked at all.
+STALE = {
+    "a link": lambda text: text.replace(".html#", ".html#stale-", 1),
+    "a reason": _stale_reason,
+}
+
+
+@pytest.mark.parametrize("half", sorted(STALE))
 def test_the_check_fails_on_a_table_that_is_not_what_the_generator_writes(
-        tmp_path, monkeypatch, capsys):
+        tmp_path, monkeypatch, capsys, half):
     """`--check` is the gate `make` and CI run, and nothing asked whether it can
     fail: with its comparison switched off every test above still passed."""
     rule_sections = _generator()
     committed = rule_sections.OUT.read_text("utf-8")
     stale = tmp_path / "sections.py"
-    stale.write_text(committed.replace("#x6-3-content-references-of-information-units",
-                                       "#x6-2-information-units", 1), "utf-8")
+    stale.write_text(STALE[half](committed), "utf-8")
     assert stale.read_text("utf-8") != committed
     monkeypatch.setattr(rule_sections, "OUT", stale)
     monkeypatch.setattr(sys, "argv", ["rule_sections.py", "--check"])
@@ -170,9 +195,20 @@ def test_the_check_fails_on_a_table_that_is_not_what_the_generator_writes(
     assert rule_sections.main() == 0
 
 
-def test_the_generator_rebuilds_a_table_it_cannot_read(tmp_path):
-    """The registry imports the table the generator writes, so a missing one
-    stopped the generator before it could write it."""
+#: Ways the table can be there and not be a table: each stopped the generator
+#: at the registry's import before it was asked as well as a missing file.
+UNREADABLE = {
+    "missing": None,
+    "merge markers": "<<<<<<< HEAD\n",
+    "empty": "",
+    "without its names": "SECTIONS = {}\n",
+}
+
+
+@pytest.mark.parametrize("state", sorted(UNREADABLE))
+def test_the_generator_rebuilds_a_table_it_cannot_read(tmp_path, state):
+    """The registry imports the table the generator writes, so a table it could
+    not import stopped the generator before it could write it."""
     import shutil
 
     for part in ("src", "docs/requirements.json", "tools/rule_sections.py"):
@@ -183,13 +219,18 @@ def test_the_generator_rebuilds_a_table_it_cannot_read(tmp_path):
         else:
             shutil.copy(source, target)
     table = tmp_path / "src" / "iirds_validate" / "sections.py"
-    table.unlink()
+    if UNREADABLE[state] is None:
+        table.unlink()
+    else:
+        committed = table.read_text("utf-8")
+        table.write_text(UNREADABLE[state] + (committed if state == "merge markers" else ""), "utf-8")
     env = {k: v for k, v in os.environ.items() if k != "IIRDS_REQUIRE_SPEC_CACHE"}
     env.update(PYTHONPATH=str(tmp_path / "src"), PYTHONDONTWRITEBYTECODE="1")
     tool = [sys.executable, str(tmp_path / "tools" / "rule_sections.py")]
     checked = subprocess.run(tool + ["--check"], cwd=tmp_path, env=env,
                              capture_output=True, text=True)
-    assert checked.returncode == 1 and "missing" in checked.stderr, checked.stderr
+    assert checked.returncode == 1, checked.stderr
+    assert "is missing or is not a table the registry can import" in checked.stderr, checked.stderr
     written = subprocess.run(tool, cwd=tmp_path, env=env, capture_output=True, text=True)
     assert written.returncode == 0, written.stdout + written.stderr
     assert table.read_text("utf-8") == (ROOT / "src" / "iirds_validate" / "sections.py").read_text("utf-8")
@@ -204,7 +245,7 @@ def test_the_json_rule_listing_carries_the_reason(capsys):
 
 
 def _three(make_package, extra):
-    """A topic that repeats `extra` three times, so the report groups its rule."""
+    """A topic carrying `extra` -- three of something, when the report is to group it."""
     from conftest import MINIMAL_RDF
     from iirds_validate import runner
 
@@ -212,6 +253,29 @@ def _three(make_package, extra):
                                    "<iirds:title>A topic</iirds:title>\n" + extra, 1)
     assert metadata != MINIMAL_RDF
     return runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
+
+
+#: A literal where a relation wants a resource: L16, which names the section
+#: of the relations table, once per value.
+LITERAL = "    <iirds:relates-to-product-variant>v%d</iirds:relates-to-product-variant>\n"
+
+
+@pytest.mark.parametrize("times", [1, 3])
+def test_a_verbose_report_names_the_section_under_a_finding(make_package, times):
+    """The link is the line most rules print, and only the reason was asked: the
+    link could go from under one finding, or a run of them, with every test here
+    green. Once under one finding and once under a run."""
+    import io
+
+    from iirds_validate import report
+
+    result = _three(make_package, "".join(LITERAL % n for n in range(times)))
+    assert sum(f.rule.id == "L16" for f in result.findings) == times
+    assert (times >= report.GROUP_FROM) == (times == 3)
+    out = io.StringIO()
+    report.render_text(result, out, verbose=True)
+    spec = {r.id: r for r in all_rules()}["L16"].spec
+    assert spec and out.getvalue().count("spec: %s" % spec) == 1, out.getvalue()
 
 
 def test_a_verbose_report_says_it_for_a_run_of_findings_too(make_package):

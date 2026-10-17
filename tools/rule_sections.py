@@ -77,17 +77,23 @@ SECTION = {
     "S4": "a-1-2-property-definitions",
     "S5": "x8-1-1-unrestricted-iirds-vs-restricted-iirds",
     # The ZIP format is the standard's by reference: "The ZIP archive file
-    # format is defined in [ZIP]", which is where C1 and C2 point too.
+    # format is defined in [ZIP]", in 5.2. (C1 and C2 claim section 5's
+    # sentence that a package implements the archive, and link there.)
     "S10": "x5-2-iirds-zip-archive",
     # "All other files in the ZIP are either uncompressed ("Stored"
     # compression mode) or compressed in "Deflated" mode" -- normative, and
     # without a keyword, so the index does not hold it as a sentence.
     "S14": "x5-2-2-content-encoding",
+    # Two records of the archive carrying one name: a fact of the format it
+    # reads, which nothing in the format forbids. The uniqueness the standard
+    # asks of a name is 5.1.3's, and C15 claims that sentence.
     "S15": "x5-2-iirds-zip-archive",
 }
 
 #: Rules with no section behind them, and why. Each is about the run itself or
-#: is this project's own advice.
+#: is this project's own advice, and its reason says which first -- the README
+#: and the examples page say there are those two kinds, and this holds them to it.
+KINDS = ("about this run: ", "this project's ")
 NONE = {
     "L1": "this project's advice about what a consumer can resolve, not a reading "
           "of a sentence of the standard",
@@ -188,6 +194,10 @@ def derive():
             if not NONE[rule.id].strip():
                 problems.append("%s is in NONE with no reason" % rule.id)
                 continue
+            if not NONE[rule.id].startswith(KINDS):
+                problems.append("%s is in NONE for a reason of neither kind: %r"
+                                % (rule.id, NONE[rule.id]))
+                continue
             none[rule.id] = NONE[rule.id]
         else:
             problems.append("%s carries no link, claims nothing, and is in none of "
@@ -229,11 +239,16 @@ def _shown(path):
 
 
 def _readable(path) -> bool:
+    """Whether the registry can import the table: it is there, decodes, runs and
+    defines both names. Compiling was not enough -- an empty file, or one
+    without the names, compiles, and then stopped the generator that would
+    have rewritten it at the registry's import."""
+    names = {}
     try:
-        compile(path.read_text("utf-8"), str(path), "exec")
-    except (OSError, SyntaxError, ValueError):
+        exec(compile(path.read_text("utf-8"), str(path), "exec"), names)
+    except Exception:
         return False
-    return True
+    return isinstance(names.get("SECTIONS"), dict) and isinstance(names.get("NO_SECTION"), dict)
 
 
 def main() -> int:
@@ -245,8 +260,8 @@ def main() -> int:
 
     if not _readable(OUT):
         if args.check:
-            print("  %s is missing or does not parse; run `python tools/rule_sections.py`"
-                  % _shown(OUT), file=sys.stderr)
+            print("  %s is missing or is not a table the registry can import; run "
+                  "`python tools/rule_sections.py`" % _shown(OUT), file=sys.stderr)
             return 1
         OUT.write_text(EMPTY, "utf-8")
 

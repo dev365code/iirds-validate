@@ -412,24 +412,28 @@ def test_every_shape_carries_a_spec_link():
     # id of the rule that should have carried it.
     #
     # The count is pinned beside the set, because reading by rule stops the
-    # gate bounding *how many* shapes lack a link: any number of them could
-    # then be added under one of these six ids and nothing would notice. The
-    # set says which rules, the count says how many shapes, and a change to
-    # either is a diff a reviewer reads.
+    # gate bounding *how many* shapes lack a link: while the set named six
+    # rules, any number of shapes could have been added under one of them and
+    # nothing would have noticed. The set says which rules, the count says how
+    # many shapes, and a change to either is a diff a reviewer reads.
     # Read from the file's own @prefix rather than written out here: the
     # namespace carries the distribution's former name, and the gate in
     # `test_product_name.py` is right to refuse a source file that spells it.
     IVM = Namespace(dict(graph.namespaces())["ivm"])
-    missing, shapes_without, shapes_read = set(), 0, 0
+    missing, shapes_without, read = set(), 0, set()
     for kind in (SH_NS.NodeShape, SH_NS.PropertyShape):
         for shape in graph.subjects(RDF.type, kind):
-            shapes_read += 1
+            read.add(shape)
             if graph.value(shape, DCT.source) is None:
                 shapes_without += 1
                 rule_id = graph.value(shape, IVM.ruleId)
                 missing.add(str(rule_id) if rule_id else str(shape).rsplit("#", 1)[-1])
-    # None without a link means something only if shapes were read at all.
-    assert shapes_read > 100, shapes_read
+    # None without a link means something only if every shape was read. The
+    # loop reads by type and every shape that reports carries its rule's id, so
+    # the two are the same shapes: a loop that read one kind, or a shape written
+    # without its type, is a difference here -- a threshold let half through.
+    reporting = set(graph.subjects(IVM.ruleId, None))
+    assert reporting and read == reporting, (len(read), len(reporting))
     assert missing == set(), sorted(missing)
     assert shapes_without == 0, shapes_without
 

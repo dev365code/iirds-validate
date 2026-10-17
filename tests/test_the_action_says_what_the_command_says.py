@@ -164,6 +164,30 @@ MISTAKES = {
 }
 
 
+#: The files GitHub gives a step to change its job through, written out here
+#: rather than read from the comparison: a list the comparison shortened would
+#: otherwise shorten the test with it.
+GITHUB_JOB_FILES = ("GITHUB_ENV", "GITHUB_PATH", "GITHUB_STATE", "GITHUB_STEP_SUMMARY")
+
+
+def test_the_comparison_gives_every_file_of_the_job():
+    assert set(action_parity.JOB_FILES) == set(GITHUB_JOB_FILES)
+
+
+@pytest.mark.parametrize("name", GITHUB_JOB_FILES)
+def test_a_step_that_writes_to_a_file_of_the_job_is_caught(tmp_path, name):
+    """Each of the files a step can change its job through, caught by name -- not
+    by the shell stopping on a variable that was not set, which is what a
+    comparison that did not give the file would have relied on."""
+    step = action_parity.check_step()
+    anchor = '\n  export PYTHONPATH="$TARGET"\n'
+    assert step.count(anchor) == 1
+    cases = [case for case in action_parity.inputs(tmp_path) if case.label == "fixture/none"]
+    changed = step.replace(anchor, anchor + '  echo "X=1" >> "$%s"\n' % name)
+    caught = action_parity.compare(cases, action_parity.Installed(ROOT / "src"), tmp_path, step=changed)
+    assert any("the step wrote to %s" % name in said for said in caught.differences), caught.differences
+
+
 @pytest.mark.parametrize("mistake", sorted(MISTAKES))
 def test_a_step_that_changes_the_run_is_caught(tmp_path, mistake):
     original, changed, label = MISTAKES[mistake]

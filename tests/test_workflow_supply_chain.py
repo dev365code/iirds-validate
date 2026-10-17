@@ -208,14 +208,24 @@ def test_every_pin_says_which_version_it_is(path, action, comment):
         % (path, action, comment))
 
 
-def test_the_repositorys_own_action_runs_only_in_the_jobs_that_test_it():
+def _local_users(paths):
+    """(workflow, job) for every job that uses this repository's own action."""
+    return {(path.name, name) for path in paths for name, block in jobs_of(path).items()
+            if LOCAL_USE.search(block)}
+
+
+def test_the_repositorys_own_action_runs_only_in_the_jobs_that_test_it(tmp_path):
     """The one `uses:` without a commit is `./`, and only where it is the thing
     being tested; anywhere else a local path is a place for a workflow to run
     code this file has not looked at."""
-    used = {(path.name, name) for path in WORKFLOWS for name, block in jobs_of(path).items()
-            if LOCAL_USE.search(block)}
+    used = _local_users(WORKFLOWS)
     assert used == LOCAL_JOBS, used
-    assert LOCAL_USE.search("      - uses: ./   # this repository's own action"), LOCAL_USE.pattern
+    # And the reader that answered is one that sees the line with a comment
+    # after it: asked of a workflow that has nothing else, it has to find it.
+    other = tmp_path / "other.yml"
+    other.write_text("on: push\njobs:\n  lint:\n    steps:\n"
+                     "      - uses: ./   # this repository's own action\n", encoding="utf-8")
+    assert _local_users([other]) == {("other.yml", "lint")}
     local = [(path, ref) for path, action, ref, _comment in lines() if action == LOCAL]
     assert local and all(ref == "" for _path, ref in local), local
     assert all(not action.startswith(".") or action == LOCAL for _p, action, _r, _c in lines())

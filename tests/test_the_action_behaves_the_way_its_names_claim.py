@@ -35,11 +35,11 @@ def _declared_env():
     return dict.fromkeys(_check().env, "")
 
 
-#: Before it runs a carried file the step asks the interpreter, with `-c`,
+#: Before it runs a carried file the step asks the interpreter, with `-I -c`,
 #: whether the file is the checker's single file. The stub says it is: the file
 #: it stands in front of is not a real one, and what is under test here is what
 #: happens after. Asking a real interpreter is a test of its own below.
-ASKED = 'if [ "$1" = "-c" ]; then exit 0; fi\n'
+ASKED = 'if [ "$1" = "-I" ] && [ "$2" = "-c" ]; then exit 0; fi\n'
 
 
 def _stub(tmp_path, body):
@@ -65,7 +65,8 @@ def _run(tmp_path, *, stub, pyz="carried", paths="a.iirds", fail_on_finding="tru
     script.write_text(_check().run, encoding="utf-8")
     output = tmp_path / "GITHUB_OUTPUT"
     output.write_text("", encoding="utf-8")
-    env = dict(os.environ)
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("GITHUB_ENV", "GITHUB_PATH", "GITHUB_STATE", "GITHUB_STEP_SUMMARY")}
     env.update(_declared_env())
     env.update({
         "PATH": path if path is not None else "%s%s%s" % (stubs, os.pathsep, os.environ["PATH"]),
@@ -247,6 +248,22 @@ def test_a_carried_file_can_be_held_to_a_hash(tmp_path):
     assert "hashes to" in log and "stub ran" not in log and published == {}
 
 
+def _only_shasum(tmp_path):
+    """A PATH on which `sha256sum` is not found and `shasum` is GNU's kind: the
+    stub interpreter, the GNU-like `shasum`, and the two tools the step's
+    comparison needs, linked in one by one -- not the system's directories,
+    which on most machines hold a `sha256sum` and so never reach this branch."""
+    import shutil
+
+    tools = _gnu_hash_tools(tmp_path)
+    (tools / "sha256sum").unlink()
+    few = tmp_path / "few"
+    few.mkdir(exist_ok=True)
+    for name in ("tr", "cut"):
+        (few / name).symlink_to(shutil.which(name))
+    return os.pathsep.join([str(_stub(tmp_path, _exits(0))), str(tools), str(few)])
+
+
 def _gnu_hash_tools(tmp_path):
     """`sha256sum` and `shasum` that answer the way GNU's manual says sha256sum
     does: handed a name with a backslash in it, the name is escaped and the line
@@ -269,7 +286,8 @@ def _gnu_hash_tools(tmp_path):
     return tools
 
 
-@pytest.mark.parametrize("tools", ["this machine's", "GNU's"])
+@pytest.mark.parametrize("tools", ["this machine's", "GNU's", pytest.param(
+    "GNU's shasum alone", marks=pytest.mark.skipif(os.name == "nt", reason="links tools in by symlink"))])
 @pytest.mark.parametrize("name", [
     "iirds.pyz",
     # Where a backslash can be part of a name. On Windows every path already has
@@ -291,6 +309,8 @@ def test_the_hash_it_is_held_to_is_the_files(tmp_path, name, tools):
     if tools == "GNU's":
         path = os.pathsep.join([str(_stub(tmp_path, _exits(0))), str(_gnu_hash_tools(tmp_path)),
                                 os.environ["PATH"]])
+    elif tools == "GNU's shasum alone":
+        path = _only_shasum(tmp_path)
     status, published, log = _run(tmp_path, stub=_exits(0), pyz=carried, want_sha=digest, path=path)
     assert status == 0 and published.get("exit-code") == "0", log[-300:]
     assert published.get("pyz") == str(carried), published
@@ -337,7 +357,8 @@ def _zipapp(path, names):
     return path
 
 
-@pytest.mark.parametrize("what", ["an empty file", "a page of HTML", "another zip application"])
+@pytest.mark.parametrize("what", ["an empty file", "a page of HTML", "another zip application",
+                                  "the package without a way to run it"])
 def test_a_carried_file_that_is_not_the_checker_is_refused(tmp_path, what):
     """Handed an empty file, Python runs it and exits 0: a clean verdict on
     packages nothing looked at. Anything else it can open exits 1, "errors
@@ -348,20 +369,43 @@ def test_a_carried_file_that_is_not_the_checker_is_refused(tmp_path, what):
         carried.write_bytes(b"")
     elif what == "a page of HTML":
         carried.write_text("<!doctype html><title>404</title>", encoding="utf-8")
-    else:
+    elif what == "another zip application":
         _zipapp(carried, ["__main__.py"])
+    else:
+        _zipapp(carried, ["iirds_validate/__init__.py"])
     status, published, log = _run(tmp_path, stub=_exits(0), pyz=carried, path=_real_python(tmp_path))
     assert status == 64, "%s came back as %d" % (what, status)
     assert "is not the single file of this checker" in log and published == {}, log[-300:]
 
 
-def test_the_checkers_own_layout_is_run(tmp_path):
+@pytest.mark.parametrize("workspace", [{}, {"types.py": "NAME = 1\n", "zipfile.py": "raise SystemExit(0)\n"}],
+                         ids=["an empty workspace", "a workspace with modules of standard names"])
+def test_the_checkers_own_layout_is_run(tmp_path, workspace):
     """And the question has an answer that is yes: a zip application with the
-    checker's package in it is run, by the real interpreter."""
+    checker's package in it is run, by the real interpreter -- and the answer is
+    the file's, not the workspace's: a `types.py` there made the real file look
+    like no checker, and a `zipfile.py` could have made an empty one look like
+    one."""
+    for name, text in workspace.items():
+        (tmp_path / name).write_text(text, encoding="utf-8")
     carried = _zipapp(tmp_path / "iirds.pyz", ["__main__.py", "iirds_validate/__init__.py"])
     status, published, log = _run(tmp_path, stub=_exits(1), pyz=carried, path=_real_python(tmp_path))
     assert status == 0 and published.get("exit-code") == "0", log[-300:]
     assert published.get("pyz") == str(carried)
+    if workspace:
+        empty = tmp_path / "empty.pyz"
+        empty.write_bytes(b"")
+        status, published, log = _run(tmp_path, stub=_exits(1), pyz=empty, path=_real_python(tmp_path))
+        assert status == 64 and published == {}, log[-300:]
+
+
+def test_the_file_it_was_going_to_run_is_published_even_when_it_returns_no_verdict(tmp_path):
+    """A caller can ask the file itself what version it is only if the step says
+    which file it was. That is written before the run, so a run that ends in a
+    code that is no verdict still says it."""
+    status, published, log = _run(tmp_path, stub=_exits(3))
+    assert status == 3 and "exit-code" not in published, log[-300:]
+    assert published.get("pyz") == str(tmp_path / "iirds.pyz"), published
 
 
 def _obtain(tmp_path, *, wanted="", ref="", pyproject='version = "9.8.7"\n'):

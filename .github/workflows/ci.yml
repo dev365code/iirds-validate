@@ -484,7 +484,7 @@ jobs:
           # this step runs under `-e`, so a failed lookup would end it there.
           v=""
           for attempt in 1 2 3; do
-            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json'))['info']['version'])") && break
+            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json', timeout=30))['info']['version'])") && break
             echo "the index did not answer (try $attempt of 3)"
             sleep 20
           done
@@ -575,7 +575,7 @@ jobs:
         run: |
           v=""
           for attempt in 1 2 3; do
-            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json'))['info']['version'])") && break
+            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json', timeout=30))['info']['version'])") && break
             echo "the index did not answer (try $attempt of 3)"
             sleep 20
           done
@@ -600,14 +600,22 @@ jobs:
         run: |
           v=$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml | head -1)
           test -n "$v" || { echo "::error::pyproject.toml names no version"; exit 1; }
-          code=0
-          python3 - "$v" <<'PY' || code=$?
+          # Three tries, as for the newest release above; "not found" is an
+          # answer and ends them.
+          for attempt in 1 2 3; do
+            code=0
+            python3 - "$v" <<'PY' || code=$?
           import sys, urllib.error, urllib.request
           try:
-              urllib.request.urlopen("https://pypi.org/pypi/iirds/%s/json" % sys.argv[1])
+              urllib.request.urlopen("https://pypi.org/pypi/iirds/%s/json" % sys.argv[1], timeout=30)
           except urllib.error.HTTPError as error:
               sys.exit(3 if error.code == 404 else 1)
           PY
+            case $code in 0|3) break ;; esac
+            echo "the index did not answer (try $attempt of 3)"
+            sleep 20
+          done
+          echo "version=$v" >> "$GITHUB_OUTPUT"
           case $code in
             0) echo "published=true" >> "$GITHUB_OUTPUT" ;;
             3) echo "::notice::iirds $v is not on the index yet; the README's line has nothing to install until it is"
@@ -615,7 +623,15 @@ jobs:
             *) echo "::error::could not ask the index about iirds $v"; exit 1 ;;
           esac
       - name: The README's line as it is written, with no version
+        id: as-written
         if: steps.tree.outputs.published == 'true'
         uses: ./
         with:
           paths: fixtures/good.iirds
+      - name: The line ran the release the tree is numbered for
+        if: steps.tree.outputs.published == 'true'
+        env:
+          WANT: ${{ steps.tree.outputs.version }}
+          GOT: ${{ steps.as-written.outputs.version }}
+        run: |
+          test "$GOT" = "$WANT" || { echo "::error::the README's line resolved $GOT, and this tree is numbered $WANT"; exit 1; }

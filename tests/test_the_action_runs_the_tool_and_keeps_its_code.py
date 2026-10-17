@@ -80,6 +80,34 @@ def test_a_check_step_with_a_condition_is_not_compared():
         modelled(read_action(_with_check_line("if: inputs.pyz != ''")))
 
 
+@pytest.mark.parametrize("edit,refusal", [
+    (lambda t: t.replace("    - id: check\n      shell: bash\n", "    - id: check\n      shell: sh\n", 1),
+     "runs in 'sh'"),
+    (lambda t: t.replace("      if: inputs.pyz == ''\n", "      if: inputs.version != ''\n", 1),
+     "obtain runs if"),
+    (lambda t: t.replace("    - id: obtain\n", "    - id: fetch\n", 1), "not obtain then check"),
+], ids=["another shell", "another condition on the install", "another step"])
+def test_a_step_the_comparison_would_play_differently_is_not_compared(edit, refusal):
+    """The comparison plays the install as run exactly when no `pyz` is given,
+    and both steps in bash. An action that says otherwise is not compared."""
+    text = ACTION.read_text(encoding="utf-8")
+    assert edit(text) != text
+    with pytest.raises(Unreadable, match=refusal):
+        modelled(read_action(edit(text)))
+
+
+def test_the_two_runs_start_from_an_environment_without_a_path_or_the_jobs_files(monkeypatch):
+    """Neither run may find the checker through a `PYTHONPATH` the test run happens
+    to have, and neither may write to the files of the job that runs the comparison."""
+    import action_parity
+
+    for name in ("PYTHONPATH", "GITHUB_OUTPUT", *action_parity.JOB_FILES):
+        monkeypatch.setenv(name, "/somewhere")
+    env = action_parity._base_env()
+    assert not {"PYTHONPATH", "GITHUB_OUTPUT", *action_parity.JOB_FILES} & set(env)
+    assert env["PYTHONHASHSEED"] == "0"
+
+
 def test_the_action_uses_no_other_action(action):
     """Every step is a shell this file spells out. A `uses:` in here would run
     in other people's workflows at whatever its ref resolves to the day they run
@@ -298,10 +326,13 @@ def test_the_shortest_example_runs_on_a_runner_as_it_comes():
     the README's line takes."""
     job = _job("the-action-on-a-runner-as-it-comes")
     assert "uses: ./\n" in job and "setup-python" not in job
-    as_written = re.search(r"^      - name: [^\n]*\n        if: ([^\n]+)\n        uses: \./\n"
-                           r"        with:\n          paths: [^\n]+\n(?!          )", job, re.M)
+    as_written = re.search(r"^      - name: [^\n]*\n        id: as-written\n        if: ([^\n]+)\n"
+                           r"        uses: \./\n        with:\n          paths: [^\n]+\n(?!          )",
+                           job, re.M)
     assert as_written, "no step runs the README's line with nothing but `paths:`"
     assert as_written.group(1) == "steps.tree.outputs.published == 'true'", as_written.group(1)
+    # And the release it resolved is asked: the tree's own version, not another.
+    assert 'test "$GOT" = "$WANT"' in job and "GOT: ${{ steps.as-written.outputs.version }}" in job
 
 
 def _readme_section():
@@ -309,27 +340,43 @@ def _readme_section():
     return readme.split("### In a workflow", 1)[1].split("\n## ", 1)[0]
 
 
-def test_the_example_names_a_release_once_a_release_carries_the_action():
-    """The example names `main` because no release has this file; the moment one
-    does, `main` is the moving reference this repository refuses for itself. The
-    tags answer which, so the README is held to them: `main` while no tag's tree
-    has an `action.yml`, and after that a tag whose tree does."""
+def _carrying(tags):
     import subprocess
 
-    tags = subprocess.run(["git", "tag", "--list", "v*"], cwd=ROOT, capture_output=True,
-                          text=True).stdout.split()
-    assert tags, "no release tags are visible here; this question needs them (fetch the tags)"
-    carrying = [tag for tag in tags if subprocess.run(
-        ["git", "cat-file", "-e", "%s:action.yml" % tag], cwd=ROOT, capture_output=True).returncode == 0]
+    return {tag for tag in tags if subprocess.run(
+        ["git", "cat-file", "-e", "%s:action.yml" % tag], cwd=ROOT, capture_output=True).returncode == 0}
+
+
+def test_the_example_names_a_release_once_a_release_carries_the_action():
+    """`main` is the moving reference this repository refuses for itself, and the
+    example names it only while no release can be named instead. Which releases
+    can is a question for the tags -- those in this commit's history and before
+    it, so the commit a release is tagged on reads the same before the tag is
+    pushed as after, and a branch is not held to a release it does not contain.
+    The release being cut may be named ahead of its tag: it is the version this
+    tree is numbered for."""
+    import subprocess
+
+    every = subprocess.run(["git", "tag", "--list", "v*"], cwd=ROOT, capture_output=True,
+                           text=True).stdout.split()
+    assert every, "no release tags are visible here; this question needs them (fetch the tags)"
+    before = subprocess.run(["git", "tag", "--list", "v*", "--merged", "HEAD", "--no-contains", "HEAD"],
+                            cwd=ROOT, capture_output=True, text=True).stdout.split()
+    carrying = _carrying(before)
+    version = re.search(r'^version = "([^"]+)"$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+                        re.M).group(1)
     refs = set(re.findall(r"uses: dev365code/[\w.-]+@(\S+)", _readme_section()))
     assert refs, "the README's section shows no `uses:` line"
+    # The release this tree is numbered for, named before its tag exists -- or
+    # after, as long as that tag is one that carries the action.
+    own = "v" + version
+    ahead = {own} if own not in every or _carrying({own}) else set()
+    assert refs <= {"main"} | ahead | carrying, (refs, sorted(carrying))
     if carrying:
-        assert refs <= set(carrying), (
-            "a release carries the action now (%s) and the README still names %s"
-            % (", ".join(sorted(carrying)), sorted(refs)))
-    else:
-        assert refs == {"main"}, refs
-        assert "No release carries this action yet" in _readme_section()
+        assert "main" not in refs, (
+            "a release carries the action (%s) and the README still names main" % ", ".join(sorted(carrying)))
+    if "main" in refs:
+        assert "name a release that carries `action.yml` by its tag" in _readme_section()
 
 
 def test_the_release_the_readme_asks_for_closes_every_advisory():

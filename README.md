@@ -170,10 +170,10 @@ flowchart LR
     paths: delivery.iirds
 ```
 
-No release carries this action yet, so the example names `main`, which runs the
-release that `main` is numbered for. This repository pins every action it uses
-to a commit, and the same holds here once a release carries it: name the
-release's tag, or its commit with the tag in a comment.
+The example names `main`, which runs the release `main` is numbered for. This
+repository pins every action it uses to a commit, and the same advice holds
+here: name a release that carries `action.yml` by its tag, or by its commit with
+the tag in a comment.
 
 The step prints what `iirds check` prints and returns the code it returns —
 `0` clean, `1` errors found, `2` could not run, `64` a command line it refused —

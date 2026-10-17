@@ -58,8 +58,9 @@ inputs:
     description: >
       Fail the step when the checker returns anything but 0. True by default,
       because a gate that stops nothing is decoration. Set it to false to have
-      the step succeed and hand the code over in `exit-code` -- to report rather
-      than to stop.
+      the step succeed on any verdict and hand the code over in `exit-code` --
+      to report rather than to stop. A code that is no verdict, the checker not
+      having run, still fails it.
     required: false
     default: "true"
 
@@ -70,8 +71,9 @@ outputs:
       errors found (under `-W`, warnings too), 2 could not run -- a path naming
       nothing, a container that would not open -- and 64 a command line it
       refused. A failed step still publishes it, so with the default you need
-      `continue-on-error: true` on the step to reach a line that reads it. The
-      code is printed either way.
+      `continue-on-error: true` on the step, or a later step under
+      `if: failure()`, to reach a line that reads it. The code is printed
+      either way.
     value: ${{ steps.check.outputs.exit-code }}
   pyz:
     description: >
@@ -199,8 +201,10 @@ runs:
           fi
           # The checker's single file, not just a file: Python runs an empty
           # one and exits 0, a clean verdict on packages nothing looked at, and
-          # anything else it can open exits 1, "errors found".
-          if ! "$PY" -c 'import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); z.getinfo("__main__.py"); z.getinfo("iirds_validate/__init__.py")' "$PYZ" >/dev/null 2>&1; then
+          # anything else it can open exits 1, "errors found". Asked with `-I`,
+          # so a `zipfile.py` or a `types.py` in the caller's workspace is not
+          # what answers.
+          if ! "$PY" -I -c 'import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); z.getinfo("__main__.py"); z.getinfo("iirds_validate/__init__.py")' "$PYZ" >/dev/null 2>&1; then
             echo "::error::[$PYZ] is not the single file of this checker: no iirds_validate in a zip application"
             exit 64
           fi

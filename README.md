@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=3d4e5604" alt="Coverage: 184 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=2f0420bc" alt="Coverage: 184 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file, Action; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -201,8 +201,9 @@ The outputs are `exit-code`, `version` — the release it installed — and `pyz
 the file it ran. The check opens no socket either way; installing is the one
 thing that reaches an index, and only when no `pyz` is given. What the step
 prints on stdout and stderr, and the code it returns, are the command's, byte
-for byte: a test runs both over every file of the corpus and every fixture here
-and compares them.
+for byte: `tools/action_parity.py` runs both over every file of the corpus and
+every fixture here and compares them, and CI runs it on every push over this
+tree, over the newest release and over the single file.
 
 ## Honest coverage
 

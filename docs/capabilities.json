@@ -123,15 +123,19 @@
         },
         {
           "text": "GitHub Action",
-          "done": false
+          "done": true,
+          "evidence": {
+            "file": "tests/test_the_action_says_what_the_command_says.py",
+            "says": "The action says what the command says, byte for byte"
+          }
         },
         {
           "text": "browser, nothing installed",
           "done": false
         }
       ],
-      "now_text": "command line, library, single file",
-      "target_text": "+ GitHub Action, browser"
+      "now_text": "command line, library, single file, Action",
+      "target_text": "+ browser"
     },
     {
       "key": "input",

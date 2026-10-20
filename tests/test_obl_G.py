@@ -1103,11 +1103,23 @@ DISJOINT_FIXED_POINT_PROBES = [
       (EXAMPLE.ValueClass, RDF.type, CORE.Topic),
       (RDFS.subClassOf, RDFS.range, CORE.Document),
       (EXAMPLE.ValueClass, RDFS.domain, CORE.Document)), True, False),
-    ("rdfs10-feedback", EXAMPLE.ValueClass,
+    # A subclass statement read as a type statement through a declared
+    # subproperty: the generated query follows it. Its subclass statement is
+    # written out, so it needs no reflexive one -- it was named for rdfs10 and
+    # stayed green with rdfs10 gone, which is why it carries this name now.
+    ("subclass-as-type", EXAMPLE.ValueClass,
      ((EXAMPLE.ValueClass, RDF.type, RDFS.Class),
       (EXAMPLE.ValueClass, RDF.type, CORE.Topic),
       (RDFS.subClassOf, RDFS.subPropertyOf, RDF.type),
       (EXAMPLE.ValueClass, RDFS.subClassOf, CORE.Document)), True, True),
+    # rdfs10 or nothing: a class is a subclass of itself, and that statement's
+    # object is in the package's range for rdfs:subClassOf. No subclass
+    # statement is written, so without rdfs10 there is nothing for the range
+    # to apply to. The generated query does not derive the reflexive one.
+    ("rdfs10-feedback", EXAMPLE.Kind,
+     ((RDFS.subClassOf, RDFS.range, CORE.Document),
+      (EXAMPLE.Kind, RDF.type, RDFS.Class),
+      (EXAMPLE.Kind, RDF.type, CORE.Topic)), True, False),
     ("rdfs12-feedback", EXAMPLE.x,
      ((EXAMPLE.prop, RDF.type, RDFS.ContainerMembershipProperty),
       (RDFS.member, RDFS.domain, CORE.Document),

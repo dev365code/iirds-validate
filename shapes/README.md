@@ -146,8 +146,10 @@ its own subclass.
 The generated SPARQL form has partial support. It reads directly declared
 types and class paths, type/domain/range aliases using declared subproperty
 paths, and the known bundled type table as a separate source of memberships.
-Its domain and range joins read statements from the data graph; they do not
-apply package schema declarations to the known bundled type statements.
+Its domain and range joins read statements from the data graph alone, so they
+do not apply package schema declarations to the known bundled type statements.
+That is support deferred, not a path a query cannot take: one join could read
+the table as a second source of statements, and this one does not yet.
 It does not materialize the joint RDFS fixed point. In particular, it defers
 **rdfs7 schema normalization** and feedback of derived type and transitive
 schema statements into later rules.
@@ -169,6 +171,7 @@ These named probes assert Python R61 findings and raw SHACL silence:
 | `rdfs4-feedback` | Resource typing under package metamodel declarations |
 | `rdfs6-feedback` | Property reflexivity producing a schema statement |
 | `rdfs8-feedback` | Class-to-Resource statement producing range membership |
+| `rdfs10-feedback` | Class reflexivity producing a schema statement |
 | `rdfs12-feedback` | Container membership property's implicit superproperty |
 | `rdfs13-feedback` | Datatype-to-Literal subclass consequence |
 

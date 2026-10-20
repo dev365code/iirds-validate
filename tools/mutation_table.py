@@ -89,6 +89,13 @@ TABLE = [
 
     ('earned/r61-rdfs10-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs10":', ['tests/test_obl_G.py'], 'class membership entails a reflexive subclass statement'),
 
+    ("earned/r61-rdfs10-feedback-row-removed",
+     "shapes/README.md",
+     "| `rdfs10-feedback` | Class reflexivity producing a schema statement |\n",
+     "",
+     ["tests/test_obl_G.py"],
+     "a path the generated query does not take is named where a reader of the shapes looks for it"),
+
     ('earned/r61-rdfs12-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs12":', ['tests/test_obl_G.py'], 'container membership properties inherit member semantics'),
 
     ('earned/r61-rdfs13-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs13":', ['tests/test_obl_G.py'], 'datatype classes inherit Literal when a package connects that class'),

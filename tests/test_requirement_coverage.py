@@ -407,6 +407,26 @@ def test_the_vocabulary_rows_that_are_obligations_stay_in_the_work():
         assert len(why) > 40, rid
 
 
+def test_scope_says_which_vocabulary_obligation_a_rule_claims():
+    """docs/scope.md kept the range-selector sentence "where the work is" after
+    M14.1 and M14.2 came to claim it, with evidence, and count it among the
+    covered. The page names the claimants the registry has, and says of the
+    sentence nobody claims that nobody does."""
+    from iirds_validate.rules.requirements import VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS
+
+    def claimants(rid):
+        return sorted(r.id for r in all_rules() if rid in r.covers)
+
+    selector = ("rdfrelations_core_has-start-selector#1", "rdfrelations_core_has-end-selector#1")
+    assert set(selector) < set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS)
+    assert claimants(selector[0]) == claimants(selector[1]) == ["M14.1", "M14.2"]
+    assert claimants("rdfclasses_core_ExternalClassification#1") == []
+    page = " ".join((ROOT / "docs" / "scope.md").read_text("utf-8").split())
+    assert "the range-selector sentence, stated once per property, which M14.1 and M14.2 claim" in page
+    assert "classification-domain sentence restated in the appendix, which no rule claims yet" in page
+    assert "stay where the work is" not in page
+
+
 def test_the_three_excuse_lists_do_not_overlap_and_each_entry_is_real():
     """Three lists now, and the reason for keeping them apart is the reason
     there were two: merging lets a weaker excuse hide inside a stronger one.

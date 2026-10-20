@@ -241,10 +241,11 @@ gone wrong.
    but the report names them rather than leaving them in the remainder.
 
    The other three of the twenty-nine say something about the metadata and stay
-   where the work is: the range-selector sentence, stated once per property,
-   and §6.8.4's classification-domain sentence restated in the appendix. Both
-   sides are listed by name, because the first attempt drew the line at the
-   cell's label and split one term's two adjacent rows.
+   among the obligations: the range-selector sentence, stated once per property,
+   which M14.1 and M14.2 claim, and §6.8.4's classification-domain sentence
+   restated in the appendix, which no rule claims yet. Both sides are listed by
+   name, because the first attempt drew the line at the cell's label and split
+   one term's two adjacent rows.
 
    All three lists are in the source and all three are gated; "hard to check"
    is on none of them.

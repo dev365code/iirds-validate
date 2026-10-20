@@ -165,8 +165,10 @@ DEFINES_A_CONCEPT = {
 }
 
 #: The rows of those same tables that *are* obligations about the metadata, and
-#: so stay in the gaps. Named rather than left to fall out of a pattern: this is
-#: the boundary the table above draws, and both sides of it have to be read.
+#: so stay among the obligations rather than the excused: the range-selector rows
+#: are claimed, by M14.1 and M14.2, and the classification row is not yet. Named
+#: rather than left to fall out of a pattern: this is the boundary the table
+#: above draws, and both sides of it have to be read.
 VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS = {
     "rdfrelations_core_has-start-selector#1":
         "\"A range selector MUST reference one start and one end selector.\" About "

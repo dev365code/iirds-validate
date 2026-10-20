@@ -515,6 +515,22 @@ TABLE = [
 CANARY = "canary/a-comment-nobody-reads"
 
 
+def shard(rows, spec: str):
+    """The rows one of N jobs runs: every Nth, from the Kth (`K/N`, counting from one).
+
+    Taken in turns rather than in runs, because the table is written family by
+    family and one family's rows can cost minutes each: in turns, those rows
+    spread across the jobs instead of filling one of them past its time limit.
+    """
+    try:
+        k, n = (int(part) for part in spec.split("/"))
+    except ValueError:
+        raise SystemExit("a shard is K/N, not %r" % spec) from None
+    if not 1 <= k <= n:
+        raise SystemExit("a shard is K/N with 1 <= K <= N, not %s" % spec)
+    return [row for index, row in enumerate(rows) if index % n == k - 1]
+
+
 def clear(tree: Path) -> None:
     for cache in tree.rglob("__pycache__"):
         shutil.rmtree(cache, ignore_errors=True)
@@ -582,7 +598,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="mutations this project's gates must catch")
     parser.add_argument("--run", action="store_true", help="apply each row and check it dies")
     parser.add_argument("--check", action="store_true", help="only: the table still matches the code")
+    parser.add_argument("--shard", metavar="K/N",
+                        help="only every Nth row, from the Kth: one of N jobs that share the table")
     args = parser.parse_args()
+    rows = shard(TABLE, args.shard) if args.shard else TABLE
 
     if args.check:
         drifted = anchors()
@@ -592,9 +611,12 @@ def main() -> int:
         return 1 if drifted else 0
 
     if not args.run:
-        for row_id, rel, _old, _new, checks, why in TABLE:
+        for row_id, rel, _old, _new, checks, why in rows:
             print("%s\n    %s\n    dies in: %s\n    why: %s" % (row_id, rel, ", ".join(checks), why))
-        print("\n%d rows, one of them the canary." % len(TABLE))
+        if args.shard:
+            print("\n%d rows of %d, shard %s." % (len(rows), len(TABLE), args.shard))
+        else:
+            print("\n%d rows, one of them the canary." % len(TABLE))
         return 0
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -603,7 +625,7 @@ def main() -> int:
             ".git", "__pycache__", "build", "dist", "*.egg-info", ".pytest_cache", ".ruff_cache"))
 
         survivors, broken = [], []
-        for row in TABLE:
+        for row in rows:
             row_id, rel, _old, _new, checks, _why = row
             pristine = (tree / rel).read_text(encoding="utf-8")
 
@@ -632,12 +654,16 @@ def main() -> int:
         for line in broken:
             print(line, file=sys.stderr)
         unexpected = [row_id for row_id in survivors if row_id != CANARY]
-        if CANARY not in survivors:
+        # A shard without the canary has nothing to say about it; the shard
+        # that has it does, exactly as the whole table did.
+        canary_died = any(row[0] == CANARY for row in rows) and CANARY not in survivors
+        if canary_died:
             print("the canary died: the harness is reporting red whatever it is given, "
                   "and nothing above it means anything", file=sys.stderr)
-        print("%d rows, %d survived (%s)" % (len(TABLE), len(survivors),
-                                             ", ".join(survivors) or "none"))
-        return 1 if (broken or unexpected or CANARY not in survivors) else 0
+        print("%d rows%s, %d survived (%s)" % (
+            len(rows), " of %d, shard %s" % (len(TABLE), args.shard) if args.shard else "",
+            len(survivors), ", ".join(survivors) or "none"))
+        return 1 if (broken or unexpected or canary_died) else 0
 
 
 if __name__ == "__main__":

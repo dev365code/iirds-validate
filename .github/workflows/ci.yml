@@ -182,15 +182,25 @@ jobs:
     # Every claim this repository makes about a gate is written as a mutation
     # somebody can apply. `--check` rides in the lint job because it costs
     # milliseconds; this is the other half -- apply each row in a copy of the
-    # tree and watch the checks it names fail. Measured at about a minute for
-    # nineteen rows, which is cheap enough to ask on every push rather than to
-    # leave behind a button nobody presses: a gate whose trigger never fires
-    # is a comment, and this repository has been caught by that once already.
+    # tree and watch the checks it names fail. It is asked on every push
+    # rather than left behind a button nobody presses: a gate whose trigger
+    # never fires is a comment, and this repository has been caught by that
+    # once already. Nineteen rows took about a minute; the rows that ask the
+    # SHACL comparisons take minutes each with pySHACL installed, and the whole
+    # table as one job outlasts the six hours a hosted job may run. So the
+    # table runs as shards, every sixth row each, under a limit of their own,
+    # and a test holds the shards to adding up to the table.
     #
     # One row is a canary -- a comment nobody reads -- and is expected to
-    # survive. The runner fails if anything else does, and fails too if the
-    # canary dies, because that would mean the checks are killing everything.
+    # survive. Every shard fails if a row other than the canary survives, and
+    # the shard holding the canary fails if it dies, because that would mean
+    # the checks are killing everything.
     runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     permissions:
       contents: read
     steps:
@@ -199,7 +209,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev,shacl]"
-      - run: python tools/mutation_table.py --run
+      - run: python tools/mutation_table.py --run --shard ${{ matrix.shard }}/6
 
   wheel:
     # The failure this job exists for: a wheel that builds and installs but is

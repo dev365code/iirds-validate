@@ -60,6 +60,13 @@ NAMED = "tests/test_jsonld_named_graphs.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ("earned/r61-bundled-domain-assertion-flipped",
+     "tests/test_obl_G.py",
+     "              (RDF.type, RDFS.domain, CORE.InformationUnit))",
+     '              (CORE["has-party-role"], RDFS.domain, CORE.Party))',
+     ["tests/test_obl_G.py"],
+     "a compatible domain cannot satisfy the positive Python witnesses even when raw SHACL stays silent"),
+
     ('earned/r61-rdfs2-feedback-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs2" and obj == RDF.type):', ['tests/test_obl_G.py'], 'domain-implied types must feed schema and type statements'),
 
     ('earned/r61-rdfs3-feedback-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and not (pattern == "rdfs3" and obj == RDF.type):', ['tests/test_obl_G.py'], 'range-implied types must feed schema and type statements'),

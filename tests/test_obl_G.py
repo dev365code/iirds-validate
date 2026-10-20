@@ -1209,3 +1209,80 @@ def test_disjoint_fixed_point_schema_consequences_are_reusable(tmp_path):
         findings = list(r61_disjoint_classes_have_no_common_instance(ctx))
         assert len(findings) == 1 and findings[0].subject == str(EXAMPLE.p)
         assert set(ctx.graph) == before
+
+
+def _rdfs2_bundled_statement_metadata(ordinary_domain=False):
+    domain = ((CORE["has-party-role"], RDFS.domain, CORE.Party) if ordinary_domain else
+              (RDF.type, RDFS.domain, CORE.InformationUnit))
+    return _disjoint_membership_metadata(((EXAMPLE.party, CORE["has-party-role"], CORE.Creator), domain))
+
+
+def _rdfs2_bundled_statement_findings(tmp_path, ordinary_domain=False):
+    metadata = _rdfs2_bundled_statement_metadata(ordinary_domain)
+    package = build_package(tmp_path, "bundled-statement.iirds", metadata=metadata)
+    return [finding for finding in runner.run(package, runner.ALL_KINDS).findings
+            if finding.rule.id == "R61"]
+
+
+def test_rdfs2_bundled_statement_reports_each_common_instance(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    RDFS rdfs2 applies rdf:type's domain to bundled and entailed type statements.
+    """
+    from pathlib import Path
+
+    findings = _rdfs2_bundled_statement_findings(tmp_path)
+    assert len(findings) == 2, findings
+    by_subject = {finding.violation.subject: finding for finding in findings}
+    assert set(by_subject) == {str(CORE.Creator), str(EXAMPLE.party)}
+    for subject in (CORE.Creator, EXAMPLE.party):
+        detail = by_subject[str(subject)].violation.detail
+        assert "inferred from the domain of " + str(RDF.type) in detail, detail
+        assert all(str(cls) in detail for cls in (CORE.AdministrativeMetadata, CORE.InformationUnit)), detail
+    assert "known from the bundled type of " + str(CORE.Creator) in by_subject[str(CORE.Creator)].violation.detail
+    assert "inferred from the domain of " + str(CORE["has-party-role"]) in by_subject[str(EXAMPLE.party)].violation.detail
+    assert claimants("x6-11-1-disjointness#1") & {finding.rule.id for finding in findings}
+    readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
+    assert "| `bundled-domain` |" in readme
+    feedback = next(line for line in readme.splitlines() if line.startswith("| `rdfs2-feedback` |"))
+    assert "party" in feedback
+
+
+def test_rdfs2_bundled_statement_ordinary_domain_is_compatible(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    An ordinary Party domain preserves compatible AdministrativeMetadata types.
+    """
+    assert not _rdfs2_bundled_statement_findings(tmp_path, ordinary_domain=True)
+
+
+@pytest.mark.parametrize("ordinary_domain", [False, True], ids=["bundled-domain", "ordinary-domain"])
+def test_rdfs2_bundled_statement_comparison(tmp_path, ordinary_domain):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    Pin Python findings and raw SHACL silence for the deferred rdfs2 inputs.
+    """
+    from pathlib import Path
+
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    findings = _rdfs2_bundled_statement_findings(tmp_path, ordinary_domain)
+    assert len(findings) == (0 if ordinary_domain else 2)
+    for subject in (CORE.Creator, EXAMPLE.party):
+        assert sum(f.violation.subject == str(subject) for f in findings) == int(not ordinary_domain)
+    _ok, results, text = pyshacl.validate(
+        Graph().parse(data=_rdfs2_bundled_statement_metadata(ordinary_domain), format="xml"),
+        shacl_graph=SHAPES, advanced=True, inference="none")
+    raw = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+           if str(source).rsplit("#", 1)[-1] == "R61"}
+    assert len(raw) == 0, text
+    if not ordinary_domain:
+        readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
+        assert "| `bundled-domain` |" in readme
+        assert "| `rdfs2-feedback` |" in readme

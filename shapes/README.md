@@ -145,9 +145,12 @@ its own subclass.
 
 The generated SPARQL form has partial support. It reads directly declared
 types and class paths, type/domain/range aliases using declared subproperty
-paths, and the known bundled type table. It does not materialize the joint
-RDFS fixed point. In particular, it defers **rdfs7 schema normalization** and
-feedback of derived type and transitive schema statements into later rules.
+paths, and the known bundled type table as a separate source of memberships.
+Its domain and range joins read statements from the data graph; they do not
+apply package schema declarations to the known bundled type statements.
+It does not materialize the joint RDFS fixed point. In particular, it defers
+**rdfs7 schema normalization** and feedback of derived type and transitive
+schema statements into later rules.
 These named probes assert Python R61 findings and raw SHACL silence:
 
 | Deferred probe | Missing path in the generated query |
@@ -155,7 +158,8 @@ These named probes assert Python R61 findings and raw SHACL silence:
 | `class-alias` | Aliased subclass statement normalization |
 | `property-alias-fixed-point` | Derived subproperty statements |
 | `domain-fixed-point` | Derived subproperty followed by a domain declaration |
-| `rdfs2-feedback` | Domain type fed back into schema and type aliases |
+| `bundled-domain` | Package domain declarations applied to known bundled type statements |
+| `rdfs2-feedback` | Domain type fed back into schema and type aliases, including the inferred `iirds:Party` type of `party` fed into the domain of `rdf:type` |
 | `rdfs3-feedback` | Range type fed back into schema and type aliases |
 | `rdfs5-feedback` | Transitive subproperty statement used as a type statement |
 | `rdfs9-feedback` | Ancestor type fed back into subproperty declarations |

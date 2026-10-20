@@ -360,26 +360,43 @@ def test_r4_reports_the_vcard_once_not_once_per_party(tmp_path):
 def test_r4s_remedy_names_only_what_repairs_the_package(tmp_path):
     """The remedy offered two repairs, and one of them was not: dropping the
     `iirds:relates-to-vcard` leaves every party with no description at all,
-    and M23 and the five named-party MUSTs report that in R4's place. So each
-    repair is followed here, as written, and only the one that leaves the
-    package clean is one the remedy may name."""
+    and other rules report that in R4's place. So each repair is followed here,
+    as written, and only the one that leaves the package clean is one the remedy
+    may name. Which rules those are is followed too: M23 everywhere, and under
+    iiRDS/H the five that claim R4's sentences beside it -- outside iiRDS/H they
+    do not run, and a remedy that named them there named nothing."""
     from iirds_validate.registry import all_rules
 
+    rules = {r.id: r for r in all_rules()}
+    # R12 claims the same sentences for a literal or a vocabulary's name, which
+    # is not a party with no vcard; the named-party rules are the rest.
+    five = {rid for rid, r in rules.items()
+            if rid not in ("R4", "R12") and set(r.covers) & set(rules["R4"].covers)}
+    assert len(five) == 5, sorted(five)
     pointer = '<iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>'
     broken = HANDOVER.replace(ORGANISATION, "")
     assert broken != HANDOVER and HANDOVER.count(pointer) == 3
     assert "R4" in _ids(tmp_path, "broken.iirds", broken)
-    others = FIVE | {"M23", "R14", "R16"}
+    others = FIVE | five | {"M23"}
 
     described = _ids(tmp_path, "described.iirds", HANDOVER)
     assert "R4" not in described and not others & described, sorted(described)
     dropped = _ids(tmp_path, "dropped.iirds", broken.replace(pointer, ""))
-    assert "R4" not in dropped and others & dropped, sorted(dropped)
+    assert "R4" not in dropped and five | {"M23"} <= dropped, sorted(dropped)
 
-    fix = {r.id: r for r in all_rules()}["R4"].fix
+    restriction = "<iirds:formatRestriction>H</iirds:formatRestriction>"
+    plain = broken.replace(restriction, "")
+    assert broken.count(restriction) == 1 and "R4" in _ids(tmp_path, "plain.iirds", plain)
+    plain_dropped = _ids(tmp_path, "plain-dropped.iirds", plain.replace(pointer, ""))
+    assert "R4" not in plain_dropped and "M23" in plain_dropped, sorted(plain_dropped)
+    assert not five & plain_dropped, sorted(plain_dropped)
+
+    fix = rules["R4"].fix
     assert fix.startswith("Describe the vcard in this package as a vcard:Organization carrying "
                           "a vcard:organization-name."), fix
     assert "or drop the iirds:relates-to-vcard" not in fix, fix
+    assert ("is what M23 reports in this one's place, and under iiRDS/H the five named-party "
+            "rules as well") in fix, fix
 
 
 def test_r4_leaves_a_described_but_unnamed_vcard_to_the_five(tmp_path):

@@ -230,7 +230,7 @@ ivs:R4 a sh:NodeShape ;
   sh:message "a vcard a party points at must be described in the package" ;
   ivm:ruleId "R4" ;
   ivm:ruleSource "iirds-validate" ;
-  sh:description "Describe the vcard in this package as a vcard:Organization carrying a vcard:organization-name. Dropping the iirds:relates-to-vcard instead is no repair: a party with no vcard at all is what M23 and the five named-party rules report in this one's place. A pointer at an IRI nothing here describes leaves the party unidentifiable to anyone holding only the package — which in iiRDS/H is the reader the profile is written for, and is why the five named-party MUSTs are MUSTs there." ;
+  sh:description "Describe the vcard in this package as a vcard:Organization carrying a vcard:organization-name. Dropping the iirds:relates-to-vcard instead is no repair: a party with no vcard at all is what M23 reports in this one's place, and under iiRDS/H the five named-party rules as well. A pointer at an IRI nothing here describes leaves the party unidentifiable to anyone holding only the package — which in iiRDS/H is the reader the profile is written for, and is why the five named-party MUSTs are MUSTs there." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#metadata-requirements> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
   ivm:covers "x8-3-2-metadata-requirements#3" ;

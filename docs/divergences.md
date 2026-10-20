@@ -372,12 +372,13 @@ The specification says which methods, in a sentence without a keyword. Section
 5.2 has `mimetype` stored, so that a consumer can identify the container
 without decompressing anything, and section 5.2.2 has the rest: "All other files
 in the ZIP are either uncompressed ("Stored" compression mode) or compressed in
-"Deflated" mode." Everything in the specification not marked otherwise is
-normative, so that sentence is a requirement, and it names exactly the two
-methods this tool reads. The archive format permits bzip2, lzma and several
-more; iiRDS does not. Version 1.0 says the same in its section 5.3.2. The index
-holds no sentence for it -- it carries no keyword -- so S14 claims none, and
-links to the section.
+"Deflated" mode." The specification's section 1 makes everything in it
+normative but the sections it marks non-normative and its authoring guidelines,
+diagrams, examples and notes. That sentence is none of those, so it is a
+requirement, and it names exactly the two methods this tool reads. The archive
+format permits bzip2, lzma and several more; iiRDS does not. Version 1.0 says
+the same in its section 5.3.2. The index holds no sentence for it -- it carries
+no keyword -- so S14 claims none, and links to the section.
 
 The refusal would stand without that sentence, and the reason it would is
 stated here because a reader who meets `ERROR S14` deserves to find the argument

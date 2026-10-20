@@ -297,3 +297,14 @@ def test_a_verbose_report_says_it_for_a_run_of_findings_too(make_package):
     text = out.getvalue()
     reason = {r.id: r for r in all_rules()}["L1"].no_section
     assert text.count("spec: none -- %s" % reason) == 1, text
+
+
+def test_a_rule_of_this_projects_advice_calls_itself_nothing_else():
+    """L8's reason says it is this project's advice, and its remedy said "a note
+    rather than a defect": `iirds rules L8 -v` printed two names for one kind
+    of finding, a line apart."""
+    advice = [r for r in all_rules() if (r.no_section or "").startswith("this project's advice: ")]
+    assert sorted(r.id for r in advice) == ["L1", "L15", "L8"], [r.id for r in advice]
+    for r in advice:
+        assert not re.search(r"\bnote\b", r.fix, re.I), (r.id, r.fix)
+

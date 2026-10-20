@@ -264,8 +264,8 @@ def test_an_unpacked_container_has_no_method_to_refuse(tmp_path):
     assert "S14" not in ids, "a directory has no compression method to refuse"
 
 
-#: Section 5.2.2, as the specification writes it -- no keyword, and normative
-#: like everything it does not mark otherwise.
+#: Section 5.2.2, as the specification writes it -- no keyword, and normative:
+#: it is none of what section 1 calls non-normative.
 SECTION_5_2_2 = ('All other files in the ZIP are either uncompressed ("Stored" compression mode) '
                  'or compressed in "Deflated" mode.')
 
@@ -276,19 +276,33 @@ def _flat(text):
 
 def test_what_s14_says_of_the_standard_is_what_the_standard_says():
     """S14's remedy said the specification is silent about which method an entry
-    uses, under a link to the section that names two; its entry in
-    `docs/divergences.md` said a package using another method is not
-    non-conformant by the specification's own words. Both name the sections
-    now, and the entry quotes the sentence."""
+    uses, under a link to the section that names two; its docstring called the
+    refusal this project's own decision and the specification silent about the
+    rest; its entry in `docs/divergences.md` said a package using another method
+    is not non-conformant by the specification's own words. All three name the
+    sections now -- the remedy the two methods, the docstring and the entry the
+    sentence itself -- and say what the sentence is, not only where it is."""
     from iirds_validate.registry import all_rules
 
     rule = {r.id: r for r in all_rules()}["S14"]
     assert rule.spec.endswith("#x5-2-2-content-encoding"), rule.spec
     assert "section 5.2.2" in rule.fix and "section 5.2 " in rule.fix, rule.fix
     assert "silent" not in rule.fix, rule.fix
+    # What it says of the section, not only that it names it: a remedy that named
+    # 5.2.2 and called the method open there would pass the lines above.
+    assert ("the two methods section 5.2.2 of the specification gives every file but "
+            "`mimetype`") in _flat(rule.fix), rule.fix
+    # The docstring, read where it is: what a maintainer meets beside the code.
+    doc = _flat(rule.fn.__doc__ or "")
+    assert "Section 5.2.2" in doc and "section 5.2 has `mimetype` stored" in doc, doc
+    quoted = 'either uncompressed ("Stored" compression mode) or compressed in "Deflated" mode'
+    assert quoted in SECTION_5_2_2 and quoted in doc, doc
+    for retracted in ("silent", "own decision", "not a reading of the specification"):
+        assert retracted not in doc, retracted
     page = _flat((ROOT / "docs" / "divergences.md").read_text(encoding="utf-8"))
     entry = page.split("**S14 —", 1)[1].split("**S12", 1)[0]
     assert SECTION_5_2_2 in entry, "the S14 entry no longer quotes section 5.2.2"
+    assert "is none of those, so it is a requirement" in entry, entry
     for retracted in ("silent", "not non-conformant", "no reading of the specification"):
         assert retracted not in entry, retracted
 

@@ -19,7 +19,6 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS
 
 from .. import terms as T
-from ..context import said_by
 from ..model import DCTERMS, IIRDS_NAMESPACES, METADATA_JSONLD, OWL, VCARD, VERSIONS, Violation
 from ..package import ELSEWHERE, ESCAPES, NOTHING, entry_named, entry_or_reason
 from ..registry import rule
@@ -74,56 +73,6 @@ def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None, cover
     return rule(rule_id, kind="lint", prio=prio, title=title, versions=ALL_VERSIONS,
                 variants=(), spec=None, conformance=conformance, fix=fix, covers=covers)
 
-
-#: Sentinel pushed onto the traversal stack to mark "finished with this node".
-_CLOSE = object()
-
-
-def _in_name_order(ctx):
-    """A sort key for directory nodes that puts them in one order on every run.
-
-    By the name a report gives them, and, where two blank nodes share one
-    because one subject points at both with one property, by what each says, as
-    `context._node_key` orders packages. A name alone leaves a tie in the order
-    the graph produced it, which is the order a set hashes in. A blank node no
-    named subject points at is named by that same digest already, cut to twelve
-    places, so it is not worked out a second time to sort names that agree on
-    those. Each key is worked out once: a long list is compared many times over.
-    """
-    keys = {}
-
-    def key(node):
-        found = keys.get(node)
-        if found is None:
-            name = ctx.ref(node)
-            told_apart = isinstance(node, BNode) and not name.startswith("_:")
-            found = keys[node] = (name, said_by(ctx.graph, node) if told_apart else "")
-        return found
-    return key
-
-
-def _first_rotation(keys) -> int:
-    """Where the rotation of `keys` that sorts first begins, in linear time.
-
-    A walk meets a loop at whichever node it came in by; the loop is the same
-    from every way in and only its rotation differs. Starting from the rotation
-    that sorts first writes one loop one way: from its first node by name, and
-    where nodes tie on everything a report shows, by what follows them round.
-    """
-    n, i, j, k = len(keys), 0, 1, 0
-    while i < n and j < n and k < n:
-        a, b = keys[(i + k) % n], keys[(j + k) % n]
-        if a == b:
-            k += 1
-            continue
-        if a > b:
-            i += k + 1
-        else:
-            j += k + 1
-        if i == j:
-            j += 1
-        k = 0
-    return min(i, j)
 
 
 def _children(ctx, node):
@@ -251,53 +200,65 @@ def l3_orphan_directory_nodes(ctx):
 def l4_directory_cycles(ctx):
     """A consumer walking the table of contents would loop forever.
 
+    One finding per loop structure: the nodes that each reach every other by
+    has-first-child and has-next-sibling -- a strongly connected component of
+    that graph -- where there are two or more, or one that points at itself.
+    Which structures a graph has does not depend on the order anything is
+    looked at in, so neither does what is reported, nor how much: a walk that
+    reported the node it came back to found one loop of two sharing a node, or
+    both, by where it started. Each structure is named by its first node by
+    name and lists its nodes in that order -- breaking every loop through them
+    is the repair.
+
     Iterative on purpose. `has-next-sibling` is a linked list, so a flat table
     of contents of N entries is N deep — a thousand-entry manual is ordinary,
     and a recursive walk blows the stack and reports a valid package as broken.
     """
-    state = {}                       # node -> "open" while on the current path
-    came_from = {}                   # node -> the node the walk reached it from
-    reported = set()
-    order = _in_name_order(ctx)
+    names = {}
 
-    # In one order on every run, and each node's edges too: which loops a walk
-    # finds, and so how many findings there are, depends on where it starts.
-    for start in sorted(ctx.instances_of(T.DirectoryNode), key=order):
-        if state.get(start) == "done":
+    def name(node):
+        found = names.get(node)
+        if found is None:
+            found = names[node] = ctx.ref(node)
+        return found
+
+    # Tarjan's components, with an explicit stack of (node, its remaining edges).
+    index, low, on_path, path, structures = {}, {}, set(), [], []
+    for start in ctx.instances_of(T.DirectoryNode):
+        if start in index:
             continue
-        # (node, the node it is an edge of) with an explicit close marker, so
-        # the path unwinds exactly as it would on return from a recursive call.
-        # The path is kept as one pointer per open node rather than a copy per
-        # edge: a copy per edge is quadratic down a long sibling list.
-        stack = [(start, None)]
-        while stack:
-            node, via = stack.pop()
-            if node is _CLOSE:
-                state[via] = "done"
-                continue
-            if state.get(node) == "done":
-                continue
-            if state.get(node) == "open":
-                if node not in reported:
-                    reported.add(node)
-                    loop = [via]
-                    while loop[-1] != node:
-                        loop.append(came_from[loop[-1]])
-                    loop.reverse()
-                    # Named by the loop's own first node, not by the node the
-                    # walk came back to: that one depends on the way in.
-                    first = _first_rotation([order(n) for n in loop])
-                    loop = loop[first:] + loop[:first]
-                    yield Violation("cycle in the directory structure",
-                                    subject=ctx.ref(loop[0]),
-                                    detail=" -> ".join(ctx.ref(n).split("/")[-1]
-                                                       for n in loop + loop[:1]))
-                continue
-            state[node] = "open"
-            came_from[node] = via
-            stack.append((_CLOSE, node))
-            for child in sorted(_children(ctx, node), key=order, reverse=True):
-                stack.append((child, node))
+        index[start] = low[start] = len(index)
+        path.append(start)
+        on_path.add(start)
+        work = [(start, iter(_children(ctx, start)))]
+        while work:
+            node, edges = work[-1]
+            for child in edges:
+                if child not in index:
+                    index[child] = low[child] = len(index)
+                    path.append(child)
+                    on_path.add(child)
+                    work.append((child, iter(_children(ctx, child))))
+                    break
+                if child in on_path:
+                    low[node] = min(low[node], index[child])
+            else:
+                work.pop()
+                if work:
+                    low[work[-1][0]] = min(low[work[-1][0]], low[node])
+                if low[node] == index[node]:
+                    members = []
+                    while True:
+                        member = path.pop()
+                        on_path.discard(member)
+                        members.append(member)
+                        if member == node:
+                            break
+                    if len(members) > 1 or node in _children(ctx, node):
+                        structures.append(sorted(name(member) for member in members))
+    for members in sorted(structures):
+        yield Violation("cycle in the directory structure", subject=members[0],
+                        detail=", ".join(member.split("/")[-1] for member in members))
 
 
 @_lint("L5", "a proprietary class should link into the iiRDS vocabulary itself",

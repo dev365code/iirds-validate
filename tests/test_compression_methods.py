@@ -295,6 +295,7 @@ def test_what_s14_says_of_the_standard_is_what_the_standard_says():
     # The docstring, read where it is: what a maintainer meets beside the code.
     doc = _flat(rule.fn.__doc__ or "")
     assert "Section 5.2.2" in doc and "section 5.2 has `mimetype` stored" in doc, doc
+    assert "normative text without a keyword" in doc, doc
     quoted = 'either uncompressed ("Stored" compression mode) or compressed in "Deflated" mode'
     assert quoted in SECTION_5_2_2 and quoted in doc, doc
     for retracted in ("silent", "own decision", "not a reading of the specification"):

@@ -462,8 +462,9 @@ def test_the_node_a_loop_is_named_by_is_the_first_by_name(tmp_path):
         (f.violation.subject, f.violation.detail) for f in loops]
 
 
-def _l4_across_seeds(tmp_path, name, metadata):
-    """Every distinct list of L4 findings eight hash seeds give for one package."""
+def _l4_across_seeds(tmp_path, name, metadata, seeds=8):
+    """Every distinct list of L4 findings `seeds` runs give for one package, each
+    under its own hash seed -- and each parse mints its own blank-node labels."""
     import subprocess
     import sys
 
@@ -476,8 +477,8 @@ def _l4_across_seeds(tmp_path, name, metadata):
         "print(json.dumps([[f['subject'], f['detail']] for f in r['findings'] if f['rule'] == 'L4']))"
         % (str(ROOT / "src"), str(package)))
     reports = set()
-    for seed in ("0", "1", "2", "3", "4", "5", "6", "7"):
-        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+    for seed in range(seeds):
+        env = dict(os.environ, PYTHONHASHSEED=str(seed), PYTHONDONTWRITEBYTECODE="1")
         reports.add(subprocess.run([sys.executable, "-c", script], env=env,
                                    capture_output=True, text=True, check=True).stdout.strip())
     return reports
@@ -494,25 +495,11 @@ FIRST_BY_NAME_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
 </rdf:RDF>""")
 
 
-def test_a_loop_is_written_from_the_rotation_that_sorts_first():
-    """Against every rotation of every short run of three letters -- ties
-    included, which is where a quicker comparison than the obvious one goes
-    wrong, and which a loop of blank nodes saying the same thing is made of."""
-    from itertools import product
-
-    from iirds_validate.rules.lint import _first_rotation
-
-    for length in range(1, 7):
-        for keys in product("abc", repeat=length):
-            first = _first_rotation(keys)
-            assert keys[first:] + keys[:first] == min(keys[i:] + keys[:i] for i in range(length)), keys
-
-
 def test_a_loop_is_named_by_its_first_node_and_not_by_the_way_in(tmp_path):
     assert FIRST_BY_NAME_RDF != MINIMAL_RDF
     report = runner.run(build_package(tmp_path, "way-in.iirds", metadata=FIRST_BY_NAME_RDF), runner.ALL_KINDS)
     loops = [(f.violation.subject, f.violation.detail) for f in report.findings if f.rule.id == "L4"]
-    assert loops == [("urn:test:b1", "urn:test:b1 -> urn:test:z2 -> urn:test:b1")], loops
+    assert loops == [("urn:test:b1", "urn:test:b1, urn:test:z2")], loops
 
 
 #: Two blank ways in that one subject points at with one property, so they share
@@ -534,7 +521,7 @@ TIED_WAYS_IN_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
 def test_two_ways_in_that_share_a_name_do_not_choose_the_node_reported(tmp_path):
     assert TIED_WAYS_IN_RDF != MINIMAL_RDF
     reports = _l4_across_seeds(tmp_path, "tied.iirds", TIED_WAYS_IN_RDF)
-    assert reports == {json.dumps([["urn:test:x", "urn:test:x -> urn:test:y -> urn:test:x"]])}, sorted(reports)
+    assert reports == {json.dumps([["urn:test:x", "urn:test:x, urn:test:y"]])}, sorted(reports)
 
 
 #: A loop of blank nodes behind a named one. None of the three carries a label,
@@ -553,19 +540,16 @@ def test_a_loop_of_blank_nodes_is_written_the_same_way_across_hash_seeds(tmp_pat
     reports = _l4_across_seeds(tmp_path, "blank-loop.iirds", BLANK_LOOP_RDF)
     assert len(reports) == 1, sorted(reports)
     [(subject, detail)] = json.loads(reports.pop())
-    names = detail.split(" -> ")
-    assert names[0] == names[-1] == subject and len(names) == 4, detail
-    # Written from the rotation that comes first, so from the blank node the
-    # other blank node follows -- not from wherever the walk happened to arrive.
-    loop = names[:-1]
-    assert loop == min(loop[i:] + loop[:i] for i in range(len(loop))), detail
-    assert loop.count("urn:test:toc has-first-child") == 1 and subject.startswith("_:"), detail
+    names = detail.split(", ")
+    # The loop's nodes in the order of their names, named by the first.
+    assert len(names) == 3 and names == sorted(names) and subject == names[0], detail
+    assert names.count("urn:test:toc has-first-child") == 1 and subject.startswith("_:"), detail
 
 
 #: Two loops through one node, every node blank and told apart only by what it
-#: says. Which loops a walk finds -- and so how many findings there are --
-#: depends on where it starts, and it starts in an order that must not be the
-#: order the parser happened to mint labels in.
+#: says. A walk that reported where it came back to found one loop or both
+#: depending on where it started; the two are one loop structure -- each node
+#: reaches every other -- and that is what is reported, once.
 TWO_LOOPS_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
   <iirds:DirectoryNode rdf:about="urn:test:toc"><iirds:has-first-child rdf:nodeID="x"/></iirds:DirectoryNode>
   <iirds:DirectoryNode rdf:nodeID="x"><rdfs:label>x</rdfs:label><iirds:has-next-sibling rdf:nodeID="y"/></iirds:DirectoryNode>
@@ -580,14 +564,14 @@ TWO_LOOPS_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
 def test_two_loops_through_one_node_are_found_the_same_way_across_hash_seeds(tmp_path):
     assert TWO_LOOPS_RDF != MINIMAL_RDF
     reports = _l4_across_seeds(tmp_path, "two-loops.iirds", TWO_LOOPS_RDF)
-    assert len(reports) == 1 and json.loads(next(iter(reports))), sorted(reports)
+    assert len(reports) == 1 and len(json.loads(next(iter(reports)))) == 1, sorted(reports)
 
 
 #: Two blank ways in that share a name, `urn:test:p has-first-child`, and are
 #: told apart only by what they say -- with a loop between them and a second
-#: loop through one of them. Taken one way first, the walk finds both loops;
-#: taken the other way first, it comes back to the same node twice and reports
-#: once. So their order decides the findings, not only how one is written.
+#: loop through one of them. A walk that reported where it came back to found
+#: both loops taken one way first and one taken the other; reported as the one
+#: structure the two loops make, the order the ways are taken in decides nothing.
 TIED_TWO_LOOPS_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
   <iirds:DirectoryNode rdf:about="urn:test:p">
     <iirds:has-first-child rdf:nodeID="u"/>
@@ -605,5 +589,103 @@ TIED_TWO_LOOPS_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
 def test_two_ways_in_that_share_a_name_do_not_choose_the_findings(tmp_path):
     assert TIED_TWO_LOOPS_RDF != MINIMAL_RDF
     reports = _l4_across_seeds(tmp_path, "tied-loops.iirds", TIED_TWO_LOOPS_RDF)
-    assert len(reports) == 1 and json.loads(next(iter(reports))), sorted(reports)
+    assert len(reports) == 1 and len(json.loads(next(iter(reports)))) == 1, sorted(reports)
+
+
+#: Two blank roots that say the same thing four levels down -- the depth a
+#: digest of what a node says reaches -- and part ways after it, into one
+#: structure of two loops through `zn`. Ordered by name and digest the two roots
+#: tie, and which loop a walk met first decided whether one finding or two.
+DEEP_TIE_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
+  <iirds:DirectoryNode rdf:nodeID="u"><rdfs:label>Contents</rdfs:label><iirds:has-first-child rdf:nodeID="a1"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="v"><rdfs:label>Contents</rdfs:label><iirds:has-first-child rdf:nodeID="b1"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a1"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="a2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a2"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="a3"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a3"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="a4"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a4"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:resource="urn:test:zm"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b1"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="b2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b2"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="b3"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b3"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:nodeID="b4"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b4"><rdfs:label>entry</rdfs:label><iirds:has-next-sibling rdf:resource="urn:test:zn"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:zm"><iirds:has-next-sibling rdf:resource="urn:test:zn"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:zn"><iirds:has-next-sibling rdf:resource="urn:test:zm"/><iirds:has-first-child rdf:resource="urn:test:zo"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:zo"><iirds:has-next-sibling rdf:resource="urn:test:zn"/></iirds:DirectoryNode>
+</rdf:RDF>""")
+
+
+def test_two_roots_alike_four_levels_down_do_not_choose_the_findings(tmp_path):
+    assert DEEP_TIE_RDF != MINIMAL_RDF
+    reports = _l4_across_seeds(tmp_path, "deep-tie.iirds", DEEP_TIE_RDF, seeds=16)
+    assert reports == {json.dumps([["urn:test:zm", "urn:test:zm, urn:test:zn, urn:test:zo"]])}, sorted(reports)
+
+
+#: The same tie, found apart from the one above. Two blank ways in share the
+#: name of the node that points at both, `urn:j2:A has-first-child`, with a
+#: loop between them; from one of them a chain of seven runs back to it, from
+#: the other a chain of seven runs out, and every node of both chains is named
+#: alike again, by `urn:j2:Z`, and says the same thing as far as a digest
+#: reaches. The two loops are one structure of nine nodes, and a walk found one
+#: finding or two as the seed fell.
+OWNED_TIE_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
+  <iirds:DirectoryNode rdf:about="urn:j2:A">
+    <iirds:has-first-child rdf:nodeID="u"/>
+    <iirds:has-first-child rdf:nodeID="v"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="u"><iirds:has-next-sibling rdf:nodeID="v"/><iirds:has-first-child rdf:nodeID="a0"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="v"><iirds:has-next-sibling rdf:nodeID="u"/><iirds:has-first-child rdf:nodeID="b0"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a0"><iirds:has-next-sibling rdf:nodeID="a1"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a1"><iirds:has-next-sibling rdf:nodeID="a2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a2"><iirds:has-next-sibling rdf:nodeID="a3"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a3"><iirds:has-next-sibling rdf:nodeID="a4"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a4"><iirds:has-next-sibling rdf:nodeID="a5"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a5"><iirds:has-next-sibling rdf:nodeID="a6"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="a6"><iirds:has-next-sibling rdf:resource="urn:j2:terminal"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b0"><iirds:has-next-sibling rdf:nodeID="b1"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b1"><iirds:has-next-sibling rdf:nodeID="b2"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b2"><iirds:has-next-sibling rdf:nodeID="b3"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b3"><iirds:has-next-sibling rdf:nodeID="b4"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b4"><iirds:has-next-sibling rdf:nodeID="b5"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b5"><iirds:has-next-sibling rdf:nodeID="b6"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:nodeID="b6"><iirds:has-next-sibling rdf:nodeID="v"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:j2:terminal"/>
+  <rdf:Description rdf:about="urn:j2:Z">
+    <iirds:has-first-child rdf:nodeID="a0"/><iirds:has-first-child rdf:nodeID="a1"/>
+    <iirds:has-first-child rdf:nodeID="a2"/><iirds:has-first-child rdf:nodeID="a3"/>
+    <iirds:has-first-child rdf:nodeID="a4"/><iirds:has-first-child rdf:nodeID="a5"/>
+    <iirds:has-first-child rdf:nodeID="a6"/><iirds:has-first-child rdf:nodeID="b0"/>
+    <iirds:has-first-child rdf:nodeID="b1"/><iirds:has-first-child rdf:nodeID="b2"/>
+    <iirds:has-first-child rdf:nodeID="b3"/><iirds:has-first-child rdf:nodeID="b4"/>
+    <iirds:has-first-child rdf:nodeID="b5"/><iirds:has-first-child rdf:nodeID="b6"/>
+  </rdf:Description>
+</rdf:RDF>""")
+
+
+def test_ways_in_named_alike_and_alike_as_deep_as_a_digest_do_not_choose_the_findings(tmp_path):
+    assert OWNED_TIE_RDF != MINIMAL_RDF
+    reports = _l4_across_seeds(tmp_path, "owned-tie.iirds", OWNED_TIE_RDF, seeds=16)
+    members = ["urn:j2:A has-first-child"] * 2 + ["urn:j2:Z has-first-child"] * 7
+    assert reports == {json.dumps([["urn:j2:A has-first-child", ", ".join(members)]])}, sorted(reports)
+
+
+#: One structure of two loops that share a node, and a loop of its own apart.
+SHARED_AND_APART_RDF = MINIMAL_RDF.replace("</rdf:RDF>", """\
+  <iirds:DirectoryNode rdf:about="urn:test:a"><iirds:has-next-sibling rdf:resource="urn:test:b"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:b">
+    <iirds:has-next-sibling rdf:resource="urn:test:a"/>
+    <iirds:has-first-child rdf:resource="urn:test:c"/>
+  </iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:c"><iirds:has-next-sibling rdf:resource="urn:test:b"/></iirds:DirectoryNode>
+  <iirds:DirectoryNode rdf:about="urn:test:p"><iirds:has-next-sibling rdf:resource="urn:test:p"/></iirds:DirectoryNode>
+</rdf:RDF>""")
+
+
+def test_a_loop_structure_is_reported_once_and_one_apart_once_more(tmp_path):
+    """The nodes that each reach every other are one finding, however many ways
+    round them there are: breaking that structure is one repair. A node that
+    points at itself is a structure of one."""
+    assert SHARED_AND_APART_RDF != MINIMAL_RDF
+    report = runner.run(build_package(tmp_path, "shared.iirds", metadata=SHARED_AND_APART_RDF), runner.ALL_KINDS)
+    loops = sorted((f.violation.subject, f.violation.detail) for f in report.findings if f.rule.id == "L4")
+    assert loops == [("urn:test:a", "urn:test:a, urn:test:b, urn:test:c"),
+                     ("urn:test:p", "urn:test:p")], loops
 

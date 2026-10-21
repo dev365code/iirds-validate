@@ -16,10 +16,14 @@ The harness holds itself to the same standard:
     appears exactly once in the file it names. A row whose anchor has drifted
     is an error, not a pass -- it would otherwise report a gate as sound while
     changing nothing.
-  * **the bytecode has to be the new bytecode.** Restoring a file to its
+  * **the bytecode has to be the new bytecode.** A file rewritten to its
     previous size leaves a `.pyc` CPython still considers valid, because the
-    source mtime it records has one-second resolution. Every apply and restore
-    clears `__pycache__` and touches the file.
+    source mtime it records has one-second resolution. Every apply clears
+    `__pycache__` and touches the file.
+  * **every row starts from the same tree.** A check may write into the
+    tree -- `tools/emit_shacl.py` rewrites the shapes from the generator a row
+    has just broken -- and putting the line back does not put back what was
+    written from it. Each row runs in a fresh copy.
   * **the checks have to run.** A selection that collects nothing exits 5, and
     a run where everything skipped exits 0 while asserting nothing. Both are
     broken rows, not killed mutants.
@@ -628,15 +632,14 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as tmp:
         tree = Path(tmp) / "tree"
-        shutil.copytree(ROOT, tree, ignore=shutil.ignore_patterns(
-            ".git", "__pycache__", "build", "dist", "*.egg-info", ".pytest_cache", ".ruff_cache"))
 
         survivors, broken = [], []
         for row in rows:
-            row_id, rel, _old, _new, checks, _why = row
-            pristine = (tree / rel).read_text(encoding="utf-8")
+            row_id, _rel, _old, _new, checks, _why = row
+            shutil.rmtree(tree, ignore_errors=True)
+            shutil.copytree(ROOT, tree, ignore=shutil.ignore_patterns(
+                ".git", "__pycache__", "build", "dist", "*.egg-info", ".pytest_cache", ".ruff_cache"))
 
-            clear(tree)
             code, said = run(tree, checks)
             if code != 0:
                 broken.append("%s: the checks it names already fail before the mutation" % row_id)
@@ -647,9 +650,6 @@ def main() -> int:
 
             apply(tree, row)
             code, _said = run(tree, checks)
-            (tree / rel).write_text(pristine, encoding="utf-8")
-            (tree / rel).touch()
-            clear(tree)
 
             if code == 5:
                 broken.append("%s: the selection %s collects nothing" % (row_id, checks))

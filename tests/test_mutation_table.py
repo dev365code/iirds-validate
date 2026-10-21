@@ -46,6 +46,31 @@ def test_no_row_leaves_the_code_it_mutates_unchanged():
     assert idle == [], idle
 
 
+def test_nothing_one_row_writes_reaches_the_next(tmp_path, monkeypatch, capsys):
+    """A check may write into the tree: `tools/emit_shacl.py` rewrites the
+    shapes from the generator a row has just broken. Run in a tree the rows
+    share, the next row is judged against what the last one's mutation wrote --
+    here, its own checks fail before its own mutation is applied."""
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tools" / "make.py").write_text(
+        'MADE = "1"\nopen("made.txt", "w").write(MADE)\n', encoding="utf-8")
+    (tmp_path / "made.txt").write_text("1", encoding="utf-8")
+    (tmp_path / "said.py").write_text('SAID = "1"\n', encoding="utf-8")
+    (tmp_path / "tests" / "test_both.py").write_text(
+        "def test_made():\n    assert open('made.txt').read() == '1'\n\n\n"
+        "def test_said():\n    assert open('said.py').read() == 'SAID = \"1\"\\n'\n", encoding="utf-8")
+    monkeypatch.setattr(mutation_table, "ROOT", tmp_path)
+    monkeypatch.setattr(mutation_table, "TABLE", [
+        ("made", "tools/make.py", 'MADE = "1"', 'MADE = "2"', ["tools/make.py", "tests/test_both.py"], ""),
+        ("said", "said.py", 'SAID = "1"', 'SAID = "2"', ["tests/test_both.py"], ""),
+    ])
+    monkeypatch.setattr(sys, "argv", ["mutation_table.py", "--run"])
+
+    assert mutation_table.main() == 0, capsys.readouterr().err
+    assert capsys.readouterr().out.split("\n")[:2] == ["killed  made", "killed  said"]
+
+
 def test_the_ci_shards_add_up_to_the_table():
     """CI runs the sweep as shards, each under a time limit of its own: the
     comparison rows run pySHACL, minutes a row, and the whole table run as one

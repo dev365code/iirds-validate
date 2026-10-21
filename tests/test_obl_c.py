@@ -645,9 +645,9 @@ def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make
     assert phrase in finding.rule.title
     assert phrase in " ".join(content.r45_audio_extension.__doc__.split())
     assert "tracks and codecs are not inspected" in content._is_mp4_audio.__doc__
-    source = Path(content.__file__).read_text()
+    source = Path(content.__file__).read_text(encoding="utf-8")
     assert "audio-only" not in source.lower()
-    unreleased = Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0]
+    unreleased = Path("CHANGELOG.md").read_text(encoding="utf-8").split("## 0.9.0", 1)[0]
     assert phrase in " ".join(unreleased.split())
     assert "audio-only" not in unreleased.lower()
 
@@ -660,7 +660,7 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
         "R74 examines linked local files for identifiable formats and missing files. "
         "It does not parse all CSS syntax or fetch external stylesheets, so it leaves "
         "B.1's stylesheet obligation unclaimed.")
-    divergence = Path("docs/divergences.md").read_text()
+    divergence = Path("docs/divergences.md").read_text(encoding="utf-8")
     assert expected in divergence
     assert "This checker refuses a linked stylesheet whose bytes identify another format" in divergence
     assert "The referring document's environment encoding is not implemented" in divergence
@@ -670,7 +670,7 @@ def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
     decoding = " ".join(content._stylesheet_text.__doc__.split())
     assert "environment encoding is not implemented" in decoding
     assert "UTF-8 is used instead" in decoding
-    paragraph = " ".join(Path("CHANGELOG.md").read_text().split("## 0.9.0", 1)[0].split())
+    paragraph = " ".join(Path("CHANGELOG.md").read_text(encoding="utf-8").split("## 0.9.0", 1)[0].split())
     assert "invalid UTF-8" not in paragraph
     assert "rename the file" not in paragraph
     for statement in (
@@ -911,7 +911,7 @@ def test_a_gif_candidate_refused_during_full_read_is_reported(make_package, monk
 def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
-    changelog = (root / "CHANGELOG.md").read_text()
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     paragraph = " ".join(changelog.split("## 0.9.1 — unreleased", 1)[1]
                          .split("## 0.9.0", 1)[0].split())
     for statement in (
@@ -929,7 +929,7 @@ def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose()
             "In iiRDS/A, a damaged GIF used by a page or an image rendition is reported",
             "when its bytes identify neither JPEG, PNG nor SVG."):
         assert statement in paragraph
-    divergences = " ".join((root / "docs/divergences.md").read_text().split())
+    divergences = " ".join((root / "docs/divergences.md").read_text(encoding="utf-8").split())
     assert "six-letter ASCII header can be a legal CSS identifier" in divergences
     assert "truncated GIF streams or files with bytes after their trailer" in divergences
     assert "whole-file identification policy" in divergences
@@ -955,7 +955,7 @@ def test_gif_boundary_mutations_are_registered_with_their_package_evidence():
     for name, test in expected.items():
         assert rows[name][1] == "src/iirds_validate/rules/content.py"
         assert rows[name][4] == ["tests/test_obl_c.py"]
-        assert "def " + test + "(" in Path(__file__).read_text()
+        assert "def " + test + "(" in Path(__file__).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("body", [

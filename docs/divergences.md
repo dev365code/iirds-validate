@@ -1436,6 +1436,36 @@ settle it, this document said otherwise, and the entry now says so. What
 remains interpretation there is the exemption it grants, not the finding it
 makes.
 
+### The iiRDS/H content list
+
+Section 8.3.1.1 says "one row per information unit". Read literally with the
+ontology, this includes the enclosing Package, a subclass of InformationUnit.
+The same section's Example 62 lists only delivered documents, and section
+8.3.2 specifies Package and Document metadata separately: a Package has no
+mandatory title, language or document category. This validator reads a content
+list row as a row for a delivered Document, with no row required for the
+Package itself. Topic and Fragment instances are reported by M15.11a under
+section 8.3.2.1 and are outside the list's row population. The table itself
+remains required when no documents are declared.
+
+R68 and R69 inspect the same document rows across all tables. R69 reports a
+row with fewer than five nonempty cells in its logical grid, including cells
+carried down by rowspan. It does not verify which data roles those cells
+provide or their human-readable spelling: language names, abbreviated IRIs
+and titles with revision notes remain readable to a person. Neither R69 nor
+C11.2 claims section 8.3.1.1's complete column-data obligation (#6).
+
+The content-list sentence contains both the row requirement and the five
+required data roles: title, language, product reference, classification and
+unit reference. This validator checks that a table exists, that each delivered
+document has one identifying row, and that a document row has five nonempty
+cells. It does not verify the contents of those five data roles, so it does
+not claim to cover the complete sentence (#5 or #6).
+
+To recognise an iiRDS/H content list as HTML, this validator requires an html
+document element, parsed as XML or identified after its prologue; documents
+with HTML5's omitted html start tag are not treated as iiRDS/H content lists.
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

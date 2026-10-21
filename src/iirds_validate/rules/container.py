@@ -37,6 +37,7 @@ from ..model import (
 )
 from ..package import entry_named, nested_containers
 from ..registry import rule
+from .handover_html import content_list_document
 
 #: Spec §5: all Unicode is allowed in names except  / , " * : < >  backslash,
 #: DEL, the C0/C1 control ranges and the private use area.
@@ -277,7 +278,8 @@ def c11_1h_content_in_root_handover(ctx):
                         subject=name)
 
 
-@rule("C11.2", covers=("x8-3-1-1-mandatory-content-list#1", "x8-3-1-1-mandatory-content-list#2",),
+@rule("C11.2", covers=("x8-3-1-1-mandatory-content-list#1", "x8-3-1-1-mandatory-content-list#2",
+                      ),
        fix="Add index.html in the root of the archive. An iiRDS/H package is meant to be openable by a person with a browser and no iiRDS tooling at all, and that file is the way in.")
 def c11_2_handover_content_list(ctx):
     if not ctx.package.has(CONTENT_LIST):
@@ -299,14 +301,14 @@ def c11_2_handover_content_list(ctx):
                             "browser, and a consumer applying the same guard will not open "
                             "this one either.")
         return
-    body = ctx.package.text(CONTENT_LIST)
-    if "<html" not in body.lower():
+    is_html, detail = content_list_document(ctx)
+    if not is_html:
         # Its own remedy: the file is there, so "add it" is already done.
         yield Violation("the content list index.html must be an HTML document",
-                        subject=CONTENT_LIST,
-                        fix="Write index.html as an HTML document, beginning with an <html> "
-                            "element. The file is present and a browser will not render it as "
-                            "a page, which is the one thing it exists to do.")
+                        subject=CONTENT_LIST, detail=detail,
+                        fix="Write index.html with an explicit <html> document element after "
+                            "any allowed prologue. The iiRDS/H content list uses XHTML syntax; "
+                            "browser recovery alone does not establish that format.")
 
 
 @rule("C12",

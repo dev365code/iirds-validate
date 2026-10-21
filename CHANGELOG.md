@@ -11,6 +11,19 @@ every supported Python version.
 
 For iiRDS 1.3, R61 reports a resource whose declared or RDFS-implied types put it under disjoint classes in section 6.11.1. It closes the package and the bundled type and schema statements the way Appendix A of RDF 1.1 Semantics closes a graph -- the RDF and RDFS axiomatic triples, and rdfD2 and GrdfD1 with the RDFS entailment patterns, until no new facts follow -- including known types of bundled resources the package uses. Type and schema consequences can feed further consequences, and a finding names the statements each step of its derivation rests on. Literal values are excluded as reported subjects. What a finding names -- the pair of classes, the class each side is reached through, and its derivation -- is the same on every run, blank-node classes included. The closure derives at most 23 facts for each one it starts from, ten times what the corpus and the Consortium's sample packages need; a package that needs more, which in an otherwise minimal package takes a chain of 184 subclasses, gets an R61 error saying the check stopped at its ceiling instead of a verdict, and none of its resources is named either way. The SHACL form does not express this fixed point; its supported and deferred paths are documented in the shapes README. A Document with iirds:format is one example: the property also makes it a Rendition. Put iirds:format on the Rendition the Document reaches through iirds:has-rendition. The eight named classes remain disjoint even if the package connects them by subclass or equivalence declarations. Within sibling groups, a class and its own subclass are not treated as disjoint. The 1.3 shapes add R61 for five corpus graphs, all declaring iiRDS 1.0, which Python respects: `Example 38 - Table of contents-M35.1_false.rdf`, where a next-sibling target is also an information unit, and four where one resource is typed both iirds:Party and iirds:Topic -- `metadata_iirds_sample_pass-M37_false.rdf`, `metadata_iirds_sample_pass-M37_false_no_attribute.rdf`, `metadata_iirds_sample_pass-M38_false.rdf` and `metadata_iirds_sample_pass-M49_false.rdf`. If the package previously passed and this is its only error, validation now exits 1. Correct inaccurate type or property statements or the package's class declarations, classify the resource under the appropriate branch, or represent distinct things as separate resources connected by the appropriate iiRDS relation.
 
+iiRDS/H content lists now report excluded XHTML elements, a missing table
+or a missing or repeated row identifying a document by its IRI, complex identity or PDF/A
+link, and a document row with fewer than five nonempty data cells. The list
+is read as the standard's own example shows it: one row per delivered
+document, none for the package itself. These findings are warnings in
+iiRDS/H; `check -W` rejects such packages with exit 1. A missing list remains
+a container error (C11.2). Review index.html and provide a reference and five
+data cells for each delivered document.
+C11.2 now requires an explicit html document element in the XHTML namespace
+or no namespace, with a complete start tag, so a different root, a foreign
+namespace or an unfinished `<html` tag is rejected even when `<html` appears
+in the file.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

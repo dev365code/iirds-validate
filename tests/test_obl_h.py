@@ -284,7 +284,7 @@ def test_a_handover_package_with_a_component_tree_and_nothing_nested_costs_nothi
 
     (tmp_path / "tree").mkdir()
     (tmp_path / "plain").mkdir()
-    assert said(handover(tmp_path / "tree", "tree.iirds", metadata=with_tree)) == \
+    assert said(handover(tmp_path / "tree", "tree.iirds", metadata=with_tree)) ==\
         said(handover(tmp_path / "plain", "plain.iirds"))
 
 
@@ -574,3 +574,727 @@ def test_json_that_is_not_valid_json_ld_is_not_metadata(tmp_path):
     text = '{"@context": 5, "@id": "urn:test:package", "@type": "%s"}' % PKG
     package = build_package(tmp_path, "badld.iirds", extra=(("META-INF/metadata.json", text),))
     assert findings(package, "C16.2") == []
+
+
+# Section 8.3.1.1 specifies column data, not header spelling or order.
+# The identifiers here are RDF IRIs, not names inferred from the ZIP entries.
+LIST_COLUMNS = ("Document", "Languages", "Product", "Category", "Reference")
+
+
+def list_rows(count=3):
+    return [("Operating instructions %d" % n, "en", "urn:test:variant",
+             "http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions",
+             ("urn:test:package" if n == 1 else "urn:test:doc%d" % n))
+            for n in range(1, count + 1)]
+
+
+def content_list(rows, headers=LIST_COLUMNS, extra=""):
+    from html import escape
+
+    head = ("<thead><tr>" + "".join("<th>%s</th>" % escape(h) for h in headers)
+            + "</tr></thead>") if headers else ""
+    body = "".join("<tr>" + "".join("<td>%s</td>" % escape(c) for c in row)
+                   + "</tr>" for row in rows)
+    return ('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Documents</title>'
+            '</head><body><table>' + head + '<tbody>' + body + '</tbody></table>'
+            + extra + '</body></html>')
+
+
+def listed_handover(tmp_path, name, rows=None, body=None, metadata=None):
+    """Three information units: the package and two delivered documents."""
+    if metadata is None:
+        start = HANDOVER.index('  <iirds:Document rdf:about="urn:test:doc1">')
+        end = HANDOVER.index('  </iirds:Document>', start) + len('  </iirds:Document>')
+        block = HANDOVER[start:end]
+        documents = "\n".join(block.replace('urn:test:doc1', 'urn:test:doc%d' % n)
+                              .replace('Operating instructions</iirds:title>',
+                                       'Operating instructions %d</iirds:title>' % n)
+                              for n in range(2, 4))
+        metadata = (HANDOVER[:start] + documents + HANDOVER[end:]).replace(
+            "<iirds:title>Handover</iirds:title>",
+            "<iirds:title>Operating instructions 1</iirds:title>"
+            "<iirds:language>en</iirds:language>")
+    if body is None:
+        body = content_list(list_rows() if rows is None else rows)
+    return build_package(tmp_path, name, metadata=metadata, jsonld=as_jsonld(metadata),
+                         content=(), extra=(("content/doc1.pdf", b"%PDF-1.4"),
+                                            ("index.html", body)))
+
+
+@pytest.mark.parametrize("element", ["video", "audio", "p", "div", "ins", "custom"])
+def test_content_list_elements_outside_its_allowed_sections_are_reported(tmp_path, element):
+    """Only the element restriction is checked; the full XHTML claim is withdrawn."""
+    body = content_list(list_rows(), extra="<%s/>" % element)
+    package = listed_handover(tmp_path, "element.iirds", body=body)
+    got = findings(package, "R67")
+    assert got and {f.violation.subject for f in got} == {"index.html"}
+
+
+def test_content_list_with_only_allowed_elements_passes(tmp_path):
+    body = content_list(list_rows(), extra="<section><h2>Summary</h2><span>Ready</span></section>")
+    package = listed_handover(tmp_path, "allowed.iirds", body=body)
+    assert findings(package, "R67") == []
+
+
+@pytest.mark.parametrize("body", ["<html><body>", '<html xmlns="urn:foreign"/>'])
+def test_content_list_that_cannot_be_iirds_xhtml_is_reported(tmp_path, body):
+    assert findings(listed_handover(tmp_path, "invalid-list.iirds", body=body), "R67")
+
+
+def test_content_list_missing_a_unit_row_is_reported(tmp_path):
+    """x8-3-1-1-mandatory-content-list#5\n
+    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):"""
+    package = listed_handover(tmp_path, "missing-row.iirds", rows=list_rows()[:2])
+    assert findings(package, "R68")
+
+
+@pytest.mark.parametrize("rows", [
+    list_rows()[:2] + [list_rows()[0]],
+    list_rows()[:2] + [list_rows()[2][:-1] + ("urn:test:unknown",)],
+    list_rows() + [list_rows()[1]],
+])
+def test_content_list_rows_must_refer_to_each_unit_once(tmp_path, rows):
+    assert findings(listed_handover(tmp_path, "wrong-rows.iirds", rows=rows), "R68")
+
+
+def test_content_list_with_one_row_per_unit_passes(tmp_path):
+    assert findings(listed_handover(tmp_path, "three-rows.iirds"), "R68") == []
+
+
+def test_content_list_without_tabular_data_is_reported(tmp_path):
+    package = listed_handover(tmp_path, "no-table.iirds", body="<html><body/></html>")
+    assert findings(package, "R68")
+    assert findings(package, "R69") == []
+
+
+@pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
+def test_content_list_missing_a_data_cell_is_reported(tmp_path, column):
+    """Five nonempty cells are checked; the full data-role claim is withdrawn."""
+    rows = [r[:column] + r[column + 1:] for r in list_rows()]
+    headers = LIST_COLUMNS[:column] + LIST_COLUMNS[column + 1:]
+    package = listed_handover(tmp_path, "missing-column.iirds", body=content_list(rows, headers))
+    assert bool(findings(package, "R69")) == (column != 4)
+
+
+@pytest.mark.parametrize("column", range(5), ids=LIST_COLUMNS)
+def test_content_list_header_cannot_replace_missing_column_data(tmp_path, column):
+    rows = list_rows()
+    rows[1] = rows[1][:column] + ("",) + rows[1][column + 1:]
+    package = listed_handover(tmp_path, "empty-cell.iirds", rows=rows)
+    assert bool(findings(package, "R69")) == (column != 4)
+
+
+def test_content_list_required_columns_and_additional_data_pass(tmp_path):
+    # The standard specifies data, not English captions, or a fixed order.
+    rows = [tuple(reversed(r)) + ("Delivered",) for r in list_rows()]
+    body = content_list(rows, ("Verweis", "Kategorie", "Produkt", "Sprache", "Titel", "Status"))
+    assert findings(listed_handover(tmp_path, "all-columns.iirds", body=body), "R69") == []
+
+
+def test_content_list_columns_do_not_require_a_header_spelling(tmp_path):
+    package = listed_handover(tmp_path, "no-captions.iirds", body=content_list(list_rows(), headers=()))
+    assert findings(package, "R69") == []
+
+
+@pytest.mark.parametrize("profile", ["A", "unrestricted"])
+def test_content_list_obligations_are_only_asked_in_h_reading(tmp_path, profile):
+    metadata = HANDOVER.replace("<iirds:formatRestriction>H</iirds:formatRestriction>",
+                                "<iirds:formatRestriction>%s</iirds:formatRestriction>" % profile)
+    package = listed_handover(tmp_path, "other-profile.iirds", body="<html><video/></html>",
+                              metadata=metadata)
+    assert not {"R67", "R68", "R69"} & {f.rule.id for f in runner.check(package).findings}
+
+
+@pytest.mark.parametrize("extra", [
+    '<span onclick="alert(1)">Title</span>',
+    '<a href="javascript:alert(1)">Title</a>',
+    '<link rel="next" href="content/doc1.pdf"/>',
+    '<span data-role="invented">Title</span>',
+])
+def test_content_list_xhtml_attribute_requirements_are_reported(tmp_path, extra):
+    package = listed_handover(tmp_path, "attributes.iirds",
+                              body=content_list(list_rows(), extra=extra))
+    assert findings(package, "R67") == []
+    assert {f.rule.id for f in runner.check(package).findings} & {"B4", "B5", "B7", "B11"}
+
+
+def test_the_package_information_unit_does_not_need_a_list_row(tmp_path):
+    rows = list_rows()[1:]
+    assert findings(listed_handover(tmp_path, "package-row.iirds", rows=rows), "R68") == []
+
+
+def test_missing_content_list_is_reported_by_the_shared_claimant(tmp_path):
+    from iirds_validate.registry import all_rules
+
+    package = build_package(tmp_path, "missing-list.iirds", metadata=HANDOVER,
+                            jsonld=as_jsonld(HANDOVER), content=(),
+                            extra=(("content/doc1.pdf", b"%PDF-1.4"),))
+    fired = {f.rule.id for f in runner.check(package).findings}
+    for suffix in ("#1", "#2"):
+        claim = "x8-3-1-1-mandatory-content-list" + suffix
+        assert fired & {r.id for r in all_rules() if claim in r.covers}
+    assert {"R67", "R68", "R69"}.isdisjoint(fired)
+
+
+def test_a_pdf_hyperlink_can_identify_a_document_row(tmp_path):
+    # The package row uses its IRI. The two documents share a PDF, and their
+    # title and language data distinguish the two links as 6.10.1 permits.
+    body = content_list(list_rows()).replace(
+        "<td>urn:test:doc2</td>", '<td><a href="./content/doc1.pdf">Open</a></td>').replace(
+        "<td>urn:test:doc3</td>", '<td><a href="content/doc1.pdf">Open</a></td>')
+    package = listed_handover(tmp_path, "linked.iirds", body=body)
+    assert findings(package, "R68") == []
+    assert findings(package, "R69") == []
+
+
+def test_a_complex_identity_can_identify_a_document_row(tmp_path):
+    metadata = HANDOVER.replace('</rdf:RDF>', """
+      <rdf:Description rdf:about="urn:test:doc1">
+        <iirds:has-identity><iirds:Identity>
+          <iirds:identifier>DOC-1</iirds:identifier>
+          <iirds:has-identity-domain rdf:resource="urn:test:document-domain"/>
+        </iirds:Identity></iirds:has-identity>
+      </rdf:Description>
+      <iirds:IdentityDomain rdf:about="urn:test:document-domain"/>
+    </rdf:RDF>""")
+    rows = [("Handover", "en", "urn:test:variant", LIST_COLUMNS[3], "urn:test:package"),
+            ("Operating instructions", "en", "urn:test:variant", LIST_COLUMNS[3], "urn:test:doc1")]
+    body = content_list(rows).replace("<td>urn:test:doc1</td>",
+                                      "<td><span>DOC-1</span><br/>"
+                                      "<span>urn:test:document-domain</span></td>")
+    assert findings(listed_handover(tmp_path, "identity.iirds", body=body, metadata=metadata), "R68") == []
+    body = body.replace("<span>urn:test:document-domain</span>", "")
+    assert findings(listed_handover(tmp_path, "bare-identifier.iirds", body=body, metadata=metadata), "R68")
+
+
+def test_content_list_new_findings_keep_the_h_content_warning_policy(tmp_path):
+    from iirds_validate.cli import main
+
+    package = listed_handover(tmp_path, "policy.iirds",
+                              body=content_list(list_rows(), extra="<video/>"))
+    got = runner.check(package)
+    assert findings(package, "R67")
+    assert not [f for f in got.findings if str(f.severity) == "error"]
+    assert main(["check", str(package)]) == 0
+    assert main(["check", "-W", str(package)]) == 1
+
+
+def test_foreign_table_names_do_not_supply_xhtml_tabular_data(tmp_path):
+    body = content_list(list_rows()).replace('xmlns="http://www.w3.org/1999/xhtml"',
+                                             'xmlns="urn:foreign"')
+    package = listed_handover(tmp_path, "foreign-table.iirds", body=body)
+    assert findings(package, "R68")
+    assert findings(package, "R69") == []
+
+
+# Content list inputs rebuilt by the fixture writer.
+CONTENT_LIST_METADATA = '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n         xmlns:vcard="http://www.w3.org/2006/vcard/ns#"\n         xmlns:hov="http://iirds.tekom.de/iirds/domain/handover#"\n         xmlns:iirds="http://iirds.tekom.de/iirds#">\n  <iirds:Package rdf:about="urn:test:package">\n    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n    <iirds:formatRestriction>H</iirds:formatRestriction>\n    <iirds:title>Operating instructions 1</iirds:title><iirds:language>en</iirds:language>\n    <!-- Section 8.3.2 states its product-variant requirements twice, once for\n         the Package and once for the Document, word for word. This fixture was\n         asserted conformant for weeks while carrying only the second: the\n         Package named no variant, and no rule read that list. R13 to R16 read\n         it now. Both may name the same variant, and the simplest conformant\n         package does. -->\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:Package>\n\n  <iirds:Document rdf:about="urn:test:doc2">\n    <iirds:title>Operating instructions 2</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n  <iirds:Document rdf:about="urn:test:doc3">\n    <iirds:title>Operating instructions 3</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n\n  <!-- Section 8.3.2 puts the creator of an information object on the identity\n       domain, not on the object: what is attributed is the scheme the content\n       is known by. The domain carries no iirds:has-identity-type, which is\n       what the reference\'s own passing fixture does; the type is required of\n       a product variant\'s domains (M15.7b, M15.7d), not of this one. -->\n  <iirds:InformationObject rdf:about="urn:test:io1">\n    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n  </iirds:InformationObject>\n\n  <iirds:Identity rdf:about="urn:test:identity-object">\n    <iirds:identifier>OI-2026</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>\n  </iirds:Identity>\n\n  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:IdentityDomain>\n\n  <iirds:ProductVariant rdf:about="urn:test:variant">\n    <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>\n    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n  </iirds:ProductVariant>\n\n  <iirds:Identity rdf:about="urn:test:identity-instance">\n    <iirds:identifier>SN-00417</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-instance"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-instance">\n    <rdfs:label xml:lang="en">Serial numbers</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#SerialNumber"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <iirds:Identity rdf:about="urn:test:identity-type">\n    <iirds:identifier>ROT-3000</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-type"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-type">\n    <rdfs:label xml:lang="en">Product types</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <!-- One organisation in three roles, which is ordinary for a handover: the\n       manufacturer wrote the documentation and shipped the package. The rules\n       ask for a different role in each place. Author on the Document, Creator\n       on the Package and InformationObject, Manufacturer on the identity\n       domains.\n\n       Three Party instances rather than one carrying three roles, because the\n       ontology states "Cardinality: iirds:Party [0..1]" for has-party-role and\n       the prose makes it mandatory, so a Party holds exactly one. Saying an\n       organisation acts in several roles means several Party nodes pointing at\n       the same vcard, and getting that wrong here was how this fixture first\n       failed M22.1. -->\n  <iirds:Party rdf:about="urn:test:party-manufacturer">\n    <rdfs:label xml:lang="en">Rotor Works, as manufacturer</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-author">\n    <rdfs:label xml:lang="en">Rotor Works, as author</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Author"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-creator">\n    <rdfs:label xml:lang="en">Rotor Works, as creator</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <vcard:Organization rdf:about="urn:test:supplier-card">\n    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n  </vcard:Organization>\n</rdf:RDF>\n'
+CONTENT_LIST_INPUTS = {
+    'baseline': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'package_row_missing': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+}
+
+def content_list_package(tmp_path, case, body=None, metadata=None):
+    return listed_handover(tmp_path, case + ".iirds",
+                           body=CONTENT_LIST_INPUTS[case] if body is None else body,
+                           metadata=CONTENT_LIST_METADATA if metadata is None else metadata)
+
+
+def test_content_list_does_not_require_a_package_row(tmp_path):
+    package = content_list_package(tmp_path, "package_row_missing")
+    assert findings(package, "R68") == []
+
+
+@pytest.mark.parametrize("kind", ["Topic", "Fragment"])
+def test_content_list_population_leaves_forbidden_units_to_the_h_metadata_rule(tmp_path, kind):
+    metadata = CONTENT_LIST_METADATA.replace("</rdf:RDF>",
+                '<iirds:%s rdf:about="urn:test:other"/></rdf:RDF>' % kind)
+    package = content_list_package(tmp_path, "baseline", metadata=metadata)
+    assert findings(package, "R68") == []
+    assert findings(package, "M15.11a")
+
+
+DOCUMENT_IDENTITY = '<rdf:Description rdf:about="urn:test:doc2"><iirds:has-identity><iirds:Identity><iirds:identifier>DOC-1</iirds:identifier><iirds:has-identity-domain rdf:resource="urn:test:document-domain"/></iirds:Identity></iirds:has-identity></rdf:Description><iirds:IdentityDomain rdf:about="urn:test:document-domain"/>'
+
+
+@pytest.mark.parametrize("reference", [
+    '<td>DOC-1 (urn:test:document-domain)</td>',
+    '<td>DOC-1</td><td>urn:test:document-domain</td>',
+    '<td>Reference: urn:test:doc2 (delivered)</td>',
+    '<td><span>urn:test:</span><span>doc2</span></td>',
+])
+def test_content_list_identification_uses_whole_row_text(tmp_path, reference):
+    metadata = CONTENT_LIST_METADATA.replace('</rdf:RDF>', DOCUMENT_IDENTITY + '</rdf:RDF>')
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('<td>urn:test:doc2</td>', reference)
+    assert findings(content_list_package(tmp_path, 'baseline', body, metadata), 'R68') == []
+
+
+@pytest.mark.parametrize("reference", ['DOC-1', 'xurn:test:doc2x'])
+def test_content_list_identification_needs_domain_and_text_boundaries(tmp_path, reference):
+    metadata = CONTENT_LIST_METADATA.replace('</rdf:RDF>', DOCUMENT_IDENTITY + '</rdf:RDF>')
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('urn:test:doc2</td>', reference + '</td>')
+    assert findings(content_list_package(tmp_path, 'baseline', body, metadata), 'R68')
+
+
+def test_content_list_identification_combines_iri_and_identity_alternatives(tmp_path):
+    metadata = CONTENT_LIST_METADATA.replace('</rdf:RDF>', DOCUMENT_IDENTITY.replace('urn:test:doc2', 'urn:test:doc3') + '</rdf:RDF>')
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('urn:test:doc2</td>', 'urn:test:doc2 DOC-1 (urn:test:document-domain)</td>')
+    got = findings(content_list_package(tmp_path, 'baseline', body, metadata), 'R68')
+    assert any(f.violation.message == 'a row refers to more than one document' for f in got)
+    assert any('row 1' in (f.violation.detail or '') for f in got)
+
+
+def test_content_list_identification_shared_pdf_uses_title_with_suffix_and_not_language_spelling(tmp_path):
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('>en<', '>English<')
+    for n in (2, 3):
+        body = body.replace('Operating instructions %d</td>' % n, 'Operating instructions %d (revision 2)</td>' % n)
+        body = body.replace('urn:test:doc%d</td>' % n, '<a href="/content/doc1.pdf#page=%d">Open</a></td>' % n)
+    assert findings(content_list_package(tmp_path, 'baseline', body), 'R68') == []
+
+
+def test_content_list_identification_ambiguous_shared_pdf_does_not_identify_a_document(tmp_path):
+    body = content_list([('Summary', '<a href="content/doc1.pdf">Open</a>')], headers=()).replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+    got = findings(content_list_package(tmp_path, 'baseline', body), 'R68')
+    assert len(got) == 2
+    assert all('has no row identifying document' in f.violation.message for f in got)
+
+
+CONTENT_LIST_INPUTS.update({
+    'tfoot_total': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody><tfoot><tr><td colspan="5">Total: 3 information units</td></tr></tfoot></table></body></html>',
+    'all_th_data_rows': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><th scope="row">Operating instructions 1</th><th scope="row">en</th><th scope="row">urn:test:variant</th><th scope="row">http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</th><th scope="row">urn:test:package</th></tr><tr><th scope="row">Operating instructions 2</th><th scope="row">en</th><th scope="row">urn:test:variant</th><th scope="row">http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</th><th scope="row">urn:test:doc2</th></tr><tr><th scope="row">Operating instructions 3</th><th scope="row">en</th><th scope="row">urn:test:variant</th><th scope="row">http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</th><th scope="row">urn:test:doc3</th></tr></tbody></table></body></html>',
+    'rowspan_product': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td rowspan="3">urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'colspan_optional_note': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><tbody><tr><td colspan="2">Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>Delivered</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>Delivered</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'nested_table': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><tbody><tr><td><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></td></tr></tbody></table></body></html>',
+})
+
+@pytest.mark.parametrize("case", ["tfoot_total", "all_th_data_rows", "rowspan_product", "colspan_optional_note", "nested_table"])
+def test_content_list_table_semantics_accept_headers_footers_and_spans(tmp_path, case):
+    package = content_list_package(tmp_path, case)
+    assert findings(package, "R68") == []
+    assert findings(package, "R69") == []
+
+
+def test_content_list_table_semantics_nested_cells_belong_only_to_the_inner_table(tmp_path):
+    body = content_list([("Outer",)], headers=()).replace('<td>Outer</td>', '<td>Outer<table><tbody><tr><td>urn:test:doc2</td></tr><tr><td>urn:test:doc3</td></tr></tbody></table></td>')
+    assert findings(content_list_package(tmp_path, 'baseline', body), 'R68') == []
+
+
+CONTENT_LIST_INPUTS.update({
+    'split_row_column_witness': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>urn:test:package</td></tr><tr><td>urn:test:doc2</td></tr><tr><td>urn:test:doc3</td></tr></tbody></table><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr></tbody></table></body></html>',
+    'language_english': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>English</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'title_suffix': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3 (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+})
+
+def test_content_list_cells_are_checked_for_every_document_across_tables(tmp_path):
+    from iirds_validate.cli import main
+
+    package = content_list_package(tmp_path, 'split_row_column_witness')
+    assert findings(package, 'R68') == []
+    got = findings(package, 'R69')
+    assert {f.violation.message for f in got} == {
+        'the row for document urn:test:doc2 provides fewer than five data cells',
+        'the row for document urn:test:doc3 provides fewer than five data cells'}
+    assert main(['check', '-W', str(package)]) == 1
+
+
+@pytest.mark.parametrize('case', ['language_english', 'title_suffix'])
+def test_content_list_cells_accept_human_readable_data(tmp_path, case):
+    assert findings(content_list_package(tmp_path, case), 'R69') == []
+
+
+def test_content_list_cells_example_62_shape_needs_no_package_data(tmp_path):
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('>en<', '>English<').replace('http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td>', 'iirdsHov:Operation</td>')
+    metadata = CONTENT_LIST_METADATA.replace('<iirds:title>Operating instructions 1</iirds:title>', '').replace('<iirds:language>en</iirds:language>', '', 1).replace('<hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>', '', 1)
+    package = content_list_package(tmp_path, 'baseline', body, metadata)
+    assert not {f.rule.id for f in runner.check(package).findings} & {'R67', 'R68', 'R69'}
+
+
+def test_content_list_cells_a_document_row_in_another_table_also_needs_five_cells(tmp_path):
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('</body>', '<table><tbody><tr><td>urn:test:doc2</td></tr></tbody></table></body>')
+    got = findings(content_list_package(tmp_path, 'baseline', body), 'R69')
+    assert len(got) == 1
+    assert 'urn:test:doc2' in got[0].violation.message
+
+
+def test_content_list_cells_empty_grid_positions_do_not_provide_data(tmp_path):
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('>en<', '><')
+    assert len(findings(content_list_package(tmp_path, 'baseline', body), 'R69')) == 2
+
+
+def test_content_list_elements_leave_onclick_to_one_b4_finding(tmp_path):
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('<td>en</td>', '<td onclick="alert(1)">en</td>', 1)
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert len(findings(package, 'B4')) == 1
+    assert findings(package, 'R67') == []
+
+
+def test_content_list_elements_do_not_claim_the_unchecked_attribute_whitelist(tmp_path):
+    from iirds_validate.registry import all_rules
+
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('<td>en</td>', '<td invented="value">en</td>', 1)
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert findings(package, 'R67') == []
+    claim = 'x8-3-1-1-mandatory-content-list#4'
+    assert not any(claim in rule.covers for rule in all_rules())
+
+
+def test_content_list_elements_report_a_non_html_root(tmp_path):
+    package = content_list_package(tmp_path, 'baseline', '<body/>')
+    assert any('html document element' in f.violation.message for f in findings(package, 'R67'))
+
+
+def test_content_list_public_descriptions_match_the_checked_scope(tmp_path, capsys):
+    from iirds_validate.cli import main
+
+    for rule, title, remedy in [
+        ('R67', 'the content list follows the XHTML element restrictions', 'Replace the element named in this finding.'),
+        ('R68', 'the content list identifies each delivered document in a table row', 'Add a row for the named document, or correct its reference.'),
+        ('R69', 'the content list gives each document row five data cells', 'Provide document-title, language, product-reference, category or classification, and unit-reference data for the named document.'),
+    ]:
+        assert main(['rules', rule, '-v']) == 0
+        output = capsys.readouterr().out
+        assert title in output
+        assert remedy in output
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('</body>', '<video/></body>')
+    got = findings(content_list_package(tmp_path, 'baseline', body), 'R67')
+    assert got[0].violation.message == 'index.html contains <video>, which section 8.3.1.1 excludes.'
+
+
+def test_content_list_branches_record_no_new_silent_paths():
+    import json
+
+    from conftest import ROOT
+
+    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 25
+
+
+@pytest.mark.parametrize('body', [
+    '<html><body><table/></body></html>',
+    '<html xmlns:f="urn:foreign"><body><table><tbody><f:tr><f:td>urn:test:doc2</f:td></f:tr></tbody></table></body></html>',
+])
+def test_content_list_branches_empty_and_foreign_rows_do_not_identify_documents(tmp_path, body):
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert len(findings(package, 'R68')) == 2
+    assert findings(package, 'R69') == []
+
+
+@pytest.mark.parametrize('span', ['0', 'invalid'])
+def test_content_list_branches_rowspan_to_end_and_invalid_span_fallback(tmp_path, span):
+    body = CONTENT_LIST_INPUTS['rowspan_product'].replace('rowspan="3"', 'rowspan="%s"' % span)
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert findings(package, 'R68') == []
+    assert bool(findings(package, 'R69')) == (span == 'invalid')
+
+
+def test_content_list_branches_shared_pdf_with_two_matching_titles_identifies_neither(tmp_path):
+    body = '<html><body><table><tbody><tr><td>Operating instructions 2; Operating instructions 3 <a href="content/doc1.pdf">Open</a></td></tr></tbody></table></body></html>'
+    got = findings(content_list_package(tmp_path, 'baseline', body), 'R68')
+    assert len(got) == 2
+    assert all('has no row identifying document' in f.violation.message for f in got)
+
+
+CONTENT_LIST_INPUTS.update({
+    'header_first_table': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Summary</th></tr></thead></table><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'language_name_and_code': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>English (en)</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>English (en)</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>English (en)</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'title_suffix_wrapped': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td><span>Operating instructions 1</span> (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td><span>Operating instructions 2</span> (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td><span>Operating instructions 3</span> (rev. 2)</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'th_row_header_corrected': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><th scope="row">Operating instructions 1</th><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><th scope="row">Operating instructions 2</th><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><th scope="row">Operating instructions 3</th><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'topic_row_missing': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'topic_row_present': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr><tr><td>Supplement</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:extra</td></tr></tbody></table></body></html>',
+    'fragment_row_missing': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+    'fragment_row_present': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><thead><tr><th>Title</th><th>Language</th><th>Product</th><th>Category</th><th>Reference</th></tr></thead><tbody><tr><td>Operating instructions 1</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td>Operating instructions 2</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td>Operating instructions 3</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr><tr><td>Supplement</td><td>en</td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:extra</td></tr></tbody></table></body></html>',
+    'title_language_one_cell': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Delivered documents</title></head><body><table><tbody><tr><td><span>Operating instructions 1</span><br/><span>en</span></td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:package</td></tr><tr><td><span>Operating instructions 2</span><br/><span>en</span></td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc2</td></tr><tr><td><span>Operating instructions 3</span><br/><span>en</span></td><td>urn:test:variant</td><td>http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td><td>urn:test:doc3</td></tr></tbody></table></body></html>',
+})
+
+CONTENT_LIST_METADATA_BY_CASE = {
+    'topic_row_missing': '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n         xmlns:vcard="http://www.w3.org/2006/vcard/ns#"\n         xmlns:hov="http://iirds.tekom.de/iirds/domain/handover#"\n         xmlns:iirds="http://iirds.tekom.de/iirds#">\n  <iirds:Package rdf:about="urn:test:package">\n    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n    <iirds:formatRestriction>H</iirds:formatRestriction>\n    <iirds:title>Operating instructions 1</iirds:title><iirds:language>en</iirds:language>\n    <!-- Section 8.3.2 states its product-variant requirements twice, once for\n         the Package and once for the Document, word for word. This fixture was\n         asserted conformant for weeks while carrying only the second: the\n         Package named no variant, and no rule read that list. R13 to R16 read\n         it now. Both may name the same variant, and the simplest conformant\n         package does. -->\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:Package>\n\n  <iirds:Document rdf:about="urn:test:doc2">\n    <iirds:title>Operating instructions 2</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n  <iirds:Document rdf:about="urn:test:doc3">\n    <iirds:title>Operating instructions 3</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n\n  <!-- Section 8.3.2 puts the creator of an information object on the identity\n       domain, not on the object: what is attributed is the scheme the content\n       is known by. The domain carries no iirds:has-identity-type, which is\n       what the reference\'s own passing fixture does; the type is required of\n       a product variant\'s domains (M15.7b, M15.7d), not of this one. -->\n  <iirds:InformationObject rdf:about="urn:test:io1">\n    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n  </iirds:InformationObject>\n\n  <iirds:Identity rdf:about="urn:test:identity-object">\n    <iirds:identifier>OI-2026</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>\n  </iirds:Identity>\n\n  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:IdentityDomain>\n\n  <iirds:ProductVariant rdf:about="urn:test:variant">\n    <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>\n    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n  </iirds:ProductVariant>\n\n  <iirds:Identity rdf:about="urn:test:identity-instance">\n    <iirds:identifier>SN-00417</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-instance"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-instance">\n    <rdfs:label xml:lang="en">Serial numbers</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#SerialNumber"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <iirds:Identity rdf:about="urn:test:identity-type">\n    <iirds:identifier>ROT-3000</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-type"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-type">\n    <rdfs:label xml:lang="en">Product types</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <!-- One organisation in three roles, which is ordinary for a handover: the\n       manufacturer wrote the documentation and shipped the package. The rules\n       ask for a different role in each place. Author on the Document, Creator\n       on the Package and InformationObject, Manufacturer on the identity\n       domains.\n\n       Three Party instances rather than one carrying three roles, because the\n       ontology states "Cardinality: iirds:Party [0..1]" for has-party-role and\n       the prose makes it mandatory, so a Party holds exactly one. Saying an\n       organisation acts in several roles means several Party nodes pointing at\n       the same vcard, and getting that wrong here was how this fixture first\n       failed M22.1. -->\n  <iirds:Party rdf:about="urn:test:party-manufacturer">\n    <rdfs:label xml:lang="en">Rotor Works, as manufacturer</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-author">\n    <rdfs:label xml:lang="en">Rotor Works, as author</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Author"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-creator">\n    <rdfs:label xml:lang="en">Rotor Works, as creator</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <vcard:Organization rdf:about="urn:test:supplier-card">\n    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n  </vcard:Organization>\n<iirds:Topic rdf:about="urn:test:extra"><iirds:title>Supplement</iirds:title><iirds:language>en</iirds:language><iirds:relates-to-product-variant rdf:resource="urn:test:variant"/><hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/></iirds:Topic></rdf:RDF>\n',
+    'topic_row_present': '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n         xmlns:vcard="http://www.w3.org/2006/vcard/ns#"\n         xmlns:hov="http://iirds.tekom.de/iirds/domain/handover#"\n         xmlns:iirds="http://iirds.tekom.de/iirds#">\n  <iirds:Package rdf:about="urn:test:package">\n    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n    <iirds:formatRestriction>H</iirds:formatRestriction>\n    <iirds:title>Operating instructions 1</iirds:title><iirds:language>en</iirds:language>\n    <!-- Section 8.3.2 states its product-variant requirements twice, once for\n         the Package and once for the Document, word for word. This fixture was\n         asserted conformant for weeks while carrying only the second: the\n         Package named no variant, and no rule read that list. R13 to R16 read\n         it now. Both may name the same variant, and the simplest conformant\n         package does. -->\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:Package>\n\n  <iirds:Document rdf:about="urn:test:doc2">\n    <iirds:title>Operating instructions 2</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n  <iirds:Document rdf:about="urn:test:doc3">\n    <iirds:title>Operating instructions 3</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n\n  <!-- Section 8.3.2 puts the creator of an information object on the identity\n       domain, not on the object: what is attributed is the scheme the content\n       is known by. The domain carries no iirds:has-identity-type, which is\n       what the reference\'s own passing fixture does; the type is required of\n       a product variant\'s domains (M15.7b, M15.7d), not of this one. -->\n  <iirds:InformationObject rdf:about="urn:test:io1">\n    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n  </iirds:InformationObject>\n\n  <iirds:Identity rdf:about="urn:test:identity-object">\n    <iirds:identifier>OI-2026</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>\n  </iirds:Identity>\n\n  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:IdentityDomain>\n\n  <iirds:ProductVariant rdf:about="urn:test:variant">\n    <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>\n    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n  </iirds:ProductVariant>\n\n  <iirds:Identity rdf:about="urn:test:identity-instance">\n    <iirds:identifier>SN-00417</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-instance"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-instance">\n    <rdfs:label xml:lang="en">Serial numbers</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#SerialNumber"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <iirds:Identity rdf:about="urn:test:identity-type">\n    <iirds:identifier>ROT-3000</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-type"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-type">\n    <rdfs:label xml:lang="en">Product types</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <!-- One organisation in three roles, which is ordinary for a handover: the\n       manufacturer wrote the documentation and shipped the package. The rules\n       ask for a different role in each place. Author on the Document, Creator\n       on the Package and InformationObject, Manufacturer on the identity\n       domains.\n\n       Three Party instances rather than one carrying three roles, because the\n       ontology states "Cardinality: iirds:Party [0..1]" for has-party-role and\n       the prose makes it mandatory, so a Party holds exactly one. Saying an\n       organisation acts in several roles means several Party nodes pointing at\n       the same vcard, and getting that wrong here was how this fixture first\n       failed M22.1. -->\n  <iirds:Party rdf:about="urn:test:party-manufacturer">\n    <rdfs:label xml:lang="en">Rotor Works, as manufacturer</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-author">\n    <rdfs:label xml:lang="en">Rotor Works, as author</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Author"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-creator">\n    <rdfs:label xml:lang="en">Rotor Works, as creator</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <vcard:Organization rdf:about="urn:test:supplier-card">\n    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n  </vcard:Organization>\n<iirds:Topic rdf:about="urn:test:extra"><iirds:title>Supplement</iirds:title><iirds:language>en</iirds:language><iirds:relates-to-product-variant rdf:resource="urn:test:variant"/><hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/></iirds:Topic></rdf:RDF>\n',
+    'fragment_row_missing': '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n         xmlns:vcard="http://www.w3.org/2006/vcard/ns#"\n         xmlns:hov="http://iirds.tekom.de/iirds/domain/handover#"\n         xmlns:iirds="http://iirds.tekom.de/iirds#">\n  <iirds:Package rdf:about="urn:test:package">\n    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n    <iirds:formatRestriction>H</iirds:formatRestriction>\n    <iirds:title>Operating instructions 1</iirds:title><iirds:language>en</iirds:language>\n    <!-- Section 8.3.2 states its product-variant requirements twice, once for\n         the Package and once for the Document, word for word. This fixture was\n         asserted conformant for weeks while carrying only the second: the\n         Package named no variant, and no rule read that list. R13 to R16 read\n         it now. Both may name the same variant, and the simplest conformant\n         package does. -->\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:Package>\n\n  <iirds:Document rdf:about="urn:test:doc2">\n    <iirds:title>Operating instructions 2</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n  <iirds:Document rdf:about="urn:test:doc3">\n    <iirds:title>Operating instructions 3</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n\n  <!-- Section 8.3.2 puts the creator of an information object on the identity\n       domain, not on the object: what is attributed is the scheme the content\n       is known by. The domain carries no iirds:has-identity-type, which is\n       what the reference\'s own passing fixture does; the type is required of\n       a product variant\'s domains (M15.7b, M15.7d), not of this one. -->\n  <iirds:InformationObject rdf:about="urn:test:io1">\n    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n  </iirds:InformationObject>\n\n  <iirds:Identity rdf:about="urn:test:identity-object">\n    <iirds:identifier>OI-2026</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>\n  </iirds:Identity>\n\n  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:IdentityDomain>\n\n  <iirds:ProductVariant rdf:about="urn:test:variant">\n    <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>\n    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n  </iirds:ProductVariant>\n\n  <iirds:Identity rdf:about="urn:test:identity-instance">\n    <iirds:identifier>SN-00417</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-instance"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-instance">\n    <rdfs:label xml:lang="en">Serial numbers</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#SerialNumber"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <iirds:Identity rdf:about="urn:test:identity-type">\n    <iirds:identifier>ROT-3000</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-type"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-type">\n    <rdfs:label xml:lang="en">Product types</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <!-- One organisation in three roles, which is ordinary for a handover: the\n       manufacturer wrote the documentation and shipped the package. The rules\n       ask for a different role in each place. Author on the Document, Creator\n       on the Package and InformationObject, Manufacturer on the identity\n       domains.\n\n       Three Party instances rather than one carrying three roles, because the\n       ontology states "Cardinality: iirds:Party [0..1]" for has-party-role and\n       the prose makes it mandatory, so a Party holds exactly one. Saying an\n       organisation acts in several roles means several Party nodes pointing at\n       the same vcard, and getting that wrong here was how this fixture first\n       failed M22.1. -->\n  <iirds:Party rdf:about="urn:test:party-manufacturer">\n    <rdfs:label xml:lang="en">Rotor Works, as manufacturer</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-author">\n    <rdfs:label xml:lang="en">Rotor Works, as author</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Author"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-creator">\n    <rdfs:label xml:lang="en">Rotor Works, as creator</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <vcard:Organization rdf:about="urn:test:supplier-card">\n    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n  </vcard:Organization>\n<iirds:Fragment rdf:about="urn:test:extra"><iirds:title>Supplement</iirds:title><iirds:language>en</iirds:language><iirds:relates-to-product-variant rdf:resource="urn:test:variant"/><hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/></iirds:Fragment></rdf:RDF>\n',
+    'fragment_row_present': '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n         xmlns:vcard="http://www.w3.org/2006/vcard/ns#"\n         xmlns:hov="http://iirds.tekom.de/iirds/domain/handover#"\n         xmlns:iirds="http://iirds.tekom.de/iirds#">\n  <iirds:Package rdf:about="urn:test:package">\n    <iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n    <iirds:formatRestriction>H</iirds:formatRestriction>\n    <iirds:title>Operating instructions 1</iirds:title><iirds:language>en</iirds:language>\n    <!-- Section 8.3.2 states its product-variant requirements twice, once for\n         the Package and once for the Document, word for word. This fixture was\n         asserted conformant for weeks while carrying only the second: the\n         Package named no variant, and no rule read that list. R13 to R16 read\n         it now. Both may name the same variant, and the simplest conformant\n         package does. -->\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:Package>\n\n  <iirds:Document rdf:about="urn:test:doc2">\n    <iirds:title>Operating instructions 2</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n  <iirds:Document rdf:about="urn:test:doc3">\n    <iirds:title>Operating instructions 3</iirds:title>\n    <iirds:language>en</iirds:language>\n    <iirds:has-document-type rdf:resource="http://iirds.tekom.de/iirds#OperatingInstructions"/>\n    <hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/>\n    <iirds:is-version-of rdf:resource="urn:test:io1"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-author"/>\n    <iirds:relates-to-product-variant rdf:resource="urn:test:variant"/>\n    <iirds:has-rendition>\n      <iirds:Rendition>\n        <iirds:format>application/pdf</iirds:format>\n        <iirds:source>content/doc1.pdf</iirds:source>\n      </iirds:Rendition>\n    </iirds:has-rendition>\n  </iirds:Document>\n\n  <!-- Section 8.3.2 puts the creator of an information object on the identity\n       domain, not on the object: what is attributed is the scheme the content\n       is known by. The domain carries no iirds:has-identity-type, which is\n       what the reference\'s own passing fixture does; the type is required of\n       a product variant\'s domains (M15.7b, M15.7d), not of this one. -->\n  <iirds:InformationObject rdf:about="urn:test:io1">\n    <iirds:has-identity rdf:resource="urn:test:identity-object"/>\n  </iirds:InformationObject>\n\n  <iirds:Identity rdf:about="urn:test:identity-object">\n    <iirds:identifier>OI-2026</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-object"/>\n  </iirds:Identity>\n\n  <iirds:IdentityDomain rdf:about="urn:test:domain-object">\n    <iirds:relates-to-party rdf:resource="urn:test:party-creator"/>\n  </iirds:IdentityDomain>\n\n  <iirds:ProductVariant rdf:about="urn:test:variant">\n    <rdfs:label xml:lang="en">Rotor 3000</rdfs:label>\n    <iirds:has-identity rdf:resource="urn:test:identity-instance"/>\n    <iirds:has-identity rdf:resource="urn:test:identity-type"/>\n  </iirds:ProductVariant>\n\n  <iirds:Identity rdf:about="urn:test:identity-instance">\n    <iirds:identifier>SN-00417</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-instance"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-instance">\n    <rdfs:label xml:lang="en">Serial numbers</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#SerialNumber"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <iirds:Identity rdf:about="urn:test:identity-type">\n    <iirds:identifier>ROT-3000</iirds:identifier>\n    <iirds:has-identity-domain rdf:resource="urn:test:domain-type"/>\n  </iirds:Identity>\n  <iirds:IdentityDomain rdf:about="urn:test:domain-type">\n    <rdfs:label xml:lang="en">Product types</rdfs:label>\n    <iirds:has-identity-type rdf:resource="http://iirds.tekom.de/iirds#ProductType"/>\n    <iirds:relates-to-party rdf:resource="urn:test:party-manufacturer"/>\n  </iirds:IdentityDomain>\n\n  <!-- One organisation in three roles, which is ordinary for a handover: the\n       manufacturer wrote the documentation and shipped the package. The rules\n       ask for a different role in each place. Author on the Document, Creator\n       on the Package and InformationObject, Manufacturer on the identity\n       domains.\n\n       Three Party instances rather than one carrying three roles, because the\n       ontology states "Cardinality: iirds:Party [0..1]" for has-party-role and\n       the prose makes it mandatory, so a Party holds exactly one. Saying an\n       organisation acts in several roles means several Party nodes pointing at\n       the same vcard, and getting that wrong here was how this fixture first\n       failed M22.1. -->\n  <iirds:Party rdf:about="urn:test:party-manufacturer">\n    <rdfs:label xml:lang="en">Rotor Works, as manufacturer</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Manufacturer"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-author">\n    <rdfs:label xml:lang="en">Rotor Works, as author</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Author"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <iirds:Party rdf:about="urn:test:party-creator">\n    <rdfs:label xml:lang="en">Rotor Works, as creator</rdfs:label>\n    <iirds:has-party-role rdf:resource="http://iirds.tekom.de/iirds#Creator"/>\n    <iirds:relates-to-vcard rdf:resource="urn:test:supplier-card"/>\n  </iirds:Party>\n  <vcard:Organization rdf:about="urn:test:supplier-card">\n    <vcard:organization-name>Rotor Works GmbH</vcard:organization-name>\n  </vcard:Organization>\n<iirds:Fragment rdf:about="urn:test:extra"><iirds:title>Supplement</iirds:title><iirds:language>en</iirds:language><iirds:relates-to-product-variant rdf:resource="urn:test:variant"/><hov:has-document-category rdf:resource="http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions"/></iirds:Fragment></rdf:RDF>\n',
+}
+
+
+@pytest.mark.parametrize('case', sorted(CONTENT_LIST_INPUTS))
+def test_content_list_regression_frozen_content_lists(tmp_path, case):
+    metadata = CONTENT_LIST_METADATA_BY_CASE.get(case, CONTENT_LIST_METADATA)
+    package = content_list_package(tmp_path, case, metadata=metadata)
+    report = runner.check(package)
+    list_findings = {f.rule.id for f in report.findings} & {'R67', 'R68', 'R69'}
+    expected = {'R69'} if case in ('split_row_column_witness', 'title_language_one_cell') else set()
+    assert list_findings == expected
+    if case.startswith(('topic_', 'fragment_')):
+        assert findings(package, 'M15.11a')
+    if case == 'split_row_column_witness':
+        from iirds_validate.cli import main
+        assert main(['check', str(package)]) == 0
+        assert main(['check', '-W', str(package)]) == 1
+
+
+def test_content_list_regression_document_rows_can_be_in_different_tables(tmp_path):
+    rows = list_rows()[1:]
+    body = content_list(rows[:1], extra=content_list(rows[1:]).split('<body>')[1].split('</body>')[0])
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert findings(package, 'R68') == []
+    assert findings(package, 'R69') == []
+
+
+def test_content_list_regression_missing_duplicate_and_multiple_references_name_the_document(tmp_path):
+    missing = content_list(list_rows()[1:2])
+    got = findings(content_list_package(tmp_path, 'baseline', missing), 'R68')
+    assert [f.violation.message for f in got] == ['index.html has no row identifying document urn:test:doc3']
+    duplicate = content_list(list_rows()[1:] + [list_rows()[1]])
+    got = findings(content_list_package(tmp_path, 'baseline', duplicate), 'R68')
+    assert [f.violation.message for f in got] == ['index.html lists document urn:test:doc2 more than once']
+    assert got[0].violation.detail == 'rows 1, 3'
+    multiple = content_list(list_rows()[1:]).replace('urn:test:doc2</td>', 'urn:test:doc2; urn:test:doc3</td>')
+    got = findings(content_list_package(tmp_path, 'baseline', multiple), 'R68')
+    assert any(f.violation.message == 'a row refers to more than one document' and f.violation.detail == 'row 1' for f in got)
+
+
+def test_content_list_regression_example_62_shape_has_no_findings(tmp_path):
+    from iirds_validate.cli import main
+
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('>en<', '>English<').replace('http://iirds.tekom.de/iirds/domain/handover#OperatingInstructions</td>', 'iirdsHov:Operation</td>')
+    package = content_list_package(tmp_path, 'baseline', body)
+    assert runner.check(package).findings == []
+    assert main(['check', '-W', str(package)]) == 0
+
+
+def test_content_list_regression_iri_identity_value_and_domain_can_share_one_text_node(tmp_path):
+    metadata = CONTENT_LIST_METADATA.replace('</rdf:RDF>', DOCUMENT_IDENTITY + '</rdf:RDF>')
+    body = CONTENT_LIST_INPUTS['package_row_missing'].replace('urn:test:doc2</td>', 'DOC-1 (urn:test:document-domain)</td>')
+    package = content_list_package(tmp_path, 'baseline', body, metadata)
+    assert findings(package, 'R68') == []
+    assert findings(package, 'R69') == []
+
+
+@pytest.mark.parametrize('table', [False, True])
+def test_content_list_regression_tabular_data_is_required_even_without_documents(tmp_path, table):
+    """#5 still requires tabular data when the delivered-document population is empty."""
+    start = HANDOVER.index('  <iirds:Document rdf:about="urn:test:doc1">')
+    end = HANDOVER.index('  </iirds:Document>', start) + len('  </iirds:Document>')
+    metadata = HANDOVER[:start] + HANDOVER[end:]
+    body = '<html><body>%s</body></html>' % ('<table/>' if table else '')
+    package = build_package(tmp_path, 'no-documents.iirds', metadata=metadata,
+                            jsonld=as_jsonld(metadata), content=(), extra=(('index.html', body),))
+    got = findings(package, 'R68')
+    assert bool(got) == (not table)
+    assert findings(package, 'R69') == []
+
+
+def test_data_roles_are_not_verified(tmp_path):
+    """x8-3-1-1-mandatory-content-list#5 / #6
+    The content list MUST contain tabular data according to section Tabular Data with one row per information unit and MUST at least contain columns providing the following data (see Metadata Requirements):
+    The row identifies the document but supplies none of the other data roles.
+    """
+    body = content_list([('urn:test:doc1', 'approved', 'page 1', 'note A', 'note B')])
+    package = listed_handover(tmp_path, 'unverified-data.iirds', body=body, metadata=HANDOVER)
+    assert findings(package, 'R68') == []
+    assert findings(package, 'R69') == []
+    assert findings(package, 'C11.2') == []
+
+
+def test_content_list_partial_checks_do_not_claim_the_data_sentence():
+    from iirds_validate.registry import all_rules
+    from test_covers_is_earned import NAMED_CASES
+
+    claim = 'x8-3-1-1-mandatory-content-list#5'
+    rules = {rule.id: rule for rule in all_rules()}
+    assert rules['R68'].covers == ()
+    assert claim not in rules['C11.2'].covers
+    assert claim not in NAMED_CASES
+    assert not any(claim in rule.covers for rule in rules.values())
+
+
+def test_content_list_claim_totals_exclude_unverified_data():
+    from test_covers_is_earned import CLAIMED, UNAUDITED, held
+    from test_requirement_coverage import CLAIMED as rule_claims
+
+    assert len(CLAIMED) == 187
+    assert len(held()) == 152
+    assert len(UNAUDITED) == 35
+    assert sum(len(ids) for ids in rule_claims.values()) == 218
+
+
+@pytest.mark.parametrize('distinguished', [False, True])
+def test_shared_pdf_rows_explain_unresolved_document_references(tmp_path, distinguished):
+    titles = ['Operating instructions 2', 'Operating instructions 3']
+    metadata = CONTENT_LIST_METADATA
+    if not distinguished:
+        for title in titles:
+            metadata = metadata.replace(title, 'Shared instructions')
+        titles = ['Shared instructions', 'Shared instructions']
+    rows = [(title, 'English', 'urn:test:variant', 'iirdsHov:Operation',
+             '<a href="content/doc1.pdf">Open</a>') for title in titles]
+    body = content_list(rows).replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+    package = content_list_package(tmp_path, 'baseline', body, metadata)
+    got = findings(package, 'R68')
+    if distinguished:
+        assert got == []
+    else:
+        assert len(got) == 2
+        assert all('has no row identifying document' in f.violation.message for f in got)
+        for finding in got:
+            for number in (1, 2):
+                assert ('the PDF link in row %d is shared by documents that this row '
+                        'does not distinguish; add a document IRI or a complex identity '
+                        'with its domain' % number) in (finding.violation.detail or '')
+    assert findings(package, 'R69') == []
+    assert findings(package, 'C11.2') == []
+
+
+@pytest.mark.parametrize('group', ['thead', 'tfoot'])
+@pytest.mark.parametrize('cell_count', [5, 1])
+def test_content_list_header_and_footer_rows_do_not_identify_documents(tmp_path, group, cell_count):
+    data = ['Operating instructions', 'en', 'urn:test:variant',
+            'iirdsHov:Operation', 'urn:test:doc1']
+    cells = data if cell_count == 5 else [data[-1]]
+    element = 'th' if group == 'thead' else 'td'
+    extra_row = '<tr>' + ''.join('<%s>%s</%s>' % (element, value, element)
+                                for value in cells) + '</tr>'
+    body = content_list([data])
+    if group == 'thead':
+        body = body.replace('</thead>', extra_row + '</thead>')
+    else:
+        body = body.replace('</table>', '<tfoot>' + extra_row + '</tfoot></table>')
+    package = listed_handover(tmp_path, 'table-row-groups.iirds', body=body, metadata=HANDOVER)
+    assert [(f.rule.id, f.violation.message) for f in runner.check(package).findings] == []
+
+
+def content_list_with_compression(tmp_path, body, compression):
+    import zipfile
+
+    package = listed_handover(tmp_path, 'document-element.iirds', body=body, metadata=HANDOVER)
+    with zipfile.ZipFile(package) as archive:
+        entries = [(info, archive.read(info)) for info in archive.infolist()]
+    with zipfile.ZipFile(package, 'w') as archive:
+        for info, data in entries:
+            if info.filename == 'index.html':
+                info.compress_type = compression
+            archive.writestr(info, data)
+    return package
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body, detail', [
+    pytest.param('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<catalog xmlns="urn:example:catalog">\n'
+                 '  <note><![CDATA[<html>]]></note>\n</catalog>',
+                 'document element is catalog', id='html-in-cdata'),
+    pytest.param('<svg xmlns="http://www.w3.org/2000/svg" data-x="&lt;html&gt;"/>',
+                 'document element is svg', id='html-in-svg-attribute'),
+    pytest.param('<root><html/></root>', 'document element is root', id='html-child'),
+    pytest.param('', 'no element found', id='empty'),
+    pytest.param(b'\x89PNG\r\n\x1a\n', 'no element found', id='png-header'),
+    pytest.param('plain text, not a content list', 'no element found', id='plain-text'),
+    pytest.param('<title>Documents</title><html>', 'first tag is title', id='title-first'),
+    pytest.param('<htmlish><html/></htmlish>', 'document element is htmlish',
+                 id='different-element-name'),
+    pytest.param('<?xml version="1.0" <html', 'no element found',
+                 id='unfinished-declaration'),
+    pytest.param('<!-- <html', 'no element found', id='unfinished-comment'),
+    pytest.param('<!DOCTYPE html [<html', 'no element found', id='unfinished-doctype'),
+    pytest.param('<>', 'no element found', id='missing-tag-name'),
+])
+def test_content_list_html_sentence_requires_an_html_document_element(tmp_path, body, detail,
+                                                                     compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    fired = {finding.rule.id for finding in report.findings}
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & fired
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.message == 'the content list index.html must be an HTML document'
+    assert got[0].violation.detail == detail
+
+
+@pytest.mark.parametrize('body, parse_error', [
+    pytest.param('\ufeff<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+                 '<!-- first --><!-- second -->'
+                 '<html xmlns="http://www.w3.org/1999/xhtml"><head/><body/></html>',
+                 False, id='xml-prologue'),
+    pytest.param('\ufeff<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+                 '<!-- first --><!-- second -->'
+                 '<html xmlns="http://www.w3.org/1999/xhtml"><head>'
+                 '<meta charset="utf-8"></head><body></body></html>',
+                 True, id='html-prologue'),
+    pytest.param('<HTML/>', False, id='uppercase-html'),
+    pytest.param(' \t\r\n<html/>', False, id='leading-whitespace'),
+    pytest.param('<h:html xmlns:h="http://www.w3.org/1999/xhtml"/>', False,
+                 id='namespace-prefix'),
+    pytest.param('<html lang=en><head><title>Documents</title></head><body></body></html>',
+                 True, id='html-attribute-syntax'),
+])
+def test_content_list_document_element_accepts_html_prologues_and_names(tmp_path, body,
+                                                                       parse_error):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    package = listed_handover(tmp_path, 'html-document.iirds', body=body, metadata=HANDOVER)
+    assert findings(package, 'C11.2') == []
+    parse_findings = [finding for finding in findings(package, 'R67')
+                      if finding.violation.message ==
+                      'the content list could not be read as iiRDS XHTML5']
+    assert bool(parse_findings) == parse_error
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    '<?xml version="1.0" encoding="UTF-8"?><f:html xmlns:f="urn:example:catalog"/>',
+    '<html xmlns="urn:example:catalog"/>',
+], ids=['prefixed-foreign-namespace', 'default-foreign-namespace'])
+def test_an_html_element_outside_the_xhtml_namespace_is_not_the_content_list(tmp_path,
+                                                                           body, compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & {
+        finding.rule.id for finding in report.findings}
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.detail == 'document element is html in namespace urn:example:catalog'
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    b'<html', b'<html ', b'<html lang="en"', b'<html data-x="a>b"', b"<html data-x='a>b",
+], ids=['name-only', 'space-after-name', 'attribute-without-end',
+        'quoted-greater-than', 'unclosed-quote-with-greater-than'])
+def test_the_content_list_needs_a_complete_html_start_tag(tmp_path, body, compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    from test_covers_is_earned import CLAIMED
+
+    package = content_list_with_compression(tmp_path, body, compression)
+    report = runner.check(package)
+    assert set(CLAIMED['x8-3-1-1-mandatory-content-list#1']) & {
+        finding.rule.id for finding in report.findings}
+    got = [finding for finding in report.findings if finding.rule.id == 'C11.2']
+    assert len(got) == 1
+    assert got[0].violation.detail == 'first tag is html, unterminated'
+
+
+@pytest.mark.parametrize('compression', [0, 8], ids=['stored', 'deflated'])
+@pytest.mark.parametrize('body', [
+    '<h:html xmlns:h="http://www.w3.org/1999/xhtml"><h:head/><h:body/></h:html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head/><body/></html>',
+    '<html><head/><body/></html>', '<html lang=en>', '<html\n  lang="en">',
+    '<html data-x="a>b">', '<html data-x=\'a>b\'>',
+], ids=['xhtml-prefix', 'xhtml-default', 'no-namespace', 'html-attribute',
+        'multiline-tag', 'double-quoted-greater-than', 'single-quoted-greater-than'])
+def test_complete_html_document_elements_keep_the_content_list_usable(tmp_path, body,
+                                                                    compression):
+    """An iiRDS/H package MUST contain a content list as HTML file named index.html (known as "main document" in [VDI2770])."""
+    package = content_list_with_compression(tmp_path, body, compression)
+    assert findings(package, 'C11.2') == []
+
+
+def test_the_content_list_remedy_requires_an_explicit_html_start_tag(tmp_path):
+    body = '<title>Documents</title><body>A browser supplies the html element.</body>'
+    package = listed_handover(tmp_path, 'omitted-html-start.iirds', body=body, metadata=HANDOVER)
+    got = findings(package, 'C11.2')
+    assert len(got) == 1
+    assert 'explicit <html> document element' in got[0].fix
+    assert 'XHTML syntax' in got[0].fix
+    assert 'browser will not render' not in got[0].fix

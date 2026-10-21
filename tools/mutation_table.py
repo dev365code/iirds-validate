@@ -527,11 +527,17 @@ CANARY = "canary/a-comment-nobody-reads"
 
 
 def shard(rows, spec: str):
-    """The rows one of N jobs runs: every Nth, from the Kth (`K/N`, counting from one).
+    """The rows one of N jobs runs (`K/N`, counting from one): dealt in turns,
+    the rows that ask the same tests one after another.
 
-    Taken in turns rather than in runs, because the table is written family by
-    family and one family's rows can cost minutes each: in turns, those rows
-    spread across the jobs instead of filling one of them past its time limit.
+    A row costs what its tests cost, before the mutation and after it: seconds
+    for most selections, minutes for the ones that run pySHACL. Dealt in turns
+    down the table, a selection's rows spread evenly only where the table lists
+    them together, and a family is sometimes written in two places. Dealt a
+    selection at a time, every selection's rows spread across the jobs as
+    evenly as they divide, and none of the jobs collects the costly ones past
+    its time limit. The tools a row also runs cost seconds and are left out of
+    what it asks.
     """
     try:
         k, n = (int(part) for part in spec.split("/"))
@@ -539,7 +545,10 @@ def shard(rows, spec: str):
         raise SystemExit("a shard is K/N, not %r" % spec) from None
     if not 1 <= k <= n:
         raise SystemExit("a shard is K/N with 1 <= K <= N, not %s" % spec)
-    return [row for index, row in enumerate(rows) if index % n == k - 1]
+    asked = [[check for check in row[4] if not check.startswith("tools/")] for row in rows]
+    dealt = sorted(range(len(rows)), key=asked.__getitem__)
+    mine = {index for turn, index in enumerate(dealt) if turn % n == k - 1}
+    return [row for index, row in enumerate(rows) if index in mine]
 
 
 def clear(tree: Path) -> None:

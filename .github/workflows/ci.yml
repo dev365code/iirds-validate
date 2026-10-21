@@ -188,19 +188,22 @@ jobs:
     # once already. Nineteen rows took about a minute; the rows that ask the
     # SHACL comparisons take minutes each with pySHACL installed, and the whole
     # table as one job outlasts the six hours a hosted job may run. So the
-    # table runs as shards, every sixth row each, under a limit of their own,
-    # and a test holds the shards to adding up to the table.
+    # table runs as shards under a limit of their own, the rows that ask the
+    # same tests dealt across them in turns, and a test holds the shards to
+    # adding up to the table. What the runner prints reaches the log as it
+    # prints it, so the log says what every row cost, and how far a shard that
+    # met its limit had got.
     #
     # One row is a canary -- a comment nobody reads -- and is expected to
     # survive. Every shard fails if a row other than the canary survives, and
     # the shard holding the canary fails if it dies, because that would mean
     # the checks are killing everything.
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     permissions:
       contents: read
     steps:
@@ -209,7 +212,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev,shacl]"
-      - run: python tools/mutation_table.py --run --shard ${{ matrix.shard }}/6
+      - run: python tools/mutation_table.py --run --shard ${{ matrix.shard }}/12
+        env:
+          PYTHONUNBUFFERED: "1"
 
   wheel:
     # The failure this job exists for: a wheel that builds and installs but is

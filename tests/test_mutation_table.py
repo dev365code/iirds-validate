@@ -71,6 +71,21 @@ def test_nothing_one_row_writes_reaches_the_next(tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out.split("\n")[:2] == ["killed  made", "killed  said"]
 
 
+def test_rows_that_ask_the_same_tests_are_dealt_evenly():
+    """A row costs what its tests cost, before the mutation and after it:
+    seconds for most selections, minutes for the ones that run pySHACL.
+    However many shards the table is split into, every selection's rows land
+    in them as evenly as they divide, wherever the table lists them."""
+    def asked(row):
+        return tuple(check for check in row[4] if not check.startswith("tools/"))
+
+    for n in range(1, len(mutation_table.TABLE) + 1):
+        shards = [mutation_table.shard(mutation_table.TABLE, "%d/%d" % (k, n)) for k in range(1, n + 1)]
+        for selection in {asked(row) for row in mutation_table.TABLE}:
+            counts = [sum(asked(row) == selection for row in rows) for rows in shards]
+            assert max(counts) - min(counts) <= 1, (n, selection, counts)
+
+
 def test_the_ci_shards_add_up_to_the_table():
     """CI runs the sweep as shards, each under a time limit of its own: the
     comparison rows run pySHACL, minutes a row, and the whole table run as one

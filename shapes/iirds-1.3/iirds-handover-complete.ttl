@@ -2776,6 +2776,7 @@ ivs:R20 a sh:NodeShape ;
   sh:description "Point iirds:has-start-selector at an instance of iirds:FragmentSelector or one of its subclasses. A range with a start that is not a fragment selector names no position in the file, so the range cannot be resolved even though both ends are present." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfrelations_core_has-start-selector#1" ;
   sh:targetSubjectsOf iirds:has-start-selector ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#has-start-selector> ?value .
@@ -2795,6 +2796,7 @@ ivs:R21 a sh:NodeShape ;
   sh:description "Point iirds:has-end-selector at an instance of iirds:FragmentSelector or one of its subclasses. A range with an end that is not a fragment selector names no position in the file, so the range cannot be resolved even though both ends are present." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#information-units:~:text=The%20iirds%3ARangeSelector%20points,end%2Dselector.> ;
   ivm:versions "1.0,1.0.1,1.1,1.2,1.3" ;
+  ivm:covers "rdfrelations_core_has-end-selector#1" ;
   sh:targetSubjectsOf iirds:has-end-selector ;
   sh:sparql [ sh:select """SELECT $this ?value WHERE {
   $this <http://iirds.tekom.de/iirds#has-end-selector> ?value .
@@ -2962,6 +2964,7 @@ ivs:R61 a sh:NodeShape ;
   ivm:ruleId "R61" ;
   ivm:ruleSource "iirds-validate" ;
   sh:description "Remove an inaccurate type assertion or property statement, correct the package's class declarations, or classify the resource under the appropriate branch. If it combines two distinct things, give each its own resource and link them with the appropriate iiRDS relation." ;
+  sh:description "Nothing in the package is necessarily wrong: R61 declined to derive more than its ceiling, and has not said whether any resource is an instance of two disjoint classes. A closure grows large on a long chain of rdfs:subClassOf or rdfs:subPropertyOf statements -- every class in one is a subclass of every class above it, so a chain n long holds about n*n/2 of them -- or on a long run of equivalent classes. The classes a package declares for itself rarely need more than a few levels under the iiRDS class each refines; a hierarchy hundreds of levels deep is where to look." ;
   dcterms:source <https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-11-1-disjointness> ;
   ivm:versions "1.3" ;
   ivm:covers "x6-11-1-disjointness#1" ;

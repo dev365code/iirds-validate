@@ -2,7 +2,7 @@
  "counts": {
   "branch": 2,
   "finding": 1,
-  "other": 1,
+  "other": 2,
   "silent": 26
  },
  "tree": {
@@ -11,8 +11,8 @@
   "content.py": "54d98659937aa33c618c8a91106a9db5971f6660f3b59b62044b38b37f497642",
   "handover.py": "bee498594f8fbd4a8282c7c7b6adac4cd3e739eb27f0cc979a91889a5259749c",
   "lint.py": "528b2321fb0d54d0661d53cac2636651310ad397c60cc05b1f32fc771410c0f8",
-  "requirements.py": "6f8c51f64738092cddce45d37ca67e6d75fb4f6c825decf6a618af5d4dbff876",
-  "schema.py": "802ab1c282b348d26b0e5377d63b32f2fa0d68396767e1d44593e9409ea55729",
+  "requirements.py": "c9f66bdff4d4b231228b2774f6d310c42a8dff0cf2e722c554e8a23a09b164c9",
+  "schema.py": "afe99646f821734019ffa48c96f776180574a5efad56d6b50e0023a56f09cd55",
   "schema_tables.py": "8a13d6e9362f3f7f4d85bc60a2f5dd42076b0fb8a2d7179c58ff1f951b301cb4",
   "system.py": "b3540077e6cfd0dc6eb7960a44272f67863c2fe435d9264088005667ec6c85d3"
  },
@@ -47,6 +47,7 @@
    "l17_jsonld_statements_in_a_named_graph :: return [2]": "silent"
   },
   "schema.py": {
+   "add :: nonlocal room": "other",
    "m16_3_event_extension_is_a_class :: continue": "silent"
   },
   "schema_tables.py": {

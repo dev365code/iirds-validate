@@ -399,3 +399,98 @@ def test_a_report_does_not_give_two_nodes_the_same_name(tmp_path):
         assert len(names) == len(set(names)), (
             "%s names the same node twice: %s"
             % (finding.rule.id, finding.violation.detail))
+
+
+#: Three resources R61 reports, each through classes that are blank nodes. `x`
+#: is a Topic and, through a chain of three blank classes, a Document; `y`
+#: sits under two blank parents that are siblings under iirds:Topic; `z` under
+#: two blank siblings beneath one named parent. Which group a pair is drawn
+#: from, which pair, the class each side is reached through, the derivation
+#: named for it and the order the declared types are listed in were each taken
+#: in `str` order, and `str` of a blank node is the label a parse drew.
+BLANK_CLASSES = MINIMAL_RDF.replace("</rdf:RDF>", """
+  <rdf:Description rdf:about="https://example.org/x">
+    <rdf:type rdf:nodeID="c0"/>
+    <rdf:type rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="c0"><rdfs:subClassOf rdf:nodeID="c1"/></rdf:Description>
+  <rdf:Description rdf:nodeID="c1"><rdfs:subClassOf rdf:nodeID="c2"/></rdf:Description>
+  <rdf:Description rdf:nodeID="c2"><rdfs:subClassOf rdf:nodeID="c3"/></rdf:Description>
+  <rdf:Description rdf:nodeID="c3">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Document"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="p">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="q">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://example.org/A1"><rdfs:subClassOf rdf:nodeID="p"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/A2"><rdfs:subClassOf rdf:nodeID="p"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/B1"><rdfs:subClassOf rdf:nodeID="q"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/B2"><rdfs:subClassOf rdf:nodeID="q"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/y">
+    <rdf:type rdf:resource="https://example.org/A1"/>
+    <rdf:type rdf:resource="https://example.org/A2"/>
+    <rdf:type rdf:resource="https://example.org/B1"/>
+    <rdf:type rdf:resource="https://example.org/B2"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://example.org/P">
+    <rdfs:subClassOf rdf:resource="http://iirds.tekom.de/iirds#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="s1"><rdfs:subClassOf rdf:resource="https://example.org/P"/></rdf:Description>
+  <rdf:Description rdf:nodeID="s2"><rdfs:subClassOf rdf:resource="https://example.org/P"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/C1"><rdfs:subClassOf rdf:nodeID="s1"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/C2"><rdfs:subClassOf rdf:nodeID="s2"/></rdf:Description>
+  <rdf:Description rdf:about="https://example.org/z">
+    <rdf:type rdf:resource="https://example.org/C1"/>
+    <rdf:type rdf:resource="https://example.org/C2"/>
+  </rdf:Description>
+</rdf:RDF>""")
+
+
+def test_r61_names_the_same_classes_whatever_labels_a_parse_draws(tmp_path):
+    """Eight seeds gave seven different reports of this package. The order is
+    the classes' names now, `ctx.ref`, which a parse cannot change, and the
+    bytes are pinned: CI runs this under every Python the project supports
+    and under the oldest rdflib it accepts, so all of them print these."""
+    import subprocess
+    import sys
+
+    package = build_package(tmp_path, "blank-classes.iirds", metadata=BLANK_CLASSES)
+    script = (
+        "import json, sys;"
+        "sys.path[:0] = [%r];"
+        "from iirds_validate import runner;"
+        "r = runner.run(%r, ('schema',));"
+        "print(json.dumps([(f.violation.subject, f.violation.detail)"
+        " for f in r.findings if f.rule.id == 'R61']))"
+        % (str(ROOT / "src"), str(package)))
+    seen = set()
+    for seed in ("0", "1", "2", "3", "4", "5", "6", "7"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONDONTWRITEBYTECODE="1")
+        seen.add(subprocess.run([sys.executable, "-c", script], env=env,
+                                capture_output=True, text=True, check=True).stdout)
+    assert len(seen) == 1, "%d distinct reports across eight seeds" % len(seen)
+    assert json.loads(seen.pop()) == [
+        ["https://example.org/x",
+         "explicit type(s) http://iirds.tekom.de/iirds#Topic, https://example.org/x type; "
+         "_:4059a29f4f52 inferred via rdfs9 from _:ed0ba43e9273 (_:ed0ba43e9273 inferred via "
+         "rdfs9 from https://example.org/x type (explicit type https://example.org/x type; "
+         "statement https://example.org/x type http://www.w3.org/2000/01/rdf-schema#subClassOf "
+         "_:ed0ba43e9273); rdfs11 via _:ea9bba69cee5) -> http://iirds.tekom.de/iirds#Document + "
+         "explicit type http://iirds.tekom.de/iirds#Topic -> http://iirds.tekom.de/iirds#Topic; "
+         "disjoint ancestors http://iirds.tekom.de/iirds#Document + "
+         "http://iirds.tekom.de/iirds#Topic"],
+        ["https://example.org/y",
+         "explicit type(s) https://example.org/A1, https://example.org/A2, "
+         "https://example.org/B1, https://example.org/B2; explicit type https://example.org/A1 "
+         "-> https://example.org/A1 subClassOf + explicit type https://example.org/B1 -> "
+         "https://example.org/B1 subClassOf; disjoint ancestors https://example.org/A1 "
+         "subClassOf + https://example.org/B1 subClassOf"],
+        ["https://example.org/z",
+         "explicit type(s) https://example.org/C1, https://example.org/C2; explicit type "
+         "https://example.org/C1 -> https://example.org/C1 subClassOf + explicit type "
+         "https://example.org/C2 -> https://example.org/C2 subClassOf; disjoint ancestors "
+         "https://example.org/C1 subClassOf + https://example.org/C2 subClassOf"],
+    ]

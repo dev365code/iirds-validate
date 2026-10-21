@@ -172,20 +172,51 @@ def test_the_other_document_type_property_is_watched_too(tmp_path):
     assert "R19" in fired(tmp_path, "dt_applicable.iirds", body)
 
 
-@pytest.mark.parametrize("rule_id", IDS)
+#: The two of the family that claim a sentence: the range-selector one, whose
+#: "one start and one end selector" is about what the endpoints are as well as
+#: how many there are. M14.1 and M14.2 claim the count under both rows; each of
+#: these claims the row of the property it reads.
+CLAIMING = {
+    "R20": ("rdfrelations_core_has-start-selector#1",),
+    "R21": ("rdfrelations_core_has-end-selector#1",),
+}
+
+
+@pytest.mark.parametrize("rule_id", [rule_id for rule_id in IDS if rule_id not in CLAIMING])
 def test_these_rules_claim_nothing(rule_id):
-    """Every sentence this family was drafted claiming turned out unearned,
-    each for its own reason, and the reasons are in `rules/schema.py` beside
-    the rules. The short of it: a rule that asks what a property points at
-    does not answer a sentence about how many of the property there are, and
-    the one sentence that is about the target -- section 6.5.1's -- asks for a
-    *standardized* document type, which nothing checks.
+    """Every other sentence this family was drafted claiming turned out
+    unearned, each for its own reason, and the reasons are in
+    `rules/schema.py` beside the rules. The short of it: a rule that asks what
+    a property points at does not answer a sentence about how many of the
+    property there are, and the one sentence that is about the target --
+    section 6.5.1's -- asks for a *standardized* document type, which nothing
+    checks.
 
     Pinned so that claiming one later is a deliberate edit with a package
     behind it, rather than a tuple quietly regrown.
     """
     rule = next(r for r in all_rules() if r.id == rule_id)
     assert rule.covers == (), rule.covers
+
+
+@pytest.mark.parametrize("rule_id", sorted(CLAIMING))
+def test_the_endpoint_rules_claim_the_range_selector_sentence(tmp_path, rule_id):
+    """A range whose start or end is no selector breaks "A range selector MUST
+    reference one start and one end selector", and the rule for that endpoint
+    is the only one to report it: the count is right. So R20 and R21 claim the
+    sentence beside M14.1 and M14.2, and the package is here."""
+    rule = next(r for r in all_rules() if r.id == rule_id)
+    assert rule.covers == CLAIMING[rule_id], rule.covers
+    prop = "has-start-selector" if rule_id == "R20" else "has-end-selector"
+    other = "has-end-selector" if rule_id == "R20" else "has-start-selector"
+    body = ('  <iirds:Party rdf:about="urn:test:party"/>\n'
+            '  <iirds:RangeSelector rdf:about="urn:test:range">\n'
+            '    <iirds:%s rdf:resource="urn:test:party"/>\n'
+            '    <iirds:%s><iirds:FragmentSelector rdf:about="urn:test:fragment"/></iirds:%s>\n'
+            '  </iirds:RangeSelector>\n' % (prop, other, other))
+    got = fired(tmp_path, "endpoint.iirds", body)
+    assert rule_id in got, sorted(got)
+    assert not {"M14.1", "M14.2"} & got, sorted(got)
 
 
 def test_the_appendix_row_that_restates_it_is_not_claimed():

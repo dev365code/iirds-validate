@@ -93,6 +93,37 @@ TABLE = [
 
     ('earned/r61-rdfs10-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs10":', ['tests/test_obl_G.py'], 'class membership entails a reflexive subclass statement'),
 
+    ('earned/r61-appendix-a-axioms-omitted', 'src/iirds_validate/rules/schema.py',
+     '        add(*axiom, "axiomatic triple %s" % said(*axiom), "axiom")',
+     '        pass',
+     ['tests/test_obl_G.py'],
+     'the closure starts from the RDF and RDFS axiomatic triples, as Appendix A of RDF 1.1 Semantics says'),
+
+    ('earned/r61-appendix-a-container-axioms-omitted', 'src/iirds_validate/rules/schema.py',
+     'axiom for prop in members or [URIRef(str(RDF) + "_1")] for axiom in _container_axioms(prop)):',
+     'axiom for prop in [] for axiom in _container_axioms(prop)):',
+     ['tests/test_obl_G.py'],
+     'the container membership properties a package uses get their own axiomatic triples'),
+
+    ('earned/r61-rdfD2-omitted', 'src/iirds_validate/rules/schema.py',
+     '        add(prop, RDF.type, RDF.Property, "%s used as a predicate (rdfD2)" % ctx.ref(prop), "rdfD2")',
+     '        pass',
+     ['tests/test_obl_G.py'],
+     'whatever is used as a predicate is a property, and that type feeds the rest'),
+
+    ('earned/r61-GrdfD1-omitted', 'src/iirds_validate/rules/schema.py',
+     '            if datatype in (_XSD_STRING, RDF.langString):',
+     '            if False:',
+     ['tests/test_obl_G.py'],
+     'a literal of a recognized datatype is an instance of it, and that type feeds the rest'),
+
+    ("earned/r61-bundled-range-row-removed",
+     "shapes/README.md",
+     "| `bundled-range` | Package range declarations applied to known bundled type statements |\n",
+     "",
+     ["tests/test_obl_G.py"],
+     "the range half of a bundled-statement path the generated query does not take is named too"),
+
     ("earned/r61-rdfs10-feedback-row-removed",
      "shapes/README.md",
      "| `rdfs10-feedback` | Class reflexivity producing a schema statement |\n",
@@ -103,6 +134,54 @@ TABLE = [
     ('earned/r61-rdfs12-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs12":', ['tests/test_obl_G.py'], 'container membership properties inherit member semantics'),
 
     ('earned/r61-rdfs13-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs13":', ['tests/test_obl_G.py'], 'datatype classes inherit Literal when a package connects that class'),
+
+    ("earned/r61-closure-ceiling-removed", "src/iirds_validate/rules/schema.py",
+     "            if not room:",
+     "            if False:",
+     ["tests/test_bounded_closure.py"],
+     "a closure past its ceiling stops, and R61 says that it stopped instead of answering"),
+
+    ("earned/r61-closure-ceiling-fixed", "src/iirds_validate/rules/schema.py",
+     "    room = MAX_DERIVED_PER_FACT * started",
+     "    room = MAX_DERIVED_PER_FACT * 1076",
+     ["tests/test_bounded_closure.py"],
+     "the ceiling is a share of what the closure starts from, so a package is not cut for being large"),
+
+    ("earned/r61-closure-ceiling-underived", "src/iirds_validate/rules/schema.py",
+     "MAX_DERIVED_PER_FACT = 23",
+     "MAX_DERIVED_PER_FACT = 24",
+     ["tests/test_bounded_closure.py"],
+     "the ceiling is ten times what the measured packages need, not a number chosen beside it"),
+
+    ("earned/r61-closure-order-by-label", "src/iirds_validate/rules/schema.py",
+     "    pending = deque(sorted(facts, key=lambda triple: tuple(map(name, triple))))",
+     "    pending = deque(sorted(facts, key=lambda triple: tuple(map(str, triple))))",
+     ["tests/test_determinism.py"],
+     "the closure meets its facts in the order of their names, not of the labels a parse drew"),
+
+    ("earned/r61-groups-by-label", "src/iirds_validate/rules/schema.py",
+     "_disjoint_class_hierarchy(ctx.ontology, facts, direct_subclass, ctx.ref)",
+     "_disjoint_class_hierarchy(ctx.ontology, facts, direct_subclass, str)",
+     ["tests/test_determinism.py"],
+     "sibling groups come in the order of their parents' names"),
+
+    ("earned/r61-classes-by-label", "src/iirds_validate/rules/schema.py",
+     "        types = sorted(memberships[subject], key=ctx.ref)",
+     "        types = sorted(memberships[subject], key=str)",
+     ["tests/test_determinism.py"],
+     "the class each side of a finding is reached through is chosen by name"),
+
+    ("earned/r61-pairs-by-label", "src/iirds_validate/rules/schema.py",
+     "combinations(sorted(closure & group, key=ctx.ref), 2)",
+     "combinations(sorted(closure & group, key=str), 2)",
+     ["tests/test_determinism.py"],
+     "the pair a finding names is chosen by name"),
+
+    ("earned/r61-declared-by-label", "src/iirds_validate/rules/schema.py",
+     "            declared = sorted(ctx.values(subject, RDF.type), key=ctx.ref)",
+     "            declared = sorted(ctx.values(subject, RDF.type), key=str)",
+     ["tests/test_determinism.py"],
+     "a finding lists the declared types by name"),
 
     ('earned/r61-shacl-literal-subject-included', 'tools/emit_shacl.py', '  FILTER (!isLiteral(?type) && !isLiteral(?value))', '  FILTER (!isLiteral(?type))', ['tools/emit_shacl.py', 'tests/test_obl_G.py'], 'literal values are not reported as resource subjects'),
 

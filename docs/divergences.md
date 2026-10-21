@@ -1264,6 +1264,37 @@ statements whatever graph holds them, is a question for the Consortium.
   each specification by one IRI, and that IRI is what a consumer compares
   against.
 
+## R61 — the instances a disjointness check counts
+
+Section 6.11.1 names eight classes and says "Disjoint classes MUST NOT have
+instances in common." It does not say under which entailment a resource is an
+instance of a class. R61 counts declared types and those RDFS entailment adds,
+and takes the whole of it: the closure is the one Appendix A of RDF 1.1
+Semantics gives -- the RDF and RDFS axiomatic triples, and the rules rdfD2 and
+GrdfD1 with rdfs1 to rdfs13, applied to exhaustion -- over the package and the
+bundled ontology's type and schema statements. Stopping at the rdfs patterns
+would leave out what the axioms, rdfD2 and GrdfD1 add, and a package that
+connects RDF's own vocabulary to an iiRDS class would pass through that gap.
+
+Two choices are this project's own. `owl:equivalentClass`, which RDFS does not
+read, is taken as a subclass edge in both directions. And a literal is not
+reported: the closure keeps literals as instances, which GrdfD1 needs, but a
+finding names a resource the package describes by an IRI or a blank node.
+
+A third is a ceiling. Every class in a chain of subclasses is a subclass of
+every class above it, so the closure grows with the square of a chain, and a
+few dozen kilobytes of one held a run for minutes. The closure derives at most
+23 facts for each one it starts from, ten times what the corpus and the
+Consortium's sample packages need; past that R61 reports that it stopped and
+names no resource either way. What a finding names is taken in the order of
+names that do not change from one parse to the next, except between two blank
+nodes that say the same thing four levels down: they share a name, and which
+of them a finding is drawn from can still differ between runs.
+
+The shapes encode less of this than the rule does. The shapes README lists, by
+name, each path the generated query leaves to the Python rule, and a test holds
+each one to the Python finding and the generated query's silence.
+
 ## Where severity currently outruns the reading
 
 The rule here is that anything resting on this project's own reading is a

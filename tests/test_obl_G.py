@@ -1098,11 +1098,17 @@ DISJOINT_FIXED_POINT_PROBES = [
      ((EXAMPLE.p, RDF.type, RDF.Property),
       (EXAMPLE.p, RDF.type, CORE.Topic),
       (RDFS.subPropertyOf, RDFS.domain, CORE.Document)), True, False),
-    ("rdfs8-feedback", EXAMPLE.ValueClass,
-     ((EXAMPLE.ValueClass, RDF.type, RDFS.Class),
-      (EXAMPLE.ValueClass, RDF.type, CORE.Topic),
-      (RDFS.subClassOf, RDFS.range, CORE.Document),
-      (EXAMPLE.ValueClass, RDFS.domain, CORE.Document)), True, False),
+    # rdfs8 or nothing: the class-to-Resource statement, read as a subproperty
+    # statement through the package's own declaration, carries `x C y` on to
+    # `x rdfs:Resource y`, and rdfs:Resource has a domain here. The input that
+    # had this name before reached its finding through rdfs10 and reached it
+    # with rdfs8 gone; `rdfs10-feedback` is that path.
+    ("rdfs8-feedback", EXAMPLE.x,
+     ((RDFS.subClassOf, RDFS.subPropertyOf, RDFS.subPropertyOf),
+      (RDFS.Resource, RDFS.domain, CORE.Document),
+      (EXAMPLE.Kind, RDF.type, RDFS.Class),
+      (EXAMPLE.x, EXAMPLE.Kind, EXAMPLE.y),
+      (EXAMPLE.x, RDF.type, CORE.Topic)), True, False),
     # A subclass statement read as a type statement through a declared
     # subproperty: the generated query follows it. Its subclass statement is
     # written out, so it needs no reflexive one -- it was named for rdfs10 and
@@ -1120,6 +1126,36 @@ DISJOINT_FIXED_POINT_PROBES = [
      ((RDFS.subClassOf, RDFS.range, CORE.Document),
       (EXAMPLE.Kind, RDF.type, RDFS.Class),
       (EXAMPLE.Kind, RDF.type, CORE.Topic)), True, False),
+    # RDF 1.1 Semantics, Appendix A: the closure adds the RDF and RDFS
+    # axiomatic triples, and runs rdfD2 and GrdfD1 with rdfs1 to rdfs13. Each
+    # input below reports nothing without the one piece it names.
+    # rdfD2: whatever is used as a predicate is an rdf:Property.
+    ("rdfD2-feedback", EXAMPLE.p,
+     ((RDF.Property, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.p, RDF.type, CORE.Topic),
+      (EXAMPLE.s, EXAMPLE.p, EXAMPLE.o)), True, False),
+    # The axiomatic range of rdf:type is rdfs:Class, so a type is a class.
+    ("axiom-type-range", EXAMPLE.Kind,
+     ((RDFS.Class, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.Kind, RDF.type, CORE.Topic),
+      (EXAMPLE.member, RDF.type, EXAMPLE.Kind)), True, False),
+    # The axiomatic domain of rdfs:subClassOf is rdfs:Class, so a subclass is one.
+    ("axiom-subclass-domain", EXAMPLE.Kind,
+     ((RDFS.Class, RDFS.subClassOf, CORE.Document),
+      (EXAMPLE.Kind, RDF.type, CORE.Topic),
+      (EXAMPLE.Kind, RDFS.subClassOf, EXAMPLE.Other)), True, False),
+    # The axioms for each container membership property the package uses:
+    # rdf:_1 is one, so rdfs12 makes it a subproperty of rdfs:member.
+    ("axiom-container-membership", EXAMPLE.bag,
+     ((RDFS.member, RDFS.domain, CORE.Document),
+      (EXAMPLE.bag, URIRef(str(RDF) + "_1"), EXAMPLE.item),
+      (EXAMPLE.bag, RDF.type, CORE.Topic)), True, False),
+    # GrdfD1: a string literal -- here the package's title -- is an instance
+    # of xsd:string, and that type statement goes on through rdfs7.
+    ("GrdfD1-feedback", URIRef("http://www.w3.org/2001/XMLSchema#string"),
+     ((RDF.type, RDFS.subPropertyOf, EXAMPLE.typeOf),
+      (EXAMPLE.typeOf, RDFS.range, CORE.Document),
+      (URIRef("http://www.w3.org/2001/XMLSchema#string"), RDF.type, CORE.Topic)), True, False),
     ("rdfs12-feedback", EXAMPLE.x,
      ((EXAMPLE.prop, RDF.type, RDFS.ContainerMembershipProperty),
       (RDFS.member, RDFS.domain, CORE.Document),
@@ -1131,6 +1167,16 @@ DISJOINT_FIXED_POINT_PROBES = [
       (EXAMPLE.x, RDF.type, EXAMPLE.ValueType),
       (EXAMPLE.x, RDF.type, CORE.Topic)), True, False),
 ]
+
+
+#: The words a finding's detail uses for the Appendix A step it rests on.
+APPENDIX_A_STEPS = {
+    "rdfD2-feedback": "(rdfD2)",
+    "axiom-type-range": "axiomatic triple",
+    "axiom-subclass-domain": "axiomatic triple",
+    "axiom-container-membership": "axiomatic triple",
+    "GrdfD1-feedback": "(GrdfD1)",
+}
 
 
 @pytest.mark.parametrize("name,subject,triples,expected,supported", DISJOINT_FIXED_POINT_PROBES,
@@ -1151,7 +1197,9 @@ def test_disjoint_fixed_point_python(tmp_path, name, subject, triples, expected,
         witnesses = (CORE.InformationUnit, CORE.Rendition) if name == "rdfs4-feedback" else (CORE.Document, CORE.Topic)
         assert all(str(cls) in detail for cls in witnesses), detail
         assert claimants("x6-11-1-disjointness#1") & {finding.rule.id for finding in findings}
-        if name in {"rdfs2-feedback", "rdfs5-feedback", "datatype-branch", "joint-feedback"}:
+        if name in APPENDIX_A_STEPS:
+            assert APPENDIX_A_STEPS[name] in detail, detail
+        if name in {"rdfs2-feedback", "rdfs5-feedback", "datatype-branch", "joint-feedback"} | set(APPENDIX_A_STEPS):
             assert len(all_r61) == 1, all_r61
     else:
         assert not all_r61, all_r61
@@ -1184,6 +1232,45 @@ def test_disjoint_fixed_point_shacl(tmp_path, name, subject, triples, expected, 
         readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
         assert name in readme, name
         assert "R61" in python and not found, (name, text)
+
+
+def _rdfs3_bundled_statement_metadata():
+    return _disjoint_membership_metadata(((RDF.type, RDFS.range, CORE.Document),
+                                          (CORE.PartyRole, RDF.type, CORE.Topic)))
+
+
+def test_rdfs3_bundled_statement_comparison(tmp_path):
+    """x6-11-1-disjointness#1
+    Disjoint classes MUST NOT have instances in common.
+
+    The range half of the bundled-domain path: rdfs3 applies the package's range
+    for rdf:type to the bundled type statements too, so the class they name is
+    a Document here as well as the Topic the package says it is. The generated
+    query reads ranges from the data graph alone -- pinned as deferred, the
+    Python finding and the raw SHACL silence both.
+    """
+    from pathlib import Path
+
+    from conftest import shacl_or_skip
+    pyshacl = shacl_or_skip()
+    from test_shapes_parity import CORE as SHAPES
+    from test_shapes_parity import SH
+
+    metadata = _rdfs3_bundled_statement_metadata()
+    findings = [finding for finding in runner.run(build_package(tmp_path, "bundled-range.iirds",
+                                                                metadata=metadata), runner.ALL_KINDS).findings
+                if finding.rule.id == "R61"]
+    assert [finding.violation.subject for finding in findings] == [str(CORE.PartyRole)], findings
+    detail = findings[0].violation.detail
+    assert "inferred from the range of " + str(RDF.type) in detail, detail
+    assert "known from the bundled type of " in detail, detail
+    _ok, results, text = pyshacl.validate(Graph().parse(data=metadata, format="xml"),
+                                        shacl_graph=SHAPES, advanced=True, inference="none")
+    raw = {result for result, _p, source in results.triples((None, SH.sourceShape, None))
+           if str(source).rsplit("#", 1)[-1] == "R61"}
+    assert len(raw) == 0, text
+    readme = (Path(__file__).resolve().parents[1] / "shapes/README.md").read_text()
+    assert "| `bundled-range` |" in readme
 
 
 def test_disjoint_fixed_point_schema_consequences_are_reusable(tmp_path):

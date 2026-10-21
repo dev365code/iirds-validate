@@ -134,9 +134,11 @@ and `rdfs:range` are entailment hints, which other rules do not validate as
 constraints. Python R61 uses declared and RDFS-implied types when applying
 section 6.11.1 for iiRDS 1.3. Its local facts combine the package with bundled
 type and schema statements, including known types of bundled resources the
-package uses. The RDFS entailment patterns run to a joint fixed point:
-type, domain, range, subclass and subproperty consequences all feed one
-another. Equivalence declarations supply subclass edges in both directions.
+package uses. The closure is the one RDF 1.1 Semantics, Appendix A, gives:
+the RDF and RDFS axiomatic triples, and rdfD2 and GrdfD1 with the RDFS
+entailment patterns, run to a joint fixed point where type, domain, range,
+subclass and subproperty consequences all feed one another. Equivalence
+declarations supply subclass edges in both directions.
 Datatype classes can contribute membership when connected to iiRDS classes;
 literal values are excluded as reported subjects. No triples are added to
 the package graph. The eight named classes remain disjoint even when package
@@ -149,10 +151,12 @@ paths, and the known bundled type table as a separate source of memberships.
 Its domain and range joins read statements from the data graph alone, so they
 do not apply package schema declarations to the known bundled type statements.
 That is support deferred, not a path a query cannot take: one join could read
-the table as a second source of statements, and this one does not yet.
+the table as a second source of statements, and this one does not yet. Adding
+it is an open decision for 0.9.x.
 It does not materialize the joint RDFS fixed point. In particular, it defers
-**rdfs7 schema normalization** and feedback of derived type and transitive
-schema statements into later rules.
+**rdfs7 schema normalization**, feedback of derived type and transitive
+schema statements into later rules, and Appendix A's axiomatic triples, rdfD2
+and GrdfD1.
 These named probes assert Python R61 findings and raw SHACL silence:
 
 | Deferred probe | Missing path in the generated query |
@@ -161,6 +165,7 @@ These named probes assert Python R61 findings and raw SHACL silence:
 | `property-alias-fixed-point` | Derived subproperty statements |
 | `domain-fixed-point` | Derived subproperty followed by a domain declaration |
 | `bundled-domain` | Package domain declarations applied to known bundled type statements |
+| `bundled-range` | Package range declarations applied to known bundled type statements |
 | `rdfs2-feedback` | Domain type fed back into schema and type aliases, including the inferred `iirds:Party` type of `party` fed into the domain of `rdf:type` |
 | `rdfs3-feedback` | Range type fed back into schema and type aliases |
 | `rdfs5-feedback` | Transitive subproperty statement used as a type statement |
@@ -170,10 +175,15 @@ These named probes assert Python R61 findings and raw SHACL silence:
 | `rdfs1-feedback` | Recognized datatype IRI typing fed into iiRDS membership |
 | `rdfs4-feedback` | Resource typing under package metamodel declarations |
 | `rdfs6-feedback` | Property reflexivity producing a schema statement |
-| `rdfs8-feedback` | Class-to-Resource statement producing range membership |
+| `rdfs8-feedback` | Class-to-Resource statement, read as a subproperty statement, producing domain membership |
 | `rdfs10-feedback` | Class reflexivity producing a schema statement |
 | `rdfs12-feedback` | Container membership property's implicit superproperty |
 | `rdfs13-feedback` | Datatype-to-Literal subclass consequence |
+| `rdfD2-feedback` | Property typing of whatever is used as a predicate (rdfD2) |
+| `axiom-type-range` | The axiomatic range of `rdf:type`, typing a type as a class |
+| `axiom-subclass-domain` | The axiomatic domain of `rdfs:subClassOf`, typing a subclass as a class |
+| `axiom-container-membership` | The axiomatic triples of the container membership properties a package uses |
+| `GrdfD1-feedback` | String literals as instances of their datatype (GrdfD1) |
 
 The comparison tests pin these limits rather than treating unsupported paths
 as conformant. This table describes paths within R61, not additional deferred

@@ -242,7 +242,8 @@ gone wrong.
 
    The other three of the twenty-nine say something about the metadata and stay
    among the obligations: the range-selector sentence, stated once per property,
-   which M14.1 and M14.2 claim, and §6.8.4's classification-domain sentence
+   which M14.1 and M14.2 claim for how many endpoints a range has and R20 and
+   R21 for what each one is, and §6.8.4's classification-domain sentence
    restated in the appendix, which no rule claims yet. Both sides are listed by
    name, because the first attempt drew the line at the cell's label and split
    one term's two adjacent rows.

@@ -91,8 +91,8 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
-    assert len(pairs) == 216, len(pairs)
-    assert len(asserted) == 93, sorted(asserted)
+    assert len(pairs) == 218, len(pairs)
+    assert len(asserted) == 95, sorted(asserted)
 
     # It used to reach three, and reaches most of appendix A now: those rows
     # name their class in the subject column, which is what the heuristic
@@ -102,7 +102,9 @@ def test_how_far_the_name_heuristic_actually_reaches():
     # `rdfrelations_` joined `rdfclasses_` when M14.1 and M14.2 claimed the
     # range-selector rows: those name a *property* in the subject column, which
     # the heuristic reads the same way. Wider on purpose, and named here so the
-    # widening is a diff rather than a prefix quietly added to a pattern.
+    # widening is a diff rather than a prefix quietly added to a pattern. R20
+    # and R21 claiming the row of the property each reads, for what the
+    # endpoint is, adds two pairs, both named this way.
     assert all(requirement.startswith(("rdfclasses_", "rdfrelations_"))
                for rid, requirement in asserted
                if rid not in {"R1", "R2", "R17"}), sorted(asserted)
@@ -419,10 +421,12 @@ def test_scope_says_which_vocabulary_obligation_a_rule_claims():
 
     selector = ("rdfrelations_core_has-start-selector#1", "rdfrelations_core_has-end-selector#1")
     assert set(selector) < set(VOCABULARY_ROWS_THAT_ARE_OBLIGATIONS)
-    assert claimants(selector[0]) == claimants(selector[1]) == ["M14.1", "M14.2"]
+    assert claimants(selector[0]) == ["M14.1", "M14.2", "R20"], claimants(selector[0])
+    assert claimants(selector[1]) == ["M14.1", "M14.2", "R21"], claimants(selector[1])
     assert claimants("rdfclasses_core_ExternalClassification#1") == []
     page = " ".join((ROOT / "docs" / "scope.md").read_text("utf-8").split())
-    assert "the range-selector sentence, stated once per property, which M14.1 and M14.2 claim" in page
+    assert ("the range-selector sentence, stated once per property, which M14.1 and M14.2 claim "
+            "for how many endpoints a range has and R20 and R21 for what each one is") in page
     assert "classification-domain sentence restated in the appendix, which no rule claims yet" in page
     assert "stay where the work is" not in page
 

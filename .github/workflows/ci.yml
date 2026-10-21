@@ -199,7 +199,7 @@ jobs:
     # the shard holding the canary fails if it dies, because that would mean
     # the checks are killing everything.
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:

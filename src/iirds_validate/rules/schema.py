@@ -206,7 +206,8 @@ def _disjoint_rdfs_facts(ctx):
     `xsd:string`, to exhaustion; equivalence adds subclass edges both ways.
     Every new conclusion is queued once and joins with all known premises, and
     a conclusion from two premises names both -- the statement, then the schema
-    statement it met -- so how it reads does not depend on which arrived first. Only input terms and fixed vocabulary
+    statement it met, or for rdfs5 and rdfs11 the lower statement of the chain,
+    then the upper -- so how it reads does not depend on which arrived first. Only input terms and fixed vocabulary
     constants occur, bounding the fixed point. Literal subjects and blank
     predicates may occur in these internal facts; only used IRI/blank-node
     subjects become reported memberships.
@@ -304,21 +305,27 @@ def _disjoint_rdfs_facts(ctx):
                 add(value, RDF.type, obj, "%s inferred from the range of %s (%s; %s)" %
                     (ctx.ref(obj), ctx.ref(subject), origins[source, subject, value], origin), "rdfs3")
         elif prop == RDFS.subPropertyOf:
-            # rdfs5 in both delta positions; the conclusion is a reusable fact.
+            # rdfs5 in both delta positions; the conclusion is a reusable fact, and
+            # it names both statements, the lower first, whichever arrived first.
             for parent in tuple(facts.objects(obj, RDFS.subPropertyOf)):
-                add(subject, RDFS.subPropertyOf, parent, "rdfs5 via %s" % ctx.ref(obj), "rdfs5")
+                add(subject, RDFS.subPropertyOf, parent, "rdfs5 via %s (%s; %s)" %
+                    (ctx.ref(obj), origin, origins[obj, RDFS.subPropertyOf, parent]), "rdfs5")
             for child in tuple(facts.subjects(RDFS.subPropertyOf, subject)):
-                add(child, RDFS.subPropertyOf, obj, "rdfs5 via %s" % ctx.ref(subject), "rdfs5")
+                add(child, RDFS.subPropertyOf, obj, "rdfs5 via %s (%s; %s)" %
+                    (ctx.ref(subject), origins[child, RDFS.subPropertyOf, subject], origin), "rdfs5")
             for source, _p, value in tuple(facts.triples((None, subject, None))):
                 add(source, obj, value, "%s inferred via rdfs:subPropertyOf of %s (%s; %s)" %
                     (said(source, obj, value), ctx.ref(subject), origins[source, subject, value],
                      origin), "rdfs7")
         elif prop == RDFS.subClassOf:
-            # rdfs11 in both delta positions, then rdfs9's new class-edge position.
+            # rdfs11 in both delta positions, naming both statements as rdfs5 does,
+            # then rdfs9's new class-edge position.
             for parent in tuple(facts.objects(obj, RDFS.subClassOf)):
-                add(subject, RDFS.subClassOf, parent, "rdfs11 via %s" % ctx.ref(obj), "rdfs11")
+                add(subject, RDFS.subClassOf, parent, "rdfs11 via %s (%s; %s)" %
+                    (ctx.ref(obj), origin, origins[obj, RDFS.subClassOf, parent]), "rdfs11")
             for child in tuple(facts.subjects(RDFS.subClassOf, subject)):
-                add(child, RDFS.subClassOf, obj, "rdfs11 via %s" % ctx.ref(subject), "rdfs11")
+                add(child, RDFS.subClassOf, obj, "rdfs11 via %s (%s; %s)" %
+                    (ctx.ref(subject), origins[child, RDFS.subClassOf, subject], origin), "rdfs11")
             for resource in tuple(facts.subjects(RDF.type, subject)):
                 add(resource, RDF.type, obj, "%s inferred via rdfs9 from %s (%s; %s)" %
                     (ctx.ref(obj), ctx.ref(subject), origins[resource, RDF.type, subject], origin), "rdfs9")

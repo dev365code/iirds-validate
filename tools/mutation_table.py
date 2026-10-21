@@ -135,6 +135,38 @@ TABLE = [
 
     ('earned/r61-rdfs13-facts-omitted', 'src/iirds_validate/rules/schema.py', '        if triple not in facts:', '        if triple not in facts and pattern != "rdfs13":', ['tests/test_obl_G.py'], 'datatype classes inherit Literal when a package connects that class'),
 
+    ("earned/r61-rdfs11-origin-when-the-lower-statement-comes-first",
+     "src/iirds_validate/rules/schema.py",
+     '                add(subject, RDFS.subClassOf, parent, "rdfs11 via %s (%s; %s)" %\n'
+     '                    (ctx.ref(obj), origin, origins[obj, RDFS.subClassOf, parent]), "rdfs11")\n',
+     '                add(subject, RDFS.subClassOf, parent, "rdfs11 via %s" % ctx.ref(obj), "rdfs11")\n',
+     ["tests/test_closure_origins.py"],
+     "a transitive subclass step names the two statements it joins, not only the class between them"),
+
+    ("earned/r61-rdfs11-origin-when-the-upper-statement-comes-first",
+     "src/iirds_validate/rules/schema.py",
+     '                add(child, RDFS.subClassOf, obj, "rdfs11 via %s (%s; %s)" %\n'
+     '                    (ctx.ref(subject), origins[child, RDFS.subClassOf, subject], origin), "rdfs11")\n',
+     '                add(child, RDFS.subClassOf, obj, "rdfs11 via %s" % ctx.ref(subject), "rdfs11")\n',
+     ["tests/test_closure_origins.py"],
+     "the same, when the chain's upper statement is the one the closure meets first"),
+
+    ("earned/r61-rdfs5-origin-when-the-lower-statement-comes-first",
+     "src/iirds_validate/rules/schema.py",
+     '                add(subject, RDFS.subPropertyOf, parent, "rdfs5 via %s (%s; %s)" %\n'
+     '                    (ctx.ref(obj), origin, origins[obj, RDFS.subPropertyOf, parent]), "rdfs5")\n',
+     '                add(subject, RDFS.subPropertyOf, parent, "rdfs5 via %s" % ctx.ref(obj), "rdfs5")\n',
+     ["tests/test_closure_origins.py"],
+     "a transitive subproperty step names the two statements it joins, not only the property between them"),
+
+    ("earned/r61-rdfs5-origin-when-the-upper-statement-comes-first",
+     "src/iirds_validate/rules/schema.py",
+     '                add(child, RDFS.subPropertyOf, obj, "rdfs5 via %s (%s; %s)" %\n'
+     '                    (ctx.ref(subject), origins[child, RDFS.subPropertyOf, subject], origin), "rdfs5")\n',
+     '                add(child, RDFS.subPropertyOf, obj, "rdfs5 via %s" % ctx.ref(subject), "rdfs5")\n',
+     ["tests/test_closure_origins.py"],
+     "the same, when the chain's upper statement is the one the closure meets first"),
+
     ("earned/r61-closure-ceiling-removed", "src/iirds_validate/rules/schema.py",
      "            if not room:",
      "            if False:",

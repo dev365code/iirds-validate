@@ -478,7 +478,10 @@ def test_r61_names_the_same_classes_whatever_labels_a_parse_draws(tmp_path):
          "_:4059a29f4f52 inferred via rdfs9 from _:ed0ba43e9273 (_:ed0ba43e9273 inferred via "
          "rdfs9 from https://example.org/x type (explicit type https://example.org/x type; "
          "statement https://example.org/x type http://www.w3.org/2000/01/rdf-schema#subClassOf "
-         "_:ed0ba43e9273); rdfs11 via _:ea9bba69cee5) -> http://iirds.tekom.de/iirds#Document + "
+         "_:ed0ba43e9273); rdfs11 via _:ea9bba69cee5 (statement _:ed0ba43e9273 "
+         "http://www.w3.org/2000/01/rdf-schema#subClassOf _:ea9bba69cee5; statement _:ea9bba69cee5 "
+         "http://www.w3.org/2000/01/rdf-schema#subClassOf _:4059a29f4f52)) -> "
+         "http://iirds.tekom.de/iirds#Document + "
          "explicit type http://iirds.tekom.de/iirds#Topic -> http://iirds.tekom.de/iirds#Topic; "
          "disjoint ancestors http://iirds.tekom.de/iirds#Document + "
          "http://iirds.tekom.de/iirds#Topic"],

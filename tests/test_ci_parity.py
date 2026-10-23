@@ -174,6 +174,7 @@ CHECK_COMMANDS = (
     "-m iirds_validate.ontology --verify",
     "tools/serialisation_equivalence.py fixtures/bad.iirds",
     "tools/serialisation_equivalence.py fixtures/good.iirds --allow-clean",
+    "tools/action_parity.py",
     "tools/mutation_table.py --check",
 )
 

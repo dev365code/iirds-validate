@@ -60,6 +60,10 @@ METADATA = "src/iirds/_metadata.py"
 BOUNDED = "tests/test_bounded_comparison.py"
 EXACT = "tests/test_fingerprint_exactness.py"
 NAMED = "tests/test_jsonld_named_graphs.py"
+ACTION = "action.yml"
+ACTION_PARITY = "tools/action_parity.py"
+ACTION_BEHAVES = "tests/test_the_action_behaves_the_way_its_names_claim.py"
+ACTION_SAYS = "tests/test_the_action_says_what_the_command_says.py"
 
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
@@ -564,6 +568,61 @@ TABLE = [
      "        if missing or empty:",
      [LINKS],
      "a gate passes while checking less than it was asked to"),
+
+    ("action/a-failing-checker-ends-the-step-before-its-code-is-published",
+     ACTION,
+     '        "$@" || rc=$?\n',
+     '        "$@"\n        rc=$?\n',
+     [ACTION_BEHAVES],
+     "under the `-e` GitHub gives `shell: bash`, a verdict of 1, 2 or 64 ends the step at "
+     "the call: no exit-code is published, and report mode fails the job it was asked not to"),
+
+    ("action/the-gate-flattens-the-code",
+     ACTION,
+     '\n        exit "$rc"\n',
+     '\n        exit $(( rc != 0 ))\n',
+     [ACTION_BEHAVES],
+     "a job reading the step's status cannot tell a command line it typed wrong (64) from "
+     "a package with errors (1)"),
+
+    ("action/a-misspelt-verb-reaches-the-checker",
+     ACTION,
+     "          check|lint|all) ;;\n",
+     "          check|lint|all|*) ;;\n",
+     [ACTION_BEHAVES],
+     "`command: lnit` is read as a path and comes back as 2, could not run, about a "
+     "package nobody named"),
+
+    ("action/an-empty-directory-passes-for-an-install",
+     ACTION,
+     '[ ! -f "$TARGET/iirds_validate/__main__.py" ]',
+     '[ ! -d "$TARGET" ]',
+     [ACTION_BEHAVES],
+     "an install that left no checker is run anyway, and `python -m` on a missing module "
+     "exits 1 -- errors found, about a package nothing looked at"),
+
+    ("action/the-check-step-runs-only-when-asked",
+     ACTION,
+     "    - id: check\n      shell: bash\n",
+     "    - id: check\n      if: inputs.pyz != ''\n      shell: bash\n",
+     [ACTION_SAYS],
+     "GitHub skips the check on the path every README reader takes and the step passes, "
+     "while a comparison that ran the script anyway would call it the command's"),
+
+    ("action/a-carried-file-is-hashed-by-its-name",
+     ACTION,
+     '              got=$(sha256sum < "$PYZ" | cut -d" " -f1)\n',
+     '              got=$(sha256sum "$PYZ" | cut -d" " -f1)\n',
+     [ACTION_BEHAVES],
+     "a hash tool handed a name with a backslash -- every path on a Windows runner -- puts "
+     "one before the hash, and the right file is refused"),
+
+    ("action-parity/stdout-is-not-compared",
+     ACTION_PARITY,
+     "    if step.stdout != expected_out:\n",
+     "    if False:\n",
+     [ACTION_SAYS],
+     "a step that prints a line of its own passes the gate that says it prints the command's"),
 
     ("s10/names-compared-as-bytes",
      SYSTEM,

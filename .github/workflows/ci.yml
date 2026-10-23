@@ -435,3 +435,219 @@ jobs:
         run: |
           python tools/vendor_corpus.py --retrieved "$(date -u +%Y-%m-%d)"
           git diff --stat -- tests/corpus/plusmeta || true
+
+  # The action this repository publishes, used the way somebody else would use
+  # it. A composite action can be wrong in ways no unit test sees -- an input
+  # that never reaches the command, a failure that does not fail the job -- and
+  # the way to find that out is to run it as a step.
+  the-action-this-repo-offers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Build the single file this tree produces, and two packages to check
+        run: |
+          python tools/build_zipapp.py --check
+          python tools/make_fixture_package.py fixtures/good.iirds
+          python tools/make_fixture_package.py fixtures/bad.iirds --broken missing-format
+      # The offline path: a file you already have, and nothing fetched.
+      # `version` names a release that cannot exist, so if the install ever
+      # stopped being skipped this step would go red rather than quietly reach
+      # an index. A test that reads the `if:` proves the text; this proves what
+      # it does.
+      - name: A clean package passes, with nothing installed
+        uses: ./
+        with:
+          pyz: dist/iirds.pyz
+          version: "0.0.0-there-is-no-such-release"
+          paths: fixtures/good.iirds
+      - name: A package with errors fails the step, with its own code
+        id: broken
+        continue-on-error: true
+        uses: ./
+        with:
+          pyz: dist/iirds.pyz
+          paths: fixtures/bad.iirds
+      # Both directions, because an action that always failed would pass the
+      # step above and one that always passed would pass this one. And the
+      # output: `action.yml` says a failed step still publishes `exit-code`,
+      # and this is where that is asked of GitHub rather than assumed.
+      - name: The failure was the checker's verdict, and its code was published
+        run: |
+          test "${{ steps.broken.outcome }}" = failure || { echo "::error::a package with errors did not fail the step"; exit 1; }
+          test "${{ steps.broken.outputs.exit-code }}" = 1 || { echo "::error::a failed step did not publish exit-code 1, and action.yml says it does"; exit 1; }
+      - name: Asked not to fail, it reports the code instead
+        id: reported
+        uses: ./
+        with:
+          pyz: dist/iirds.pyz
+          paths: fixtures/bad.iirds
+          fail-on-finding: "false"
+      - name: The reported code is the checker's own
+        run: |
+          test "${{ steps.reported.outcome }}" = success || { echo "::error::fail-on-finding:false still failed the step"; exit 1; }
+          test "${{ steps.reported.outputs.exit-code }}" = 1 || { echo "::error::expected 1 for a package with errors, got '${{ steps.reported.outputs.exit-code }}'"; exit 1; }
+      # Which release? The newest the index serves, asked when the job runs. A
+      # number written here would have to be edited on every release, and the
+      # job would be red until somebody did.
+      - name: The newest release the index serves
+        id: newest
+        run: |
+          # Three tries, because a moment's outage at the index is not a fault
+          # of the commit being judged. `&& break` rather than a bare call:
+          # this step runs under `-e`, so a failed lookup would end it there.
+          v=""
+          for attempt in 1 2 3; do
+            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json', timeout=30))['info']['version'])") && break
+            echo "the index did not answer (try $attempt of 3)"
+            sleep 20
+          done
+          test -n "$v" || { echo "::error::could not ask the index which release is newest"; exit 1; }
+          echo "asking for $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      # The fetching path, against a release that exists: the install and the
+      # version input, which the offline steps above deliberately skip.
+      - name: A published release installs and runs
+        id: installed
+        uses: ./
+        with:
+          version: ${{ steps.newest.outputs.version }}
+          paths: fixtures/good.iirds
+      # The installed path judges a package with errors as the carried one does:
+      # every other use of it here hands it a clean package, and a step that ran
+      # nothing would pass those.
+      - name: A package with errors fails the step on the installed path too
+        id: broken-installed
+        continue-on-error: true
+        uses: ./
+        with:
+          version: ${{ steps.newest.outputs.version }}
+          paths: fixtures/bad.iirds
+      - name: That failure was the checker's verdict as well
+        run: |
+          test "${{ steps.broken-installed.outcome }}" = failure || { echo "::error::a package with errors did not fail the installed path"; exit 1; }
+          test "${{ steps.broken-installed.outputs.exit-code }}" = 1 || { echo "::error::the installed path did not publish exit-code 1"; exit 1; }
+      # Exit 0 would also happen if the install resolved some other release, so
+      # ask what ran what it is.
+      - name: The version that ran is the one that was asked for
+        env:
+          WANT: ${{ steps.newest.outputs.version }}
+          GOT: ${{ steps.installed.outputs.version }}
+        run: |
+          test "$GOT" = "$WANT" || { echo "::error::asked for $WANT and the action resolved $GOT"; exit 1; }
+          ran=$(PYTHONPATH="$RUNNER_TEMP/iirds-$WANT" python -m iirds_validate --version)
+          test "$ran" = "iirds $WANT" || { echo "::error::asked for $WANT and ran $ran"; exit 1; }
+      # The newest release and the version this tree is numbered for are often
+      # the same, and then the step above passes with `version` ignored. An
+      # older release, asked for by name, cannot -- and it has to land beside
+      # the newest, not on top of it. Report mode, because what 0.8.0 says of
+      # the package is that release's business.
+      - name: An older release, asked for by name, runs from a directory of its own
+        id: older
+        uses: ./
+        with:
+          version: "0.8.0"
+          paths: fixtures/good.iirds
+          fail-on-finding: "false"
+      - name: Each release ran as the version asked for, from its own directory
+        env:
+          WANT: ${{ steps.newest.outputs.version }}
+          GOT: ${{ steps.older.outputs.version }}
+        run: |
+          test "$GOT" = 0.8.0 || { echo "::error::asked for 0.8.0 and the action resolved $GOT"; exit 1; }
+          ran=$(PYTHONPATH="$RUNNER_TEMP/iirds-0.8.0" python -m iirds_validate --version)
+          test "$ran" = "iirds 0.8.0" || { echo "::error::asked for 0.8.0 and ran $ran"; exit 1; }
+          ran=$(PYTHONPATH="$RUNNER_TEMP/iirds-$WANT" python -m iirds_validate --version)
+          test "$ran" = "iirds $WANT" || { echo "::error::the newest release's directory runs $ran now"; exit 1; }
+      # What the step prints is the command's, for every input the comparison
+      # assembles, through each way in: this tree's code, the release the step
+      # above installed, and the single file. Not an editable install: the tree
+      # is run from `src` by the comparison itself, and nothing else should be
+      # on the path for the other two to be compared against. pyyaml is
+      # installed for this step and nowhere else, so that the pattern the
+      # action is read with is held to a YAML parser.
+      - name: The action says what the command says, byte for byte, three ways in
+        env:
+          WANT: ${{ steps.newest.outputs.version }}
+        run: |
+          python -m pip install "rdflib>=6" "pyyaml==6.*"
+          python tools/action_parity.py --require-yaml
+          python tools/action_parity.py --require-yaml --target "$RUNNER_TEMP/iirds-$WANT"
+          python tools/action_parity.py --require-yaml --pyz dist/iirds.pyz
+
+  # The README's shortest example is `- uses:` and `paths:` -- no
+  # `setup-python`, no build. Every other use of the action here is preceded by
+  # both, so the line a reader actually copies would be the one nothing ran.
+  the-action-on-a-runner-as-it-comes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      # The same question as above, asked again rather than passed between
+      # jobs: a reader copying the line gets whatever the index serves that day.
+      - name: The newest release the index serves
+        id: newest
+        run: |
+          v=""
+          for attempt in 1 2 3; do
+            v=$(python3 -c "import json,urllib.request as u;print(json.load(u.urlopen('https://pypi.org/pypi/iirds/json', timeout=30))['info']['version'])") && break
+            echo "the index did not answer (try $attempt of 3)"
+            sleep 20
+          done
+          test -n "$v" || { echo "::error::could not ask the index which release is newest"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      # Built with the runner's own `python3`: the builder needs nothing beyond
+      # the standard library, so nothing is installed for it.
+      - name: A package to check
+        run: python3 tools/make_fixture_package.py fixtures/good.iirds
+      - name: The shortest example, against a release on the index
+        uses: ./
+        with:
+          version: ${{ steps.newest.outputs.version }}
+          paths: fixtures/good.iirds
+      # The README's line has no `version:` at all: it runs the release the
+      # tree it names is numbered for. Between a version moving here and its
+      # release there is nothing to install yet, so the line is run when that
+      # release is on the index, and the job says so when it is not. Anything
+      # but "not found" from the index is a failure, not a reason to skip.
+      - name: Is the release this tree is numbered for on the index?
+        id: tree
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml | head -1)
+          test -n "$v" || { echo "::error::pyproject.toml names no version"; exit 1; }
+          # Three tries, as for the newest release above; "not found" is an
+          # answer and ends them.
+          for attempt in 1 2 3; do
+            code=0
+            python3 - "$v" <<'PY' || code=$?
+          import sys, urllib.error, urllib.request
+          try:
+              urllib.request.urlopen("https://pypi.org/pypi/iirds/%s/json" % sys.argv[1], timeout=30)
+          except urllib.error.HTTPError as error:
+              sys.exit(3 if error.code == 404 else 1)
+          PY
+            case $code in 0|3) break ;; esac
+            echo "the index did not answer (try $attempt of 3)"
+            sleep 20
+          done
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          case $code in
+            0) echo "published=true" >> "$GITHUB_OUTPUT" ;;
+            3) echo "::notice::iirds $v is not on the index yet; the README's line has nothing to install until it is"
+               echo "published=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::could not ask the index about iirds $v"; exit 1 ;;
+          esac
+      - name: The README's line as it is written, with no version
+        id: as-written
+        if: steps.tree.outputs.published == 'true'
+        uses: ./
+        with:
+          paths: fixtures/good.iirds
+      - name: The line ran the release the tree is numbered for
+        if: steps.tree.outputs.published == 'true'
+        env:
+          WANT: ${{ steps.tree.outputs.version }}
+          GOT: ${{ steps.as-written.outputs.version }}
+        run: |
+          test "$GOT" = "$WANT" || { echo "::error::the README's line resolved $GOT, and this tree is numbered $WANT"; exit 1; }

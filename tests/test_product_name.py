@@ -36,13 +36,14 @@ OLD_DISTRIBUTION_ALLOWED = {
                       "were published under that name, and calling them anything else "
                       "would make the advisory point at versions that never existed"),
     "SUPPORT.md": (1, "the issue tracker's address, under the repository's address until it is renamed"),
-    "README.md": (28, "the badge and workflow addresses, the alias sentence, the absolute "
+    "README.md": (30, "the badge and workflow addresses, the alias sentence, the absolute "
                        "links into the repository's tree -- the changelog the stable section "
                        "sends an upgrader to is one of them -- under the repository's address "
                        "until it is renamed, so that PyPI can follow them, and the upgrade "
                        "warning, which has to name the distribution a reader is upgrading "
                        "*from*, and the pin sentence, which has to name the alias a reader "
-                       "may have pinned in order to say that pinning it fixes the name and not the verdict"),
+                       "may have pinned in order to say that pinning it fixes the name and not the verdict, "
+                       "and the action's two `uses:` lines, which name it by the repository's address"),
     "docs/divergences.md": (2, "an issue's address"),
     "docs/library-changelog.md": (None, "history"),
     "pyproject.toml": (5, "the alias console script, and the repository's address"),

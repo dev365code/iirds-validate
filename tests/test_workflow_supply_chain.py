@@ -68,7 +68,18 @@ def lines():
     return found
 
 
-ALL = lines()
+#: `uses: ./` is this repository's own action, at the commit being tested. It
+#: carries no ref because there is nothing for anybody else to move, so the two
+#: sweeps below would refuse it for a reason that is not one; it is held instead
+#: to the jobs that exist to run that action, and appears nowhere else.
+LOCAL = "./"
+LOCAL_JOBS = {("ci.yml", "the-action-this-repo-offers"),
+              ("ci.yml", "the-action-on-a-runner-as-it-comes")}
+#: A `uses: ./` line, with the comment a line may carry -- the sweep above reads
+#: one, and a job reader that did not would let `uses: ./  # …` in anywhere.
+LOCAL_USE = re.compile(r"^\s*(?:-\s*)?uses:\s*\./\s*(?:#.*)?$", re.M)
+
+ALL = [line for line in lines() if line[1] != LOCAL]
 
 
 #: A job's block, by the two-space indent under `jobs:`. Read with a pattern
@@ -182,9 +193,10 @@ def test_the_workflows_swept_are_the_ones_this_repository_has():
 def test_every_action_names_a_commit(path, action, ref):
     assert COMMIT.match(ref), (
         "%s uses %s@%s -- a tag or a branch, which is whoever owns it deciding "
-        "later what runs here. (A local action, `./.github/actions/...`, carries "
-        "no ref at all and would land here too; this repository has none, and "
-        "adopting one means saying so in this file.)" % (path, action, ref))
+        "later what runs here. (A local action carries no ref at all and would "
+        "land here too; the one this repository has, `./`, is named above and held "
+        "to the jobs that test it, and another means saying so in this file.)"
+        % (path, action, ref))
 
 
 @pytest.mark.parametrize("path,action,comment", [(p, a, c) for p, a, _, c in ALL],
@@ -194,6 +206,29 @@ def test_every_pin_says_which_version_it_is(path, action, comment):
     assert re.match(r"^#\s*v?\d", comment), (
         "%s pins %s with no version beside it; the comment reads %r"
         % (path, action, comment))
+
+
+def _local_users(paths):
+    """(workflow, job) for every job that uses this repository's own action."""
+    return {(path.name, name) for path in paths for name, block in jobs_of(path).items()
+            if LOCAL_USE.search(block)}
+
+
+def test_the_repositorys_own_action_runs_only_in_the_jobs_that_test_it(tmp_path):
+    """The one `uses:` without a commit is `./`, and only where it is the thing
+    being tested; anywhere else a local path is a place for a workflow to run
+    code this file has not looked at."""
+    used = _local_users(WORKFLOWS)
+    assert used == LOCAL_JOBS, used
+    # And the reader that answered is one that sees the line with a comment
+    # after it: asked of a workflow that has nothing else, it has to find it.
+    other = tmp_path / "other.yml"
+    other.write_text("on: push\njobs:\n  lint:\n    steps:\n"
+                     "      - uses: ./   # this repository's own action\n", encoding="utf-8")
+    assert _local_users([other]) == {("other.yml", "lint")}
+    local = [(path, ref) for path, action, ref, _comment in lines() if action == LOCAL]
+    assert local and all(ref == "" for _path, ref in local), local
+    assert all(not action.startswith(".") or action == LOCAL for _p, action, _r, _c in lines())
 
 
 def test_one_action_is_pinned_to_one_commit_under_one_name():

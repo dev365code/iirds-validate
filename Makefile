@@ -161,6 +161,11 @@ tools: fixtures/good.iirds fixtures/bad.iirds
 	$(PYTHON) -m iirds_validate.ontology --verify
 	$(PYTHON) tools/serialisation_equivalence.py fixtures/bad.iirds
 	$(PYTHON) tools/serialisation_equivalence.py fixtures/good.iirds --allow-clean
+# The action's step against the command, byte for byte, over the whole corpus
+# and every fixture. The suite asks it of the door cases on every platform;
+# this is the whole set, over this tree, and CI asks it again of an installed
+# release and of the single file.
+	$(PYTHON) tools/action_parity.py
 
 fixtures/good.iirds:
 	$(PYTHON) tools/make_fixture_package.py $@

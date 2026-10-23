@@ -3,7 +3,7 @@
 | Coverage | 187 of 280 obligations covered | at least 220 of 280 covered |
 | Explanation | what, evidence, remedy, section | + the line |
 | Report contract | schemaVersion, golden, exit codes | + a field-by-field schema page |
-| Entrances | command line, library, single file | + GitHub Action, browser |
+| Entrances | command line, library, single file, Action | + browser |
 | Input safety | read budgets, advisory, mutations | + declared encodings read without loss |
 | Upstream | pinned, checked weekly, one pin move shipped | met |
 
@@ -20,11 +20,11 @@
 - exit codes 0, 1, 2 and 64 under test — done (`README.md`: "`64` when the argument parser rejected the command line")
 - a field-by-field schema page — not yet
 
-**Entrances** — 3 of 5:
+**Entrances** — 4 of 5:
 - command line — done (`pyproject.toml`: "iirds = "iirds_validate.cli:main"")
 - Python library — done (`README.md`: "import iirds, iirds_validate")
 - single file, nothing to install but Python — done (`README.md`: "one file, no install")
-- GitHub Action — not yet
+- GitHub Action — done (`tests/test_the_action_says_what_the_command_says.py`: "The action says what the command says, byte for byte")
 - browser, nothing installed — not yet
 
 **Input safety** — 3 of 4:

@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=9f93f1e1" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy, section; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=a3516302" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy, section; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file, Action; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -160,6 +160,58 @@ flowchart LR
 | `iirds diff` | anyone who kept a machine-readable report (`-f json`) from 0.7.1 or later | what changed since it, and what moved underneath the comparison |
 | `import iirds, iirds_validate` | Python programs | a reader and writer, and the judge as a function |
 | `iirds.pyz` | locked-down machines | one file, no install, byte-identical when rebuilt from one commit, one set of dependency versions and one `SOURCE_DATE_EPOCH` (a fixed date when unset) on the same kind of system — see [docs/offline-install.md](https://github.com/dev365code/iirds-validate/blob/main/docs/offline-install.md) |
+| `action.yml` | a GitHub workflow | the command's own output and exit code, as a step — [below](#in-a-workflow) |
+
+### In a workflow
+
+```yaml
+- uses: dev365code/iirds-validate@main
+  with:
+    paths: delivery.iirds
+```
+
+The example names `main`, which runs the release `main` is numbered for. This
+repository pins every action it uses to a commit, and the same advice holds
+here: name a release that carries `action.yml` by its tag, or by its commit with
+the tag in a comment.
+
+The step prints what `iirds check` prints and returns the code it returns —
+`0` clean, `1` errors found, `2` could not run, `64` a command line it refused —
+so the job fails when the check does, and a job that reads the code can tell a
+supplier's package from its own typo. To read the code rather than stop on it:
+
+```yaml
+- uses: dev365code/iirds-validate@main
+  id: iirds
+  with:
+    paths: delivery.iirds
+    fail-on-finding: "false"
+- run: echo "iirds returned ${{ steps.iirds.outputs.exit-code }}"
+```
+
+`exit-code` is published either way; with the default, a failed step needs
+`continue-on-error: true` on it, or a later step under `if: failure()`, before
+the job reaches a line that reads it.
+
+| Input | What it is |
+|---|---|
+| `paths` | the packages to check — files, unpacked directories, or directories to search — separated by spaces, or one per line to name a path with a space in it |
+| `command` | `check` (the default), `lint` or `all`: the command line's verbs that judge a package |
+| `version` | which release to install from PyPI. Left empty, it is the ref you pinned — `@v1.2.3` runs 1.2.3 — and at a branch or a commit, the version that tree is numbered for, which may not be on the index yet. **The rules travel with the release**: an older `version` is an older rule set. Ask for 0.7.4 or later, which closes every advisory `SECURITY.md` lists |
+| `pyz` | an `iirds.pyz` you already have. Given, the step installs nothing and fetches nothing |
+| `sha256` | the SHA-256 `pyz` must have, for a file carried into a closed network |
+| `args` | anything else for the command, such as `-f json`, `-W` or `--fragment` |
+| `fail-on-finding` | `true` by default; `false` makes the step succeed on any verdict and hand over `exit-code` — a code that is no verdict, the checker not having run, still fails it |
+
+The outputs are `exit-code`, `version` — the release it installed — and `pyz`,
+the file it ran. The check opens no socket either way; installing is the one
+thing that reaches an index, and only when no `pyz` is given. What the step
+prints on stdout and stderr, and the code it returns, are those of
+`iirds <command> <args> -- <paths>`, byte for byte — the `--` keeps a path that
+begins with a dash a path — and in report mode it adds one line that says so:
+`tools/action_parity.py` runs both over every file of the corpus and every
+fixture here and compares them, and CI runs it on every push over this tree,
+over the newest release and over the single file.
 
 ## Honest coverage
 

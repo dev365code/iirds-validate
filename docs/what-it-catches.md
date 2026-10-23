@@ -283,10 +283,10 @@ generator's one switch; `attribute-style` is not a defect.
 - done -- command line
 - done -- Python library
 - done -- single file, nothing to install but Python
-- not yet -- GitHub Action
+- done -- GitHub Action
 - not yet -- browser, nothing installed
 
-**Before 1.0.** + GitHub Action, browser
+**Before 1.0.** + browser
 
 ## Input safety
 

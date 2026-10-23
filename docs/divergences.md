@@ -1466,6 +1466,40 @@ To recognise an iiRDS/H content list as HTML, this validator requires an html
 document element, parsed as XML or identified after its prologue; documents
 with HTML5's omitted html start tag are not treated as iiRDS/H content lists.
 
+### B5 — document relations include an open set of link types
+
+B5 reports non-stylesheet link elements and the eight types shared by link,
+a and area in HTML5 2014's basic table: alternate, author, help, license, next,
+prefetch, prev and search. Section
+[4.8.4.14](https://www.w3.org/TR/2014/REC-html5-20141028/links.html#other-link-types)
+also permits registered extension types. B5 does not read that open registry,
+so it does not claim the whole sentence requiring relations usually
+represented by link to be expressed by RDF.
+
+### R43 — GIF identification checks block grammar and sizes
+
+The all-file raster check walks the header, logical screen, extension block
+sizes and block order allowed by GIF89a's grammar, including other extensions
+between a graphic control extension and the image or text it controls, which
+section 23 allows, and consumes a separate trailer. Image data, extension payload semantics and color values are not
+decoded. The six-letter ASCII header can be a legal CSS identifier, so that
+prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
+page or an image rendition is reported when its bytes identify neither JPEG,
+PNG nor SVG.
+
+### R74 — stylesheet bytes identify other formats
+
+R74 examines linked local files for identifiable formats and missing files. It does not parse all CSS syntax or fetch external stylesheets, so it leaves B.1's stylesheet obligation unclaimed.
+
+For this partial format check, a BOM or an exact @charset declaration selects
+the encoding through Python's codecs; otherwise UTF-8 is assumed. The referring document's environment encoding is not implemented,
+and Python's codec labels are not the Encoding Standard's label mappings.
+Decoding errors alone are not findings.
+
+R74 uses the same GIF block grammar and size check as R43, without decoding
+image data or extension payloads. It does not classify truncated GIF streams or files with bytes after their trailer as GIF; consuming a separate trailer at EOF is a whole-file identification policy.
+This checker refuses a linked stylesheet whose bytes identify another format, even when the same bytes also parse as CSS. Appendix B.1 does not expressly make the formats mutually exclusive; the refusal is this checker's additional policy for such a stylesheet.
+
 ### B4 — the attribute whitelist is narrowed to scripting
 
 Appendix B lists six permitted global attributes. tekom's own sample packages

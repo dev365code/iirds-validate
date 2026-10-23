@@ -662,21 +662,130 @@ def b11_no_scripting_urls(ctx):
                                                    value[:60]))
 
 
+_DOCUMENT_RELATIONS = frozenset(("alternate", "author", "help", "license", "next",
+                               "prefetch", "prev", "search"))
+
+
 @rule("B5", covers=("b-5-2-document-metadata#1",), kind="content", prio="MUST", versions=(), variants=(),
-      title="link must be used only with rel=\"stylesheet\"",
-       fix="Use rel=\"stylesheet\", or delete the element. Other relations describe a document's place among others, and in iiRDS the metadata graph carries that; a consumer reads the graph and never sees this.")
+      title="link is only for stylesheets; document relations on a and area belong in RDF",
+      fix="Use link only with rel=\"stylesheet\", or delete it. Express document relations "
+          "on link, a or area in the iiRDS metadata graph; remove those rel tokens from "
+          "a and area while retaining their ordinary hyperlinks.")
 def b5_link_rel(ctx):
     """B.5.2. Every other relation "MUST be expressed by means of RDF in
-    iiRDS", so a `<link rel="next">` is metadata smuggled past the metadata."""
+    iiRDS". The eight shared types in HTML5 2014's basic table are reported
+    on a/area. Section 4.8.4.14 permits extension types that this fixed set
+    does not know, so the whole relation sentence remains unclaimed."""
     for name, root in _walk(ctx):
         # By local name, like every other rule here. Matching the namespaced
         # tag meant a document missing its xmlns declaration got B2, B3, B4, B7
         # and B8 and silently lost B5.
-        for element in (e for e in root.iter() if _local(e.tag) == "link"):
+        for element in root.iter():
+            kind = _local(element.tag)
             rel = (element.get("rel") or "").strip().lower()   # ASCII case-insensitive
-            if rel != "stylesheet":
+            if kind == "link" and rel != "stylesheet":
                 yield Violation("<link> must be used only with rel=\"stylesheet\"",
                                 subject=name, detail="found rel=%r" % (element.get("rel") or ""))
+            elif kind in ("a", "area"):
+                tokens = set(re.split(r"[ \t\r\n\f]+", element.get("rel") or ""))
+                tokens = {token.translate(str.maketrans(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")) for token in tokens}
+                shared = sorted(tokens & _DOCUMENT_RELATIONS)
+                if shared:
+                    yield Violation('<%s rel="%s"> expresses a relation iiRDS carries '
+                                    'in the metadata graph' % (kind, " ".join(shared)),
+                                    subject=name, detail="found rel=%r" % (element.get("rel") or ""))
+
+
+_NON_CSS_SIGNATURES = (
+    (b"%PDF-", "PDF"), (b"PK\x03\x04", "ZIP"), (b"PK\x05\x06", "ZIP"),
+    (b"PK\x07\x08", "ZIP"), (b"\x89PNG\r\n\x1a\n", "PNG"),
+    (b"\xff\xd8\xff", "JPEG"), (b"GIF87a", "GIF"), (b"GIF89a", "GIF"),
+    (b"\x1f\x8b", "gzip"),
+)
+
+
+def _stylesheet_text(raw):
+    """Partial stylesheet decoding: BOM, exact @charset prefix, then UTF-8.
+
+    CSS Syntax 3 section 3.2's referring document environment encoding is not
+    implemented; UTF-8 is used instead. Labels use Python's codecs rather than
+    the Encoding Standard's mappings. Decode with replacement; an encoding
+    cannot establish that a file is not CSS.
+    """
+    for bom, encoding in ((b"\xef\xbb\xbf", "utf-8"), (b"\xff\xfe", "utf-16-le"),
+                          (b"\xfe\xff", "utf-16-be")):
+        if raw.startswith(bom):
+            return raw[len(bom):].decode(encoding, errors="replace")
+    encoding = "utf-8"
+    declaration = re.match(br'@charset "([\x00-\x21\x23-\x7f]*)";', raw[:1024])
+    if declaration:
+        try:
+            candidate = codecs.lookup(declaration.group(1).decode("ascii")).name
+        except (LookupError, ValueError):
+            candidate = "utf-8"
+        if candidate not in ("utf-16", "utf-16-le", "utf-16-be"):
+            encoding = candidate
+    try:
+        return raw.decode(encoding, errors="replace")
+    except LookupError:
+        # A Python transformation codec is not a character encoding.
+        return raw.decode("utf-8", errors="replace")
+
+
+@rule("R74", covers=(), kind="content", prio="MUST", versions=(), variants=(),
+      title="an iiRDS XHTML5 stylesheet must be in CSS format",
+      fix="Link a file that is only a CSS stylesheet; a file whose bytes identify another "
+          "format is refused even when they also parse as CSS. "
+          "If the stylesheet is missing, include it at the linked path or correct the link. "
+          "Update references when its path changes.")
+def r74_stylesheet_format(ctx):
+    """B.1: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+
+    Identify binary signatures, GIF grammar framing and XML/HTML after CSS
+    decoding, without a CSS parser. GIF identification walks block sizes and
+    order, not image data or extension payload semantics. Refusing such a file
+    even if it also parses as CSS is additional checker policy; B.1 does not
+    expressly require format exclusivity. Other text passes, so this does not
+    claim the whole sentence.
+    Resolve local links as `_pointed_at` does; no other B rule reports missing
+    stylesheet targets. External resources are not opened.
+    """
+    files = set()
+    for page, root in _walk(ctx):
+        for element in root.iter():
+            if (_local(element.tag) != "link"
+                    or (element.get("rel") or "").strip().lower() != "stylesheet"):
+                continue
+            value = (element.get("href") or "").strip()
+            if not value or value.startswith(("#", "//")) or _SCHEME.match(value):
+                continue
+            path = value[1:] if value.startswith("/") else posixpath.join(
+                posixpath.dirname(page), value)
+            name = entry_named(path)
+            if name:
+                files.add(name)
+    for name in sorted(files):
+        if not ctx.package.has(name):
+            yield Violation("the linked stylesheet is not in the package", subject=name)
+            continue
+        raw, unread = _bytes_of(ctx, name)
+        if unread:
+            # S9/S14/S16 report refusals; no format was determined.
+            continue
+        binary = next((kind for signature, kind in _NON_CSS_SIGNATURES
+                       if raw.startswith(signature)
+                       and (kind != "GIF" or _is_gif_data_stream(raw))), None)
+        if binary:
+            yield Violation("the linked stylesheet is a %s file" % binary,
+                            subject=name)
+            continue
+        text = _stylesheet_text(raw).lstrip(" \t\r\n\f")
+        while text.startswith("<!--"):
+            text = text[4:].lstrip(" \t\r\n\f")
+        if text.lower().startswith(("<?xml", "<!doctype", "<html", "<svg", "<rdf:rdf")):
+            yield Violation("the linked stylesheet is an XML or HTML document",
+                            subject=name)
 
 
 @rule("B6", covers=("b-3-conformance-criteria#5", "x8-2-1-1-text-formats#2"), kind="content", prio="MUST", versions=(), variants=(),
@@ -1087,11 +1196,95 @@ def r42_svg_extension(ctx):
             yield Violation("an SVG that is not gzip-compressed is not named .svg", subject=name)
 
 
+def _is_gif_data_stream(raw: bytes) -> bool:
+    """Walk GIF89a Appendix B's block grammar and fixed extension sizes.
+
+    Graphic blocks are an optional control extension followed by an image or
+    plain text; special-purpose blocks are application or comment extensions.
+    Section 23 allows those other extensions between control and rendering,
+    with the control still pending until the image or text block.
+    Color tables and zero-terminated sub-blocks must fit, but their colors,
+    image data and extension payload semantics are not decoded. GIF87a headers
+    are also recognised. Consuming a separate trailer at EOF is this check's
+    whole-file identification policy, rather than a claim about embedded GIFs.
+    """
+    if len(raw) < 13 or raw[:6] not in (b"GIF87a", b"GIF89a"):
+        return False
+    packed = raw[10]
+    offset = 13 + (3 * (1 << ((packed & 7) + 1)) if packed & 0x80 else 0)
+    trailer = False
+    pending_control = False
+    while offset < len(raw):
+        introducer = raw[offset]
+        offset += 1
+        # Section 23 permits intervening special-purpose extensions while control is pending.
+        if pending_control and not (introducer == 0x2C or (
+                introducer == 0x21 and offset < len(raw) and raw[offset] in (0x01, 0xFE, 0xFF))):
+            return False
+        if introducer == 0x3B:
+            trailer = True
+            break
+        if introducer == 0x21:
+            if offset >= len(raw):
+                return False
+            label = raw[offset]
+            offset += 1
+            if label == 0xF9:  # Graphic Control Extension, section 23.
+                fixed_size = 4
+            elif label == 0x01:  # Plain Text Extension: a rendering block, section 25.
+                fixed_size = 12
+                pending_control = False
+            elif label == 0xFF:  # Application Extension: special-purpose, section 26.
+                fixed_size = 11
+            elif label == 0xFE:  # Comment Extension: special-purpose, section 24.
+                fixed_size = 0
+            else:
+                return False
+            if fixed_size:
+                if offset >= len(raw):
+                    return False
+                if raw[offset] != fixed_size:
+                    return False
+                offset += 1 + raw[offset]
+                if offset >= len(raw):
+                    return False
+            if label == 0xF9:
+                if raw[offset] != 0:
+                    return False
+                offset += 1
+                pending_control = True
+                continue
+        elif introducer == 0x2C:
+            if offset + 9 > len(raw):
+                return False
+            packed = raw[offset + 8]
+            offset += 9
+            if packed & 0x80:
+                offset += 3 * (1 << ((packed & 7) + 1))
+            if offset >= len(raw):
+                return False
+            offset += 1  # LZW minimum code size; compressed data is not decoded.
+            pending_control = False
+        else:
+            return False
+        while offset < len(raw):
+            size = raw[offset]
+            offset += 1
+            if size == 0:
+                break
+            offset += size
+        else:
+            return False
+    return trailer and offset == len(raw)
+
+
 def _raster_other_than_jpeg_or_png(head: bytes):
     """The raster format these bytes open with, when it is one section 8.2.1.2
     does not allow; None when it is JPEG, PNG, or not a format known here.
 
-    Only signatures strong enough not to be met by accident. BMP's is two
+    GIF's six-letter prefix is only a candidate, verified by reading its
+    block grammar and sizes in the caller. The other signatures identify formats.
+    BMP's is two
     letters, and a text file beginning "BM" would carry them, so BMP is only
     recognised with the four reserved header bytes that follow its size, which
     the format fixes at zero.
@@ -1109,54 +1302,90 @@ def _raster_other_than_jpeg_or_png(head: bytes):
 
 @rule("R43", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a file in an iiRDS/A package must not be a GIF, TIFF, WebP or BMP graphic",
+      title="a graphic used in an iiRDS/A package must be JPEG, PNG or SVG; "
+            "identified GIF, TIFF, WebP and BMP files are also refused",
       fix="Convert the graphic to PNG, or to JPEG for photographs, and update whatever "
           "points at it. Section 8.2.1.2 allows JPEG and PNG as raster formats in iiRDS/A, "
           "so that a consumer needs to render no other.")
 def r43_raster_formats(ctx):
     """What each file is, rather than what its name or the metadata says: a
     GIF named .png is a GIF, whether a rendition declares it or a page points
-    at it. It reads twelve bytes of a file.
+    at it. Its all-file check reads twelve bytes initially, then reads a GIF
+    candidate in full to check GIF block grammar, extension sizes and a separate
+    trailer at EOF. Image data and extension payloads are not decoded.
 
     It recognises GIF, TIFF, WebP and BMP, and a raster format it has no
     signature for passes -- which is why it claims no sentence. "Raster
     graphics MUST be encoded as" JPEG or PNG would need every other raster
     format recognised, and "Only JPG and PNG graphics according to this
     section MUST be used" is one of section 8.2.1.2's restrictions on SVG,
-    about the graphics an SVG uses; this does not open SVGs.
+    about the graphics an SVG uses; this does not open SVGs. Files used by
+    XHTML's `img src` or declared with an image/ media type are also read:
+    anything not identified as JPEG, PNG or SVG is reported. An undeclared,
+    unused raster with an unknown signature still passes, and SVG's own
+    resources are still not examined, so neither sentence is claimed.
     """
     renditions = set(_renditions_declared_as(ctx))
-    for name in sorted(ctx.package.files):
-        if name == "mimetype" or name.startswith("META-INF/"):
-            continue
+    reported = set()
+    for name in _content_files(ctx):
         head, unread = _head(ctx, name, 12, rendition=name in renditions)
         if unread:
+            reported.add(name)
             yield Violation("this file could not be read, so whether it is a GIF, TIFF, "
                             "WebP or BMP graphic is not known", subject=name, detail=unread)
         if head is None:
             continue
         found = _raster_other_than_jpeg_or_png(head)
+        if found == "GIF":
+            raw, unread = _bytes_of(ctx, name)
+            if unread:
+                reported.add(name)
+                yield Violation("this file could not be read, so whether it is a GIF, TIFF, "
+                                "WebP or BMP graphic is not known", subject=name, detail=unread)
+                continue
+            if not _is_gif_data_stream(raw):
+                continue
         if found:
+            reported.add(name)
             yield Violation("a %s graphic, where iiRDS/A allows JPEG and PNG" % found,
                             subject=name)
+    used = set(_renditions_declared_as(ctx, "image/"))
+    used.update(name for kind, attribute, name in _pointed_at(ctx)
+                if kind == "img" and attribute == "src")
+    for name in sorted(used - reported):
+        head = _sniff(ctx, name)
+        if head is None:
+            continue
+        if head.startswith((b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n")):
+            continue
+        body = ctx.__dict__.get("_inflated", {}).get(name) if head[:2] == GZIP_MAGIC else head
+        if body is not None and _first_element(body) == (b"http://www.w3.org/2000/svg", b"svg"):
+            continue
+        yield Violation("a graphic could not be identified as JPEG or PNG, or as SVG",
+                        subject=name)
 
 
-#: ISO base media files whose major brand says they hold something other than
-#: video: audio-only MPEG-4, and the still-image formats built on the same boxes.
-_AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P ", b"F4A ", b"F4B "))
+#: Brands classified separately from the default ISO base media video probe:
+#: audio-related registrations and still-image formats built on the same boxes.
+#: https://mp4ra.org/registered-types/brands — M4A$20, M4B$20, M4P$20:
+#: iTunes audio-related brands; M4A/M4B can also contain video tracks.
+_AUDIO_BRANDS = frozenset((b"M4A ", b"M4B ", b"M4P "))
 _IMAGE_BRANDS = frozenset((b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm",
                            b"hevs", b"mif1", b"msf1", b"avif", b"avis"))
 
 
 def _is_mp4_video(head: bytes) -> bool:
     """An ISO base media file -- `ftyp` in its first box -- whose brand is
-    neither audio-only nor a still image."""
+    neither registered for audio nor a still image."""
     return (len(head) >= 12 and head[4:8] == b"ftyp"
             and head[8:12] not in _AUDIO_BRANDS | _IMAGE_BRANDS)
 
 
 def _is_mp4_audio(head: bytes) -> bool:
-    """An ISO base media file whose brand says audio-only MPEG-4."""
+    """MPEG-4 files whose brand is registered for audio.
+
+    Only the brand is read; tracks and codecs are not inspected.
+    """
     return len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in _AUDIO_BRANDS
 
 
@@ -1175,15 +1404,15 @@ def _is_mp3(head: bytes) -> bool:
             and (head[2] >> 2) & 3 != 3)
 
 
-def _media(ctx, family, element, recognised, others, other_element, other_recognised):
-    """Every file that is `family` content: declared so, played by a page's
-    `element` -- its `src`, or a `<source>` inside it -- or recognised by its
-    first bytes. A file the package or its bytes give to another family is left
-    to that family, whatever element plays it: `<video src="narration.mp3">`
-    with a caption track is how a page shows captioned audio, and a file the
-    metadata declares as audio and that is MP3 is not a video that failed to be
-    an MPEG-4. Nor is an audio-only MPEG-4 declared as audio a video for
-    carrying the boxes a video does."""
+def _media(ctx, family, element, recognised, others, other_recognised):
+    """Recognised bytes choose the media family regardless of declarations
+    or playback elements. Files recognised as the other family are excluded;
+    files with unidentified bytes retain their declared or played family.
+
+    A page's `element` reaches its `src` and a `<source>` inside it. A
+    `<video src="narration.mp3">` with a caption track remains audio when its
+    bytes identify MP3, even if the metadata declares video.
+    """
     found = set(_renditions_declared_as(ctx, family))
     declared_elsewhere = {name for other in others for name in _renditions_declared_as(ctx, other)}
     for kind, attribute, name in _pointed_at(ctx):
@@ -1191,37 +1420,49 @@ def _media(ctx, family, element, recognised, others, other_element, other_recogn
             head = _sniff(ctx, name)
             if head is None or not other_recognised(head):
                 found.add(name)
-    elsewhere = declared_elsewhere | {name for kind, _attribute, name in _pointed_at(ctx)
-                                      if kind == other_element}
     for name in _content_files(ctx):
-        if name in found or name in elsewhere:
+        if name in found:
             continue
         head = _sniff(ctx, name)
         if head is not None and recognised(head):
             found.add(name)
+    for name in tuple(found):
+        head = _sniff(ctx, name)
+        if head is not None and other_recognised(head):
+            found.discard(name)
     return found
 
 
-def _named_for_its_family(ctx, family, extension, what, element, recognised, others, other_element,
+def _named_for_its_family(ctx, family, extension, what, element, recognised, others,
                           other_recognised):
     """Every file that is `family` content, not named `extension`."""
-    for name in sorted(_media(ctx, family, element, recognised, others, other_element,
+    for name in sorted(_media(ctx, family, element, recognised, others,
                               other_recognised)):
         if not name.lower().endswith(extension):
+            declarations = sorted({
+                _media_type(value)
+                for rendition in ctx.instances_of(T.Rendition)
+                if any(entry_named(str(source)) == name
+                       for source in ctx.values(rendition, T.source))
+                for value in ctx.values(rendition, T.fmt)
+            })
             yield Violation("%s content does not use the %s file extension" % (what, extension),
-                            subject=name)
+                            subject=name,
+                            detail="; ".join("declared " + value for value in declarations))
 
 
 @rule("R44", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as video in an iiRDS/A package must use the .mp4 extension",
-      fix="Name the video file .mp4 and update every iirds:source that points at it. Section "
-          "8.2.1.3 fixes the extension, and a video in another container is the thing the "
-          "section's encoding sentence also rules out.")
+      title="a video file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, must use the .mp4 extension",
+      fix="Check the media content and its iirds:format declaration. "
+          "Correct a conflicting declaration, or convert the content to the intended format. "
+          "Save iiRDS/A video in the required MP4 encoding with a .mp4 filename "
+          "and update every reference, including iirds:source.")
 def r44_video_extension(ctx):
     """Video content is what a rendition declares with a video/ media type,
     any subtype; what a page plays with `<video>`; and a file whose first box
-    is an MPEG-4 file type that is not audio-only or a still image.
+    is an MPEG-4 file type whose brand is not registered for audio or still images.
 
     It claims no sentence. "The file extension MUST be .mp4" binds every
     video, and a video in a format with no signature here -- WebM, Ogg --
@@ -1230,23 +1471,28 @@ def r44_video_extension(ctx):
     beside it either, which the index holds without the codecs that complete
     it."""
     yield from _named_for_its_family(ctx, "video/", ".mp4", "video", "video", _is_mp4_video,
-                                     ("audio/", "image/"), "audio", _is_audio_by_bytes)
+                                     ("audio/", "image/"), _is_audio_by_bytes)
 
 
 @rule("R45", covers=(), kind="content", prio="MUST", versions=(),
       variants=("A",),
-      title="a rendition declared as audio in an iiRDS/A package must use the .mp3 extension",
-      fix="Name the audio file .mp3 and update every iirds:source that points at it. Section "
-          "8.2.1.4 fixes the extension alongside the encoding.")
+      title="an audio file in an iiRDS/A package, identified by its bytes or declared as a "
+            "rendition, including MPEG-4 files whose brand is registered for audio, "
+            "must use the .mp3 extension",
+      fix="Check the media content and its iirds:format declaration. "
+          "Correct a conflicting declaration, or convert the content to MP3 for iiRDS/A audio. "
+          "Save the MP3 file with a .mp3 filename and update every reference, "
+          "including iirds:source.")
 def r45_audio_extension(ctx):
     """As R44, for audio/, for `<audio>` on a page, and for a file that opens
     with an ID3 tag or an MPEG audio Layer III frame -- and for R44's reason
     it claims no sentence: audio in a format with no signature here, declared
     as something else and played by no page, is not recognised. Whether the
     bytes are MP3 to ISO/IEC 11172-3 throughout is a question for a
-    decoder."""
-    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_mp3,
-                                     ("video/", "image/"), "video", _is_mp4_video)
+    decoder. MPEG-4 files whose brand is registered for audio are included,
+    even without a rendition declaration; their tracks and codecs are not read."""
+    yield from _named_for_its_family(ctx, "audio/", ".mp3", "audio", "audio", _is_audio_by_bytes,
+                                     ("video/", "image/"), _is_mp4_video)
 
 
 @rule("B7", covers=("b-6-additional-semantic-tagging-of-content#5",), kind="content", prio="MUST", versions=(), variants=(),

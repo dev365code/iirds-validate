@@ -943,6 +943,8 @@ for _rid in ("L2", "L11", "L12", "R8", "R9", "R41", "R44", "R45", "R60"):
 for _rid in ("R42", "R43"):
     NOT_EXPRESSIBLE[_rid] = ("content: the verdict is in the first bytes of a file inside the "
                              "archive, which no graph carries")
+NOT_EXPRESSIBLE["R74"] = ("content: the verdict depends on XHTML stylesheet links and "
+                          "target bytes in the archive")
 NOT_EXPRESSIBLE["R40"] = ("path resolution: whether a source names the content list is decided "
                           "the way the reader decides it -- percent-decoding, a leading or "
                           "dotted segment, a backslash -- and a shape matching the literal "

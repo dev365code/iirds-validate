@@ -59,7 +59,7 @@ def test_a_pdf_the_metadata_calls_something_else_is_named_pdf(make_package):
 
 def test_a_pdf_a_page_links_to_is_named_pdf(make_package):
     report = _linked(make_package, '<a href="manual.bin">manual</a>',
-                     (("content/manual.bin", PDF),), "c2.iirds")
+                     (("content/manual.bin", PDF),), "linked-pdf.iirds")
     assert _subjects(report, "R41") == ["content/manual.bin"], sorted(f.rule.id for f in report.findings)
 
 
@@ -371,3 +371,731 @@ def test_xml_identification_refuses_an_uppercase_hex_reference(make_package):
     report = runner.check(make_package(metadata=A_PROFILE,
                                       extra=(("content/figure.bin", body),)))
     assert not _subjects(report, "R42")
+
+
+@pytest.mark.parametrize("name,body,rule_id", [
+    ("clip.mov", MP4, "R44"),
+    ("tone.audio", MP3, "R45"),
+    ("tone.m4a", MP4.replace(b"isom", b"M4A ", 1), "R45"),
+])
+def test_undeclared_media_is_named_for_its_bytes(make_package, name, body, rule_id):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    No rendition declares these files and no page plays them.
+    """
+    report = runner.check(make_package(metadata=A_PROFILE,
+                                      extra=(("content/" + name, body),)))
+    assert _subjects(report, rule_id) == ["content/" + name]
+
+
+@pytest.mark.parametrize("media_type,body,rule_id", [
+    ("audio/mpeg", MP4, "R44"),
+    ("video/mp4", MP3, "R45"),
+])
+def test_a_conflicting_media_declaration_does_not_erase_the_bytes(
+        make_package, media_type, body, rule_id):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    A rendition's declaration cannot remove an identified file from its family.
+    """
+    report = _declared(make_package, "content/media.bin", body, media_type, "conflicting-media.iirds")
+    assert _subjects(report, rule_id) == ["content/media.bin"]
+    assert [(f.rule.id, f.violation.subject) for f in report.findings
+            if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
+
+
+@pytest.mark.parametrize("media_type", ["audio/mpeg", "video/mp4", None])
+@pytest.mark.parametrize("body,rule_id,extension", [
+    (MP3, "R45", ".mp3"), (MP4, "R44", ".mp4"),
+    (MP4.replace(b"isom", b"M4A ", 1), "R45", ".mp3"),
+])
+@pytest.mark.parametrize("suffix", [".bin", ".mp3", ".mp4"])
+def test_media_bytes_choose_one_family_despite_the_declaration(
+        make_package, media_type, body, rule_id, extension, suffix):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    Each recognised byte family owns the file regardless of its declaration.
+    """
+    source = "content/media" + suffix
+    report = (_declared(make_package, source, body, media_type, "declared-media.iirds")
+              if media_type else runner.check(make_package(
+                  metadata=A_PROFILE, extra=((source, body),))))
+    findings = [f for f in report.findings if f.rule.id in ("R44", "R45")]
+    expected = [] if suffix == extension else [(rule_id, source)]
+    assert [(f.rule.id, f.violation.subject) for f in findings] == expected
+    if findings and media_type:
+        assert "declared " + media_type in findings[0].violation.detail
+    for finding in findings:
+        if finding.rule.id == "R44":
+            assert finding.rule.fix == (
+                "Check the media content and its iirds:format declaration. "
+                "Correct a conflicting declaration, or convert the content to the intended format. "
+                "Save iiRDS/A video in the required MP4 encoding with a .mp4 filename "
+                "and update every reference, including iirds:source.")
+        else:
+            assert finding.rule.fix == (
+                "Check the media content and its iirds:format declaration. "
+                "Correct a conflicting declaration, or convert the content to MP3 for iiRDS/A audio. "
+                "Save the MP3 file with a .mp3 filename and update every reference, "
+                "including iirds:source.")
+
+
+@pytest.mark.parametrize("element,body,rule_id", [
+    ("audio", MP4, "R44"), ("video", MP3, "R45"),
+])
+def test_media_bytes_choose_one_family_despite_the_playback_element(
+        make_package, element, body, rule_id):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    """
+    report = _linked(make_package, '<%s src="media.bin"/>' % element,
+                     (("content/media.bin", body),), "played-media.iirds")
+    assert [(f.rule.id, f.violation.subject) for f in report.findings
+            if f.rule.id in ("R44", "R45")] == [(rule_id, "content/media.bin")]
+
+
+def test_media_extensions_alone_make_no_format_claim(make_package):
+    """x8-2-1-3-video-formats#2: "The file extension MUST be .mp4."
+    x8-2-1-4-audio-formats#2: "The file extension MUST be .mp3."
+    Identified files with the required names pass; names alone identify nothing.
+    """
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/clip.mp4", MP4), ("content/tone.mp3", MP3),
+        ("content/ordinary.mp4", b"ordinary text"),
+        ("content/ordinary.mp3", b"ordinary text"))))
+    assert not _subjects(report, "R44") and not _subjects(report, "R45")
+
+
+@pytest.mark.parametrize("body", [
+    b"RIFF\x00\x00\x00\x00WEBP", HEIC, b"unidentified graphic", b"",
+])
+def test_an_image_used_by_xhtml_must_have_allowed_graphic_bytes(make_package, body):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
+    The following list in the anchor allows PNG 1.2 or higher and JPEG or higher.
+    Calling a file .png cannot make it one of those formats.
+    """
+    report = _linked(make_package, '<img src="figure.png" alt=""/>',
+                     (("content/figure.png", body),), "linked-graphic.iirds")
+    assert _subjects(report, "R43") == ["content/figure.png"]
+
+
+def test_a_declared_image_in_an_unknown_format_is_reported(make_package):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"""
+    report = _declared(make_package, "content/photo.heic", HEIC, "image/heic", "declared-heic.iirds")
+    assert _subjects(report, "R43") == ["content/photo.heic"]
+    assert "could not be identified as JPEG or PNG" in next(
+        f.violation.message for f in report.findings if f.rule.id == "R43")
+
+
+@pytest.mark.parametrize("name,body", [
+    ("photo.bin", JPEG), ("figure.png", b"\x89PNG\r\n\x1a\n"),
+    ("figure.svg", SVG), ("figure.svgz", SVGZ),
+])
+def test_allowed_graphics_are_decided_by_bytes(make_package, name, body):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
+    SVG is governed by the vector sentence, not this raster restriction.
+    """
+    report = _linked(make_package, '<img src="%s" alt=""/>' % name,
+                     (("content/" + name, body),), "supported-graphic.iirds")
+    assert not _subjects(report, "R43")
+
+
+def test_unused_names_do_not_identify_graphics_but_known_rasters_still_report(make_package):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
+    Keep the existing all-file GIF check; an unused .gif name proves nothing.
+    """
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/unused.gif", b"ordinary text"),
+        ("content/identified.bin", b"GIF89a\x01\x00\x01\x00\x00\x00\x00;"))))
+    assert _subjects(report, "R43") == ["content/identified.bin"]
+
+
+@pytest.mark.parametrize("name,body,format_name", [
+    ("style.xml", b'<?xml version="1.0"?><style/>', "XML or HTML document"),
+    ("style.css", b" \n<html><head/></html>", "XML or HTML document"),
+    ("style.doctype", b"<!dOcTyPe html><html/>", "XML or HTML document"),
+    ("style.svg", b"<svg/>", "XML or HTML document"),
+    ("style.rdf", b"<rdf:RDF/>", "XML or HTML document"),
+    ("style.pdf", PDF, "PDF file"), ("style.zip", b"PK\x03\x04", "ZIP file"),
+    ("style.png", b"\x89PNG\r\n\x1a\n", "PNG file"),
+    ("style.jpg", JPEG, "JPEG file"), ("style.gif", bytes.fromhex(
+        "47494638396101000100800000000000ffffff2c00000000010001000002024401003b"),
+     "GIF file"),
+    ("style.gz", b"\x1f\x8b", "gzip file"),
+    ("style.wide-xml", b"\xff\xfe" + '<?xml version="1.0"?><style/>'.encode("utf-16-le"),
+     "XML or HTML document"),
+    ("style.bom", b"\xef\xbb\xbf<html/>", "XML or HTML document"),
+])
+def test_a_stylesheet_in_another_identifiable_format_is_reported(make_package, name, body, format_name):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    report = _linked(make_package, '<link rel="stylesheet" href="%s"/>' % name,
+                     (("content/" + name, body),), "non-css-stylesheet.iirds")
+    assert _subjects(report, "R74") == ["content/" + name]
+    finding = next(f for f in report.findings if f.rule.id == "R74")
+    assert finding.violation.message == "the linked stylesheet is a%s %s" % (
+        "n" if format_name == "XML or HTML document" else "", format_name)
+    assert "not CSS" not in finding.violation.message
+    assert finding.rule.fix == (
+        "Link a file that is only a CSS stylesheet; a file whose bytes identify another "
+        "format is refused even when they also parse as CSS. "
+        "If the stylesheet is missing, include it at the linked path or correct the link. "
+        "Update references when its path changes.")
+
+
+@pytest.mark.parametrize("name,body", [
+    ("style.wide", b"\xff\xfe" + "p { color: red; }".encode("utf-16-le")),
+    ("style.big-endian", b"\xfe\xff" + "p { color: red; }".encode("utf-16-be")),
+    ("style.latin", b'@charset "iso-8859-1"; p { content: "caf\xe9"; }'),
+    ("style.cdo", b"<!--\np { color: red; }\n-->"),
+    ("style.import", b'\xef\xbb\xbf@import "other.css";'),
+    ("style.empty", b""),
+    ("style.less-than", b'p::after { content: "<"; }'),
+    ("style.bin", b"p { color: red; }\xff"),
+    ("style.late", b"p { color: red; }" + b" " * 5000 + b"\xff"),
+])
+def test_a_stylesheets_encoding_does_not_identify_another_format(make_package, name, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    report = _linked(make_package, '<link rel="stylesheet" href="%s"/>' % name,
+                     (("content/" + name, body),), "encoded-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+
+
+def test_leading_cdo_tokens_do_not_hide_an_xml_stylesheet(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    body = b' \n<!-- \t<!--\n<?xml version="1.0"?><style/>'
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "wrapped-xml-stylesheet.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+
+
+@pytest.mark.parametrize("href", ["../style%20sheet.css?x=1#part", "/style%20sheet.css"])
+def test_a_utf8_stylesheet_resolves_like_other_content_references(make_package, href):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    report = _linked(make_package, '<link rel="STYLESHEET" href="%s"/>' % href,
+                     (("style sheet.css", b"p { color: red; } /* caf\xc3\xa9 */"),),
+                     "relative-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+
+
+def test_a_missing_local_stylesheet_is_reported_once(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    No existing B rule reports a missing link target.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="missing.css"/>', (),
+                     "missing-stylesheet.iirds")
+    assert _subjects(report, "R74") == ["content/missing.css"]
+    assert next(f.violation.message for f in report.findings if f.rule.id == "R74") == (
+        "the linked stylesheet is not in the package")
+
+
+def test_a_remote_stylesheet_is_outside_the_local_byte_check(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    report = _linked(make_package, '<link rel="stylesheet" href="//cdn/style.css"/>',
+                     (("content/cdn/style.css", b"<html/>"),), "remote-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+
+
+@pytest.mark.parametrize("element,rel", [
+    (element, rel) for element in ("a", "area")
+    for rel in ("alternate", "author", "help", "license", "next", "prefetch", "prev", "search")
+] + [("link", "next"), ("a", "NEXT"), ("area", "nofollow\tPREV next")])
+def test_shared_document_relations_are_reported_without_claiming_the_whole_sentence(
+        make_package, element, rel):
+    """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
+    markup = '<%s rel="%s" href="next.xhtml"/>' % (element, rel)
+    report = _linked(make_package, markup, (),
+                     "document-relation.iirds")
+    findings = [f for f in report.findings if f.rule.id == "B5"]
+    assert len(findings) == 1
+    assert "b-5-2-document-metadata#3" not in findings[0].rule.covers
+    if element != "link":
+        assert "<%s rel=" % element in findings[0].violation.message
+        assert "metadata graph" in findings[0].violation.message
+    sibling = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                      (("content/style.css", b"p { color: red; }"),), "stylesheet-relation.iirds")
+    assert not _subjects(sibling, "B5")
+
+
+@pytest.mark.parametrize("element", ["a", "area"])
+@pytest.mark.parametrize("rel", [None, "bookmark", "nofollow", "noreferrer", "tag",
+                                "icon", "stylesheet", "nofollow noreferrer"])
+def test_relations_outside_the_shared_document_types_are_not_reported(
+        make_package, element, rel):
+    """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."""
+    attribute = '' if rel is None else ' rel="%s"' % rel
+    report = _linked(make_package, '<%s%s href="next.xhtml"/>' % (element, attribute), (),
+                     "ordinary-hyperlink.iirds")
+    assert not _subjects(report, "B5")
+
+
+@pytest.mark.parametrize("brand", [b"M4A ", b"M4B ", b"M4P "])
+def test_audio_brand_identification_does_not_claim_to_read_tracks_or_codecs(make_package, brand):
+    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as MP3 (ISO/IEC 11172-3, ISO/IEC 13818-3)."
+    A registered audio brand alone cannot establish the required MP3 encoding.
+    """
+    from pathlib import Path
+
+    from iirds_validate.rules import content
+
+    phrase = "MPEG-4 files whose brand is registered for audio"
+    assert frozenset((b"M4A ", b"M4B ", b"M4P ")) == content._AUDIO_BRANDS
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/branded.bin", MP4.replace(b"isom", brand, 1)),)))
+    finding = next(f for f in report.findings if f.rule.id == "R45")
+    assert phrase in finding.rule.title
+    assert phrase in " ".join(content.r45_audio_extension.__doc__.split())
+    assert "tracks and codecs are not inspected" in content._is_mp4_audio.__doc__
+    source = Path(content.__file__).read_text(encoding="utf-8")
+    assert "audio-only" not in source.lower()
+    unreleased = Path("CHANGELOG.md").read_text(encoding="utf-8").split("## 0.9.0", 1)[0]
+    assert phrase in " ".join(unreleased.split())
+    assert "audio-only" not in unreleased.lower()
+
+
+def test_stylesheet_limitations_and_media_remedies_are_stated_in_public_prose():
+    """B.1 requires CSS format; bytes identify other formats, not all CSS syntax."""
+    from pathlib import Path
+
+    expected = (
+        "R74 examines linked local files for identifiable formats and missing files. "
+        "It does not parse all CSS syntax or fetch external stylesheets, so it leaves "
+        "B.1's stylesheet obligation unclaimed.")
+    divergence = Path("docs/divergences.md").read_text(encoding="utf-8")
+    assert expected in divergence
+    assert "This checker refuses a linked stylesheet whose bytes identify another format" in divergence
+    assert "The referring document's environment encoding is not implemented" in divergence
+    assert "Python's codec labels are not the Encoding Standard's label mappings" in divergence
+    from iirds_validate.rules import content
+
+    decoding = " ".join(content._stylesheet_text.__doc__.split())
+    assert "environment encoding is not implemented" in decoding
+    assert "UTF-8 is used instead" in decoding
+    paragraph = " ".join(Path("CHANGELOG.md").read_text(encoding="utf-8").split("## 0.9.0", 1)[0].split())
+    assert "invalid UTF-8" not in paragraph
+    assert "rename the file" not in paragraph
+    for statement in (
+            "bytes determine the media family", "once under that byte family",
+            "declaration in the finding", "convert the content",
+            "PDF, ZIP, images, gzip, XML or HTML", "missing from the package",
+            "a stylesheet's encoding is taken from its BOM or `@charset`",
+            "and otherwise assumed to be UTF-8; it is not itself a finding",
+            "errors in iiRDS/A", "warnings in other readings",
+            "As a checker policy, a linked stylesheet identified as another format",
+            "is refused even if it also parses as CSS",
+            "link a file that is only a CSS stylesheet."):
+        assert statement in paragraph
+
+
+def test_an_unread_graphic_is_not_classified_after_the_budget_is_spent(make_package, monkeypatch):
+    """Raster bytes that were not read cannot establish a format violation."""
+    from iirds_validate import package as package_module
+
+    monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 512)
+    report = _linked(make_package, '<img src="figure.bin" alt=""/>',
+                     (("content/figure.bin", b"unidentified graphic" + b" " * 5000),),
+                     "unread-graphic.iirds")
+    assert _subjects(report, "S9") == ["content/figure.bin"]
+    assert not _subjects(report, "R43")
+    assert not _subjects(report, "S3")
+    assert not report.ok
+
+
+@pytest.mark.parametrize("refusal", ["budget", "per-file"])
+def test_an_unread_stylesheet_is_not_classified_as_another_format(
+        make_package, monkeypatch, refusal):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    S9/S16 report refused reads; R74 cannot treat unread bytes as a format.
+    """
+    from iirds_validate import package as package_module
+    from iirds_validate.rules import content
+
+    if refusal == "budget":
+        monkeypatch.setattr(package_module, "MAX_CONTENT_TOTAL_BYTES", 512)
+    else:
+        monkeypatch.setattr(content, "MAX_CONTENT_BYTES", 512)
+    body = b"\x89PNG\r\n\x1a\n" + b" " * 5000
+    report = _linked(make_package, '<link rel="stylesheet" href="style.bin"/>',
+                     (("content/style.bin", body),), "unread-stylesheet.iirds")
+    assert _subjects(report, "S9" if refusal == "budget" else "S16") == ["content/style.bin"]
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "S3")
+    assert not report.ok
+
+
+@pytest.mark.parametrize("raw,expected", [
+    (b'@charset "iso-8859-1";\xe9', '@charset "iso-8859-1";\u00e9'),
+    (b'@charset "not-an-encoding";\xff', '@charset "not-an-encoding";\ufffd'),
+    (b'@charset "\x00";p{}', '@charset "\x00";p{}'),
+    (b'@charset "utf-16";p{}', '@charset "utf-16";p{}'),
+    (b'@charset "utf-16le";p{}', '@charset "utf-16le";p{}'),
+    (b'@charset "utf-16be";p{}', '@charset "utf-16be";p{}'),
+    (b'@charset "rot13";p{}', '@charset "rot13";p{}'),
+    (b'\xef\xbb\xbf@charset "iso-8859-1";\xc3\xa9', '@charset "iso-8859-1";\u00e9'),
+    (b'\xff\xfe' + '<?xml?>'.encode('utf-16-le'), '<?xml?>'),
+    (b'\xfe\xff' + '<?xml?>'.encode('utf-16-be'), '<?xml?>'),
+    (b' @charset "iso-8859-1";\xe9', ' @charset "iso-8859-1";\ufffd'),
+    (b"@charset 'iso-8859-1';\xe9", "@charset 'iso-8859-1';\ufffd"),
+    (b'@charset "' + b' ' * 1010 + b'iso-8859-1";\xe9',
+     '@charset "' + ' ' * 1010 + 'iso-8859-1";\ufffd'),
+])
+def test_stylesheet_decoding_respects_bom_and_the_exact_charset_prefix(raw, expected):
+    """CSS Syntax 3 §3.2 restricts the prefix to the first 1024 bytes."""
+    from iirds_validate.rules.content import _stylesheet_text
+
+    assert _stylesheet_text(raw) == expected
+
+
+@pytest.mark.parametrize("label", [b"unknown-encoding", b"bad\x00label"])
+def test_unknown_stylesheet_charset_labels_do_not_crash_or_identify_another_format(
+        make_package, label):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."""
+    body = b'@charset "' + label + b'"; p { color: red; }'
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "unknown-charset-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "S3")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a { color: red; }\np { color: blue; }",
+    b"p { color: blue; }",
+    b"GIF89a",
+    b"GIF89a\x00",
+    b"GIF89a { color: red; }\x00",
+])
+def test_a_gif_identifier_does_not_identify_a_stylesheet_as_an_image(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A GIF prefix can be a CSS type selector; a partial header proves no image.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body),), "gif-selector-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
+
+@pytest.mark.parametrize("element", ["a", "area"])
+def test_extended_document_relations_leave_the_whole_sentence_unclaimed(make_package, element):
+    """b-5-2-document-metadata#3: "Relations usually represented by the element <link> in HTML MUST be expressed by means of RDF in iiRDS."
+    HTML5 permits an open registry of relation types, including last.
+    """
+    from iirds_validate.registry import all_rules
+
+    report = _linked(make_package, '<%s rel="last" href="last.xhtml"/>' % element,
+                     (("content/last.xhtml", PAGE.format("last").encode()),),
+                     "extended-document-relation.iirds")
+    assert not _subjects(report, "B5")
+    assert all("b-5-2-document-metadata#3" not in rule.covers for rule in all_rules())
+
+
+@pytest.mark.parametrize("brand", [b"F4A ", b"F4B "])
+def test_unconfirmed_audio_brands_are_outside_the_registered_audio_set(make_package, brand):
+    """x8-2-1-4-audio-formats#1: "Audio content MUST be encoded as MP3 (ISO/IEC 11172-3, ISO/IEC 13818-3)."
+    A brand without a confirmed audio registration does not prove audio tracks.
+    """
+    from iirds_validate.rules import content
+
+    body = MP4.replace(b"isom", brand, 1)
+    assert not content._is_mp4_audio(body)
+    report = runner.check(make_package(metadata=A_PROFILE, extra=(
+        ("content/unconfirmed.bin", body),)))
+    assert _subjects(report, "R44") == ["content/unconfirmed.bin"]
+    assert not _subjects(report, "R45")
+
+
+_GIF_SCREEN = b"\x01\x00\x01\x00\x00\x00\x00"
+_GIF_IMAGE = b"," + b"\x00\x00\x00\x00\x01\x00\x01\x00\x00" + b"\x02\x02\x44\x01\x00"
+_GIF_MINIMAL = b"GIF89a" + _GIF_SCREEN + b";"
+_GIF_PRINTABLE = b"GIF89a" + b" " * 7 + _GIF_IMAGE + b";"
+_GIF_TABLES = (b"GIF89a" + b"\x01\x00\x01\x00\x80\x00\x00"
+               + b"\x00\x00\x00\xff\xff\xff"
+               + b"!\xfe\x03one\x03two\x00"
+               + b"!\xf9\x04\x00\x00\x00\x00\x00" + _GIF_IMAGE + b";")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a/*\x0e*/ { color: red; }\np { color: blue; }",
+    b"GIF89a/*\x00*/ { color: red; }\np { color: blue; }",
+    b'GIF89a[x="\x0e"] { color: red; }',
+    b"GIF89a .abcde, x { color: red; }",
+])
+def test_css_comments_and_strings_do_not_identify_a_gif(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A control byte in a CSS comment or string does not prove a GIF stream.
+    """
+    def check(value, name):
+        return _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                       (("content/style.css", value), ("content/unused.bin", value)), name)
+    report = check(body, "css-gif-identifier.iirds")
+    sibling = check(b"p { color: blue; }", "ordinary-stylesheet.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
+    assert report.ok and sibling.ok
+    assert [(f.rule.id, f.violation.subject) for f in report.findings] == [
+        (f.rule.id, f.violation.subject) for f in sibling.findings]
+
+
+@pytest.mark.parametrize("body", [
+    _GIF_PRINTABLE,
+    b"GIF87a" + _GIF_SCREEN + _GIF_IMAGE + b";",
+    _GIF_TABLES,
+    _GIF_MINIMAL,
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:9] + b"\x80"
+    + b"\x00\x00\x00\xff\xff\xff" + b"\xff\x00;",
+])
+def test_a_complete_gif_stream_is_identified_in_both_content_checks(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    Complete GIF streams are identified without decoding their LZW data.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "complete-gif-stream.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    # The all-file population also includes the linked stylesheet itself.
+    assert _subjects(report, "R43") == ["content/style.css", "content/unused.bin"]
+    assert all("GIF file" in f.violation.message for f in report.findings if f.rule.id == "R74")
+    assert all("a GIF graphic" in f.violation.message for f in report.findings if f.rule.id == "R43")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a", b"GIF89a" + _GIF_SCREEN,
+    b"GIF89a" + _GIF_SCREEN + _GIF_IMAGE[:-2],
+    _GIF_MINIMAL + b"x",
+    b"GIF89a" + _GIF_SCREEN + b"?;",
+    b"GIF89a" + _GIF_SCREEN + b"!",
+    b"GIF89a" + _GIF_SCREEN + b"!\xfe",
+    b"GIF89a" + _GIF_SCREEN + b"!\xfe\x03ab",
+    b"GIF89a" + _GIF_SCREEN + b",\x00",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:10],
+    b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00;",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:9] + b"\x80\x00;",
+    b"GIF89a" + _GIF_SCREEN + b"," + _GIF_IMAGE[1:10] + b"\x02\x00",
+])
+def test_an_incomplete_or_trailing_gif_stream_is_not_identified(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    A prefix, unfinished block, or bytes after the trailer are inconclusive.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "incomplete-gif-stream.iirds")
+    assert not _subjects(report, "R74")
+    assert not _subjects(report, "R43")
+
+
+def test_an_incomplete_gif_used_as_a_graphic_is_still_reported(make_package):
+    """x8-2-1-2-graphics-formats#1: "Raster graphics MUST be encoded as"
+    Usage establishes the population even when a GIF cannot be identified.
+    """
+    report = _linked(make_package, '<img src="damaged.bin" alt="damaged"/>',
+                     (("content/damaged.bin", b"GIF89a" + _GIF_SCREEN),),
+                     "damaged-used-graphic.iirds")
+    assert _subjects(report, "R43") == ["content/damaged.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message
+
+
+def test_a_gif_candidate_refused_during_full_read_is_reported(make_package, monkeypatch):
+    from iirds_validate.rules import content
+    original = content._bytes_of
+    def refuse(ctx, name):
+        if name == "content/candidate.bin":
+            return b"", "not read: synthetic full-read refusal"
+        return original(ctx, name)
+    monkeypatch.setattr(content, "_bytes_of", refuse)
+    report = _linked(make_package, "text", (("content/candidate.bin", _GIF_MINIMAL),),
+                     "unread-gif-candidate.iirds")
+    assert _subjects(report, "R43") == ["content/candidate.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be read" in finding.violation.message
+    assert "synthetic full-read refusal" in finding.violation.detail
+
+
+def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    paragraph = " ".join(changelog.split("## 0.9.1 — unreleased", 1)[1]
+                         .split("## 0.9.0", 1)[0].split())
+    for statement in (
+            "XHTML a and area links using the shared document relation types",
+            "Express those relations in RDF and remove the rel tokens while retaining the hyperlinks.",
+            "MPEG-4 brand detection treats M4A, M4B and M4P as audio-related.",
+            "including F4A and F4B, follow the MP4 video extension check",
+            "requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.",
+            "GIF identification walks the header, logical screen, extension block sizes",
+            "and block order allowed by GIF89a's grammar",
+            "including other extensions between a graphic control extension",
+            "and the image or text it controls, which section 23 allows",
+            "ending at a separately consumed trailer.",
+            "Image data and extension payloads are not decoded.",
+            "In iiRDS/A, a damaged GIF used by a page or an image rendition is reported",
+            "when its bytes identify neither JPEG, PNG nor SVG."):
+        assert statement in paragraph
+    divergences = " ".join((root / "docs/divergences.md").read_text(encoding="utf-8").split())
+    assert "six-letter ASCII header can be a legal CSS identifier" in divergences
+    assert "truncated GIF streams or files with bytes after their trailer" in divergences
+    assert "whole-file identification policy" in divergences
+    assert "same bytes also parse as CSS" in divergences
+    assert "Appendix B.1 does not expressly make the formats mutually exclusive" in divergences
+    assert "the refusal is this checker's additional policy" in divergences
+    assert "In iiRDS/A, a damaged GIF" in divergences
+
+
+def test_gif_boundary_mutations_are_registered_with_their_package_evidence():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import mutation_table
+    expected = {
+        "content/gif-trailer-not-required": "test_an_incomplete_or_trailing_gif_stream_is_not_identified",
+        "content/gif-raster-prefix-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+        "content/gif-stylesheet-control-byte-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+        "content/gif-image-introducer-is-conclusive": "test_css_comments_and_strings_do_not_identify_a_gif",
+    }
+    rows = {row[0]: row for row in mutation_table.TABLE}
+    assert expected.keys() <= rows.keys()
+    for name, test in expected.items():
+        assert rows[name][1] == "src/iirds_validate/rules/content.py"
+        assert rows[name][4] == ["tests/test_obl_c.py"]
+        assert "def " + test + "(" in Path(__file__).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a" + b"\x01\x00\x01\x00" + bytes([0x00, 0x00, 0x3B]),
+    b"GIF89a" + b"\x01\x00\x01\x00" + bytes([0x80, 0x00, 0x00])
+    + bytes([0, 0, 0, 0, 0, 0x3B]),
+], ids=["aspect-byte", "color-byte"])
+def test_a_stream_that_ends_inside_its_logical_screen_is_not_a_gif(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a Appendix B requires a separate trailer after the logical screen.
+    """
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="damaged"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "logical-screen-without-trailer.iirds")
+    assert not _subjects(report, "R74")
+    assert _subjects(report, "R43") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message
+
+
+_GIF_CONTROL = b"!\xf9\x04\x00\x00\x00\x00\x00"
+_GIF_APPLICATION = b"!\xff\x0bNETSCAPE2.0\x03\x01\x00\x00\x00"
+_GIF_TEXT = b"!\x01\x0c" + bytes(12) + b"\x03abc\x00"
+_GIF_POLYGLOT = (b"GIF89a" + b"{/*abcd" + b"!\xfe" + bytes([35])
+                 + b"*/color:red;}p{color:blue;}@layer x" + b"\x00;")
+
+
+def test_a_stylesheet_that_is_also_a_complete_gif_stream_is_reported_as_a_gif(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    Positive GIF identification does not prove the absence of CSS rules.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", _GIF_POLYGLOT),), "gif-and-css.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R74"]
+    assert str(finding.severity) == "error"
+    assert finding.violation.message == "the linked stylesheet is a GIF file"
+    assert "not CSS" not in finding.violation.message
+
+
+@pytest.mark.parametrize("blocks", [
+    b"!\xf9\x01\x00\x00;",
+    b"!\xf9\x01\x00\x00" + _GIF_IMAGE + b";",
+    _GIF_CONTROL + b";",
+    b"!\x99\x00;",
+    b"!\xff\x05abcde\x00;",
+    b"!\x01\x03abc\x00;",
+    _GIF_CONTROL + _GIF_CONTROL + _GIF_IMAGE + b";",
+    _GIF_CONTROL + b"!\xfe\x01x\x00;",  # No rendering block follows the comment.
+    _GIF_CONTROL + _GIF_APPLICATION + b";",
+    b"!\xf9", b"!\xf9\x04\x00", b"!\xf9\x04" + bytes(4),
+    b"!\xf9\x04" + bytes(4) + b"\x01;",
+    b"!\x01", b"!\x01\x0c" + bytes(11),
+    b"!\xff", b"!\xff\x0b" + bytes(10),
+], ids=["control-size", "control-size-with-image", "control-without-rendering", "undefined-extension",
+        "application-size", "plain-text-size", "two-controls", "control-then-comment-without-rendering",
+        "control-then-application-without-rendering", "missing-control-size", "short-control-body",
+        "missing-control-terminator", "nonzero-control-terminator",
+        "missing-text-size", "short-text-body", "missing-application-size",
+        "short-application-body"])
+def test_gif_data_blocks_must_follow_the_grammar_and_extension_sizes(make_package, blocks):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a Appendix B and sections 23, 25 and 26 delimit the data blocks.
+    A graphic control extension must be followed by a rendering block.
+    """
+    body = b"GIF89a" + _GIF_SCREEN + blocks
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="damaged"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "invalid-gif-data-blocks.iirds")
+    assert not _subjects(report, "R74")
+    assert _subjects(report, "R43") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message
+
+
+@pytest.mark.parametrize("body", [
+    b"GIF89a" + _GIF_SCREEN + _GIF_CONTROL + _GIF_IMAGE + b";",
+    b"GIF89a" + _GIF_SCREEN + _GIF_APPLICATION + _GIF_IMAGE + b";",
+    b"GIF89a" + _GIF_SCREEN + _GIF_TEXT + b";",
+    b"GIF89a" + _GIF_SCREEN + _GIF_CONTROL + _GIF_TEXT + b";",
+    _GIF_POLYGLOT,
+    b"GIF87a" + _GIF_SCREEN + _GIF_IMAGE + b";",
+], ids=["control-image", "application-image", "plain-text", "control-plain-text",
+        "comment-only-polyglot", "image-older-header"])
+def test_gif_graphic_and_special_purpose_blocks_are_identified_without_decoding(make_package, body):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a Appendix B permits graphic and special-purpose data blocks.
+    Their payloads need not be decoded to check their framing and order.
+    """
+    report = _linked(make_package, '<link rel="stylesheet" href="style.css"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "gif-graphic-and-special-blocks.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    assert _subjects(report, "R43") == ["content/style.css", "content/unused.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R74"]
+    assert finding.violation.message == "the linked stylesheet is a GIF file"
+    assert "not CSS" not in finding.violation.message
+
+
+_GIF_COMMENT = b"!\xfe\x03abc\x00"
+
+
+@pytest.mark.parametrize("blocks", [
+    _GIF_CONTROL + _GIF_COMMENT + _GIF_IMAGE,
+    _GIF_CONTROL + _GIF_APPLICATION + _GIF_TEXT,
+    _GIF_CONTROL + _GIF_COMMENT + _GIF_COMMENT + _GIF_IMAGE,
+], ids=["control-comment-image", "control-application-text", "control-two-comments-image"])
+def test_a_gif_graphic_control_can_have_other_extensions_before_its_rendering_block(make_package, blocks):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a section 23(d) permits other extensions between control and rendering.
+    The checker identifies GIF even when these bytes are linked as a stylesheet.
+    """
+    body = b"GIF89a" + _GIF_SCREEN + blocks + b";"
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="graphic"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "gif-control-with-intervening-extensions.iirds")
+    assert _subjects(report, "R74") == ["content/style.css"]
+    assert _subjects(report, "R43") == ["content/style.css", "content/unused.bin"]
+    [finding] = [f for f in report.findings if f.rule.id == "R74"]
+    assert str(finding.severity) == "error"
+    assert finding.violation.message == "the linked stylesheet is a GIF file"
+
+
+def test_an_intervening_extension_does_not_permit_a_second_gif_graphic_control(make_package):
+    """dfn-iirds-xhtml5#2: "iiRDS XHTML5 stylesheets MUST be in CSS format."
+    GIF89a section 23(a) permits at most one control before a rendering block.
+    """
+    body = b"GIF89a" + _GIF_SCREEN + _GIF_CONTROL + _GIF_COMMENT + _GIF_CONTROL + _GIF_IMAGE + b";"
+    report = _linked(make_package,
+                     '<link rel="stylesheet" href="style.css"/>'
+                     '<img src="style.css" alt="damaged"/>',
+                     (("content/style.css", body), ("content/unused.bin", body)),
+                     "gif-duplicate-control-after-comment.iirds")
+    assert not _subjects(report, "R74")
+    assert _subjects(report, "R43") == ["content/style.css"]
+    [finding] = [f for f in report.findings if f.rule.id == "R43"]
+    assert "could not be identified as JPEG or PNG, or as SVG" in finding.violation.message

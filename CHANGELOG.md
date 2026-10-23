@@ -24,6 +24,38 @@ or no namespace, with a complete start tag, so a different root, a foreign
 namespace or an unfinished `<html` tag is rejected even when `<html` appears
 in the file.
 
+iiRDS/A graphics used by XHTML images or declared as image renditions now
+draw a finding when their bytes identify neither JPEG, PNG nor SVG. Media
+bytes determine the media family, including MPEG-4 files whose brand is
+registered for audio. A file declared as another family is checked once under
+that byte family, with its declaration in the finding when its extension is
+wrong. Correct the declaration or convert the content to the intended format,
+then save it with the required extension and update every reference, including
+`iirds:source`. Linked XHTML stylesheets that are another identifiable format
+(PDF, ZIP, images, gzip, XML or HTML) or missing from the package are reported;
+a stylesheet's encoding is taken from its BOM or `@charset` and otherwise
+assumed to be UTF-8; it is not itself a finding. Stylesheet findings are errors in iiRDS/A and
+warnings in other readings. As a checker policy, a linked stylesheet identified
+as another format is refused even if it also parses as CSS; link a file that is
+only a CSS stylesheet.
+
+
+XHTML a and area links using the shared document relation types, such as next
+and prev, are now reported. Express those relations in RDF and remove the rel
+tokens while retaining the hyperlinks.
+
+MPEG-4 brand detection treats M4A, M4B and M4P as audio-related. Other non-image
+brands, including F4A and F4B, follow the MP4 video extension check, which
+requires a .mp4 filename in iiRDS/A. Tracks and codecs are not inspected.
+
+GIF identification walks the header, logical screen, extension block sizes
+and block order allowed by GIF89a's grammar, including other extensions between
+a graphic control extension and the image or text it controls, which section 23
+allows, ending at a separately consumed trailer. Image data and extension payloads are not decoded. A six-letter GIF
+prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
+page or an image rendition is reported when its bytes identify neither JPEG,
+PNG nor SVG.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

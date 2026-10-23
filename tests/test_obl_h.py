@@ -965,7 +965,7 @@ def test_content_list_branches_record_no_new_silent_paths():
 
     from conftest import ROOT
 
-    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 25
+    assert json.loads((ROOT / 'docs/silent-paths.json').read_text())['counts']['silent'] == 24
 
 
 @pytest.mark.parametrize('body', [

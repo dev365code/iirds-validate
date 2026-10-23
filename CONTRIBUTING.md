@@ -165,6 +165,14 @@ line, the manifest and `as_of` have their own), and the changelog fails
 one if the date and the number are not in one commit. The tag is `v` and
 the number.
 
+The README's workflow example names a release. In the commit that
+numbers one, point both `uses:` lines under "In a workflow" at `@v` and
+the new number, and say beneath the first that it names the release this
+page was published with.
+`tests/test_the_action_runs_the_tool_and_keeps_its_code.py` accepts that
+number before its tag exists, and refuses `main` once a release carries
+`action.yml`.
+
 Look at the action pins before you tag. Every `uses:` in
 `.github/workflows/` names a commit rather than a tag, so no action's code
 moves on its own or picks up the fix its owner published last month -- though

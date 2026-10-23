@@ -56,6 +56,42 @@ prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
 page or an image rendition is reported when its bytes identify neither JPEG,
 PNG nor SVG.
 
+**Section 8.3.2's Manufacturer sentence is claimed alike in both of its
+lists.** The sentence asking a product variant's identity domain for a
+manufacturer that names a `vcard:Organization` appears four times: twice in
+the Package's list (#3, #6) and twice in the Document's (#9, #12). A
+manufacturer whose vCard the package never describes is reported by R4, and
+one written as a string or as a term of a vocabulary by R12; both claimed the
+Document's copies and not the Package's, so a package breaking #3 or #6 in one
+of those three ways was reported only by rules that did not claim it. R4 and
+R12 now claim all four. No verdict moves, and the count of covered obligations
+does not change.
+
+**Every rule names the section of the standard it reads, or says it has
+none.** Fifty-two rules carried no link to the standard. The seventeen of them
+that claim obligations now link to the section of the first sentence they
+claim, derived by `tools/rule_sections.py` from the claim itself, so the link
+moves when the claim does. Of the thirty-five that claim nothing, twenty-five
+link to the section their finding is about, and ten -- rules about the run
+itself, and this project's own advice -- say that no section is behind them
+and why (S14 and S15, the two rules 0.6.2 added with no specification
+reference, link to sections 5.2.2 and 5.2): `iirds rules <id> -v` prints it,
+and so does a verbose report, and `iirds rules --format json` carries it as
+`noSection`. A finding's `spec` field carries the new links, and a verbose
+report prints the link or the reason under a run of findings as under one; the
+report's shape does not change. The SHACL shapes carry the same links as
+`dcterms:source`.
+
+**S14's remedy says what section 5.2.2 says.** S14 does not open an entry
+compressed with anything but stored or deflate, and its remedy and its entry
+in `docs/divergences.md` said the specification is silent about the method.
+Section 5.2.2 has every file but `mimetype` "either uncompressed ("Stored"
+compression mode) or compressed in "Deflated" mode", and both say so now; what
+S14 reports does not change. **R4's remedy names one repair.** It also offered
+dropping the `iirds:relates-to-vcard`, which leaves the party with no vCard at
+all: M23 reports that, and under iiRDS/H the five named-party rules as well.
+No package passes or fails differently.
+
 **L4 reports each loop structure once, from wherever it is looked at.** A
 directory structure whose `iirds:has-first-child` and `iirds:has-next-sibling`
 links run in a circle was reported at the node a walk came back to, and the
@@ -66,6 +102,25 @@ or several as the walk fell. L4 now reports each set of nodes that reach one
 another through those links, two or more or one that points at itself, once:
 named by the first of them by name, with all of them listed. Loops that share
 nodes are one finding; whether L4 reports at all does not change.
+
+**A GitHub Action, with the command's own output and exit code.**
+`- uses: dev365code/iirds-validate@<ref>` with `paths:` checks packages in a
+workflow. The step installs the release from PyPI into a directory of its own
+-- the `version` asked for, else the release tag the action is used at, else
+the version its tree is numbered for -- or runs an `iirds.pyz` you carry,
+which it first asks is the checker's single file and holds to `sha256:` when
+one is given. It runs `check`, `lint` or `all`, and returns the code the
+command line returns: 0, 1, 2 or 64, published as `exit-code` whether the step
+fails or, with `fail-on-finding: false`, succeeds on any verdict. A verb the
+command line would read as a path, a carried file that is not there, is not
+the checker or does not have the hash asked for, and an install that left no
+checker are usage errors before the checker is asked; inputs reach the shell
+as environment variables, and paths come after a `--`. What the step prints on
+stdout and stderr, and the code it returns, are those of
+`iirds <command> <args> -- <paths>`, byte for byte -- `tools/action_parity.py`
+asks that of every file of the corpus and every fixture, over this tree, an
+installed release and the single file. The picture of what this tool holds
+itself to marks the GitHub Action done.
 
 ## 0.9.0 — 2026-10-08
 

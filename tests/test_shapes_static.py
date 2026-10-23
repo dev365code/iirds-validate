@@ -387,10 +387,15 @@ def test_the_complete_files_are_exactly_their_parts():
                             "iirds-handover-core.ttl", "iirds-handover-sparql.ttl"))
 
 
-def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
+def test_every_shape_carries_a_spec_link():
     """The README's dcterms:source claim drifted three times in a
     row (all → all-but-four → the measured truth). Claims about coverage
-    live here now, where drift turns red instead of stale."""
+    live here now, where drift turns red instead of stale.
+
+    It was six rules and fifty-two shapes without a link until every rule
+    named its section or said it had none: `tools/rule_sections.py` gave L7,
+    L10, L16, S4, S5 and M97.1 the section they read, and a rule with no
+    section behind it has no shape. The set and the count stay, at none."""
     from rdflib import Graph, Namespace
 
     DCT = Namespace("http://purl.org/dc/terms/")
@@ -407,23 +412,35 @@ def test_the_shapes_without_a_spec_link_are_exactly_the_known_five():
     # id of the rule that should have carried it.
     #
     # The count is pinned beside the set, because reading by rule stops the
-    # gate bounding *how many* shapes lack a link: any number of them could
-    # then be added under one of these six ids and nothing would notice. The
-    # set says which rules, the count says how many shapes, and a change to
-    # either is a diff a reviewer reads.
+    # gate bounding *how many* shapes lack a link: while the set named six
+    # rules, any number of shapes could have been added under one of them and
+    # nothing would have noticed. The set says which rules, the count says how
+    # many shapes, and a change to either is a diff a reviewer reads.
     # Read from the file's own @prefix rather than written out here: the
     # namespace carries the distribution's former name, and the gate in
     # `test_product_name.py` is right to refuse a source file that spells it.
     IVM = Namespace(dict(graph.namespaces())["ivm"])
-    missing, shapes_without = set(), 0
+    missing, shapes_without, read = set(), 0, set()
     for kind in (SH_NS.NodeShape, SH_NS.PropertyShape):
         for shape in graph.subjects(RDF.type, kind):
+            read.add(shape)
             if graph.value(shape, DCT.source) is None:
                 shapes_without += 1
                 rule_id = graph.value(shape, IVM.ruleId)
                 missing.add(str(rule_id) if rule_id else str(shape).rsplit("#", 1)[-1])
-    assert missing == {"L7", "L10", "L16", "S4", "S5", "M97.1"}, sorted(missing)
-    assert shapes_without == 52, shapes_without
+    # None without a link means something only if every shape was read. The
+    # loop reads by type and every shape that reports carries its rule's id, so
+    # the two are the same shapes: a loop that read one kind, or a shape written
+    # without its type, is a difference here -- a threshold let half through.
+    reporting = set(graph.subjects(IVM.ruleId, None))
+    assert reporting and read == reporting, (len(read), len(reporting))
+    # And those are every rule the shapes say they emit: the two sets above are
+    # read from one graph, so a file left out of the tuple shrank both alike.
+    manifest = json.loads((SHAPE_DIR.parent / "MANIFEST.json").read_text(encoding="utf-8"))
+    emitted = set(manifest["core_emitted"]) | set(manifest["sparql_emitted"])
+    assert {str(graph.value(shape, IVM.ruleId)) for shape in read} == emitted
+    assert missing == set(), sorted(missing)
+    assert shapes_without == 0, shapes_without
 
 
 def test_the_manifest_version_is_the_package_version():

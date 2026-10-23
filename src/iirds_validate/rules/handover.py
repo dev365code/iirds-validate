@@ -119,14 +119,17 @@ def _needs_named_party(ctx, cls, role, what):
                 subject=ctx.ref(subject), detail=ctx.label_of(subject))
 
 
-@rule("R4", covers=("x8-3-2-metadata-requirements#9", "x8-3-2-metadata-requirements#12",
+@rule("R4", covers=("x8-3-2-metadata-requirements#3", "x8-3-2-metadata-requirements#6",
+                    "x8-3-2-metadata-requirements#9", "x8-3-2-metadata-requirements#12",
                     "x8-3-2-metadata-requirements#13",),
       kind="schema", prio="MUST",
       versions=("1.0", "1.0.1", "1.1", "1.2", "1.3"), variants=(),
       title="a vcard a party points at must be described in the package",
       spec=_spec_sans_quote("M15.8"), diagnosis="cause",
       fix="Describe the vcard in this package as a vcard:Organization carrying a "
-          "vcard:organization-name, or drop the iirds:relates-to-vcard. A pointer at "
+          "vcard:organization-name. Dropping the iirds:relates-to-vcard instead is no "
+          "repair: a party with no vcard at all is what M23 reports in this one's place, "
+          "and under iiRDS/H the five named-party rules as well. A pointer at "
           "an IRI nothing here describes leaves the party unidentifiable to anyone "
           "holding only the package — which in iiRDS/H is the reader the profile is "
           "written for, and is why the five named-party MUSTs are MUSTs there.")
@@ -144,13 +147,17 @@ def r4_party_vcard_is_described(ctx):
     an IRI the package never mentions again. Reported here once per vcard, as
     a cause, which is what the five findings would have been consequences of.
 
-    Three of section 8.3.2's sentences are covered by this rule together with
-    the one that softens for them -- #9 and #12 with M15.7b and M15.7d, #13
-    with M15.10. #13 was claimed by M15.10 alone, which meant the one shape
-    M15.10 deliberately stays quiet about was claimed by a rule that cannot
-    report it. The pairing holds because both sides ask `_describes` the same
-    question over the same population: whatever the five let through, this
-    reports.
+    Five of section 8.3.2's sentences are covered by this rule together with
+    the one that softens for them -- #3 and #6 with R14 and R16, #9 and #12
+    with M15.7b and M15.7d, #13 with M15.10. #13 was claimed by M15.10 alone,
+    which meant the one shape M15.10 deliberately stays quiet about was
+    claimed by a rule that cannot report it. #3 and #6 then went the same way:
+    R14 and R16 read the Package's copies of #9 and #12 through the builder
+    M15.7b and M15.7d share, softening included, and the pairing was not
+    carried to them. The pairing holds because both sides ask `_describes` the
+    same question, and this asks it of every vcard a party points at: whatever
+    the softening lets through, this reports -- or R12 does, for a literal or a
+    name a vocabulary defines, which is why R12 claims the same sentences.
     """
     # Every profile, not only iiRDS/H. The softening this owns belongs to
     # section 8.3.2's five, which are iiRDS/H -- but a pointer at nothing is a

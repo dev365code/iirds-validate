@@ -1,17 +1,17 @@
 | Axis | Now | 1.0 condition |
 |---|---|---|
 | Coverage | 187 of 280 obligations covered | at least 220 of 280 covered |
-| Explanation | what, evidence, remedy | + every rule names its section, the line |
+| Explanation | what, evidence, remedy, section | + the line |
 | Report contract | schemaVersion, golden, exit codes | + a field-by-field schema page |
 | Entrances | command line, library, single file | + GitHub Action, browser |
 | Input safety | read budgets, advisory, mutations | + declared encodings read without loss |
 | Upstream | pinned, checked weekly, one pin move shipped | met |
 
-**Explanation** — 3 of 5:
+**Explanation** — 4 of 5:
 - what is wrong, in one sentence — done (`README.md`: "what is wrong")
 - the evidence as read from the file — done (`README.md`: "the evidence as read from your file")
 - a remedy, for every rule — done (`README.md`: "A rule without a prescription does not ship")
-- every rule names its section, or says it has none — not yet
+- every rule names its section, or says it has none — done (`tests/test_rule_sections.py`: "names its section or says it has none")
 - the line in the file — not yet
 
 **Report contract** — 3 of 4:

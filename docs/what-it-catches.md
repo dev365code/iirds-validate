@@ -32,9 +32,11 @@ The cases here are about this tool alone.
 Exit code 1.
 
 **The standard states this obligation**, and `S13` claims it as
-`dfn-iirds-package#1`; the rule carries no link to the sentence, so the page
-has none to quote. `S13` states it as: the container could not be opened at
-all
+`dfn-iirds-package#1`. The link below is to the section that states it, and
+carries no words of its own to quote. `S13` states it as: the container could
+not be opened at all
+
+<https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x5-iirds-package-and-container>
 
 The standard describes a container, and a file that will not open is not one
 yet. The last line is the point: the run says how many rules it never put,
@@ -181,14 +183,16 @@ names the unit and the values it found.
 
 ## Explanation
 
-A finding carries a link to the words of the standard it enforces when its
-rule has one, and where a case on this page has one it quotes the words the
-link lands on. Some rules claim an obligation of the standard without a link
-to its sentence; a finding does not carry that claim, and `iirds rules <id>
--v` shows it. Some rules have neither -- this project's interoperability and
-run rules among them, and a few from the upstream catalogue -- and for those
-nothing in the rule or its report yet says there is no section to give. Until
-every rule names its section or says it has none, that item is not done.
+Every rule names the section of the standard it reads, or says it has none.
+Where a rule's own link carries the words of the sentence, a case on this page
+quotes the words it lands on. Where a rule had no link,
+`tools/rule_sections.py` derives one: a rule that claims obligations links to
+the section of the first sentence it claims, and a rule that claims none to
+the section its finding is about. A rule with no section behind it -- one
+about the run itself, or this project's own advice -- says so and why, in
+`iirds rules <id> -v` and in a verbose report. A finding carries the link in
+its `spec` field; the claim and the reason are the rule's, and `iirds rules
+<id>` shows both.
 
 ### Metadata that points at a file the package does not carry
 
@@ -210,7 +214,12 @@ every rule names its section or says it has none, that item is not done.
 
 Exit code 1.
 
-**This tool's own rule** (`L2`), no specification reference.
+**The section this is about.** `L2` claims no obligation of the standard; the
+link below is to the section its finding is about, and carries no words of its
+own to quote. `L2` states it as: every iirds:source must resolve to a file
+inside the container
+
+<https://www.iirds.org/fileadmin/iiRDS_specification/20251103-1.3-release/index.html#x6-3-content-references-of-information-units>
 
 The graph is well-formed and no rule but `L2` has anything to say about it. A
 reader of the package finds no document where the metadata points. None of the
@@ -221,10 +230,10 @@ rules taken from the upstream catalogue fires on it.
 - done -- what is wrong, in one sentence
 - done -- the evidence as read from the file
 - done -- a remedy, for every rule
-- not yet -- every rule names its section, or says it has none
+- done -- every rule names its section, or says it has none
 - not yet -- the line in the file
 
-**Before 1.0.** + every rule names its section, the line
+**Before 1.0.** + the line
 
 ## Report contract
 

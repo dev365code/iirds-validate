@@ -74,9 +74,6 @@ def _lint(rule_id, title, prio="RECOMMENDED", conformance=False, fix=None, cover
                 variants=(), spec=None, conformance=conformance, fix=fix, covers=covers)
 
 
-#: Sentinel pushed onto the traversal stack to mark "finished with this node".
-_CLOSE = object()
-
 
 def _children(ctx, node):
     """The two edges that make up an iiRDS navigation structure.
@@ -136,7 +133,7 @@ def l1_dangling_references(ctx):
 
 
 @_lint("L8", "external references cannot be resolved by an offline consumer", prio="MAY",
-       fix="Bundle the vocabulary in the package, or accept that consumers behind a firewall will not resolve it. This is a note rather than a defect: it says what an offline reader loses.")
+       fix="Bundle the vocabulary in the package, or accept that consumers behind a firewall will not resolve it. This is advice rather than a defect: it says what an offline reader loses.")
 def l8_external_references(ctx):
     """Links out to another vocabulary — fine, but worth knowing they are there.
 
@@ -203,38 +200,65 @@ def l3_orphan_directory_nodes(ctx):
 def l4_directory_cycles(ctx):
     """A consumer walking the table of contents would loop forever.
 
+    One finding per loop structure: the nodes that each reach every other by
+    has-first-child and has-next-sibling -- a strongly connected component of
+    that graph -- where there are two or more, or one that points at itself.
+    Which structures a graph has does not depend on the order anything is
+    looked at in, so neither does what is reported, nor how much: a walk that
+    reported the node it came back to found one loop of two sharing a node, or
+    both, by where it started. Each structure is named by its first node by
+    name and lists its nodes in that order -- breaking every loop through them
+    is the repair.
+
     Iterative on purpose. `has-next-sibling` is a linked list, so a flat table
     of contents of N entries is N deep — a thousand-entry manual is ordinary,
     and a recursive walk blows the stack and reports a valid package as broken.
     """
-    state = {}                       # node -> "open" while on the current path
-    reported = set()
+    names = {}
 
+    def name(node):
+        found = names.get(node)
+        if found is None:
+            found = names[node] = ctx.ref(node)
+        return found
+
+    # Tarjan's components, with an explicit stack of (node, its remaining edges).
+    index, low, on_path, path, structures = {}, {}, set(), [], []
     for start in ctx.instances_of(T.DirectoryNode):
-        if state.get(start) == "done":
+        if start in index:
             continue
-        # (node, trail) with an explicit close marker, so the trail unwinds
-        # exactly as it would on return from a recursive call.
-        stack = [(start, [])]
-        while stack:
-            node, trail = stack.pop()
-            if node is _CLOSE:
-                state[trail] = "done"
-                continue
-            if state.get(node) == "done":
-                continue
-            if state.get(node) == "open":
-                if node not in reported:
-                    reported.add(node)
-                    loop = trail[trail.index(node):] + [node] if node in trail else [node]
-                    yield Violation("cycle in the directory structure",
-                                    subject=ctx.ref(node),
-                                    detail=" -> ".join(ctx.ref(n).split("/")[-1] for n in loop))
-                continue
-            state[node] = "open"
-            stack.append((_CLOSE, node))
-            for child in _children(ctx, node):
-                stack.append((child, trail + [node]))
+        index[start] = low[start] = len(index)
+        path.append(start)
+        on_path.add(start)
+        work = [(start, iter(_children(ctx, start)))]
+        while work:
+            node, edges = work[-1]
+            for child in edges:
+                if child not in index:
+                    index[child] = low[child] = len(index)
+                    path.append(child)
+                    on_path.add(child)
+                    work.append((child, iter(_children(ctx, child))))
+                    break
+                if child in on_path:
+                    low[node] = min(low[node], index[child])
+            else:
+                work.pop()
+                if work:
+                    low[work[-1][0]] = min(low[work[-1][0]], low[node])
+                if low[node] == index[node]:
+                    members = []
+                    while True:
+                        member = path.pop()
+                        on_path.discard(member)
+                        members.append(member)
+                        if member == node:
+                            break
+                    if len(members) > 1 or node in _children(ctx, node):
+                        structures.append(sorted(name(member) for member in members))
+    for members in sorted(structures):
+        yield Violation("cycle in the directory structure", subject=members[0],
+                        detail=", ".join(member.split("/")[-1] for member in members))
 
 
 @_lint("L5", "a proprietary class should link into the iiRDS vocabulary itself",

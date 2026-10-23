@@ -87,7 +87,7 @@ $ echo $?
 | a vCard reference pasted as a plain string | `ERROR R12` — a reference must be a resource, not a literal |
 | a zip bomb, or XML with external entities | every read is bounded, an entry whose compression method cannot be read within a bound is not opened at all (`ERROR S14`), and no entity is expanded. `SECURITY.md` says what these limits reach and what they do not |
 
-Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names none -- most interoperability and system rules are of that kind, being this project's own or about the run rather than the package -- and `iirds rules S1 -v` prints a remedy with no section beside it.
+Every code carries a prescription, and a rule that claims a sentence of the specification names the section it claims — `iirds rules C5 -v` shows any rule's source and remedy. A rule that claims none names the section its finding is about, or says why it has none — and each rule that has none is about the run itself or is this project's own advice; `iirds rules S1 -v` prints the reason beside the remedy.
 
 **It asks whether the package will work, not only whether it conforms.** Seventeen
 interoperability rules, most with no counterpart in the specification, because a
@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=6685f940" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=9f93f1e1" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy, section; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*

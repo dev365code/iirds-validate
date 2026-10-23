@@ -420,12 +420,13 @@ def _disagreements(info, header, descriptor):
       diagnosis="cause",
       title="every entry must be compressed with a method a bounded read can be made of",
       fix="Rebuild the archive with deflate, or store the entry uncompressed; `iirds pack` "
-          "writes deflate. Nothing is wrong with the file itself -- it was not opened, so "
-          "nothing here has an opinion about its contents. The specification is silent about "
-          "which method an entry uses, with one exception: `mimetype` must be stored, and "
-          "where this names `mimetype` C6 reports that beside it and storing is the only "
-          "remedy. What cannot be done is read it within a stated limit: "
-          "the decompressors for these methods are not given the length the caller asked for, "
+          "writes deflate. Those are the two methods section 5.2.2 of the specification "
+          "gives every file but `mimetype`, which section 5.2 has stored -- where this names "
+          "`mimetype`, C6 reports that beside it and storing is the only remedy. Nothing "
+          "here has an opinion about the entry's contents: it was not opened. And apart "
+          "from what the standard says, an entry in another method cannot be read within a "
+          "stated limit: "
+          "the decompressors for those methods are not given the length the caller asked for, "
           "so the entry comes out whole or not at all, and a container from a stranger is the "
           "wrong place to find out how large whole is. Every consumer that applies the same "
           "guard will pass this entry over as well, so a delivery that relies on it is a "
@@ -433,13 +434,16 @@ def _disagreements(info, header, descriptor):
 def s14_entries_use_a_method_that_can_be_read(ctx):
     """Refused before opening, on the central directory's own record.
 
-    This is this project's own decision and not a reading of the
-    specification, which names a method only for `mimetype` (stored) and is
-    silent about the rest; `docs/divergences.md` carries the argument. What
-    forces it is measurable: every limit here bounds what a read returns, and
-    for these methods the return is sliced out of a whole decompressed entry.
-    A 189-byte archive declaring 64 MiB cost 71,530,984 bytes in one
-    `read(65536)`, and lowering a ceiling does not touch that.
+    Section 5.2.2 of the specification has every file but `mimetype` "either
+    uncompressed ("Stored" compression mode) or compressed in "Deflated" mode"
+    -- normative text without a keyword, so the index holds no sentence for it
+    -- and those are exactly the two methods this reads; section 5.2 has
+    `mimetype` stored, which C6 reports. The refusal has a reason of its own as
+    well, and `docs/divergences.md` carries it: every limit here bounds what a
+    read returns, and for the other methods the return is sliced out of a
+    whole decompressed entry. A 189-byte archive declaring 64 MiB cost
+    71,530,984 bytes in one `read(65536)`, and lowering a ceiling does not
+    touch that.
 
     Reported per entry rather than for the container: the rest of the package
     is judged normally, and naming the entry is what lets a sender fix it.

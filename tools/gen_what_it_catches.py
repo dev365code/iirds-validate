@@ -153,12 +153,15 @@ def spec_of(rule_id: str):
     the same string: if the quotation were wrong the link would miss.
     """
     sys.path.insert(0, str(ROOT / "src"))
-    from iirds_validate.registry import all_rules
+    from iirds_validate.registry import all_rules, own_spec
 
     rule = {r.id: r for r in all_rules()}.get(rule_id)
     if rule is None:
         raise Failed("%s is not a rule in this build" % rule_id)
-    return rule.title, _quoted(rule.spec), rule.spec, tuple(rule.covers)
+    # Whether `tools/rule_sections.py` gave the link: then it is a section, and
+    # there are no words of the standard in it to quote.
+    derived = bool(rule.spec) and own_spec(rule_id) is None
+    return rule.title, _quoted(rule.spec), rule.spec, tuple(rule.covers), derived
 
 
 def _quoted(spec):
@@ -298,7 +301,7 @@ AXIS_OF = {
     "no-metadata-rdf": "coverage",
     "no-format": "coverage",
     "two-dates": "coverage",
-    "missing-content": "explanation",   # L2 names no section: the item not done
+    "missing-content": "explanation",   # L2 links to the section its finding is about
 }
 
 CAPABILITIES = ROOT / "docs" / "capabilities.json"
@@ -309,7 +312,7 @@ def _case_block(slug, heading, broken, rule_id, exit_code, note):
     _own_words("case %s note" % slug, note)
     package = _not_a_container() if broken is None else _build(slug, broken)
     said = _verdict(package, exit_code=exit_code, names=rule_id)
-    title, quotable, spec, claims = spec_of(rule_id)
+    title, quotable, spec, claims, derived = spec_of(rule_id)
     out = ["### %s" % heading, ""]
     if broken is None:
         # `fixtures/` is not in a clone; the other builds make it themselves.
@@ -323,7 +326,25 @@ def _case_block(slug, heading, broken, rule_id, exit_code, note):
     out.append("")
     out.append("Exit code %d." % exit_code)
     out.append("")
-    if spec:
+    if spec and derived:
+        # A link `tools/rule_sections.py` derived lands on a section, not on
+        # words, so the page says which section and why rather than offering to
+        # quote what the link does not carry.
+        if claims:
+            out.extend(_wrapped(
+                "**The standard states this obligation**, and `%s` claims it as %s. "
+                "The link below is to the section that states it, and carries no "
+                "words of its own to quote. `%s` states it as: %s"
+                % (rule_id, ", ".join("`%s`" % c for c in claims), rule_id, title)))
+        else:
+            out.extend(_wrapped(
+                "**The section this is about.** `%s` claims no obligation of the "
+                "standard; the link below is to the section its finding is about, "
+                "and carries no words of its own to quote. `%s` states it as: %s"
+                % (rule_id, rule_id, title)))
+        out.append("")
+        out.append("<%s>" % spec)
+    elif spec:
         out.extend(_wrapped("**The standard says so.** The link below lands "
                             "on these words, which are the specification's own:"))
         out.append("")
@@ -389,15 +410,17 @@ def page() -> str:
         if axis["key"] == "explanation":
             said.add("explanation")
             out.extend(_wrapped(
-                "A finding carries a link to the words of the standard it enforces "
-                "when its rule has one, and where a case on this page has one it quotes "
-                "the words the link lands on. Some rules claim an obligation of the "
-                "standard without a link to its sentence; a finding does not carry that "
-                "claim, and `iirds rules <id> -v` shows it. Some rules have neither -- "
-                "this project's interoperability and run rules among them, and a few "
-                "from the upstream catalogue -- and for those nothing in the rule or its "
-                "report yet says there is no section to give. Until every rule names its section or says it has "
-                "none, that item is not done."))
+                "Every rule names the section of the standard it reads, or says it "
+                "has none. Where a rule's own link carries the words of the sentence, "
+                "a case on this page quotes the words it lands on. Where a rule had no "
+                "link, `tools/rule_sections.py` derives one: a rule that claims "
+                "obligations links to the section of the first sentence it claims, "
+                "and a rule that claims none to the section its finding is about. A "
+                "rule with no section behind it -- one about the run itself, or this "
+                "project's own advice -- says so and why, in `iirds rules <id> -v` "
+                "and in a verbose report. A finding carries the link in its `spec` "
+                "field; the claim and the reason are the rule's, and `iirds rules "
+                "<id>` shows both."))
             out.append("")
         for case in CASES:
             if AXIS_OF.get(case[0]) == axis["key"]:

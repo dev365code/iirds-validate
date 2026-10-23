@@ -180,8 +180,8 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             for line in _wrap(finding.fix, 74):
                 print(paint("                    %s %s" % (marker, line), _DIM),
                       file=stream)
-        if verbose and finding.rule.spec:
-            print(paint("                      spec: %s" % finding.rule.spec, _DIM), file=stream)
+        if verbose:
+            _show_spec(finding.rule, paint, stream)
 
     # One rule, forty findings used to mean the same remedy paragraph forty
     # times — 246 lines for "forty files are missing", and nothing saying so.
@@ -202,7 +202,7 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
                 show(finding)
             continue
         _show_group(group, report.total_for(group[0].rule.id), paint, stream,
-                    marker)
+                    marker, verbose)
 
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
@@ -225,7 +225,17 @@ def render_text(report: Report, stream: Optional[TextIO] = None, verbose: bool =
             print(paint("  not applicable, %s: %s" % (label, ", ".join(ids)), _DIM), file=stream)
 
 
-def _show_group(group, total, paint, stream, marker="\u2192") -> None:
+def _show_spec(rule, paint, stream) -> None:
+    """The rule's link to the standard, or why it has none. Said once for a
+    run of findings as for one: a group of three used to drop the line."""
+    if rule.spec:
+        print(paint("                      spec: %s" % rule.spec, _DIM), file=stream)
+    elif rule.no_section:
+        print(paint("                      spec: none -- %s" % rule.no_section, _DIM),
+              file=stream)
+
+
+def _show_group(group, total, paint, stream, marker="\u2192", verbose=False) -> None:
     """A run of one rule, told once: headline with the count, the first few
     subjects natural-sorted, the remedy a single time.
 
@@ -257,6 +267,8 @@ def _show_group(group, total, paint, stream, marker="\u2192") -> None:
         for line in _wrap(first.fix, 74):
             print(paint("                    %s %s" % (marker, line), _DIM),
                   file=stream)
+    if verbose:
+        _show_spec(first.rule, paint, stream)
 
 def render_json(report: Report, stream: Optional[TextIO] = None) -> None:
     stream = sys.stdout if stream is None else stream

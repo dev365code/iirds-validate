@@ -34,7 +34,7 @@ import zipfile
 
 import pytest
 
-from conftest import MIMETYPE, MINIMAL_RDF
+from conftest import MIMETYPE, MINIMAL_RDF, ROOT
 from iirds_validate import runner
 
 try:  # the refusal this unit adds; absent until it exists
@@ -262,3 +262,65 @@ def test_an_unpacked_container_has_no_method_to_refuse(tmp_path):
     assert "S3" not in ids, "a rule raised on a directory: %s" % [
         f.violation.detail for f in report.findings if f.rule.id == "S3"]
     assert "S14" not in ids, "a directory has no compression method to refuse"
+
+
+#: Section 5.2.2, as the specification writes it -- no keyword, and normative:
+#: it is none of what section 1 calls non-normative.
+SECTION_5_2_2 = ('All other files in the ZIP are either uncompressed ("Stored" compression mode) '
+                 'or compressed in "Deflated" mode.')
+
+
+def _flat(text):
+    return " ".join(text.split())
+
+
+def test_what_s14_says_of_the_standard_is_what_the_standard_says():
+    """S14's remedy said the specification is silent about which method an entry
+    uses, under a link to the section that names two; its docstring called the
+    refusal this project's own decision and the specification silent about the
+    rest; its entry in `docs/divergences.md` said a package using another method
+    is not non-conformant by the specification's own words. All three name the
+    sections now -- the remedy the two methods, the docstring and the entry the
+    sentence itself -- and say what the sentence is, not only where it is."""
+    from iirds_validate.registry import all_rules
+
+    rule = {r.id: r for r in all_rules()}["S14"]
+    assert rule.spec.endswith("#x5-2-2-content-encoding"), rule.spec
+    assert "section 5.2.2" in rule.fix and "section 5.2 " in rule.fix, rule.fix
+    assert "silent" not in rule.fix, rule.fix
+    # What it says of the section, not only that it names it: a remedy that named
+    # 5.2.2 and called the method open there would pass the lines above.
+    assert ("the two methods section 5.2.2 of the specification gives every file but "
+            "`mimetype`") in _flat(rule.fix), rule.fix
+    # The docstring, read where it is: what a maintainer meets beside the code.
+    doc = _flat(rule.fn.__doc__ or "")
+    assert "Section 5.2.2" in doc and "section 5.2 has `mimetype` stored" in doc, doc
+    assert "normative text without a keyword" in doc, doc
+    quoted = 'either uncompressed ("Stored" compression mode) or compressed in "Deflated" mode'
+    assert quoted in SECTION_5_2_2 and quoted in doc, doc
+    for retracted in ("silent", "own decision", "not a reading of the specification"):
+        assert retracted not in doc, retracted
+    page = _flat((ROOT / "docs" / "divergences.md").read_text(encoding="utf-8"))
+    entry = page.split("**S14 —", 1)[1].split("**S12", 1)[0]
+    assert SECTION_5_2_2 in entry, "the S14 entry no longer quotes section 5.2.2"
+    assert "is none of those, so it is a requirement" in entry, entry
+    for retracted in ("silent", "not non-conformant", "no reading of the specification"):
+        assert retracted not in entry, retracted
+
+
+def test_the_sentence_s14_quotes_is_the_specifications():
+    """The quotation, held to the cached specification it came from: present,
+    word for word, under section 5.2.2's heading and before the next one."""
+    import json
+    import os
+
+    release = json.loads((ROOT / "docs" / "requirements.json").read_text(encoding="utf-8"))["_release"]
+    cache = ROOT / ".spec-cache" / ("%s.html" % release)
+    if not cache.exists():
+        if os.environ.get("IIRDS_REQUIRE_SPEC_CACHE"):
+            pytest.fail("IIRDS_REQUIRE_SPEC_CACHE is set and %s is not here" % cache)
+        pytest.skip("the specification is not redistributable and is not cached here")
+    html = cache.read_text(encoding="utf-8")
+    start = html.index('id="x5-2-2-content-encoding"')
+    end = html.index("<h", html.index(">", start) + 1)
+    assert SECTION_5_2_2 in html[start:end]

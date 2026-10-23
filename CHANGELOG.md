@@ -56,6 +56,17 @@ prefix alone does not identify a graphic. In iiRDS/A, a damaged GIF used by a
 page or an image rendition is reported when its bytes identify neither JPEG,
 PNG nor SVG.
 
+**L4 reports each loop structure once, from wherever it is looked at.** A
+directory structure whose `iirds:has-first-child` and `iirds:has-next-sibling`
+links run in a circle was reported at the node a walk came back to, and the
+walk began wherever a set happened to start -- or, among blank nodes, wherever
+a tie between their names left it -- so one structure could be named at a
+different node from run to run, and loops that share nodes were one finding
+or several as the walk fell. L4 now reports each set of nodes that reach one
+another through those links, two or more or one that points at itself, once:
+named by the first of them by name, with all of them listed. Loops that share
+nodes are one finding; whether L4 reports at all does not change.
+
 ## 0.9.0 — 2026-10-08
 
 **Four sentences of chapter 6 are reported whole.** Each had a rule near it

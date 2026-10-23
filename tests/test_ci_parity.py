@@ -155,6 +155,7 @@ CHECK_COMMANDS = (
     "ruff check --no-cache .",
     "tools/iana_charsets.py --check",
     "tools/propose_class_rules.py --check",
+    "tools/rule_sections.py --check",
     "tools/gen_door.py --check",
     "tools/gen_stable_section.py --check",
     "tools/golden_report.py --check",

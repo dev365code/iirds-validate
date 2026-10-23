@@ -36,11 +36,21 @@ def _own_labels(text):
 
 def test_a_rule_the_page_calls_its_own_claims_no_obligation():
     rules = {rule.id: rule for rule in all_rules()}
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    from gen_what_it_catches import OWN_RULE
+
+    # The reader reads the label: without this, an empty result below could be
+    # a pattern that stopped matching rather than a page with no such case.
+    assert _own_labels("x " + OWN_RULE % "S10" + " y") == ["S10"]
     labelled = _own_labels(PAGE.read_text("utf-8"))
-    # The page shows one such rule today (L2). Finding none means the label
-    # moved or the case went, and either way this test would be asserting
-    # nothing; if the page is meant to show none, change this on purpose.
-    assert labelled, "the page carries no own-rule label this test can read"
+    # The page showed one such rule, L2, until every rule named its section or
+    # said it had none: L2 now links to the section its finding is about, and
+    # no case here is about a rule with nothing behind it. Pinned at none, on
+    # purpose, so a case that brings the label back is a change made here as
+    # well -- and the check below has something to read again.
+    assert labelled == [], labelled
 
     wrong = sorted(rule_id for rule_id in labelled
                    if rules[rule_id].spec or rules[rule_id].covers)
@@ -55,10 +65,17 @@ def test_the_page_says_which_rules_claim_an_obligation_without_a_link():
     """The other half: a rule that claims an obligation and carries no link is
     not left looking like either of the two cases that do exist. The page
     names the requirement it claims, so a reader can find it."""
+    from iirds_validate.registry import own_spec
+
     rules = {rule.id: rule for rule in all_rules()}
     text = PAGE.read_text("utf-8")
+    # A link derived from the claims is a section, not the sentence, so a rule
+    # holding one is asked the same question as a rule holding none.
+    asked = [rule_id for rule_id, rule in rules.items()
+             if rule.covers and own_spec(rule_id) is None and ("`%s`" % rule_id) in text]
+    assert asked, "no rule on the page takes its link from its claims; this asks nothing"
     for rule_id, rule in rules.items():
-        if rule.covers and not rule.spec and ("`%s`" % rule_id) in text:
+        if rule_id in asked:
             for claimed in rule.covers:
                 assert claimed in text, (
                     "%s appears on the page, claims %s, and the page does not say so"

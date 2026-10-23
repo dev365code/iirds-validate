@@ -364,19 +364,28 @@ processor agreement. In particular, the older claim that both processors
 refuse marked UTF-32 does not hold for the libxml2 version measured here.
 Java was unavailable for this measurement.
 
-## What this tool refuses to read, and why that is its own decision
+## What this tool refuses to read, and why
 
 **S14 — an entry compressed with anything but stored or deflate is not opened.**
 
-This is the one refusal here that no reading of the specification produces. The
-specification names a compression method for exactly one entry, `mimetype`,
-which is stored so that a consumer can identify the container without
-decompressing anything. About every other entry it is silent, and the archive
-format permits bzip2, lzma and several more. A package that uses them is not
-non-conformant by the specification's own words, and this tool refuses to read
-it anyway. The reason is not a reading of the standard; it is a property of
-reading itself, and it is stated here because a reader who meets `ERROR S14`
-deserves to find the argument rather than infer one.
+The specification says which methods, in a sentence without a keyword. Section
+5.2 has `mimetype` stored, so that a consumer can identify the container
+without decompressing anything, and section 5.2.2 has the rest: "All other files
+in the ZIP are either uncompressed ("Stored" compression mode) or compressed in
+"Deflated" mode." The specification's section 1 makes everything in it
+normative but the sections it marks non-normative and its authoring guidelines,
+diagrams, examples and notes. That sentence is none of those, so it is a
+requirement, and it names exactly the two methods this tool reads. The archive
+format permits bzip2, lzma and several more; iiRDS does not. Version 1.0 says
+the same in its section 5.3.2. The index holds no sentence for it -- it carries
+no keyword -- so S14 claims none, and links to the section.
+
+The refusal would stand without that sentence, and the reason it would is
+stated here because a reader who meets `ERROR S14` deserves to find the argument
+rather than infer one: it is a property of reading itself. What remains of a
+difference is how it is reported. S14 does not call the entry non-conformant;
+it says the entry was not read, and why, because not reading it is what the
+tool did.
 
 Every limit in this project is a limit on what a read hands back: 64 MiB per
 file, a total per run, a slice at a time for the damage check. Python's zip
@@ -523,7 +532,7 @@ or, for C9, until the grammar the obligation cites was read.
 | M17, M18 | every externally referenced IRI had to be declared locally | fires only when a package references such a vocabulary and declares none of its own | the strict reading fails tekom's own external-product-ontology sample |
 | M13.1, M13.2 | every Selector needed `rdf:value` and `dcterms:conformsTo` | RangeSelector exempt | a range is addressed by its start and end selectors, which M14.1 and M14.2 check |
 | M19.4 | the identity domain had to be typed here | undescribed domains left to L1 | a reference out of the package is not a typing error |
-| M15.7b/d, M15.8/9/10 | required the class `vcard:Organization` | accepts `vcard:Organization` **or** `vcard:organization` — the vcard *property* IRI used where the class belongs — and still requires a stated `vcard:organization-name` | every handover fixture the reference ships writes the lower-case spelling; both say "organisation" and one is a misspelling of the other |
+| M15.7b/d, M15.8/9/10, R14, R16 | required the class `vcard:Organization` | accepts `vcard:Organization` **or** `vcard:organization` — the vcard *property* IRI used where the class belongs — and still requires a stated `vcard:organization-name` | every handover fixture the reference ships writes the lower-case spelling; both say "organisation" and one is a misspelling of the other |
 | "must have an IRI" family | required an **absolute** IRI | requires an identifier that is not a blank node and not the bare document base | appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI. Conflating that with absoluteness turned a recommendation into sixty-one MUSTs. **The reason first given here was "absoluteness is M5's question, and M5 is RECOMMENDED", and that is only true of section 6.2.1.** Sections 6.2.2, 6.8.1 and 6.8.4 each say MUST about absoluteness for one named class; R34, R35 and R36 are those three sentences, and the family's message no longer says "absolute" |
 | C9 | the document element had to be `rdf:RDF` | `rdf:RDF`, or a single node element in its place | the RDF 1.1 XML grammar the obligation cites starts with production *doc* or *nodeElement* (§7.2.1); §2.6: "When there is only one top-level node element inside rdf:RDF, the rdf:RDF can be omitted although any XML namespaces must still be declared." rdflib reads the form; the rule did not |
 
@@ -536,7 +545,7 @@ the code it describes.
 | rule | kind of leniency | claim |
 |---|---|---|
 | M17, M18 | **narrows the sentence** — the rule asks something else; M17's difference is unreported, and M18's sentence is R11's, reported there | withdrawn |
-| M15.7b, M15.7d, M15.8, M15.9, M15.10, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all; M15.8 and M15.9 hold no claim to keep | kept |
+| M15.7b, M15.7d, M15.8, M15.9, M15.10, R14, R16, R12 | **a spelling** — `vcard:organization` is a case-slip of the class the sentence names, and no term of the vCard vocabulary at all; M15.8 and M15.9 hold no claim to keep | kept |
 | M13.1, M13.2 | **not a leniency** — Example 13 shows a `RangeSelector` carrying neither property and its two fragment selectors carrying both, which these rules check | kept |
 | M19.4 | **narrows the sentence** | never claimed |
 | M2.1, R1, R2 (the "must have an IRI" family) | **not a leniency** — appendix A says `IRI: REQUIRED`, and a relative IRI is an IRI; the earlier rule enforced absoluteness on top of that. What the narrowing dropped for three classes is now R34 to R36, so nothing the standard requires is left to a recommendation | kept |

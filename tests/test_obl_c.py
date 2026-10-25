@@ -912,8 +912,12 @@ def test_document_relation_brand_and_gif_boundaries_are_stated_in_public_prose()
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
-    paragraph = " ".join(changelog.split("## 0.9.1 — unreleased", 1)[1]
-                         .split("## 0.9.0", 1)[0].split())
+    # The 0.9.1 notes by their number, not by the word "unreleased": dating
+    # them is what cutting the release does, and the statements below hold
+    # the dated notes as they held the undated ones.
+    import re
+    section = re.split(r"^## 0\.9\.1 — .*$", changelog, maxsplit=1, flags=re.M)[1]
+    paragraph = " ".join(section.split("## 0.9.0", 1)[0].split())
     for statement in (
             "XHTML a and area links using the shared document relation types",
             "Express those relations in RDF and remove the rel tokens while retaining the hyperlinks.",

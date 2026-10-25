@@ -121,7 +121,7 @@ conformant package can still be undeliverable:
 ## Where it stands
 
 <a href="https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md">
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=a3516302" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy, section; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file, Action; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/capabilities.svg?v=5b8ce0f2" alt="Coverage: 187 of 280 obligations covered; Explanation: what, evidence, remedy, section; Report contract: schemaVersion, golden, exit codes; Entrances: command line, library, single file, Action; Input safety: read budgets, advisory, mutations; Upstream: pinned, checked weekly, one pin move shipped" width="100%">
 </a>
 
 *Six things this tool holds itself to, against the conditions it has set for 1.0; the corner of the picture says which version it was drawn for. Coverage is a count a test holds; on the other axes, every item marked done names a file in this repository and the words in it that a check looks for. The picture is drawn from [`docs/capabilities.json`](https://github.com/dev365code/iirds-validate/blob/main/docs/capabilities.json); every axis's checklist, and the cases for the axes that have any, are in [`docs/what-it-catches.md`](https://github.com/dev365code/iirds-validate/blob/main/docs/what-it-catches.md).*
@@ -165,12 +165,12 @@ flowchart LR
 ### In a workflow
 
 ```yaml
-- uses: dev365code/iirds-validate@main
+- uses: dev365code/iirds-validate@v0.9.1
   with:
     paths: delivery.iirds
 ```
 
-The example names `main`, which runs the release `main` is numbered for. This
+The example names the release this page was published with. This
 repository pins every action it uses to a commit, and the same advice holds
 here: name a release that carries `action.yml` by its tag, or by its commit with
 the tag in a comment.
@@ -181,7 +181,7 @@ so the job fails when the check does, and a job that reads the code can tell a
 supplier's package from its own typo. To read the code rather than stop on it:
 
 ```yaml
-- uses: dev365code/iirds-validate@main
+- uses: dev365code/iirds-validate@v0.9.1
   id: iirds
   with:
     paths: delivery.iirds

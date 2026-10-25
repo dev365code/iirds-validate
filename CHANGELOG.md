@@ -4,7 +4,7 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.9.1 — unreleased
+## 0.9.1 — 2026-10-26
 
 Windows-31J and its registered alias are read with the same cp932 codec on
 every supported Python version.
@@ -121,6 +121,23 @@ stdout and stderr, and the code it returns, are those of
 asks that of every file of the corpus and every fixture, over this tree, an
 installed release and the single file. The picture of what this tool holds
 itself to marks the GitHub Action done.
+
+**Figures for this release, measured on this build.**
+Coverage of the standard is 187 of 280, of which 152 are held by a package;
+0.9.0 stated 184 and 149. R61, R67 to R69 and R74 are the five rules added,
+so the rule count goes to 252. A conformant package is checked by the same
+rules as a directory or an archive but for the archive's nine, which an
+unpacked container names under `notApplicable` as `unpacked`:
+the same package packed -- `201 rules checked` on this build -- and
+unpacked, where the count moves from 201 to 192. A conformance run says it
+for the fifteen lint rules it does not ask -- the interoperability rules less
+the two that are marked conformance, which it does ask. The reasons a report
+can give come to seven. The iiRDS/H reading asks the handover rules the
+iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
+reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
+R45, the iiRDS/A content formats. `toolVersion` still moves only at a
+release: over this project's whole history, no commit that changed
+a rule file has ever moved it.
 
 ## 0.9.0 — 2026-10-08
 

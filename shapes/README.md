@@ -202,15 +202,17 @@ currently before the Consortium.
 
 ## What is not here, exactly
 
-79 of the 253 rules have no shape, in four honest categories,
+80 of the 254 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **67 not expressible** — 67 of the 253 rules are about ZIP bytes, content
+- **68 not expressible** — 68 of the 254 rules are about ZIP bytes, content
   files, archive↔graph joins, or the validation run itself (S1–S3): entry
   order, the stored `mimetype`, path lengths, encryption bits, the compression
   method an entry uses, how many records the central directory gives one
   name, files present in the container. None of that
-  exists in an RDF graph, **by nature, not omission**. A package can satisfy
+  exists in an RDF graph, **by nature, not omission** — and one rule (R76) asks for a
+  bounded RDFS fixed point: the graph alone does not supply the shared closure,
+  its axioms, and its fact-count ceiling. A package can satisfy
   every shape here and still be unreadable to every consumer; full checking
   needs a container-aware validator, which is what the `iirds` checker is.
 - **9 deferred** — expressible in principle, not yet written: the six
@@ -248,7 +250,7 @@ engine can run it without this project's code, so the boundary is stated here
 instead — and it is pinned by a test, which measures the divergence rather
 than describing it.
 
-Every emitted shape is **differentially tested against the 253-rule Python
+Every emitted shape is **differentially tested against the 254-rule Python
 validator**, on pySHACL 0.40: per-rule mutant packages (a defect and its
 repair for each shape family, with severity equality asserted on every
 one), a realistic conformant package that must stay silent in both

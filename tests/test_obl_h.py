@@ -1119,10 +1119,10 @@ def test_content_list_claim_totals_exclude_unverified_data():
     from test_covers_is_earned import CLAIMED, UNAUDITED, held
     from test_requirement_coverage import CLAIMED as rule_claims
 
-    assert len(CLAIMED) == 189
-    assert len(held()) == 154
+    assert len(CLAIMED) == 190
+    assert len(held()) == 155
     assert len(UNAUDITED) == 35
-    assert sum(len(ids) for ids in rule_claims.values()) == 224
+    assert sum(len(ids) for ids in rule_claims.values()) == 225
 
 
 @pytest.mark.parametrize('distinguished', [False, True])

@@ -6,7 +6,7 @@ changes in the library is recorded beside what changes in the checker.
 
 ## 0.10.0 — unreleased
 
-Coverage of the standard grows from 187 to 189 of 280 obligations, with
+Coverage of the standard grows from 187 to 190 of 280 obligations, with
 R9 also claiming the iiRDS/H nesting sentence it already enforces.
 
 For iiRDS 1.3, R75 reports an iiRDS/A package containing a readable child
@@ -14,6 +14,18 @@ whose own metadata declares iiRDS/H or no profile. Use an iiRDS/A child,
 or remove the parent's iiRDS/A restriction if the delivery does not conform
 to it. Change a child's profile declaration only when its content conforms.
 An R75 error makes validation exit 1 when the package previously passed.
+
+R76 checks proprietary subproperties against the iiRDS properties they
+refine, using the package's active bundled ontology and the same bounded
+RDFS closure as R61. Each inherited domain or range must have at least one
+declared class equal to or below it; multiple declarations form an
+intersection. An omitted domain or range inherits the iiRDS constraint.
+Remove an incompatible declaration or refine it with the appropriate
+subclass, or choose an appropriate parent property. These findings are
+errors and can change validation from exit 0 to exit 1. If the closure
+reaches its ceiling, R76 reports that it stopped without deciding whether
+any individual declaration complies. Inclusion requiring OWL intersection
+definitions is outside this check.
 
 ## 0.9.1 — 2026-10-26
 

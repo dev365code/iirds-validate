@@ -348,6 +348,67 @@ def _disjoint_rdfs_facts(ctx):
     return facts, origins, direct_subclass
 
 
+
+@rule("R76", kind="schema", prio="MUST", versions=(), variants=(),
+      title="proprietary properties comply with iiRDS domains and ranges",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x7-3-3-adding-a-proprietary-property",
+      covers=("x7-3-3-adding-a-proprietary-property#2",),
+      fix="Declare domains and ranges that refine each inherited iiRDS constraint, "
+          "or omit the proprietary declaration to inherit that constraint. For each "
+          "iiRDS domain or range, at least one declared class must be that class or "
+          "a subclass of it; use an appropriate iiRDS parent property.")
+def r76_proprietary_property_domains_and_ranges(ctx):
+    '''"Proprietary properties MUST comply with domain and range of the iiRDS property."
+
+    Use R61's bounded RDFS fixed point for subproperty and subclass facts,
+    with the same axioms and ceiling. Multiple domains (and ranges) denote
+    an intersection: for each bundled constraint E, one declared D below E
+    suffices. Undeclared domains and ranges inherit the parent's constraints
+    through rdfs7 and rdfs2/3. Inclusion requiring OWL intersection definitions
+    or other consequences outside this RDFS fixed point is not decided here.
+
+    Without a subPropertyOf statement whose subject is outside the bundle,
+    no proprietary property reaches a bundled iiRDS property: rdfs6 only
+    adds reflexivity and rdfs12 only reaches container membership. Return
+    before computing a closure in that case. The ontology is ctx.ontology,
+    including the runner's reported substitution when an edition is absent.
+    '''
+    defined = ctx.ontology.defined_terms()
+    if not any(subject not in defined for subject in ctx.graph.subjects(RDFS.subPropertyOf)):
+        return
+    try:
+        facts, _origins, _direct_subclass = _disjoint_rdfs_facts(ctx)
+    except _ClosureCut as limit:
+        yield Violation(
+            "the proprietary property check stopped at its closure ceiling",
+            detail="the closure starts from %d facts and derives at most %d for each, "
+                   "%d in all; this package needs more" %
+                   (limit.started, MAX_DERIVED_PER_FACT, limit.started * MAX_DERIVED_PER_FACT),
+            fix="Review the package's class and property chains. The check reached its "
+                "closure ceiling and has not decided whether the proprietary declarations "
+                "comply; no individual property is cleared or named as incompatible.")
+        return
+    bundled = ctx.ontology.properties()
+    for prop in sorted(set(ctx.graph.subjects()) - defined, key=ctx.ref):
+        parents = set(facts.objects(prop, RDFS.subPropertyOf)) & bundled
+        for parent in sorted(parents, key=ctx.ref):
+            for relation in (RDFS.domain, RDFS.range):
+                declared = sorted(set(ctx.graph.objects(prop, relation)), key=ctx.ref)
+                if not declared:
+                    continue
+                for expected in sorted(set(ctx.ontology.graph.objects(parent, relation)), key=ctx.ref):
+                    if any(cls == expected or (cls, RDFS.subClassOf, expected) in facts
+                           for cls in declared):
+                        continue
+                    label = "domain" if relation == RDFS.domain else "range"
+                    yield Violation(
+                        "a proprietary property's %s does not refine the iiRDS property" % label,
+                        subject=ctx.ref(prop),
+                        detail="iiRDS property %s; required %s %s; declared %s: %s" %
+                               (ctx.ref(parent), label, ctx.ref(expected), label,
+                                ", ".join(ctx.ref(cls) for cls in declared)))
+
 def _disjoint_memberships(ctx, facts, fact_origins):
     """Select used IRI/blank-node instances from the joint closure, without writes."""
     used = set(ctx.graph.subjects()) | set(ctx.graph.objects())

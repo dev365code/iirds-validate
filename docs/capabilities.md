@@ -1,6 +1,6 @@
 | Axis | Now | 1.0 condition |
 |---|---|---|
-| Coverage | 188 of 280 obligations covered | at least 220 of 280 covered |
+| Coverage | 189 of 280 obligations covered | at least 220 of 280 covered |
 | Explanation | what, evidence, remedy, section | + the line |
 | Report contract | schemaVersion, golden, exit codes | + a field-by-field schema page |
 | Entrances | command line, library, single file, Action | + browser |

@@ -57,6 +57,10 @@ SCOPED = {
     "R61":   (("1.3",),
               "section 6.11 exists in the cached 1.3 and not in the cached 1.0; "
               "1.0.1, 1.1 and 1.2 are not on hand, so only 1.3 is verified"),
+    "R75":   (("1.3",),
+              "section 8.1.1's \"nest only\" sentence is in the cached 1.3 and not "
+              "in the cached 1.0; 1.0.1, 1.1 and 1.2 are not on hand, so only "
+              "1.3 is verified"),
     "R60":   (("1.3",),
               "section 6.3.3 once more, both of its sentences this claims; the cached "
               "1.0 has no nesting chapter"),

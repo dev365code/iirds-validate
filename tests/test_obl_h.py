@@ -268,7 +268,7 @@ def test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way(tmp_pat
         rdf = MINIMAL_RDF
         if shape == "child A":
             rdf = rdf.replace("</iirds:Package>",
-                              "<iirds:formatRestriction>iiRDS/A</iirds:formatRestriction>"
+                              "<iirds:formatRestriction>A</iirds:formatRestriction>"
                               "</iirds:Package>")
         package = handover(tmp_path, "parent.iirds",
                            extra=(("content/member.iirds", child(tmp_path, metadata=rdf)),))
@@ -1119,10 +1119,10 @@ def test_content_list_claim_totals_exclude_unverified_data():
     from test_covers_is_earned import CLAIMED, UNAUDITED, held
     from test_requirement_coverage import CLAIMED as rule_claims
 
-    assert len(CLAIMED) == 188
-    assert len(held()) == 153
+    assert len(CLAIMED) == 189
+    assert len(held()) == 154
     assert len(UNAUDITED) == 35
-    assert sum(len(ids) for ids in rule_claims.values()) == 223
+    assert sum(len(ids) for ids in rule_claims.values()) == 224
 
 
 @pytest.mark.parametrize('distinguished', [False, True])

@@ -4,6 +4,17 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
+## 0.10.0 — unreleased
+
+Coverage of the standard grows from 187 to 189 of 280 obligations, with
+R9 also claiming the iiRDS/H nesting sentence it already enforces.
+
+For iiRDS 1.3, R75 reports an iiRDS/A package containing a readable child
+whose own metadata declares iiRDS/H or no profile. Use an iiRDS/A child,
+or remove the parent's iiRDS/A restriction if the delivery does not conform
+to it. Change a child's profile declaration only when its content conforms.
+An R75 error makes validation exit 1 when the package previously passed.
+
 ## 0.9.1 — 2026-10-26
 
 Windows-31J and its registered alias are read with the same cp932 codec on

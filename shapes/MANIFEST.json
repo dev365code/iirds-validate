@@ -10,7 +10,7 @@
   "version_excluded": 2,
   "sparql_emitted": 41,
   "deferred_v1.1": 9,
-  "not_expressible": 66,
+  "not_expressible": 67,
   "noop": 1
  },
  "core_emitted": [
@@ -215,6 +215,7 @@
   "L15": "needs the per-edition term inventory beside the declared version; Core cannot embed it"
  },
  "not_expressible": {
+  "R75": "graph×ZIP join: the profile is in each nested container's own metadata",
   "C1": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
   "C2": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",
   "C3": "container: the subject is ZIP bytes and entry metadata; no graph exists yet",

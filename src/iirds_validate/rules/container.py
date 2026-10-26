@@ -25,7 +25,7 @@ from iirds import (
 )
 
 from .. import terms as T
-from ..context import container_packages, package_nodes
+from ..context import _detect, container_packages, package_nodes
 from ..model import (
     META_DIR,
     METADATA_JSONLD,
@@ -684,6 +684,35 @@ _R60_REMEDY = {
                "declaring it here.",
     "other": _DECLARE_IT,
 }
+
+
+@rule("R75", kind="container", prio="MUST", versions=("1.3",), variants=("A",),
+      title="an iiRDS/A package nests only iiRDS/A packages",
+      spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
+           "20251103-1.3-release/index.html#x8-1-1-unrestricted-iirds-vs-restricted-iirds",
+      covers=("x8-1-1-unrestricted-iirds-vs-restricted-iirds#2",),
+      fix="Use an iiRDS/A child package, or remove the parent's iiRDS/A restriction "
+          "if the delivery does not conform to that profile. Declare each child's own "
+          "profile in its metadata; change the declaration only when its content conforms.")
+def r75_a_package_nests_a_packages(ctx):
+    '''"An iiRDS/A package MUST nest only iiRDS/A packages, an iiRDS/H package MUST nest only iiRDS/H packages."
+
+    The A clause is checked here; R9 answers the H clause. Read each child's
+    own graph and use the same profile detection as the parent's context.
+    An unreadable child, for which _own_metadata returns (None, None), is
+    not a package declaring a profile. Its readability and declaration are
+    other rules' questions; R60 reports it when no declaration can match it.
+    Only 1.3 is claimed: the local 1.0 specification has no such sentence,
+    and no 1.1 or 1.2 specification is available here.
+    '''
+    for name in nested_containers(ctx.package):
+        _own, graph = _own_metadata(ctx.package, name)
+        if graph is None:
+            continue
+        _version, child_variant = _detect(graph)
+        if child_variant != "A":
+            yield Violation("an iiRDS/A package contains a child that does not declare iiRDS/A",
+                            subject=name, detail="child profile: %s" % child_variant)
 
 
 @rule("R60", kind="container", prio="MUST", versions=("1.3",), variants=(),

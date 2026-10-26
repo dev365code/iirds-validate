@@ -924,6 +924,7 @@ DEFERRED_V11 = {
 #: No RDF graph to look at, or two graphs, or graph×ZIP joins. Verbatim family
 #: reasons; the differential gate derives its exclusion set from THIS table.
 NOT_EXPRESSIBLE = {}
+NOT_EXPRESSIBLE["R75"] = "graph×ZIP join: the profile is in each nested container's own metadata"
 for _rid in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11.1",
              "C11.1H", "C11.2", "C12", "C13", "C14", "C15", "C16.1", "C16.2", "R3"):
     NOT_EXPRESSIBLE[_rid] = "container: the subject is ZIP bytes and entry metadata; no graph exists yet"

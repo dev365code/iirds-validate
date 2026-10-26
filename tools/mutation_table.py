@@ -68,6 +68,18 @@ ACTION_SAYS = "tests/test_the_action_says_what_the_command_says.py"
 #: (id, file, original, mutated, checks that must go red, why it matters)
 #: A check is a pytest path, or `tools/<script> <args>` for a gate that is a tool.
 TABLE = [
+    ('earned/r75-child-profile-omitted',
+     'src/iirds_validate/rules/container.py',
+     '        if child_variant != "A":',
+     '        if False:',
+     ['tests/test_nested_profiles.py'],
+     'each nested child must declare the A profile'),
+    ('earned/r75-parent-profile-omitted',
+     'src/iirds_validate/rules/container.py',
+     '@rule("R75", kind="container", prio="MUST", versions=("1.3",), variants=("A",),',
+     '@rule("R75", kind="container", prio="MUST", versions=("1.3",), variants=(),',
+     ['tests/test_nested_profiles.py'],
+     'the A restriction belongs only to the enclosing A package'),
     ("earned/r61-bundled-domain-assertion-flipped",
      "tests/test_obl_G.py",
      "              (RDF.type, RDFS.domain, CORE.InformationUnit))",

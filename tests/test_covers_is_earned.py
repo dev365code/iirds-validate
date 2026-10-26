@@ -923,6 +923,9 @@ NAMED_CASES = {
     "x8-1-1-unrestricted-iirds-vs-restricted-iirds#3":
         "test_obl_h:test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way",
 
+    "x8-1-1-unrestricted-iirds-vs-restricted-iirds#2":
+        "test_nested_profiles:test_a_parent_requires_a_children",
+
 }
 
 
@@ -966,7 +969,7 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
-    assert len(CLAIMED) == 188, len(CLAIMED)
+    assert len(CLAIMED) == 189, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"
 

@@ -291,7 +291,8 @@
    "R45",
    "R67",
    "R68",
-   "R69"
+   "R69",
+   "R75"
   ],
   "version": [
    "M16.1",
@@ -315,7 +316,7 @@
   "info": 0,
   "rulesChecked": 201,
   "rulesNotImplemented": 0,
-  "rulesSkipped": 36,
+  "rulesSkipped": 37,
   "warnings": 0
  },
  "suppressed": {},

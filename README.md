@@ -280,6 +280,7 @@ timeline
     Shipped : One package — validator + reader + writer
             : Local web door · reproducible single file
             : Findings with evidence and prescriptions
+            : GitHub Action — same output and exit code as the command
     Building : Coverage climb through the obligation index
              : Audit-ready evidence bundle in one command
              : Deeper iiRDS/H handover checks

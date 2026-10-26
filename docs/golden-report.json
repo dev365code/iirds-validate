@@ -211,6 +211,7 @@
    "R61",
    "R7",
    "R74",
+   "R76",
    "R8",
    "S1",
    "S10",
@@ -314,7 +315,7 @@
   "errors": 1,
   "findingsNotListed": 0,
   "info": 0,
-  "rulesChecked": 201,
+  "rulesChecked": 202,
   "rulesNotImplemented": 0,
   "rulesSkipped": 37,
   "warnings": 0

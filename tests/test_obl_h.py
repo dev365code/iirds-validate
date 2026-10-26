@@ -260,9 +260,19 @@ COMPONENT_TREE = ('  <iirds:Component rdf:about="urn:test:pump">\n'
                   "  </iirds:Component>\n")
 
 
-@pytest.mark.parametrize("shape", ["a nested archive", "a nested package declared"])
+@pytest.mark.parametrize("shape", ["a nested archive", "a nested package declared",
+                                   "child A", "child without profile"])
 def test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way(tmp_path, shape):
-    if shape == "a nested archive":
+    '''"An iiRDS/A package MUST nest only iiRDS/A packages, an iiRDS/H package MUST nest only iiRDS/H packages."'''
+    if shape in {"child A", "child without profile"}:
+        rdf = MINIMAL_RDF
+        if shape == "child A":
+            rdf = rdf.replace("</iirds:Package>",
+                              "<iirds:formatRestriction>iiRDS/A</iirds:formatRestriction>"
+                              "</iirds:Package>")
+        package = handover(tmp_path, "parent.iirds",
+                           extra=(("content/member.iirds", child(tmp_path, metadata=rdf)),))
+    elif shape == "a nested archive":
         package = handover(tmp_path, "nests.iirds",
                            extra=(("content/inner.iirds", child(tmp_path)),))
     else:
@@ -1109,10 +1119,10 @@ def test_content_list_claim_totals_exclude_unverified_data():
     from test_covers_is_earned import CLAIMED, UNAUDITED, held
     from test_requirement_coverage import CLAIMED as rule_claims
 
-    assert len(CLAIMED) == 187
-    assert len(held()) == 152
+    assert len(CLAIMED) == 188
+    assert len(held()) == 153
     assert len(UNAUDITED) == 35
-    assert sum(len(ids) for ids in rule_claims.values()) == 222
+    assert sum(len(ids) for ids in rule_claims.values()) == 223
 
 
 @pytest.mark.parametrize('distinguished', [False, True])
@@ -1298,3 +1308,14 @@ def test_the_content_list_remedy_requires_an_explicit_html_start_tag(tmp_path):
     assert 'explicit <html> document element' in got[0].fix
     assert 'XHTML syntax' in got[0].fix
     assert 'browser will not render' not in got[0].fix
+
+
+def test_r9_profile_claim():
+    from iirds_validate.registry import all_rules
+
+    claim = "x8-1-1-unrestricted-iirds-vs-restricted-iirds#3"
+    assert sorted(r.id for r in all_rules() if claim in r.covers) == ["R9"]
+
+
+def test_r9_without_children(tmp_path):
+    assert findings(handover(tmp_path, "parent.iirds"), "R9") == []

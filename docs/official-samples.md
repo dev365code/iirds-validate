@@ -3,9 +3,9 @@
 iirds.org, the standard's site, lists one set of sample material on its
 Materials page: the [iiRDS Sample Content](https://www.iirds.org/materials/sample-content),
 which that page says was published on 17 October 2019. It is a ZIP behind
-registration and login, holding two packages and a description of them whose
-file name carries the date 2019-10-31. The description is © 2019 tekom e.V. and
-says the content is "not normative and … not part of the iiRDS standard". The
+registration and login, holding two packages and a description of them. The
+description, whose file name carries the date 2019-10-31, is © 2019 tekom e.V.
+and says the content is "not normative and … not part of the iiRDS standard". The
 packages are built from the PI-Fan 1.1 documentation, published under the MIT
 licence, and the description says that licence "must be considered for further
 use of the iiRDS Sample Content Packages". Neither package is copied into this

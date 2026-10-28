@@ -661,7 +661,7 @@ there. The fixtures are agreement about something else.
 
 ## The Consortium's own sample packages, run for real
 
-The iiRDS Sample Content (2019-10-31, behind free registration at iirds.org)
+The iiRDS Sample Content (2019-10-31, behind registration at iirds.org)
 contains the only two complete packages the standard's authors have published:
 `iirds-sample-1.iirds` and `iirds-sample-2.iirds`, both declaring iiRDS 1.0,
 variant A. The first genuine 1.0 material this project has seen, and the rules

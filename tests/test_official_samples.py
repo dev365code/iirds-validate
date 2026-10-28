@@ -1,7 +1,7 @@
 """The Consortium's own sample packages, pinned finding for finding.
 
 iiRDS Sample Content (2019-10-31): two complete .iirds packages published by
-tekom alongside the standard, behind free registration at iirds.org. They are
+tekom alongside the standard, behind registration at iirds.org. They are
 the only full packages in existence that the standard's own authors built --
 which makes them the strongest false-positive oracle this project can run, and
 the first real iiRDS 1.0 material it has ever seen.

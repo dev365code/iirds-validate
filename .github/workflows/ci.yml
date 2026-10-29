@@ -37,6 +37,17 @@ jobs:
   # A run with skipped checks cannot stand in for a full judgement: reuse
   # must not turn into a chain of runs nobody checked. If the lookup cannot
   # establish a full judgement, every job runs as before.
+  # Only a judgement from the last week: the suite reads the tags and today's
+  # date and installs whatever its dependency floors resolve to on the day, so
+  # the same SHA can be judged differently later. A week is how often the
+  # Monday schedule judges main in full anyway. Re-running a run that reused
+  # a judgement finds the same one again; to judge the tip of main in full,
+  # dispatch this workflow on main. The answer to the query is checked again
+  # run by run rather than trusted to the filter that asked for it. The run is
+  # recorded before it is named, and only if the summary file opens: if it
+  # does not, nothing is reused; if the output cannot be written, the summary
+  # says every job runs. A write that fails once the summary is open, as on a
+  # full disk, is not caught.
   judged:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -50,16 +61,20 @@ jobs:
       - name: find a full judgement of this commit
         id: earlier
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           reused=false
           find_judged_run() {
             runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success&per_page=100") || return 0
-            candidates=$(printf '%s' "$runs" | jq -er '
+            candidates=$(printf '%s' "$runs" | jq -er --arg sha "$GITHUB_SHA" '
               .workflow_runs
               | select(length == (map(.id) | unique | length))
               | .[]
+              | select(.head_sha == $sha and .event == "push"
+                       and .status == "completed" and .conclusion == "success")
+              | select((.created_at | fromdateiso8601) > now - 7 * 86400)
               | select(.head_branch != "main")
               | select((.head_branch | type) == "string" and (.head_branch | length) > 0)
               | [.id, .html_url, .head_branch] | @tsv
@@ -76,9 +91,10 @@ jobs:
               ') || return 0
               [ -n "$complete" ] || return 0
               if [ "$complete" = true ]; then
-                printf 'This commit was judged in full by %s on branch %s; the expensive checks reuse that run.\n' "$run_url" "$run_branch" >> "$GITHUB_STEP_SUMMARY" || return 0
+                : >> "$GITHUB_STEP_SUMMARY" || return 0
                 printf 'run_id=%s\n' "$run_id" >> "$GITHUB_OUTPUT" || return 0
                 reused=true
+                printf 'This commit was judged in full by %s on branch %s; the expensive checks reuse that run.\n' "$run_url" "$run_branch" >> "$GITHUB_STEP_SUMMARY" || return 0
                 return 0
               fi
             done <<< "$candidates"

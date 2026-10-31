@@ -211,6 +211,7 @@
    "R61",
    "R7",
    "R74",
+   "R75",
    "R76",
    "R8",
    "S1",
@@ -292,8 +293,7 @@
    "R45",
    "R67",
    "R68",
-   "R69",
-   "R75"
+   "R69"
   ],
   "version": [
    "M16.1",
@@ -315,9 +315,9 @@
   "errors": 1,
   "findingsNotListed": 0,
   "info": 0,
-  "rulesChecked": 202,
+  "rulesChecked": 203,
   "rulesNotImplemented": 0,
-  "rulesSkipped": 37,
+  "rulesSkipped": 36,
   "warnings": 0
  },
  "suppressed": {},

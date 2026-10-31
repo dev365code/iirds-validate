@@ -254,7 +254,7 @@ re-measured on every release.
   than a sentence, or opens by restating the requirement, and checks the imperative
   shape itself for a few named rules.
 - **Every rule that can fire has been watched fire.** The suite records which rule ids actually
-  produce a finding, and 251 of the 252 have — the remaining one is a `MAY` with
+  produce a finding, and 253 of the 254 have — the remaining one is a `MAY` with
   nothing to violate.
 - **What is not established.** The 97 rules this project invented have no
   implementation elsewhere that this project knows of to compare them against. The SHACL shapes that encode

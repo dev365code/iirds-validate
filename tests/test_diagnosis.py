@@ -266,12 +266,14 @@ def test_the_footer_names_no_profile_the_standard_does_not_have(make_package):
         "<iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>\n"
         "    <iirds:formatRestriction>H</iirds:formatRestriction>")
     result = runner.run(make_package(metadata=metadata), runner.ALL_KINDS)
-    assert result.not_applicable["variant"] == ["C11.1", "R41", "R42", "R43", "R44", "R45", "R75"]
+    # R75 is not among them: it compares each nested container with the
+    # package that declares it, so it runs whatever this package's profile is.
+    assert result.not_applicable["variant"] == ["C11.1", "R41", "R42", "R43", "R44", "R45"]
     out = io.StringIO()
     report_module.render_text(result, out, verbose=True)
     text = out.getvalue()
     assert "1 for packages that are not iiRDS/H" in text
-    assert "6 for iiRDS/A" in text
+    assert "5 for iiRDS/A" in text
     assert "not applicable, for packages that are not iiRDS/H: C11.1" in text
     assert "unrestricted" not in text
 

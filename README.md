@@ -14,7 +14,7 @@
 
 ## Ten seconds
 
-<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=047436a1" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 202 rules checked" width="100%">
+<img src="https://raw.githubusercontent.com/dev365code/iirds-validate/main/docs/assets/tenseconds.svg?v=5c757839" alt="Real iirds check output on a broken package: ERROR M3 metadata declares no iirds:Package for this container, with the fix that follows it; ERROR C5 mimetype must contain exactly application/iirds+zip, with the bytes read from the file and the exact fix; FAIL, 203 rules checked" width="100%">
 
 ```console
 $ pip install iirds
@@ -70,7 +70,7 @@ manual.iirds   iiRDS 1.3
                     → and no way to resolve it.
 
   FAIL  1 error(s), 1 warning(s), 0 informational
-  217 rules checked, 37 not applicable to this version/variant (29 for iiRDS/H, 6 for iiRDS/A, 2 for other editions)
+  218 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 $ echo $?
 1
 ```
@@ -351,7 +351,7 @@ written:
 | `1` when it did | `iirds check fixtures/bad.iirds; echo $?` | `1` |
 | `2` when nothing was judged: a path that is not there, or an input it refused | `iirds check no-such-file.iirds; echo $?` | `2` |
 | `64` when the argument parser rejected the command line: an option that is not one, a missing argument, a value outside a fixed list of choices (`serve --host 0.0.0.0`, which it accepts and the command refuses, is `2`) | `iirds check --iirds-version 9.9 fixtures/good.iirds; echo $?` | `64` |
-| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 202 run and 52 excused, no overlap, together the whole registry of 254; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
+| Every registered rule is answered for: run, or excused with a reason | the same JSON — `judgedBy.rulesRun`, and the top-level `notApplicable` | 203 run and 51 excused, no overlap, together the whole registry of 254; `tests/test_report_envelope.py` holds it. `summary.rulesSkipped` is a different count and not the other half |
 | The rule catalogue here was taken from one pinned upstream commit, and says which (whether upstream still matches it is a weekly job, not this one) | `python tools/extract_catalog.py --pin` | `catalogue taken from f1119bea7b64fd826ded9e06d9abae287cbad9c1, retrieved 2026-09-13` |
 | The ontologies shipped here are the recorded ones, checked by digest | `python -m iirds_validate.ontology --verify` | 5 files, every one `ok` |
 | The ids that fire are the recorded ones | `make check` — the gate is `tools/rule_coverage.py --check`, which reads what a run observed, so a fresh checkout has nothing for it to read yet | a rule that stops firing stops the build |

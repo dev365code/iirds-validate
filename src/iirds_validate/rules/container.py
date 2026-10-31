@@ -13,6 +13,7 @@ import posixpath
 import re
 import zipfile
 from collections import Counter
+from typing import NamedTuple
 
 from rdflib import Dataset, Graph, URIRef
 
@@ -25,7 +26,7 @@ from iirds import (
 )
 
 from .. import terms as T
-from ..context import _detect, container_packages, package_nodes
+from ..context import _detect, _named_profiles, container_packages, package_nodes
 from ..model import (
     META_DIR,
     METADATA_JSONLD,
@@ -597,7 +598,8 @@ def c16_2_jsonld(ctx):
 
 def _own_metadata(package, name: str):
     """What a nested container's own metadata.rdf says: the IRIs it gives its
-    own package, and its graph -- or (None, None) where that cannot be read.
+    own package, its graph, and None -- or, where that cannot be read, None
+    twice and what stopped it, which a finding about the child says.
 
     The container is read whole, bounded as a metadata file is, because a ZIP
     names its entries at its end. Not charged to the content budget, for the
@@ -606,22 +608,31 @@ def _own_metadata(package, name: str):
     try:
         raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
         if oversize:
-            return None, None
+            return None, None, ("the archive is past the %d byte bound a nested container "
+                                "is read to" % MAX_METADATA_BYTES)
         with zipfile.ZipFile(io.BytesIO(raw)) as inner:
+            if METADATA_RDF not in inner.namelist():
+                return None, None, "the archive has no %s" % METADATA_RDF
             info = inner.getinfo(METADATA_RDF)
-            if unreadable_method(info) is not None:
-                return None, None
+            method = unreadable_method(info)
+            if method is not None:
+                return None, None, "its %s is stored with %s, which is not read" % (
+                    METADATA_RDF, method)
             with inner.open(info) as handle:
                 data = handle.read(MAX_METADATA_BYTES + 1)
         if len(data) > MAX_METADATA_BYTES:
-            return None, None
-        graph, _error = parse_metadata(METADATA_RDF, data, base=PACKAGE_BASE)
+            return None, None, ("its %s is past the %d byte bound a metadata file is read to"
+                                % (METADATA_RDF, MAX_METADATA_BYTES))
+        graph, error = parse_metadata(METADATA_RDF, data, base=PACKAGE_BASE)
     except Exception:                         # unreadable says no package
-        return None, None
+        return None, None, "the archive could not be read as a ZIP archive"
     if graph is None:
-        return None, None
+        said = (error or "").split(": ", 1)[-1]
+        if said.startswith("refused: "):
+            return None, None, "its %s was refused: %s" % (METADATA_RDF, said[len("refused: "):])
+        return None, None, "its %s does not parse: %s" % (METADATA_RDF, said)
     own = {_iri(pkg) for pkg in container_packages(graph) if isinstance(pkg, URIRef)}
-    return (own or None), graph
+    return (own or None), graph, None
 
 
 def _iri(node) -> str:
@@ -676,6 +687,60 @@ _DECLARE_IT = ("Declare each nested package in its parent's metadata.rdf under t
                "through that declaration, and a nested archive it cannot match to one is a "
                "package it does not know is there.")
 
+class _Nesting(NamedTuple):
+    """How a package accounts for each of its nested containers. R60's
+    docstring says why each part is read the way it is."""
+    opened: dict    # name -> (own IRIs, graph, why not read), `_own_metadata`
+    found: dict     # name -> the iirds:Package this metadata declares for it, or None
+    declares: dict  # name -> the packages that child's own metadata declares besides itself
+    sibling: dict   # name -> (sibling, its graph, node): declared only by a sibling
+    matched: dict   # iirds:Package -> the names it is found for
+    unread: list    # children whose package cannot be read off them, found for none
+    spare: list     # the declarations here left that could be theirs
+
+
+def _nested_declarations(ctx, children) -> _Nesting:
+    """Which declaration is each nested container's: read once, for R60,
+    which asks that there is one, and for R75, which compares the child with
+    the package that declares it."""
+    opened = {name: _own_metadata(ctx.package, name) for name in children}
+    found = {name: _declared_for(ctx.graph, name, opened[name][0]) for name in children}
+    declares, by_sibling = {}, {}
+    for name, (own, graph, _why) in opened.items():
+        if graph is None:
+            continue
+        # What a sibling declares besides itself. Itself is the package this
+        # metadata knew it by, or where it knew it by no IRI of its own, every
+        # package its metadata leaves part of nothing.
+        known = found[name]
+        itself = ({_iri(known)} if known is not None and _iri(known) in (own or ())
+                  else {_iri(p) for p in container_packages(graph)})
+        declares[name] = [pkg for pkg in package_nodes(graph) if _iri(pkg) not in itself]
+        for pkg in declares[name]:
+            by_sibling.setdefault(_iri(pkg), (name, graph, pkg))
+    sibling, matched, unread = {}, {}, []
+    for name in children:
+        own = opened[name][0]
+        if found[name] is not None:
+            matched.setdefault(found[name], []).append(name)
+        elif own is None:
+            unread.append(name)
+        else:
+            hit = next((by_sibling[iri] for iri in sorted(own)
+                        if iri in by_sibling and by_sibling[iri][0] != name), None)
+            if hit is not None:
+                sibling[name] = hit
+    spare = []
+    if unread:
+        rdf = ctx.per_source.get(METADATA_RDF)
+        containers = container_packages(ctx.graph)
+        spare = [p for p in package_nodes(ctx.graph)
+                 if p not in matched and p not in containers
+                 and _not_exactly_one(rdf, p if rdf is not None and (p, None, None) in rdf
+                                      else None) is None]
+    return _Nesting(opened, found, declares, sibling, matched, unread, spare)
+
+
 #: In iiRDS/H the remedy is R9's: declaring the child would satisfy this rule
 #: and break R9 twice over.
 _R60_REMEDY = {
@@ -686,33 +751,107 @@ _R60_REMEDY = {
 }
 
 
-@rule("R75", kind="container", prio="MUST", versions=("1.3",), variants=("A",),
+_R75_UNREAD = ("Make each child's own metadata readable: a META-INF/metadata.rdf that parses, "
+               "in a nested container of at most %d bytes, which is as far as this validator "
+               "reads one to find its metadata. A larger child is not necessarily wrong -- "
+               "validate it on its own to read its profile -- but until it is read here "
+               "nothing shows that it is iiRDS/A." % MAX_METADATA_BYTES)
+
+
+def _profile_said(graph) -> str:
+    """What a child's own metadata gives as its profile, in its own words:
+    `iiRDS/A` written for `A` is a value, and the finding has to show it."""
+    pool = container_packages(graph) or package_nodes(graph)
+    values = sorted({value for pkg in pool for value in _named_profiles(graph, pkg)})
+    if not values:
+        return "the child's own metadata declares no iirds:formatRestriction"
+    return ("the child's own metadata gives iirds:formatRestriction %s; iiRDS/A is the "
+            "value A" % ", ".join(repr(value) for value in values))
+
+
+@rule("R75", kind="container", prio="MUST", versions=("1.3",), variants=(),
       title="an iiRDS/A package nests only iiRDS/A packages",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#x8-1-1-unrestricted-iirds-vs-restricted-iirds",
       covers=("x8-1-1-unrestricted-iirds-vs-restricted-iirds#2",),
       fix="Use an iiRDS/A child package, or remove the parent's iiRDS/A restriction "
           "if the delivery does not conform to that profile. Declare each child's own "
-          "profile in its metadata; change the declaration only when its content conforms.")
+          "profile in its metadata as iirds:formatRestriction A; change the declaration "
+          "only when its content conforms.")
 def r75_a_package_nests_a_packages(ctx):
     '''"An iiRDS/A package MUST nest only iiRDS/A packages, an iiRDS/H package MUST nest only iiRDS/H packages."
 
-    The A clause is checked here; R9 answers the H clause. Read each child's
-    own graph and use the same profile detection as the parent's context.
-    An unreadable child, for which _own_metadata returns (None, None), is
-    not a package declaring a profile. Its readability and declaration are
-    other rules' questions; R60 reports it when no declaration can match it.
+    The A clause is checked here; R9 answers the H clause. Each nested
+    container is compared with the package that nests it, which is read the
+    way R60 reads it: section 6.3.3 puts every nested container side by side
+    in the archive of the highest level package, so a child declared in a
+    sibling's metadata.rdf is that sibling's child, and any other is this
+    package's. So this runs whatever this package's own profile is, and asks
+    of each iiRDS/A package in the archive what it nests.
+
+    A child is iiRDS/A when its own metadata declares it, the way the parent's
+    profile is read; whether its content then meets section 8.2 is that
+    child's obligation, answered when it is validated. A package's metadata
+    can say what it nests as well: a nested package an iiRDS/A package's
+    metadata declares with an iirds:formatRestriction other than A is
+    reported, packed or not, because that is the iiRDS/A package saying it
+    nests one. A declaration that states no profile has none of its own to
+    compare -- Example 16 puts a child's profile in the child's own metadata
+    -- and whether a declared package is packed is section 6.3.3's question,
+    not this sentence's.
+
+    A child whose own metadata is not read -- it does not parse, or it is
+    past the bound a nested container is read to -- is reported here too
+    where a declaration accounts for it: the sentence asks for iiRDS/A
+    children, and one whose declaration was not read has not been shown to
+    be one. One that no declaration accounts for is R60's to report.
+
     Only 1.3 is claimed: the local 1.0 specification has no such sentence,
-    and no 1.1 or 1.2 specification is available here.
+    and no 1.0.1, 1.1 or 1.2 specification is available here.
     '''
-    for name in nested_containers(ctx.package):
-        _own, graph = _own_metadata(ctx.package, name)
+    children = nested_containers(ctx.package)
+    nesting = _nested_declarations(ctx, children)
+    declared_unread = set(nesting.unread[:len(nesting.spare)])
+    for name in children:
+        _own, graph, why = nesting.opened[name]
+        where = ""
+        parent_variant = ctx.variant
+        if name in nesting.sibling:
+            sibling, sibling_graph, _node = nesting.sibling[name]
+            where = "; it is declared in the metadata.rdf of %s, which is iiRDS/A" % sibling
+            parent_variant = _detect(sibling_graph)[1]
+        if parent_variant != "A":
+            continue
         if graph is None:
+            if nesting.found[name] is not None or name in declared_unread:
+                yield Violation("an iiRDS/A package contains a child whose own metadata was "
+                                "not read, so whether it declares iiRDS/A is not known",
+                                subject=name, detail=why, fix=_R75_UNREAD)
             continue
         _version, child_variant = _detect(graph)
         if child_variant != "A":
             yield Violation("an iiRDS/A package contains a child that does not declare iiRDS/A",
-                            subject=name, detail="child profile: %s" % child_variant)
+                            subject=name, detail=_profile_said(graph) + where)
+    # What each iiRDS/A package's own metadata says it nests.
+    declaring = [(ctx.graph, ctx.variant, "this package's metadata",
+                  [p for p in package_nodes(ctx.graph)
+                   if p not in container_packages(ctx.graph)])]
+    for name in children:
+        graph = nesting.opened[name][1]
+        if graph is not None:
+            containers = container_packages(graph)
+            declaring.append((graph, _detect(graph)[1], "the metadata.rdf of %s" % name,
+                              [p for p in nesting.declares[name] if p not in containers]))
+    for graph, variant, source, packages in declaring:
+        if variant != "A":
+            continue
+        for pkg in packages:
+            values = _named_profiles(graph, pkg)
+            if values and values[0] != "A":
+                yield Violation("an iiRDS/A package declares a nested package that is not "
+                                "iiRDS/A", subject=ctx.ref(pkg),
+                                detail="%s states iirds:formatRestriction %s for it"
+                                       % (source, ", ".join(repr(value) for value in values)))
 
 
 @rule("R60", kind="container", prio="MUST", versions=("1.3",), variants=(),
@@ -767,35 +906,13 @@ def r60_nested_containers_are_declared(ctx):
     if not children:
         return
     rdf = ctx.per_source.get(METADATA_RDF)
-    opened = {name: _own_metadata(ctx.package, name) for name in children}
-    found = {name: _declared_for(ctx.graph, name, opened[name][0]) for name in children}
-    by_sibling = {}
-    for name, (own, graph) in opened.items():
-        if graph is None:
-            continue
-        # What a sibling declares besides itself. Itself is the package this
-        # metadata knew it by, or where it knew it by no IRI of its own, every
-        # package its metadata leaves part of nothing.
-        known = found[name]
-        itself = ({_iri(known)} if known is not None and _iri(known) in (own or ())
-                  else {_iri(p) for p in container_packages(graph)})
-        for pkg in package_nodes(graph):
-            if _iri(pkg) not in itself:
-                by_sibling.setdefault(_iri(pkg), (name, graph, pkg))
-    matched, unread = {}, []
+    nesting = _nested_declarations(ctx, children)
     for name in children:
-        own = opened[name][0]
-        pkg = found[name]
-        if pkg is not None:
-            matched.setdefault(pkg, []).append(name)
+        own = nesting.opened[name][0]
+        if nesting.found[name] is not None or own is None:
             continue
-        if own is None:
-            unread.append(name)
-            continue
-        sibling = next((by_sibling[iri] for iri in sorted(own)
-                        if iri in by_sibling and by_sibling[iri][0] != name), None)
-        if sibling is not None:
-            where, graph, node = sibling
+        if name in nesting.sibling:
+            where, graph, node = nesting.sibling[name]
             named = _not_exactly_one(graph, node)
             if named is not None:
                 yield _more_or_less_than_one(ctx, node, named, [name],
@@ -808,8 +925,8 @@ def r60_nested_containers_are_declared(ctx):
                                "iirds:Package here is that one or names this archive "
                                "as its rendition" % ", ".join(sorted(own)))
     containers = container_packages(ctx.graph)
-    for pkg, names in matched.items():
-        named = _not_exactly_one(rdf, _declared_for(rdf, names[0], opened[names[0]][0]))
+    for pkg, names in nesting.matched.items():
+        named = _not_exactly_one(rdf, _declared_for(rdf, names[0], nesting.opened[names[0]][0]))
         if named is None:
             continue
         said = []
@@ -818,18 +935,13 @@ def r60_nested_containers_are_declared(ctx):
         if containers == [pkg]:
             said.append("it is the package this metadata describes as the container itself")
         yield _more_or_less_than_one(ctx, pkg, named, names, "; ".join(said))
-    if unread:
-        spare = [p for p in package_nodes(ctx.graph)
-                 if p not in matched and p not in containers
-                 and _not_exactly_one(rdf, p if rdf is not None and (p, None, None) in rdf
-                                      else None) is None]
-        for name in unread[len(spare):]:
-            yield Violation("the parent's metadata declares no iirds:Package for this "
-                            "nested container",
-                            subject=name, fix=_R60_REMEDY["iiRDS/H" if ctx.variant == "H" else "other"],
-                            detail="its own metadata.rdf does not say which package it is, "
-                                   "and no iirds:Package declared here that is part of "
-                                   "exactly one package in metadata.rdf is left for it")
+    for name in nesting.unread[len(nesting.spare):]:
+        yield Violation("the parent's metadata declares no iirds:Package for this "
+                        "nested container",
+                        subject=name, fix=_R60_REMEDY["iiRDS/H" if ctx.variant == "H" else "other"],
+                        detail="its own metadata.rdf does not say which package it is, "
+                               "and no iirds:Package declared here that is part of "
+                               "exactly one package in metadata.rdf is left for it")
 
 
 def _more_or_less_than_one(ctx, pkg, named, names, why):

@@ -263,7 +263,7 @@ COMPONENT_TREE = ('  <iirds:Component rdf:about="urn:test:pump">\n'
 @pytest.mark.parametrize("shape", ["a nested archive", "a nested package declared",
                                    "child A", "child without profile"])
 def test_a_handover_package_that_nests_forms_its_hierarchy_the_other_way(tmp_path, shape):
-    '''"An iiRDS/A package MUST nest only iiRDS/A packages, an iiRDS/H package MUST nest only iiRDS/H packages."'''
+    '''"an iiRDS/H package MUST nest only iiRDS/H packages"'''
     if shape in {"child A", "child without profile"}:
         rdf = MINIMAL_RDF
         if shape == "child A":
@@ -1119,6 +1119,8 @@ def test_content_list_claim_totals_exclude_unverified_data():
     from test_covers_is_earned import CLAIMED, UNAUDITED, held
     from test_requirement_coverage import CLAIMED as rule_claims
 
+    # 187, 152 and 222 before R9 claimed section 8.1.1's H clause, R75 its A
+    # clause and R76 section 7.3.3's sentence, each held by a named case.
     assert len(CLAIMED) == 190
     assert len(held()) == 155
     assert len(UNAUDITED) == 35

@@ -551,11 +551,19 @@ def r9_a_handover_package_does_not_nest(ctx):
     Version-gated to 1.3 because the cached 1.0 release has no handover
     profile at all -- the string iiRDS/H does not occur in it.
 
+    Section 8.1.1's "an iiRDS/H package MUST nest only iiRDS/H packages" is
+    claimed here too: this reports every nested container and every declared
+    nested package of an iiRDS/H package, which is more than that sentence
+    asks -- it forbids only children that are not iiRDS/H.
+
     What this does not reach: a container whose own package does not declare
     the restriction is not read as a handover package, so a document that
     hides its profile on a package it also says is nested is judged
-    unrestricted and this stands down. That is the container reading, and it
-    is answered by R8 rather than here.
+    unrestricted and this stands down. That is the container reading, under
+    which the container is unrestricted and may nest any profile; where the
+    archive carries no nested container R8 reports the declaration, and the
+    other reading, that this document is the child's own, is the one section
+    5.3's sentence leaves undecidable from one container.
     """
     for name in nested_containers(ctx.package):
         yield Violation("a handover package must not contain another iiRDS ZIP archive",

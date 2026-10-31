@@ -58,7 +58,7 @@ rather than leaving a reader to assume they passed.
                         → showing it, so write the file with a tool that does not.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -90,7 +90,7 @@ with a file that ends in a newline.
                         → no structure or meaning.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -123,7 +123,7 @@ A JSON-LD file alongside `metadata.rdf` is allowed; instead of it is not.
                         → Add one if there is none; remove the extras if there are several.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -156,7 +156,7 @@ the unit that has it, so two of those under one unit read alike.
                         → a consumer no way to choose between them.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -210,7 +210,7 @@ its `spec` field; the claim and the reason are the rule's, and `iirds rules
                         → case-sensitive, and use forward slashes.
 
       FAIL  1 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Exit code 1.
 
@@ -248,7 +248,7 @@ rules taken from the upstream catalogue fires on it.
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
     $ iirds check fixtures/what-it-catches/attribute-style.iirds
 
@@ -256,7 +256,7 @@ rules taken from the upstream catalogue fires on it.
       note: metadata read from META-INF/metadata.rdf
 
       PASS  0 error(s), 0 warning(s), 0 informational
-      203 rules checked, 36 not applicable to this version/variant (29 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
+      204 rules checked, 35 not applicable to this version/variant (28 for iiRDS/H, 5 for iiRDS/A, 2 for other editions)
 
 Both pass, and the two reports are the same document: every key identical
 apart from the package's own path and digest, which is what a different

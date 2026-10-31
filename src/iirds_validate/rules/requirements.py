@@ -28,10 +28,11 @@ from rdflib import BNode, URIRef
 from rdflib.namespace import OWL, RDFS
 
 from .. import terms as T
-from ..context import container_packages, package_nodes
+from ..context import _detect, container_packages, package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, PACKAGE_BASE, Violation, is_named
 from ..package import MAX_SIDE_BYTES, nested_containers
 from ..registry import rule
+from .container import _nested_declarations
 
 #: Obligations the standard states that no validator can check on a package,
 #: because they are addressed to somebody else.
@@ -504,7 +505,7 @@ def r8_a_declared_nested_package_is_in_the_archive(ctx):
                                "an iiRDS ZIP archive opens")
 
 
-@rule("R9", kind="container", prio="MUST NOT", versions=("1.3",), variants=("H",),
+@rule("R9", kind="container", prio="MUST NOT", versions=("1.3",), variants=(),
       title="a handover package must not nest another package",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
            "20251103-1.3-release/index.html#nesting-of-packages",
@@ -543,10 +544,19 @@ def r9_a_handover_package_does_not_nest(ctx):
     reports it -- and the reading is written here rather than left implicit,
     because the reading is what the claim covers.
 
-    The opening clause of section 8.3.1.2 is why this is variant-gated rather
-    than general: "While unrestricted iiRDS packages MAY be nested by nesting
-    iiRDS ZIP archives in each other for compatibility reasons". Nesting is
-    permitted by name outside the handover profile.
+    The opening clause of section 8.3.1.2 is why the two branches ask only of
+    an iiRDS/H package: "While unrestricted iiRDS packages MAY be nested by
+    nesting iiRDS ZIP archives in each other for compatibility reasons".
+    Nesting is permitted by name outside the handover profile.
+
+    The rule itself runs whatever this package's profile is, because an
+    iiRDS/H package can be nested in this archive. Section 6.3.3 packs every
+    nested container side by side in the archive of the highest level
+    package and has each parent declare its children in its own metadata.rdf,
+    so a grandchild sits beside an iiRDS/H middle container that declares it.
+    That middle package nests one, which section 6.7.3 forbids, and the nested
+    declarations are read the way R60 and R75 read them: what a nested
+    container's own metadata declares besides itself.
 
     Version-gated to 1.3 because the cached 1.0 release has no handover
     profile at all -- the string iiRDS/H does not occur in it.
@@ -565,16 +575,32 @@ def r9_a_handover_package_does_not_nest(ctx):
     other reading, that this document is the child's own, is the one section
     5.3's sentence leaves undecidable from one container.
     """
-    for name in nested_containers(ctx.package):
-        yield Violation("a handover package must not contain another iiRDS ZIP archive",
-                        subject=name,
-                        detail="section 8.3.1.2; use a component tree for the hierarchy")
-    declared = set(package_nodes(ctx.graph)).difference(container_packages(ctx.graph))
-    for pkg in sorted(declared, key=ctx.ref):
-        yield Violation("a handover package must not declare a nested package",
-                        subject=ctx.ref(pkg),
-                        detail="section 6.7.3; the handover profile forms hierarchies "
-                               "with component trees instead")
+    children = nested_containers(ctx.package)
+    if ctx.variant == "H":
+        for name in children:
+            yield Violation("a handover package must not contain another iiRDS ZIP archive",
+                            subject=name,
+                            detail="section 8.3.1.2; use a component tree for the hierarchy")
+        declared = set(package_nodes(ctx.graph)).difference(container_packages(ctx.graph))
+        for pkg in sorted(declared, key=ctx.ref):
+            yield Violation("a handover package must not declare a nested package",
+                            subject=ctx.ref(pkg),
+                            detail="section 6.7.3; the handover profile forms hierarchies "
+                                   "with component trees instead")
+    if not children:
+        return
+    nesting = _nested_declarations(ctx, children)
+    for name in children:
+        graph = nesting.opened[name][1]
+        if graph is None or _detect(graph)[1] != "H":
+            continue
+        containers = container_packages(graph)
+        for pkg in sorted((p for p in nesting.declares[name] if p not in containers), key=ctx.ref):
+            yield Violation("a handover package must not declare a nested package",
+                            subject=ctx.ref(pkg),
+                            detail="the metadata.rdf of %s, an iiRDS/H package nested here, "
+                                   "declares it; section 6.7.3; the handover profile forms "
+                                   "hierarchies with component trees instead" % name)
 
 
 @rule("R11", kind="schema", prio="MUST", versions=(), variants=(),

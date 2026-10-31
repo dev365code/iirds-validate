@@ -9,6 +9,11 @@ changes in the library is recorded beside what changes in the checker.
 Coverage of the standard grows from 187 to 190 of 280 obligations, with
 R9 also claiming the iiRDS/H nesting sentence it already enforces.
 
+R9 now also reports an iiRDS/H package nested in the archive that declares
+a package of its own -- a grandchild packed beside it, where section 6.3.3
+puts it -- whatever the top package's profile is. The finding is an error,
+so a package that previously passed can now exit 1.
+
 For iiRDS 1.3, R75 reports an iiRDS/A package that nests a package that
 is not iiRDS/A: a child whose own metadata declares iiRDS/H, another value
 or no profile; a nested package the iiRDS/A package's own metadata declares

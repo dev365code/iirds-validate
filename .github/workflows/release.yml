@@ -22,9 +22,10 @@ on:
 permissions:
   contents: read
 
+# ubuntu-latest now resolves to Ubuntu 26.04; these jobs are pinned to 24.04, the image ci.yml tests on and this project's releases have run on, until the matrix moves.
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       # This job runs this project's build scripts and its suite. It makes the
       # bytes; it does not get to publish them, so it cannot move a release if
@@ -133,7 +134,7 @@ jobs:
   publish-release:
     if: github.event_name == 'push'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -177,7 +178,7 @@ jobs:
   publish-iirds:
     if: github.event_name == 'push'
     needs: publish-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: pypi-iirds
     permissions:
       id-token: write
@@ -194,7 +195,7 @@ jobs:
   publish-iirds-validate:
     if: github.event_name == 'push'
     needs: publish-iirds
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: pypi          # the publisher pypi.org already trusts for this project
     permissions:
       id-token: write
@@ -211,7 +212,7 @@ jobs:
   publish-iirds-sdk:
     if: github.event_name == 'push'
     needs: publish-iirds
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: pypi-iirds-sdk
     permissions:
       id-token: write

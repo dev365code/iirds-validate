@@ -38,13 +38,13 @@ OTHER = {"wheel", "vendored-catalogue", "upstream-catalogue",
 CONDITION = "${{ always() && !cancelled() && needs.judged.outputs.run_id == '' }}"
 SCOPE = "github.event_name == 'push' && github.ref == 'refs/heads/main'"
 AGE_LIMIT = "select((.created_at | fromdateiso8601) > now - 7 * 86400)"
-#: The lookup runs on ubuntu-latest and nowhere else. The cases that run its
+#: The lookup runs on ubuntu-24.04 and nowhere else. The cases that run its
 #: shell need bash and jq, and on Windows the jq there writes CRLF under MSYS2
 #: and this repository does not link tools in: they would be cases about a
 #: shell the workflow never uses. What reads the workflow file runs everywhere.
 SHELL_CASE = pytest.mark.skipif(
     os.name == "nt",
-    reason="the judged step runs on ubuntu-latest; jq under MSYS2 writes CRLF "
+    reason="the judged step runs on ubuntu-24.04; jq under MSYS2 writes CRLF "
            "and this repository does not link tools in on nt")
 
 
@@ -89,9 +89,9 @@ def branch_run(run_id=11, branch="wip/checks"):
 def full_jobs():
     names = (["judged", "lint", "installed wheel", "the-action-this-repo-offers",
               "the-action-on-a-runner-as-it-comes"]
-             + ["py%s on ubuntu-latest" % version
+             + ["py%s on ubuntu-24.04" % version
                 for version in ("3.9", "3.10", "3.11", "3.12", "3.13")]
-             + ["py3.9 rdflib floor on ubuntu-latest", "py3.11 on windows-latest",
+             + ["py3.9 rdflib floor on ubuntu-24.04", "py3.11 on windows-latest",
                 "py3.11 on macos-latest"]
              + ["mutations (%s)" % shard for shard in range(1, 13)])
     jobs = [{"name": name, "conclusion": "success", "status": "completed",
@@ -382,7 +382,7 @@ def test_lookup_has_read_permissions_and_main_push_scope():
     assert permissions, "judged has no job permissions"
     assert dict(re.findall(r"^      ([\w-]+): (\S+)$", permissions.group(1), re.M)) == {
         "actions": "read", "contents": "read"}
-    for line in ("    runs-on: ubuntu-latest", "    timeout-minutes: 5",
+    for line in ("    runs-on: ubuntu-24.04", "    timeout-minutes: 5",
                  "    continue-on-error: true"):
         assert line in block.splitlines()
     assert "uses:" not in block

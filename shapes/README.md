@@ -205,14 +205,16 @@ currently before the Consortium.
 80 of the 254 rules have no shape, in four honest categories,
 each listed with its reason in `MANIFEST.json`:
 
-- **68 not expressible** — 68 of the 254 rules are about ZIP bytes, content
-  files, archive↔graph joins, or the validation run itself (S1–S3): entry
-  order, the stored `mimetype`, path lengths, encryption bits, the compression
-  method an entry uses, how many records the central directory gives one
-  name, files present in the container. None of that
-  exists in an RDF graph, **by nature, not omission** — and one rule (R76) asks for a
-  bounded RDFS fixed point: the graph alone does not supply the shared closure,
-  its axioms, and its fact-count ceiling. A package can satisfy
+- **68 not expressible** — 68 of the 254 rules need what an RDF graph does
+  not carry. 67 are about ZIP bytes, content files, archive↔graph joins, or
+  the validation run itself (S1–S3): entry order, the stored `mimetype`, path
+  lengths, encryption bits, the compression method an entry uses, how many
+  records the central directory gives one name, files present in the
+  container. None of that exists in an RDF graph, **by nature, not
+  omission**. The other, R76, reads statements that are in the graph; what
+  no shape carries is the bounded RDFS fixed point it shares with R61 -- the
+  closure, its axioms and its fact-count ceiling -- so it is left out by
+  choice, where R61 has a partial SPARQL form (above). A package can satisfy
   every shape here and still be unreadable to every consumer; full checking
   needs a container-aware validator, which is what the `iirds` checker is.
 - **9 deferred** — expressible in principle, not yet written: the six

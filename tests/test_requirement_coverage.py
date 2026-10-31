@@ -91,6 +91,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
     """
     pairs = [(rid, requirement) for rid, ids in CLAIMED.items() for requirement in ids]
     asserted = [p for p in pairs if ":" in (BY_ID[p[1]].get("subject") or "")]
+    # 222 before the three claims of R9, R75 and R76 (one pair each).
     assert len(pairs) == 225, len(pairs)
     assert len(asserted) == 95, sorted(asserted)
 
@@ -113,6 +114,7 @@ def test_how_far_the_name_heuristic_actually_reaches():
 def test_the_coverage_figure_is_what_is_published():
     """Pinned so it cannot drift downward unnoticed, and so raising it is a
     deliberate edit rather than a side effect."""
+    # 187 before R9, R75 and R76 each claimed one obligation no rule had.
     assert len(COVERED) == 190
     assert len(ABSOLUTE) == 314
     assert INDEX["reductions"]["distinct"] == 280, "the published denominator"

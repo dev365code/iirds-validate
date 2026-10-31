@@ -972,6 +972,8 @@ def test_the_audited_share_is_what_the_scope_document_publishes():
     document to a literal 6 pins the document and not the set: the two moved
     apart the first time somebody tried it."""
     scope = (ROOT / "docs" / "scope.md").read_text("utf-8")
+    # 187 before R9 claimed section 8.1.1's H clause, R75 its A clause and
+    # R76 section 7.3.3's sentence.
     assert len(CLAIMED) == 190, len(CLAIMED)
     assert len(UNAUDITED) == 35, len(UNAUDITED)
     assert len(CLAIMED) == len(held()) + len(UNAUDITED), "the three numbers do not add up"

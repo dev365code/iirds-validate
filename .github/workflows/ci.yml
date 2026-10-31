@@ -30,6 +30,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
 
+# ubuntu-latest now resolves to Ubuntu 26.04, where setup-python offers no 3.9; every Ubuntu job here is pinned to 24.04, the image this project's releases have run on, until the matrix moves.
 jobs:
   # A work branch has already paid for the expensive checks when its commit
   # reaches main unchanged. Reuse a full judgement of the same SHA by this
@@ -49,7 +50,7 @@ jobs:
   # says every job runs. A write that fails once the summary is open, as on a
   # full disk, is not caught.
   judged:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     continue-on-error: true
     permissions:
@@ -108,7 +109,7 @@ jobs:
   lint:
     needs: judged
     if: ${{ always() && !cancelled() && needs.judged.outputs.run_id == '' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Actions are pinned to a commit here and in release.yml; the comment is
       # the version. `tests/test_workflow_supply_chain.py` says why.
@@ -199,15 +200,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, python: "3.9" }
-          - { os: ubuntu-latest, python: "3.10" }
-          - { os: ubuntu-latest, python: "3.11" }
-          - { os: ubuntu-latest, python: "3.12" }
-          - { os: ubuntu-latest, python: "3.13" }
+          - { os: ubuntu-24.04, python: "3.9" }
+          - { os: ubuntu-24.04, python: "3.10" }
+          - { os: ubuntu-24.04, python: "3.11" }
+          - { os: ubuntu-24.04, python: "3.12" }
+          - { os: ubuntu-24.04, python: "3.13" }
           # pyproject declares rdflib>=6, so 6.0.0 exactly is what this row
           # runs: a floor test that floats upward stops testing the floor. The
           # floor and this pin move together or the promise is untested.
-          - { os: ubuntu-latest, python: "3.9", pin: "rdflib==6.0.0", label: "rdflib floor" }
+          - { os: ubuntu-24.04, python: "3.9", pin: "rdflib==6.0.0", label: "rdflib floor" }
           # Windows is where an unclosed ZIP handle keeps files locked and where
           # the .gitattributes eol=lf setting gets tested. macOS is here
           # because README.md names it: a platform this says it runs on and
@@ -279,7 +280,7 @@ jobs:
     # survive. Every shard fails if a row other than the canary survives, and
     # the shard holding the canary fails if it dies, because that would mean
     # the checks are killing everything.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 300
     strategy:
       fail-fast: false
@@ -302,7 +303,7 @@ jobs:
     # missing data/ontologies/, so the tool works from a checkout and dies on a
     # user's machine. Nothing in the test suite would notice.
     name: installed wheel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
@@ -479,7 +480,7 @@ jobs:
     # network, which is why it cannot live in the main pipeline.
     name: vendored catalogue is faithful to its pin
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
@@ -494,7 +495,7 @@ jobs:
     # quietly go stale.
     name: upstream rule catalogue
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
@@ -521,7 +522,7 @@ jobs:
   # that never reaches the command, a failure that does not fail the job -- and
   # the way to find that out is to run it as a step.
   the-action-this-repo-offers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
@@ -661,7 +662,7 @@ jobs:
   # `setup-python`, no build. Every other use of the action here is preceded by
   # both, so the line a reader actually copies would be the one nothing ran.
   the-action-on-a-runner-as-it-comes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
       # The same question as above, asked again rather than passed between

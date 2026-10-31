@@ -1321,3 +1321,27 @@ def test_r9_profile_claim():
 
 def test_r9_without_children(tmp_path):
     assert findings(handover(tmp_path, "parent.iirds"), "R9") == []
+
+
+@pytest.mark.parametrize("top,grand", [(None, "A"), (None, "H"), ("A", "A")],
+                         ids=["unrestricted-top-A-grandchild", "unrestricted-top-H-grandchild",
+                              "A-top"])
+def test_a_handover_package_beside_what_it_nests_is_reported(tmp_path, top, grand):
+    '''"an iiRDS/H package MUST nest only iiRDS/H packages"
+
+    Section 6.3.3 packs every nested container beside its parent in the top
+    archive, and the parent declares it in its own metadata.rdf. An iiRDS/H
+    middle container that declares one nests a package, which section 6.7.3
+    forbids it outright, whatever the top package's own profile is.'''
+    from test_nested_profiles import side_by_side
+
+    found = findings(side_by_side(tmp_path, top, "H", grand), "R9")
+    assert [f.violation.subject for f in found] == ["urn:test:grand"]
+    assert "content/middle.iirds" in found[0].violation.detail
+
+
+@pytest.mark.parametrize("top,middle", [(None, "A"), (None, None), ("A", "A")])
+def test_a_package_that_is_not_handover_is_left_to_the_other_rules(tmp_path, top, middle):
+    from test_nested_profiles import side_by_side
+
+    assert findings(side_by_side(tmp_path, top, middle, "H"), "R9") == []

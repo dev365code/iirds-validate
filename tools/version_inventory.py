@@ -163,7 +163,8 @@ def _source_the_rule_reaches(fn, seen=None) -> str:
 #: Not filtered by kind. C16.2 is `kind="container"` and reads the graph, and
 #: a filter on schema/lint left it outside the gate entirely.
 NAMES_NO_TERM = {
-    "R76": "reads the declared edition's bundled property domains and ranges, not fixed iiRDS names",
+    "R76": "reads the bundled ontology's property domains and ranges (1.3's for every edition), "
+           "not fixed iiRDS names",
     "L5": "asks whether a class is in an iiRDS namespace, not which class",
     "L9": "compares the two metadata files as graphs",
     "L17": "asks which graph of metadata.jsonld a statement is in",

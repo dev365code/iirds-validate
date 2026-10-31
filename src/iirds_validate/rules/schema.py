@@ -140,7 +140,10 @@ _RDFS_AXIOMS = tuple((term, RDFS.domain, cls) for term, cls in (
     (RDFS.isDefinedBy, RDFS.subPropertyOf, RDFS.seeAlso),
     (RDFS.Datatype, RDFS.subClassOf, RDFS.Class))
 
-_XSD_STRING = URIRef("http://www.w3.org/2001/XMLSchema#string")
+#: Spelled out rather than taken from rdflib's XSD namespace, which on the
+#: dependency floor does not know XML Schema 1.1's names and warns on them.
+_XSD = "http://www.w3.org/2001/XMLSchema#"
+_XSD_STRING = URIRef(_XSD + "string")
 
 #: How long one fact's origin may grow. A conclusion from two premises names
 #: both, and both can be conclusions themselves, so without a ceiling a chain
@@ -349,6 +352,37 @@ def _disjoint_rdfs_facts(ctx):
 
 
 
+#: RDF 1.1 Concepts, section 5.1: the XML Schema datatypes RDF uses, with
+#: rdf:langString, rdf:HTML and rdf:XMLLiteral. RDF 1.1 Semantics makes each
+#: recognized datatype an rdfs:Datatype, which rdfs13 puts below rdfs:Literal.
+_DATATYPES = frozenset(URIRef(_XSD + name) for name in (
+    "string", "boolean", "decimal", "integer", "double", "float", "date", "time",
+    "dateTime", "dateTimeStamp", "gYear", "gMonth", "gDay", "gYearMonth", "gMonthDay",
+    "duration", "yearMonthDuration", "dayTimeDuration", "byte", "short", "int", "long",
+    "unsignedByte", "unsignedShort", "unsignedInt", "unsignedLong", "positiveInteger",
+    "nonNegativeInteger", "negativeInteger", "nonPositiveInteger", "hexBinary",
+    "base64Binary", "anyURI", "language", "normalizedString", "token", "NMTOKEN",
+    "Name", "NCName")) | {RDF.langString, RDF.HTML, RDF.XMLLiteral}
+
+#: XML Schema 1.1, Part 2: the datatypes derived by restriction from one a
+#: bundled iiRDS property's range names. The bundle's datatype ranges are
+#: rdfs:Literal, xsd:dateTimeStamp and xsd:duration, and of those only
+#: duration has datatypes derived from it; tests/test_property_domains.py
+#: holds that list to the bundle.
+_DERIVED_DATATYPES = frozenset({
+    (URIRef(_XSD + "dayTimeDuration"), URIRef(_XSD + "duration")),
+    (URIRef(_XSD + "yearMonthDuration"), URIRef(_XSD + "duration")),
+})
+
+
+def _refines(cls, expected, facts) -> bool:
+    """Whether a declared class or datatype is the expected one or below it."""
+    return (cls == expected
+            or (cls, RDFS.subClassOf, expected) in facts
+            or (expected == RDFS.Literal and cls in _DATATYPES)
+            or (cls, expected) in _DERIVED_DATATYPES)
+
+
 @rule("R76", kind="schema", prio="MUST", versions=(), variants=(),
       title="proprietary properties comply with iiRDS domains and ranges",
       spec="https://www.iirds.org/fileadmin/iiRDS_specification/"
@@ -357,7 +391,8 @@ def _disjoint_rdfs_facts(ctx):
       fix="Declare domains and ranges that refine each inherited iiRDS constraint, "
           "or omit the proprietary declaration to inherit that constraint. For each "
           "iiRDS domain or range, at least one declared class must be that class or "
-          "a subclass of it; use an appropriate iiRDS parent property.")
+          "a subclass of it; use an appropriate iiRDS parent property. State an "
+          "rdfs:subClassOf edge where only an OWL definition says it.")
 def r76_proprietary_property_domains_and_ranges(ctx):
     '''"Proprietary properties MUST comply with domain and range of the iiRDS property."
 
@@ -365,17 +400,39 @@ def r76_proprietary_property_domains_and_ranges(ctx):
     with the same axioms and ceiling. Multiple domains (and ranges) denote
     an intersection: for each bundled constraint E, one declared D below E
     suffices. Undeclared domains and ranges inherit the parent's constraints
-    through rdfs7 and rdfs2/3. Inclusion requiring OWL intersection definitions
-    or other consequences outside this RDFS fixed point is not decided here.
+    through rdfs7 and rdfs2/3. Only the property's own declarations count: a
+    proprietary parent's domain does not stand in for one the property
+    declares itself. Inclusion requiring OWL intersection definitions or
+    other consequences outside this RDFS fixed point is not seen here, and a
+    declared class whose inclusion only such a definition states is reported
+    as not refining the constraint.
+
+    "The iiRDS property" is the nearest one the proprietary property refines:
+    a bundled property above it is compared only when no other bundled
+    property lies between them. Whether the bundle's own properties agree
+    with each other is the bundle's question, not a package's. Names the
+    bundle defines are not this rule's subjects -- the sentence is about
+    proprietary properties -- and a name in the iiRDS namespace the bundle
+    does not define is one.
+
+    A datatype is below rdfs:Literal, as RDF 1.1 Semantics puts every
+    recognized one there, and among datatypes the derivations XML Schema 1.1
+    makes below a datatype a bundled range names are read as well. The
+    closure itself still recognizes only xsd:string and rdf:langString, as
+    R61's does.
 
     Without a subPropertyOf statement whose subject is outside the bundle,
-    no proprietary property reaches a bundled iiRDS property: rdfs6 only
-    adds reflexivity and rdfs12 only reaches container membership. Return
+    and without any statement whose object is rdfs:subPropertyOf, no
+    proprietary property reaches a bundled iiRDS property: rdfs6 only adds
+    reflexivity, rdfs12 only reaches container membership, and rdfs7 yields a
+    subPropertyOf statement only through a predicate stated below
+    rdfs:subPropertyOf, which neither the bundle nor the axioms state. Return
     before computing a closure in that case. The ontology is ctx.ontology,
     including the runner's reported substitution when an edition is absent.
     '''
     defined = ctx.ontology.defined_terms()
-    if not any(subject not in defined for subject in ctx.graph.subjects(RDFS.subPropertyOf)):
+    if (not any(subject not in defined for subject in ctx.graph.subjects(RDFS.subPropertyOf))
+            and (None, None, RDFS.subPropertyOf) not in ctx.graph):
         return
     try:
         facts, _origins, _direct_subclass = _disjoint_rdfs_facts(ctx)
@@ -392,14 +449,17 @@ def r76_proprietary_property_domains_and_ranges(ctx):
     bundled = ctx.ontology.properties()
     for prop in sorted(set(ctx.graph.subjects()) - defined, key=ctx.ref):
         parents = set(facts.objects(prop, RDFS.subPropertyOf)) & bundled
-        for parent in sorted(parents, key=ctx.ref):
+        nearest = {parent for parent in parents
+                   if not any(other != parent and (other, RDFS.subPropertyOf, parent) in facts
+                              and (parent, RDFS.subPropertyOf, other) not in facts
+                              for other in parents)}
+        for parent in sorted(nearest, key=ctx.ref):
             for relation in (RDFS.domain, RDFS.range):
                 declared = sorted(set(ctx.graph.objects(prop, relation)), key=ctx.ref)
                 if not declared:
                     continue
                 for expected in sorted(set(ctx.ontology.graph.objects(parent, relation)), key=ctx.ref):
-                    if any(cls == expected or (cls, RDFS.subClassOf, expected) in facts
-                           for cls in declared):
+                    if any(_refines(cls, expected, facts) for cls in declared):
                         continue
                     label = "domain" if relation == RDFS.domain else "range"
                     yield Violation(

@@ -24,17 +24,29 @@ Change a child's profile declaration only when its content conforms, and
 write it as iirds:formatRestriction A. An R75 error makes validation exit
 1 when the package previously passed.
 
-R76 checks proprietary subproperties against the iiRDS properties they
-refine, using the package's active bundled ontology and the same bounded
-RDFS closure as R61. Each inherited domain or range must have at least one
-declared class equal to or below it; multiple declarations form an
-intersection. An omitted domain or range inherits the iiRDS constraint.
-Remove an incompatible declaration or refine it with the appropriate
-subclass, or choose an appropriate parent property. These findings are
-errors and can change validation from exit 0 to exit 1. If the closure
-reaches its ceiling, R76 reports that it stopped without deciding whether
-any individual declaration complies. Inclusion requiring OWL intersection
-definitions is outside this check.
+For every edition, R76 checks each proprietary subproperty against the
+iiRDS property it refines -- the nearest bundled one above it -- using the
+bundled ontology, 1.3's for every edition since no other is shipped, as the
+run's note says, and the same bounded RDFS closure as R61. Each domain or
+range of that property must have at least one declared class or datatype
+equal to or below it; multiple declarations form an intersection, and only
+the property's own declarations count: a proprietary parent's domain does
+not stand in for one the property declares itself. A datatype counts as
+below rdfs:Literal, and xsd:dayTimeDuration and xsd:yearMonthDuration as
+below xsd:duration. An omitted domain or range inherits the iiRDS
+constraint. Remove an incompatible declaration or refine it with the
+appropriate subclass, or choose an appropriate parent property. These
+findings are errors and can change validation from exit 0 to exit 1. If
+the closure reaches its ceiling, R76 reports, as an error, that it stopped
+without deciding whether any individual declaration complies; for iiRDS
+1.3 that error comes beside R61's from the same closure. R76 does not see
+an inclusion that only an OWL class definition such as owl:intersectionOf
+states; such a declaration is reported as not refining the iiRDS property,
+and stating the rdfs:subClassOf edge beside the definition answers it.
+
+When a package declares an edition with no bundled ontology, the run's note
+now names property domains and ranges beside the class hierarchy it takes
+from 1.3.
 
 ## 0.9.1 — 2026-10-26
 

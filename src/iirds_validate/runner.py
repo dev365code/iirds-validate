@@ -278,8 +278,8 @@ def _run_against(package, report: Report, kinds, version, include_info) -> None:
             % (len(ARCHIVE_ONLY), ", ".join(ARCHIVE_ONLY)))
     if ctx.ontology.substituted:
         report.notes.append(
-            "no ontology bundled for iiRDS %s; class hierarchy taken from %s, so rules that "
-            "depend on subclassing may differ from that version"
+            "no ontology bundled for iiRDS %s; class hierarchy and property domains and "
+            "ranges taken from %s, so rules that depend on them may differ from that version"
             % (ctx.version, ctx.ontology.substituted))
     if ctx.sources:
         report.notes.append("metadata read from " + ", ".join(ctx.sources))

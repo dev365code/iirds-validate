@@ -10,24 +10,26 @@ Coverage of the standard grows from 187 to 190 of 280 obligations, with
 R9 also claiming the iiRDS/H nesting sentence it already enforces.
 
 R9 now also reports an iiRDS/H package nested in the archive that declares
-a package of its own -- a grandchild packed beside it, where section 6.3.3
-puts it -- whatever the top package's profile is. The finding is an error,
-so a package that previously passed can now exit 1.
+a package of its own -- packed beside it, where section 6.3.3 puts a
+grandchild, or only declared -- whatever the top package's profile is. The
+finding is an error, so a package that previously passed can now exit 1.
 
 For iiRDS 1.3, R75 reports an iiRDS/A package that nests a package that
 is not iiRDS/A: a child whose own metadata declares iiRDS/H, another value
 or no profile; a nested package the iiRDS/A package's own metadata declares
 with an iirds:formatRestriction other than A; and a declared child whose
-own metadata cannot be read -- it does not parse, or the child is larger
-than the 64 MiB this validator reads a nested container to -- since
-nothing then shows that it is iiRDS/A. Each nested container is compared
-with the package that declares it, so a grandchild packed beside its
-parent, where section 6.3.3 puts it, is held to that parent's profile
-whatever the top package's is. Use an iiRDS/A child, or remove the
-parent's iiRDS/A restriction if the delivery does not conform to it.
-Change a child's profile declaration only when its content conforms, and
-write it as iirds:formatRestriction A. An R75 error makes validation exit
-1 when the package previously passed.
+own metadata cannot be read -- the child does not open as a ZIP archive,
+holds no metadata.rdf, or holds one that is stored with a compression
+method this validator does not read, does not parse or is refused, or the
+child or its metadata.rdf is larger than the 64 MiB this validator reads
+either to -- since nothing then shows that it is iiRDS/A. Each nested
+container is compared with the package that declares it, so a grandchild
+packed beside its parent, where section 6.3.3 puts it, is held to that
+parent's profile whatever the top package's is. Use an iiRDS/A child, or
+remove the parent's iiRDS/A restriction if the delivery does not conform
+to it. Change a child's profile declaration only when its content
+conforms, and write it as iirds:formatRestriction A. An R75 error makes
+validation exit 1 when the package previously passed.
 
 For every edition, R76 checks each proprietary subproperty against the
 iiRDS property it refines -- the nearest bundled one above it -- using the

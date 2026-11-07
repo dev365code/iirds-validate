@@ -762,3 +762,56 @@ def test_a_packed_entry_the_archive_will_not_give_back_is_reported(tmp_path, mid
     assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
             "the entry could not be read from the archive -- whether it is a package was not read"
             in found[0].violation.detail)
+
+
+def test_a_container_two_levels_down_that_packs_itself_is_compared_once(tmp_path, monkeypatch):
+    """The bytes of every container packing one are kept for each level below
+    it: an iiRDS/H container inside the middle one that packs itself is
+    compared with itself once, and not opened again level after level. The
+    read is made to answer with the inner container's own bytes, which is what
+    such an archive gives."""
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "H"), (
+        ("content/self.iirds", holding(tmp_path, "self", package_rdf("urn:test:self"))),))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle"), (("content/inner.iirds", inner),))
+    real = container_rules._own_metadata
+
+    def as_if_packed_in_itself(package, name, *args, **kwargs):
+        if name == "content/self.iirds":
+            package = type("Itself", (), {"read_bounded": staticmethod(
+                lambda _name, limit: (inner[:limit + 1], len(inner) > limit))})()
+        return real(package, name, *args, **kwargs)
+
+    monkeypatch.setattr(container_rules, "_own_metadata", as_if_packed_in_itself)
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", 16 * len(inner))
+    found = [f for f in runner.check(path).findings if f.rule.id == "R9"]
+    assert [f.violation.detail.split(";")[0] for f in found] == [
+        "content/self.iirds, packed inside content/inner.iirds inside content/middle.iirds"]
+
+
+def test_the_bound_is_spent_on_shallower_containers_in_name_order(tmp_path, monkeypatch):
+    """What is packed inside is read shallower first, each level in name order.
+    When the bound runs out between two branches, the later one is what is
+    not read: inside a.iirds the iiRDS/H child is compared, inside b.iirds it
+    is past the bound."""
+    def branch(letter):
+        child_rdf = package_rdf("urn:test:%s-child" % letter, "H")
+        child = holding(tmp_path, letter + "-child", child_rdf)
+        rdf = package_rdf("urn:test:" + letter, "A")
+        return rdf, child_rdf, child, holding(tmp_path, letter, rdf,
+                                               (("content/%s-child.iirds" % letter, child),))
+
+    a_rdf, a_child_rdf, a_child, a = branch("a")
+    b_rdf, _b_child_rdf, b_child, b = branch("b")
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"),
+                         (("content/a.iirds", a), ("content/b.iirds", b)))
+    first_level = len(a) + len(a_rdf.encode()) + len(b) + len(b_rdf.encode())
+    # Room for one child and its metadata, whichever is read first: the order decides.
+    bound = first_level + max(len(a_child), len(b_child)) + len(a_child_rdf.encode())
+    with zipfile.ZipFile(path) as top:
+        assert top.getinfo("content/middle.iirds").file_size <= bound
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
+    found = profile_findings(path)
+    assert [f.violation.detail.split(",")[0] for f in found] == ["content/a-child.iirds",
+                                                                  "content/b-child.iirds"]
+    assert "formatRestriction 'H'" in found[0].violation.detail
+    assert "are read to %d bytes together" % bound in found[1].violation.detail

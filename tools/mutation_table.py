@@ -168,6 +168,13 @@ TABLE = [
      '            if False:',
      ['tests/test_nested_profiles.py'],
      'a nested package an iiRDS/A package declares as not A must be reported'),
+    ('earned/r75-declared-value-a-unsaid',
+     'src/iirds_validate/rules/container.py',
+     '                                detail="%s states iirds:formatRestriction %s for it; iiRDS/A "\n'
+     '                                       "is the value A"\n',
+     '                                detail="%s states iirds:formatRestriction %s for it"\n',
+     ['tests/test_nested_profiles.py'],
+     'a declaration that writes iiRDS/A is told the value is A'),
     ('earned/r75-unread-declared-child-silent',
      'src/iirds_validate/rules/container.py',
      '            if ctx.variant == "A" and (nesting.found[name] is not None\n'

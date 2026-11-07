@@ -158,20 +158,24 @@ def test_each_level_uses_its_direct_children(tmp_path):
     assert len(profile_findings(middle)) == 1
 
 
+@pytest.mark.parametrize("declared", ["H", "iiRDS/A"])
 @pytest.mark.parametrize("packed", [False, True], ids=["declared-only", "packed-declaring-A"])
-def test_a_package_the_parent_declares_as_not_a_is_reported(tmp_path, packed):
+def test_a_package_the_parent_declares_as_not_a_is_reported(tmp_path, packed, declared):
     """The parent's own metadata can say what it nests. Section 6.3.3's
     declaration is an iirds:Package, and iirds:formatRestriction is a property
     of one: an iiRDS/A package whose metadata.rdf declares a nested package
     with the restriction H says that it nests an iiRDS/H package, whether the
-    archive is packed beside it or not, and whatever that archive says."""
+    archive is packed beside it or not, and whatever that archive says. A
+    declaration that writes iiRDS/A is not iiRDS/A either -- the value is A
+    -- and the finding says so, as the one about a child's own metadata does."""
     extra = ((("content/child.iirds",
                archive(tmp_path, "child", package_rdf("urn:test:child", "A"))),) if packed else ())
     path = build_package(tmp_path, "enclosing.iirds", extra=extra,
-                         metadata=package_rdf(profile="A", declares=(("urn:test:child", "H"),)))
+                         metadata=package_rdf(profile="A", declares=(("urn:test:child", declared),)))
     found = profile_findings(path)
     assert [f.violation.subject for f in found] == ["urn:test:child"]
-    assert "iirds:formatRestriction 'H'" in found[0].violation.detail
+    assert "iirds:formatRestriction %r" % declared in found[0].violation.detail
+    assert found[0].violation.detail.endswith("; iiRDS/A is the value A")
 
 
 def test_a_declaration_in_a_nested_container_is_its_own(tmp_path):

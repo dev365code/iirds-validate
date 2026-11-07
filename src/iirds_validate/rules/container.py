@@ -880,7 +880,8 @@ def r75_a_package_nests_a_packages(ctx):
             if values and values[0] != "A":
                 yield Violation("an iiRDS/A package declares a nested package that is not "
                                 "iiRDS/A", subject=ctx.ref(pkg),
-                                detail="%s states iirds:formatRestriction %s for it"
+                                detail="%s states iirds:formatRestriction %s for it; iiRDS/A "
+                                       "is the value A"
                                        % (source, ", ".join(repr(value) for value in values)))
 
 

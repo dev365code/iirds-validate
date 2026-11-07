@@ -1347,6 +1347,41 @@ def test_a_package_that_is_not_handover_is_left_to_the_other_rules(tmp_path, top
     assert findings(side_by_side(tmp_path, top, middle, "H"), "R9") == []
 
 
+@pytest.mark.parametrize("top", [None, "A"], ids=["unrestricted-top", "A-top"])
+@pytest.mark.parametrize("middle,reported", [("H", True), (None, False), ("A", False)],
+                         ids=["H-middle", "unrestricted-middle", "A-middle"])
+def test_a_handover_package_that_packs_a_container_inside_itself_is_reported(tmp_path, top,
+                                                                            middle, reported):
+    '''"an iiRDS/H package MUST NOT contain another iiRDS ZIP archive"
+
+    An iiRDS/H container in this archive that packs one inside itself
+    contains one, declared or not, whatever the top package's profile is.
+    The finding's subject is where the container is in this archive, and its
+    detail says what it packs.'''
+    from test_nested_profiles import holding, package_rdf, packed_inside
+
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner"))
+    found = findings(packed_inside(tmp_path, package_rdf("urn:test:middle", middle),
+                                   (("content/inner.iirds", inner),), top=top), "R9")
+    assert [f.violation.subject for f in found] == (["content/middle.iirds"] if reported else [])
+    assert all(f.violation.detail.startswith("content/inner.iirds, packed inside "
+                                             "content/middle.iirds; section 8.3.1.2")
+               for f in found)
+
+
+def test_a_handover_package_packed_two_levels_down_is_reported_for_what_it_packs(tmp_path):
+    from test_nested_profiles import holding, package_rdf, packed_inside
+
+    deepest = holding(tmp_path, "deepest", package_rdf("urn:test:deepest"))
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "H"),
+                    (("content/deepest.iirds", deepest),))
+    found = findings(packed_inside(tmp_path, package_rdf("urn:test:middle"),
+                                   (("content/inner.iirds", inner),)), "R9")
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert found[0].violation.detail.startswith(
+        "content/deepest.iirds, packed inside content/inner.iirds inside content/middle.iirds")
+
+
 def test_a_second_package_of_a_handover_childs_own_is_not_one_it_nests(tmp_path):
     """Section 6.3.3 declares a nested package as part of its parent. A
     package the iiRDS/H middle's own metadata leaves part of nothing is one of

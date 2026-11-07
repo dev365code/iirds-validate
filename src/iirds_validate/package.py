@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import io
 import os
 import posixpath
 import stat
@@ -199,12 +200,15 @@ class Package:
     dangling_links: Tuple[str, ...] = ()
     absolute_links: Tuple[str, ...] = ()
 
-    def __init__(self, path):
+    def __init__(self, path, data: Optional[bytes] = None):
+        """`data`, where given, is the archive's bytes, already read: a
+        container packed inside another one is opened by this class all the
+        same, and `path` then only names it."""
         self.path = Path(path)
-        if not self.path.exists():
+        if data is None and not self.path.exists():
             raise UnreadablePath("no such file: %s" % self.path)
         try:
-            self._zip = zipfile.ZipFile(self.path)
+            self._zip = zipfile.ZipFile(self.path if data is None else io.BytesIO(data))
         except zipfile.BadZipFile as exc:
             raise PackageError(str(exc)) from exc
         except OSError as exc:

@@ -7,12 +7,13 @@ none of them are expressible in SHACL, which is why they live in Python.
 from __future__ import annotations
 
 import codecs
+import hashlib
 import io
 import json
 import posixpath
 import re
 import zipfile
-from collections import Counter
+from collections import Counter, deque
 from typing import NamedTuple
 
 from rdflib import Dataset, Graph, URIRef
@@ -36,7 +37,7 @@ from ..model import (
     PACKAGE_BASE,
     Violation,
 )
-from ..package import entry_named, nested_containers
+from ..package import Package, entry_named, nested_containers
 from ..registry import rule
 from .handover_html import content_list_document
 
@@ -596,20 +597,25 @@ def c16_2_jsonld(ctx):
                                 "statements in it reach no consumer that prefers JSON-LD.")
 
 
-def _own_metadata(package, name: str):
+def _own_metadata(package, name: str, limit=None, past=None, kept=None):
     """What a nested container's own metadata.rdf says: the IRIs it gives its
     own package, its graph, and None -- or, where that cannot be read, None
     twice and what stopped it, which a finding about the child says.
 
     The container is read whole, bounded as a metadata file is, because a ZIP
     names its entries at its end. Not charged to the content budget, for the
-    reason `_jsonld_metadata_elsewhere` gives.
+    reason `_jsonld_metadata_elsewhere` gives. A container packed inside
+    another is read to what is left of the bound they share (`limit`), and
+    `past` says so; `kept` is given the bytes, which `_packed_inside` opens.
     """
     try:
-        raw, oversize = package.read_bounded(name, MAX_METADATA_BYTES)
+        raw, oversize = package.read_bounded(
+            name, MAX_METADATA_BYTES if limit is None else limit)
         if oversize:
-            return None, None, ("the archive is past the %d byte bound a nested container "
-                                "is read to" % MAX_METADATA_BYTES)
+            return None, None, past or ("the archive is past the %d byte bound a nested "
+                                        "container is read to" % MAX_METADATA_BYTES)
+        if kept is not None:
+            kept.append(raw)
         with zipfile.ZipFile(io.BytesIO(raw)) as inner:
             if METADATA_RDF not in inner.namelist():
                 return None, None, "the archive has no %s" % METADATA_RDF
@@ -639,6 +645,68 @@ def _iri(node) -> str:
     """An IRI as compared here. No IRI holds a space, and the standard's own
     Example 16 opens the child's with one; that is not a different package."""
     return str(node).strip()
+
+
+class _Inside(NamedTuple):
+    """A container packed inside a nested one, and its own metadata."""
+    path: tuple     # the nested container in this archive, then each one packed in the last
+    own: object
+    graph: object
+    why: object
+
+
+def _packed_inside(outer: str, raw: bytes) -> list:
+    """Every container packed inside the nested container `outer`, whose bytes
+    are `raw`, at any depth: found as the top archive's are, by
+    `nested_containers`, and each one's own metadata read by `_own_metadata`.
+    Shallower ones first, each level in name order.
+
+    Section 6.3.3 packs every nested container side by side in the archive of
+    the highest level package, and section 8.3.1.2 speaks of nesting archives
+    in each other, which R8 reads as allowed as well; the package packing one
+    nests it. All of them are read within
+    the bound one nested container is read to, together: past it, the
+    reading stops, and what is left is reported as not read. A container
+    whose bytes are those of one packing it -- a ZIP archive can be written to
+    contain itself -- is that container again: it is compared with the one
+    packing it, and not opened again.
+    """
+    found, room = [], MAX_METADATA_BYTES
+    past = ("the containers packed inside %s are read to %d bytes together, and this one "
+            "is past that" % (outer, MAX_METADATA_BYTES))
+    queue = deque([((outer,), raw, frozenset({hashlib.sha256(raw).digest()}))])
+    while queue:
+        path, data, enclosing = queue.popleft()
+        try:
+            held = Package(path[-1], data=data)
+        except Exception:                     # what does not open packs nothing read here
+            continue
+        with held:
+            for name in nested_containers(held):
+                kept = []
+                own, graph, why = _own_metadata(held, name, room, past, kept)
+                found.append(_Inside(path + (name,), own, graph, why))
+                if kept:
+                    room -= len(kept[0])
+                    mark = hashlib.sha256(kept[0]).digest()
+                    if mark not in enclosing:
+                        queue.append((path + (name,), kept[0], enclosing | {mark}))
+    return found
+
+
+def _packed_where(path) -> str:
+    """Where a container packed inside a nested one is: the finding's subject
+    is the nested container in this archive, and this names the rest."""
+    return "%s, packed inside %s" % (path[-1], " inside ".join(reversed(path[:-1])))
+
+
+def _packed_with_parents(nesting, name):
+    """Each container packed inside nested container `name`, with the graph
+    of the one packing it -- None where that one's metadata was not read."""
+    graphs = {(name,): nesting.opened[name][1]}
+    for inside in nesting.packed[name]:
+        graphs[inside.path] = inside.graph
+        yield inside, graphs[inside.path[:-1]]
 
 
 def _declared_for(graph, name: str, own):
@@ -699,13 +767,18 @@ class _Nesting(NamedTuple):
     spare: list     # the declarations here left that could be theirs
     declared_by: dict  # name -> every sibling whose metadata declares that child's package
     left: dict      # sibling -> the packages it declares that no container read here is
+    packed: dict    # name -> what that child packs inside itself, `_packed_inside`
 
 
 def _nested_declarations(ctx, children) -> _Nesting:
     """Which declaration is each nested container's: read once, for R60,
     which asks that there is one, and for R75, which compares the child with
     every package that declares it."""
-    opened = {name: _own_metadata(ctx.package, name) for name in children}
+    opened, packed = {}, {}
+    for name in children:
+        kept = []
+        opened[name] = _own_metadata(ctx.package, name, kept=kept)
+        packed[name] = _packed_inside(name, kept[0]) if kept else []
     found = {name: _declared_for(ctx.graph, name, opened[name][0]) for name in children}
     declares, by_sibling, declaring = {}, {}, {}
     for name, (own, graph, _why) in opened.items():
@@ -744,11 +817,13 @@ def _nested_declarations(ctx, children) -> _Nesting:
                  and _not_exactly_one(rdf, p if rdf is not None and (p, None, None) in rdf
                                       else None) is None]
     read = {_iri(p) for p in container_packages(ctx.graph)}.union(
-        *(own for own, _graph, _why in opened.values() if own))
+        *(own for own, _graph, _why in opened.values() if own),
+        *(inside.own for name in children for inside in packed[name] if inside.own))
     left = {name: [p for p in declares[name]
                    if p not in container_packages(opened[name][1]) and _iri(p) not in read]
             for name in declares}
-    return _Nesting(opened, found, declares, sibling, matched, unread, spare, declared_by, left)
+    return _Nesting(opened, found, declares, sibling, matched, unread, spare, declared_by, left,
+                    packed)
 
 
 #: In iiRDS/H the remedy is R9's: declaring the child would satisfy this rule
@@ -808,6 +883,18 @@ def r75_a_package_nests_a_packages(ctx):
     profile is, and asks of each iiRDS/A package in the archive what it
     nests.
 
+    A container can also be packed inside a nested one rather than beside
+    it: section 8.3.1.2 speaks of "nesting iiRDS ZIP archives in each other",
+    and R8 reads section 6.3.3 to allow that. The package packing it nests it,
+    declared or not, so it is compared with that package, at any depth, and
+    one whose own metadata is not read has not been shown to be iiRDS/A
+    either. The finding's subject is the nested container in this
+    archive, and its detail names the one inside it. What is packed inside
+    one nested container is read within one bound, together (`_packed_inside`).
+    What such a package's own metadata declares is not read here: the
+    declarations asked about are those of the packages in this archive, and
+    validating the container that packs it asks about its own.
+
     A child is iiRDS/A when its own metadata declares it, the way the parent's
     profile is read; whether its content then meets section 8.2 is that
     child's obligation, answered when it is validated. A package's metadata
@@ -826,7 +913,10 @@ def r75_a_package_nests_a_packages(ctx):
     be one. Its IRI is not known, so no sibling's declaration can be matched
     to it; an iiRDS/A sibling that declares a package no container read here
     is, which it can be, accounts for it as well. One that no declaration
-    accounts for is R60's to report.
+    accounts for is R60's to report. R60 counts this package's own
+    declarations alone, at the top layer, so where this package's
+    metadata.rdf leaves none for the child it reports the same child
+    separately.
 
     Only 1.3 is claimed: the local 1.0 specification has no such sentence,
     and no 1.0.1, 1.1 or 1.2 specification is available here.
@@ -862,6 +952,22 @@ def r75_a_package_nests_a_packages(ctx):
         if child_variant != "A":
             yield Violation("an iiRDS/A package contains a child that does not declare iiRDS/A",
                             subject=name, detail=_profile_said(graph) + where)
+    # What each container in this archive packs inside itself, compared
+    # with the package packing it.
+    for name in children:
+        for inside, parent in _packed_with_parents(nesting, name):
+            if parent is None or _detect(parent)[1] != "A":
+                continue
+            where = _packed_where(inside.path)
+            if inside.graph is None:
+                yield Violation("an iiRDS/A package contains a child whose own metadata was "
+                                "not read, so whether it declares iiRDS/A is not known",
+                                subject=name, detail="%s; %s" % (where, inside.why),
+                                fix=_R75_UNREAD)
+            elif _detect(inside.graph)[1] != "A":
+                yield Violation("an iiRDS/A package contains a child that does not declare "
+                                "iiRDS/A", subject=name,
+                                detail="%s; %s" % (where, _profile_said(inside.graph)))
     # What each iiRDS/A package's own metadata says it nests.
     declaring = [(ctx.graph, ctx.variant, "this package's metadata",
                   [p for p in package_nodes(ctx.graph)
@@ -931,6 +1037,11 @@ def r60_nested_containers_are_declared(ctx):
 
     In iiRDS/H the finding carries R9's remedy, which is the one that fits.
 
+    This asks about the containers in this archive: the top package's own
+    children, and the grandchildren section 6.3.3 packs beside them. One
+    packed inside a nested container is that container's to declare, asked
+    when it is validated; R75 and R9 compare it with the package packing it.
+
     Version-gated to 1.3 for the reason R5, R6 and R8 are.
     """
     children = nested_containers(ctx.package)
@@ -971,8 +1082,9 @@ def r60_nested_containers_are_declared(ctx):
                         "nested container",
                         subject=name, fix=_R60_REMEDY["iiRDS/H" if ctx.variant == "H" else "other"],
                         detail="its own metadata.rdf does not say which package it is, "
-                               "and no iirds:Package declared here that is part of "
-                               "exactly one package in metadata.rdf is left for it")
+                               "and no iirds:Package declared in this package's own "
+                               "metadata.rdf that is part of exactly one package there is "
+                               "left for it")
 
 
 def _more_or_less_than_one(ctx, pkg, named, names, why):

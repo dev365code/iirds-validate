@@ -522,6 +522,42 @@ what they stood for. Deleting the declarations alone leaves the references
 undefined, which clears this error and leaves a document that still does not
 parse; the remedy says so in those words.
 
+**R75 and R9 — what is packed inside a nested container, read to one bound together.**
+
+Section 6.3.3 packs every nested container side by side in the archive of the
+highest level package, and section 8.3.1.2 speaks of nesting archives in each
+other, which this project reads as allowed as well (R8's docstring says why).
+The package packing one nests it, so R75 and R9 read what each nested container
+packs inside itself, at any depth, the way they read the top archive's: by the
+same test of how an iiRDS ZIP archive begins, and each one's own metadata by the
+same reader and bounds. The nested container itself is read to 64 MiB, as
+before; everything packed inside it, at every depth, is read within one more
+64 MiB, together.
+
+A tree past that is not read to its end. The reading stops at the first
+container that does not fit in what is left, and under an iiRDS/A package R75
+reports that container as one whose metadata was not read, naming the bound.
+Below it nothing is opened, so what it packs is not reported: an iiRDS/H
+package down there that packs another is not seen. A container whose bytes are
+those of one packing it, which a ZIP archive can be written to be, is that
+container again: it is compared with the one packing it and not opened a
+second time. Validating the nested container on its own reads further, because
+each run reads its own archive's containers to the same bounds.
+
+What a container packed inside another declares in its own metadata.rdf is not
+read either: R75 and R9 ask about the declarations of the packages in the top
+archive, and a run over the container that packs it asks about its own.
+
+**R75 and R60 — one unread container, two packages' metadata.**
+
+A nested container whose own metadata is not read has no IRI to match a
+declaration by. R75 counts it as declared by an iiRDS/A package beside it whose
+metadata declares a package that is none of the containers read, and reports it
+as not shown to be iiRDS/A. R60 counts only what the top package's own
+metadata.rdf declares, at the top layer, so where that leaves no declaration for
+the container, R60 reports the same container separately: two findings, each
+about a different package's metadata.
+
 ## Rules where this project is more lenient, deliberately
 
 Each of these was stricter until the reference's own fixtures showed the cost —

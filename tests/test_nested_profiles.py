@@ -2,6 +2,7 @@
 it is compared with the profile of the package that declares the container."""
 from __future__ import annotations
 
+import hashlib
 import io
 import zipfile
 
@@ -149,13 +150,19 @@ def test_an_older_parent_does_not_run_the_rule(tmp_path):
     assert profile_findings(nested(tmp_path, "H", version="1.0")) == []
 
 
-def test_each_level_uses_its_direct_children(tmp_path):
+def test_each_level_is_compared_with_the_package_packing_it(tmp_path):
+    """The iiRDS/A middle container packs an iiRDS/H one inside itself.
+    Validated on its own it reports that child; packed in the outer archive,
+    the outer run reports it too, under the middle container's place in that
+    archive -- the middle package nests it whichever archive is checked."""
     middle_dir = tmp_path / "middle"
     middle_dir.mkdir()
     middle = nested(middle_dir, "H")
     outer = build_package(tmp_path, "enclosing.iirds", metadata=metadata("A"),
                           extra=(("content/middle.iirds", middle.read_bytes()),))
-    assert profile_findings(outer) == []
+    found = profile_findings(outer)
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert "content/member-0.iirds, packed inside content/middle.iirds" in found[0].violation.detail
     assert len(profile_findings(middle)) == 1
 
 
@@ -439,3 +446,157 @@ def test_an_unread_declared_child_says_what_stopped_the_read(tmp_path, monkeypat
     found = profile_findings(path)
     assert [f.violation.subject for f in found] == ["content/child.iirds"]
     assert said in found[0].violation.detail
+
+
+def packed_inside(tmp_path, middle_rdf, inner, top=None):
+    """A middle container in the top archive with `inner` -- (entry name,
+    archive bytes) pairs -- packed inside it rather than beside it."""
+    folder = tmp_path / "middle"
+    folder.mkdir()
+    middle = build_package(folder, "middle.iirds", metadata=middle_rdf,
+                           extra=tuple(inner)).read_bytes()
+    return build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(profile=top, declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds", middle),))
+
+
+def holding(tmp_path, name, rdf, inner=(), filler=0):
+    """A container's bytes: `rdf` as its metadata, `inner` packed inside it,
+    and `filler` bytes that do not compress."""
+    folder = tmp_path / name
+    folder.mkdir()
+    noise = b"".join(hashlib.sha256(b"%d" % i).digest() for i in range(filler // 32))
+    extra = tuple(inner) + ((("content/filler.bin", noise),) if filler else ())
+    return build_package(folder, name + ".iirds", metadata=rdf, extra=extra).read_bytes()
+
+
+@pytest.mark.parametrize("top", [None, "A"], ids=["unrestricted-top", "A-top"])
+@pytest.mark.parametrize("declared,inner,reported", [
+    (False, "H", True),
+    (True, "H", True),
+    (False, "A", False),
+], ids=["H-undeclared", "H-declared-without-a-profile", "A"])
+def test_a_package_an_a_container_packs_inside_itself_is_held_to_it(tmp_path, top, declared,
+                                                                    inner, reported):
+    '''"An iiRDS/A package MUST nest only iiRDS/A packages"
+
+    Section 6.3.3 packs nested containers side by side in the top archive,
+    and a container can pack one inside itself all the same: the package it
+    packs is one it nests, declared or not. The finding's subject is where the
+    container is in this archive, and its detail says what it packs.'''
+    middle = package_rdf("urn:test:middle", "A",
+                         declares=(("urn:test:inner", None),) if declared else ())
+    path = packed_inside(tmp_path, middle, (("content/inner.iirds",
+                                             holding(tmp_path, "inner",
+                                                     package_rdf("urn:test:inner", inner))),),
+                         top=top)
+    found = profile_findings(path)
+    assert [f.violation.subject for f in found] == (["content/middle.iirds"] if reported else [])
+    assert all("content/inner.iirds, packed inside content/middle.iirds" in f.violation.detail
+               and "iirds:formatRestriction 'H'" in f.violation.detail for f in found)
+
+
+@pytest.mark.parametrize("middle", [None, "H"], ids=["unrestricted-middle", "H-middle"])
+def test_what_a_container_that_is_not_a_packs_is_not_this_rules(tmp_path, middle):
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "H"))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", middle),
+                         (("content/inner.iirds", inner),))
+    assert profile_findings(path) == []
+
+
+def test_a_package_packed_two_levels_down_is_held_to_the_one_packing_it(tmp_path):
+    """Inside the unrestricted middle container an iiRDS/A one, and inside
+    that an iiRDS/H one: the iiRDS/A package packing it nests it."""
+    deepest = holding(tmp_path, "deepest", package_rdf("urn:test:deepest", "H"))
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "A"),
+                    (("content/deepest.iirds", deepest),))
+    found = profile_findings(packed_inside(tmp_path, package_rdf("urn:test:middle"),
+                                           (("content/inner.iirds", inner),)))
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert ("content/deepest.iirds, packed inside content/inner.iirds inside "
+            "content/middle.iirds" in found[0].violation.detail)
+
+
+@pytest.mark.parametrize("declared", [False, True], ids=["undeclared", "declared"])
+def test_an_unread_package_an_a_container_packs_inside_itself_is_reported(tmp_path, declared):
+    """A container packed inside an iiRDS/A one is that package's child,
+    declared or not, so one whose own metadata is not read has not been shown
+    to be iiRDS/A. R60 asks what the top package declares for the containers
+    in its own archive, and says nothing about it."""
+    middle = package_rdf("urn:test:middle", "A",
+                         declares=(("urn:test:inner", None),) if declared else ())
+    path = packed_inside(tmp_path, middle,
+                         (("content/inner.iirds", holding(tmp_path, "inner", "<rdf")),))
+    found = runner.check(path).findings
+    profiles = [f for f in found if f.rule.id == "R75"]
+    assert [f.violation.subject for f in profiles] == ["content/middle.iirds"]
+    assert "content/inner.iirds, packed inside content/middle.iirds" in profiles[0].violation.detail
+    assert "does not parse" in profiles[0].violation.detail
+    assert not any(f.rule.id == "R60" for f in found)
+
+
+def test_a_declaration_a_packed_container_accounts_for_is_not_left_for_an_unread_one(tmp_path):
+    """The package the iiRDS/A middle declares is packed inside it and read,
+    so the declaration is not one the unread container beside the middle can
+    be: R60 reports that one, and this rule does not."""
+    middle = holding(tmp_path, "middle", package_rdf("urn:test:middle", "A",
+                                                      declares=(("urn:test:inner", None),)),
+                     (("content/inner.iirds",
+                       holding(tmp_path, "inner", package_rdf("urn:test:inner", "A"))),))
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds", middle),
+                                ("content/other.iirds", holding(tmp_path, "other", "<rdf"))))
+    found = runner.check(path).findings
+    assert [f.violation.subject for f in found if f.rule.id == "R75"] == []
+    assert [f.violation.subject for f in found if f.rule.id == "R60"] == ["content/other.iirds"]
+
+
+def test_what_is_packed_past_the_bound_is_not_read(tmp_path, monkeypatch):
+    """The containers packed inside one in this archive are read to the bound
+    one nested container is read to, all of them together. Past it the
+    reading stops, and a container it did not read inside an iiRDS/A package
+    is reported as one whose metadata was not read. Lowering the bound to the
+    middle container's size takes the line a deep tree past 64 MiB takes,
+    without writing one."""
+    deepest = holding(tmp_path, "deepest", package_rdf("urn:test:deepest", "A"), filler=4096)
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "A"),
+                    (("content/deepest.iirds", deepest),))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"),
+                         (("content/inner.iirds", inner),))
+    assert profile_findings(path) == []
+    with zipfile.ZipFile(path) as top:
+        bound = top.getinfo("content/middle.iirds").file_size
+    assert len(inner) <= bound < len(inner) + len(deepest)
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
+    found = profile_findings(path)
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert "content/deepest.iirds, packed inside content/inner.iirds" in found[0].violation.detail
+    assert ("the containers packed inside content/middle.iirds are read to %d bytes together"
+            % bound in found[0].violation.detail)
+
+
+def test_a_container_that_packs_itself_is_compared_once(tmp_path, monkeypatch):
+    """A ZIP archive can be written to contain itself, so that opening each
+    copy finds the next. A container packed inside one whose bytes it has is
+    that container again: it is compared with the one packing it once, and
+    not opened again. The read is made to answer with the middle's own bytes,
+    which is what such an archive gives."""
+    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "A"))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "H"),
+                         (("content/inner.iirds", inner),))
+    with zipfile.ZipFile(path) as top:
+        middle = top.read("content/middle.iirds")
+    real = container_rules._own_metadata
+
+    def as_if_packed_in_itself(package, name, *args, **kwargs):
+        if name == "content/inner.iirds":
+            package = type("Itself", (), {"read_bounded": staticmethod(
+                lambda _name, limit: (middle[:limit + 1], len(middle) > limit))})()
+        return real(package, name, *args, **kwargs)
+
+    monkeypatch.setattr(container_rules, "_own_metadata", as_if_packed_in_itself)
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", 16 * len(middle))
+    found = [f for f in runner.check(path).findings if f.rule.id == "R9"]
+    assert [f.violation.detail.split(";")[0] for f in found] == [
+        "content/inner.iirds, packed inside content/middle.iirds"]

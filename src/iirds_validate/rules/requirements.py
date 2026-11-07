@@ -32,7 +32,7 @@ from ..context import _detect, container_packages, package_nodes
 from ..model import METADATA_RDF, MIMETYPE_FILE, PACKAGE_BASE, Violation, is_named
 from ..package import MAX_SIDE_BYTES, nested_containers
 from ..registry import rule
-from .container import _nested_declarations
+from .container import _nested_declarations, _packed_where, _packed_with_parents
 
 #: Obligations the standard states that no validator can check on a package,
 #: because they are addressed to somebody else.
@@ -556,7 +556,12 @@ def r9_a_handover_package_does_not_nest(ctx):
     so a grandchild sits beside an iiRDS/H middle container that declares it.
     That middle package nests one, which section 6.7.3 forbids, and the nested
     declarations are read the way R60 and R75 read them: what a nested
-    container's own metadata declares besides itself.
+    container's own metadata declares besides itself. An iiRDS/H container in
+    this archive can also pack an iiRDS ZIP archive inside itself, at any
+    depth, which is what section 8.3.1.2 says it must not contain, declared or
+    not; that is read the way R75 reads it, and reported under the nested
+    container's place in this archive. What a package packed inside another
+    declares in its own metadata is not read here, as R75 says.
 
     Version-gated to 1.3 because the cached 1.0 release has no handover
     profile at all -- the string iiRDS/H does not occur in it.
@@ -601,6 +606,13 @@ def r9_a_handover_package_does_not_nest(ctx):
                             detail="the metadata.rdf of %s, an iiRDS/H package nested here, "
                                    "declares it; section 6.7.3; the handover profile forms "
                                    "hierarchies with component trees instead" % name)
+    for name in children:
+        for inside, parent in _packed_with_parents(nesting, name):
+            if parent is not None and _detect(parent)[1] == "H":
+                yield Violation("a handover package must not contain another iiRDS ZIP archive",
+                                subject=name,
+                                detail="%s; section 8.3.1.2; use a component tree for the "
+                                       "hierarchy" % _packed_where(inside.path))
 
 
 @rule("R11", kind="schema", prio="MUST", versions=(), variants=(),

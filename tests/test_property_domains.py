@@ -259,6 +259,51 @@ def test_a_datatype_below_the_iirds_range_complies(tmp_path, parent, datatype):
     assert property_findings(path) == []
 
 
+#: RDF 1.1 Concepts and Abstract Syntax, section 5.1: the XML Schema built-in
+#: datatypes RDF may use, written out here rather than read from the rule.
+RDF_COMPATIBLE_XSD = (
+    "string", "boolean", "decimal", "integer",
+    "double", "float",
+    "date", "time", "dateTime", "dateTimeStamp",
+    "gYear", "gMonth", "gDay", "gYearMonth", "gMonthDay", "duration", "yearMonthDuration",
+    "dayTimeDuration",
+    "byte", "short", "int", "long", "unsignedByte", "unsignedShort", "unsignedInt",
+    "unsignedLong", "positiveInteger", "nonNegativeInteger", "negativeInteger",
+    "nonPositiveInteger",
+    "hexBinary", "base64Binary",
+    "anyURI", "language", "normalizedString", "token", "NMTOKEN", "Name", "NCName",
+)
+
+
+@pytest.mark.parametrize("datatype", [XSD[name] for name in RDF_COMPATIBLE_XSD]
+                         + [RDF.langString, RDF.HTML, RDF.XMLLiteral],
+                         ids=lambda datatype: str(datatype).rsplit("#", 1)[-1])
+def test_every_datatype_rdf_recognizes_is_below_a_literal_range(tmp_path, datatype):
+    """RDF 1.1 Semantics puts every recognized datatype below rdfs:Literal:
+    the thirty-nine of section 5.1's table, and rdf:langString, rdf:HTML and
+    rdf:XMLLiteral, which RDF itself defines. A proprietary property under
+    iirds:title, whose range is rdfs:Literal, can narrow it to any of them."""
+    assert len(set(RDF_COMPATIBLE_XSD)) == 39
+    path = package_path(tmp_path, [(P, RDFS.subPropertyOf, IIRDS.title), (P, RDFS.range, datatype)])
+    assert property_findings(path) == []
+
+
+def test_two_bundled_properties_a_package_puts_in_a_cycle_are_both_compared(tmp_path):
+    """The iiRDS property a property refines is the nearest bundled one above
+    it: one no other bundled property above it sits below. A package that
+    declares iirdsRelationConcept below has-rendition, where the bundle puts
+    has-rendition below iirdsRelationConcept, makes each below the other;
+    neither is nearer, and the property is held to both."""
+    relation = IIRDS.iirdsRelationConcept
+    found = property_findings(package_path(tmp_path, [
+        (P, RDFS.subPropertyOf, Q), (P, RDFS.domain, LOCAL.Separate),
+        (relation, RDFS.subPropertyOf, Q)]))
+    assert [f.violation.subject for f in found] == [str(P), str(P)]
+    details = [f.violation.detail for f in found]
+    assert any("has-rendition" in detail for detail in details)
+    assert any("iirdsRelationConcept" in detail for detail in details)
+
+
 @pytest.mark.parametrize("parent,datatype", [
     (IIRDS.dateOfCreation, XSD.string),
     (IIRDS.dateOfCreation, XSD.dateTime),

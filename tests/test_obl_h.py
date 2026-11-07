@@ -1345,3 +1345,17 @@ def test_a_package_that_is_not_handover_is_left_to_the_other_rules(tmp_path, top
     from test_nested_profiles import side_by_side
 
     assert findings(side_by_side(tmp_path, top, middle, "H"), "R9") == []
+
+
+def test_a_second_package_of_a_handover_childs_own_is_not_one_it_nests(tmp_path):
+    """Section 6.3.3 declares a nested package as part of its parent. A
+    package the iiRDS/H middle's own metadata leaves part of nothing is one of
+    its own, and section 6.7.3 forbids nesting, not that."""
+    from test_nested_profiles import archive, package_rdf, second_own_package
+
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds",
+                                 archive(tmp_path, "middle",
+                                         second_own_package("H", "urn:test:other"))),))
+    assert findings(path, "R9") == []

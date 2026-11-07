@@ -2,11 +2,12 @@
 it is compared with the profile of the package that declares the container."""
 from __future__ import annotations
 
+import io
 import zipfile
 
 import pytest
 
-from conftest import MINIMAL_RDF, build_package
+from conftest import MIMETYPE, MINIMAL_RDF, build_package
 from iirds_validate import runner
 from iirds_validate.registry import all_rules
 from iirds_validate.rules import container as container_rules
@@ -324,22 +325,114 @@ def test_the_finding_says_what_the_child_declared(tmp_path, child_profile, said)
     assert "as iirds:formatRestriction A" in found[0].fix
 
 
+def zipped(*entries):
+    """An archive of (name, bytes, compression) entries, the clock left out."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for name, data, method in entries:
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = method
+            zf.writestr(info, data)
+    return buffer.getvalue()
+
+
+def second_own_package(profile, other_iri, other_profile=None):
+    """A middle container's own metadata naming a second package of its own:
+    one part of no package, which is not a package it nests."""
+    about = "" if other_iri is None else ' rdf:about="%s"' % other_iri
+    said = ("" if other_profile is None
+            else "<iirds:formatRestriction>%s</iirds:formatRestriction>" % other_profile)
+    return package_rdf("urn:test:middle", profile).replace(
+        "</rdf:RDF>", '<iirds:Package%s><iirds:iiRDSVersion>1.3</iirds:iiRDSVersion>%s'
+                      '</iirds:Package></rdf:RDF>' % (about, said))
+
+
+def test_a_declared_child_matched_by_its_rendition_is_reported_when_not_read(tmp_path):
+    """Until 1.2 a parent named its child's archive by iirds:has-rendition, and
+    1.3 does not forbid it. The rendition says which declaration is the
+    child's when the child's own metadata does not, because it is not read:
+    the iiRDS/A parent declares it, and R60 has nothing to say."""
+    rdf = package_rdf(profile="A").replace(
+        "</rdf:RDF>", '<iirds:Package rdf:about="urn:test:child"><iirds:iiRDSVersion>1.3'
+                      '</iirds:iiRDSVersion><iirds:is-part-of-package rdf:resource='
+                      '"urn:test:package"/><iirds:has-rendition><iirds:Rendition><iirds:source>'
+                      'content/child.iirds</iirds:source><iirds:format>application/iirds+zip'
+                      '</iirds:format></iirds:Rendition></iirds:has-rendition></iirds:Package>'
+                      '</rdf:RDF>')
+    path = build_package(tmp_path, "enclosing.iirds", metadata=rdf,
+                         extra=(("content/child.iirds", archive(tmp_path, "child", "<rdf")),))
+    found = runner.check(path).findings
+    assert [f.violation.subject for f in found if f.rule.id == "R75"] == ["content/child.iirds"]
+    assert not any(f.rule.id == "R60" for f in found)
+
+
+def test_a_declaration_matched_to_a_read_child_is_not_left_for_an_unread_one(tmp_path):
+    """The one package the iiRDS/A parent declares is its readable child's, so
+    none is left that the unread child beside it can be: R60 reports that
+    one, and this rule does not take it."""
+    path = build_package(tmp_path, "enclosing.iirds",
+                         metadata=package_rdf(profile="A", declares=(("urn:test:child", None),)),
+                         extra=(("content/child.iirds",
+                                 archive(tmp_path, "child", package_rdf("urn:test:child", "A"))),
+                                ("content/other.iirds", archive(tmp_path, "other", "<rdf"))))
+    found = runner.check(path).findings
+    assert [f.violation.subject for f in found if f.rule.id == "R60"] == ["content/other.iirds"]
+    assert [f.violation.subject for f in found if f.rule.id == "R75"] == []
+
+
+@pytest.mark.parametrize("other_iri,other_profile,unread_beside", [
+    ("urn:test:other", "H", False),
+    (None, None, True),
+], ids=["second-own-package-saying-H", "second-own-package-without-an-IRI-beside-an-unread-one"])
+def test_a_second_package_of_a_childs_own_is_not_one_it_declares(tmp_path, other_iri,
+                                                                 other_profile, unread_beside):
+    """Section 6.3.3 declares a nested package as part of its parent. A
+    package the iiRDS/A middle's own metadata leaves part of nothing is one of
+    its own, not one it nests: neither its profile nor an unread container
+    beside it is held to the middle's."""
+    extra = [("content/middle.iirds",
+              archive(tmp_path, "middle", second_own_package("A", other_iri, other_profile)))]
+    if unread_beside:
+        extra.append(("content/other.iirds", archive(tmp_path, "other", "<rdf")))
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=tuple(extra))
+    assert profile_findings(path) == []
+
+
 @pytest.mark.parametrize("damage,said", [
     ("cut", "could not be read as a ZIP archive"),
     ("entities", "was refused: the document declares XML entities"),
+    ("no-metadata", "the archive has no META-INF/metadata.rdf"),
+    ("bzip2", "its META-INF/metadata.rdf is stored with bzip2 (method 12), which is not read"),
+    ("metadata-past-the-bound",
+     "its META-INF/metadata.rdf is past the 4096 byte bound a metadata file is read to"),
 ])
-def test_an_unread_declared_child_says_what_stopped_the_read(tmp_path, damage, said):
-    """The two other ways a declared child's metadata goes unread: an archive
-    that begins as an iiRDS archive does and ends before its central
-    directory, and a metadata.rdf the reader refuses rather than fails to
-    parse. The finding names which, because the remedy differs."""
+def test_an_unread_declared_child_says_what_stopped_the_read(tmp_path, monkeypatch, damage, said):
+    """The other ways a declared child's metadata goes unread: an archive that
+    begins as an iiRDS archive does and ends before its central directory, a
+    metadata.rdf the reader refuses rather than fails to parse, none at all,
+    one compressed with a method the reader does not decompress, and one
+    larger than a metadata file is read to inside an archive that is not.
+    The finding names which, because the remedy differs."""
     if damage == "cut":
         whole = archive(tmp_path, "whole", package_rdf("urn:test:child", "A"))
         child = whole[:whole.rfind(b"PK\x01\x02")]
-    else:
+    elif damage == "entities":
         rdf = package_rdf("urn:test:child", "A").replace(
             "<rdf:RDF", '<!DOCTYPE rdf:RDF [<!ENTITY a "A">]>\n<rdf:RDF', 1)
         child = archive(tmp_path, "child", rdf)
+    elif damage == "no-metadata":
+        child = build_package(tmp_path, "child.iirds", metadata=None).read_bytes()
+    else:
+        rdf = package_rdf("urn:test:child", "A")
+        method = zipfile.ZIP_BZIP2 if damage == "bzip2" else zipfile.ZIP_DEFLATED
+        if damage == "metadata-past-the-bound":
+            rdf = rdf.replace("<rdf:RDF", "<!--%s-->\n<rdf:RDF" % (" " * 8192), 1)
+            monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", 4096)
+        child = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                       ("META-INF/metadata.rdf", rdf, method))
+        assert damage == "bzip2" or len(child) < 4096 < len(rdf)
     path = build_package(tmp_path, "enclosing.iirds",
                          metadata=package_rdf(profile="A", declares=(("urn:test:child", None),)),
                          extra=(("content/child.iirds", child),))

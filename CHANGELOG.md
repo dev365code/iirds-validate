@@ -33,13 +33,16 @@ beside its parent, where section 6.3.3 puts it, is held to that parent's
 profile whatever the top package's is. A child that cannot be read has no
 IRI to match a declaration by, so an iiRDS/A package beside it counts as
 declaring it when its metadata declares a package that is none of the
-containers read. A container packed inside a nested one rather than beside
-it is compared with the package packing it, at any depth, declared or not,
-and reported when its metadata cannot be read; everything packed inside
-one nested container is read to 64 MiB together, and what is past that is
-reported as not read. Use an iiRDS/A child, or remove the parent's iiRDS/A
-restriction if the delivery does not conform to it. Change a child's
-profile declaration only when its content conforms, and write it as
+containers read. R60's finding about such a container now says that it
+counted the declarations in this package's own metadata.rdf, so where
+those leave none for it, R60 reports the same container beside R75. A
+container packed inside a nested one rather than beside it is compared
+with the package packing it, at any depth, declared or not, and reported
+when its metadata cannot be read; everything packed inside one nested
+container is read to 64 MiB together, and what is past that is reported as
+not read. Use an iiRDS/A child, or remove the parent's iiRDS/A restriction
+if the delivery does not conform to it. Change a child's profile
+declaration only when its content conforms, and write it as
 iirds:formatRestriction A. An R75 error makes validation exit 1 when the
 package previously passed.
 

@@ -600,3 +600,54 @@ def test_a_container_that_packs_itself_is_compared_once(tmp_path, monkeypatch):
     found = [f for f in runner.check(path).findings if f.rule.id == "R9"]
     assert [f.violation.detail.split(";")[0] for f in found] == [
         "content/inner.iirds, packed inside content/middle.iirds"]
+
+
+def test_nothing_is_read_past_the_bound(tmp_path, monkeypatch):
+    """The containers packed inside one nested container are read to one bound
+    together, and past it the reading stops: the container that does not fit
+    in what is left, and every one after it, is reported under an iiRDS/A
+    package as not read, and none of them is read. The one past the bound is
+    large unpacked and small packed, as a stored run of zeros is."""
+    past = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                  ("META-INF/metadata.rdf", package_rdf("urn:test:past", "A"), zipfile.ZIP_DEFLATED),
+                  ("content/zeros.bin", bytes(200_000), zipfile.ZIP_STORED))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"), (
+        ("content/a-fits.iirds", holding(tmp_path, "fits", package_rdf("urn:test:fits", "A"))),
+        ("content/b-past.iirds", past),
+        ("content/c-after.iirds", holding(tmp_path, "after", package_rdf("urn:test:after", "H")))))
+    bound = 100_000
+    with zipfile.ZipFile(path) as top:
+        assert top.getinfo("content/middle.iirds").file_size <= bound < len(past)
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
+    real, asked = container_rules._own_metadata, []
+
+    def counted(package, name, *args, **kwargs):
+        if args:                              # a read of a container packed inside another
+            asked.append(name)
+        return real(package, name, *args, **kwargs)
+
+    monkeypatch.setattr(container_rules, "_own_metadata", counted)
+    found = profile_findings(path)
+    assert [f.violation.detail.split(",")[0] for f in found] == ["content/b-past.iirds",
+                                                                  "content/c-after.iirds"]
+    assert all(f.violation.subject == "content/middle.iirds"
+               and "are read to %d bytes together" % bound in f.violation.detail for f in found)
+    assert asked == ["content/a-fits.iirds", "content/b-past.iirds"]
+
+
+def test_the_packed_tree_is_read_once_per_run(tmp_path, monkeypatch):
+    """R60, R75 and R9 each ask how the nested containers are accounted for.
+    The reading, with what each one packs inside itself, is made once in a
+    run and shared, so the bound it is read to is the run's bound."""
+    real, calls = container_rules._packed_inside, []
+
+    def counted(outer, raw):
+        calls.append(outer)
+        return real(outer, raw)
+
+    monkeypatch.setattr(container_rules, "_packed_inside", counted)
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"), (
+        ("content/inner.iirds", holding(tmp_path, "inner", package_rdf("urn:test:inner", "H"))),))
+    found = runner.check(path).findings
+    assert [f.violation.subject for f in found if f.rule.id == "R75"] == ["content/middle.iirds"]
+    assert calls == ["content/middle.iirds"]

@@ -683,6 +683,9 @@ def _packed_inside(outer: str, raw: bytes) -> list:
             continue
         with held:
             for name in nested_containers(held):
+                if room <= 0:                 # past the bound: what is left is not read
+                    found.append(_Inside(path + (name,), None, None, past))
+                    continue
                 kept = []
                 own, graph, why = _own_metadata(held, name, room, past, kept)
                 found.append(_Inside(path + (name,), own, graph, why))
@@ -691,6 +694,8 @@ def _packed_inside(outer: str, raw: bytes) -> list:
                     mark = hashlib.sha256(kept[0]).digest()
                     if mark not in enclosing:
                         queue.append((path + (name,), kept[0], enclosing | {mark}))
+                elif why == past:
+                    room = 0                  # that read went past what was left
     return found
 
 
@@ -771,9 +776,14 @@ class _Nesting(NamedTuple):
 
 
 def _nested_declarations(ctx, children) -> _Nesting:
-    """Which declaration is each nested container's: read once, for R60,
-    which asks that there is one, and for R75, which compares the child with
-    every package that declares it."""
+    """Which declaration is each nested container's: read once in a run, for
+    R60, which asks that there is one, for R75, which compares the child with
+    every package that declares it, and for R9. The reading is kept on the
+    context, so what is packed inside the containers is read to its bound once
+    in the run rather than once for each rule that asks."""
+    shared, key = getattr(ctx, "_nesting", None), tuple(children)
+    if shared is not None and key in shared:
+        return shared[key]
     opened, packed = {}, {}
     for name in children:
         kept = []
@@ -822,8 +832,11 @@ def _nested_declarations(ctx, children) -> _Nesting:
     left = {name: [p for p in declares[name]
                    if p not in container_packages(opened[name][1]) and _iri(p) not in read]
             for name in declares}
-    return _Nesting(opened, found, declares, sibling, matched, unread, spare, declared_by, left,
-                    packed)
+    nesting = _Nesting(opened, found, declares, sibling, matched, unread, spare, declared_by,
+                       left, packed)
+    if shared is not None:
+        shared[key] = nesting
+    return nesting
 
 
 #: In iiRDS/H the remedy is R9's: declaring the child would satisfy this rule

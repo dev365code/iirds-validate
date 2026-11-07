@@ -95,6 +95,11 @@ class Context:
     #: filled lazily. Per-instance, same reasoning as Ontology's caches.
     _closure: dict = field(default_factory=dict, repr=False)
 
+    #: How the nested containers are accounted for, read once in a run: R60,
+    #: R75 and R9 each ask, and what is packed inside them is read to one
+    #: bound for the run, not one per rule (`rules.container._nested_declarations`).
+    _nesting: dict = field(default_factory=dict, repr=False)
+
     # -- graph helpers ------------------------------------------------------
     def instances_of(self, cls: URIRef, include_subclasses: bool = True) -> List:
         """Subjects typed `cls`, or any class beneath it.

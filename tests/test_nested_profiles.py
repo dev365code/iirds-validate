@@ -727,6 +727,9 @@ def test_a_packed_entry_stored_with_a_method_not_read_is_reported(tmp_path, meth
     assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
             "compression method %s -- whether it is a package was not read" % said
             in found[0].violation.detail)
+    # What stopped it is how it is packed, not its metadata, and the remedy says so.
+    assert "named as an iiRDS ZIP archive that was not opened" in found[0].violation.message
+    assert "deflate" in found[0].fix and "metadata readable" not in found[0].fix
 
 
 def renamed_in_its_local_header(archive_bytes, name, other):
@@ -762,6 +765,8 @@ def test_a_packed_entry_the_archive_will_not_give_back_is_reported(tmp_path, mid
     assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
             "the entry could not be read from the archive -- whether it is a package was not read"
             in found[0].violation.detail)
+    assert "named as an iiRDS ZIP archive that was not opened" in found[0].violation.message
+    assert "metadata readable" not in found[0].fix
 
 
 def test_a_container_two_levels_down_that_packs_itself_is_compared_once(tmp_path, monkeypatch):

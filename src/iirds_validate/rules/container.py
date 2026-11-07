@@ -894,6 +894,12 @@ _R75_UNREAD = ("Make each child's own metadata readable: a META-INF/metadata.rdf
                "nothing shows that it is iiRDS/A." % MAX_METADATA_BYTES)
 
 
+_R75_UNOPENED = ("Pack each nested container as an entry the archive gives back as it is: "
+                 "stored or deflated, the two methods section 5.2.2 allows, with its local "
+                 "header naming the file the central directory names. Until it opens, its own "
+                 "metadata cannot be read, and nothing shows that it is iiRDS/A.")
+
+
 def _profile_said(graph) -> str:
     """What a child's own metadata gives as its profile, in its own words:
     `iiRDS/A` written for `A` is a value, and the finding has to show it."""
@@ -1010,7 +1016,13 @@ def r75_a_package_nests_a_packages(ctx):
             if parent is None or _detect(parent)[1] != "A":
                 continue
             where = _packed_where(inside.path)
-            if inside.graph is None:
+            if inside.unopened:
+                yield Violation("an iiRDS/A package contains an entry named as an iiRDS ZIP "
+                                "archive that was not opened, so whether it is an iiRDS/A "
+                                "package is not known",
+                                subject=name, detail="%s; %s" % (where, inside.why),
+                                fix=_R75_UNOPENED)
+            elif inside.graph is None:
                 yield Violation("an iiRDS/A package contains a child whose own metadata was "
                                 "not read, so whether it declares iiRDS/A is not known",
                                 subject=name, detail="%s; %s" % (where, inside.why),

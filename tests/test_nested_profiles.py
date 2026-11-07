@@ -556,18 +556,19 @@ def test_what_is_packed_past_the_bound_is_not_read(tmp_path, monkeypatch):
     """The containers packed inside one in this archive are read to the bound
     one nested container is read to, all of them together. Past it the
     reading stops, and a container it did not read inside an iiRDS/A package
-    is reported as one whose metadata was not read. Lowering the bound to the
-    middle container's size takes the line a deep tree past 64 MiB takes,
-    without writing one."""
+    is reported as one whose metadata was not read. Lowering the bound to what
+    the middle container and the inner one with its metadata.rdf take takes
+    the line a deep tree past 64 MiB takes, without writing one."""
     deepest = holding(tmp_path, "deepest", package_rdf("urn:test:deepest", "A"), filler=4096)
-    inner = holding(tmp_path, "inner", package_rdf("urn:test:inner", "A"),
-                    (("content/deepest.iirds", deepest),))
+    inner_rdf = package_rdf("urn:test:inner", "A")
+    inner = holding(tmp_path, "inner", inner_rdf, (("content/deepest.iirds", deepest),))
     path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"),
                          (("content/inner.iirds", inner),))
     assert profile_findings(path) == []
     with zipfile.ZipFile(path) as top:
-        bound = top.getinfo("content/middle.iirds").file_size
-    assert len(inner) <= bound < len(inner) + len(deepest)
+        middle = top.getinfo("content/middle.iirds").file_size
+    bound = max(middle, len(inner) + len(inner_rdf.encode()))
+    assert bound < len(inner) + len(inner_rdf.encode()) + len(deepest)
     monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
     found = profile_findings(path)
     assert [f.violation.subject for f in found] == ["content/middle.iirds"]
@@ -651,3 +652,78 @@ def test_the_packed_tree_is_read_once_per_run(tmp_path, monkeypatch):
     found = runner.check(path).findings
     assert [f.violation.subject for f in found if f.rule.id == "R75"] == ["content/middle.iirds"]
     assert calls == ["content/middle.iirds"]
+
+
+def test_a_packed_containers_metadata_is_read_within_the_bound(tmp_path, monkeypatch):
+    """The bound the containers packed inside one nested container share covers
+    everything read from them, each one's metadata.rdf too: a small container
+    whose metadata.rdf unpacks past what is left is not read."""
+    filler = b"".join(hashlib.sha256(b"%d" % i).digest() for i in range(60_000 // 32))
+    first = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                   ("META-INF/metadata.rdf", package_rdf("urn:test:first", "A"), zipfile.ZIP_DEFLATED),
+                   ("content/filler.bin", filler, zipfile.ZIP_STORED))
+    rdf = package_rdf("urn:test:second", "H").replace("<rdf:RDF", "<!--%s-->\n<rdf:RDF" % (" " * 80_000), 1)
+    second = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                    ("META-INF/metadata.rdf", rdf, zipfile.ZIP_DEFLATED))
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"),
+                         (("content/a-first.iirds", first), ("content/b-second.iirds", second)))
+    bound = 100_000
+    assert len(first) + len(second) < bound < len(first) + len(second) + len(rdf)
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
+    found = profile_findings(path)
+    assert [f.violation.detail.split(",")[0] for f in found] == ["content/b-second.iirds"]
+    assert "are read to %d bytes together" % bound in found[0].violation.detail
+
+
+def test_what_a_packed_containers_metadata_takes_is_not_left_for_the_next(tmp_path, monkeypatch):
+    """What a packed container's metadata.rdf unpacks to is taken from the
+    shared bound like its own bytes are, so the next container is read with
+    what is left after both."""
+    bound, filler = 100_000, b"".join(hashlib.sha256(b"%d" % i).digest() for i in range(1875))
+    first_rdf = package_rdf("urn:test:first", "A")
+    first = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                   ("META-INF/metadata.rdf", first_rdf, zipfile.ZIP_DEFLATED),
+                   ("content/filler.bin", filler, zipfile.ZIP_STORED))
+    third = holding(tmp_path, "third", package_rdf("urn:test:third", "H"))
+    left = bound - len(first) - len(first_rdf.encode())
+
+    def second_padded(pad):
+        rdf = package_rdf("urn:test:second", "A").replace(
+            "<rdf:RDF", "<!--%s-->\n<rdf:RDF" % (" " * pad), 1).encode()
+        return rdf, zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                           ("META-INF/metadata.rdf", rdf, zipfile.ZIP_DEFLATED))
+
+    rdf, second = second_padded(0)
+    rdf, second = second_padded(left - len(second) - len(rdf) - len(third) // 2)
+    # The second and its metadata fit in what is left; after them the third does
+    # not, and it would if the metadata were not taken from the bound.
+    assert 0 < left - len(second) - len(rdf) < len(third) < left - len(second)
+    path = packed_inside(tmp_path, package_rdf("urn:test:middle", "A"), (
+        ("content/a-first.iirds", first), ("content/b-second.iirds", second),
+        ("content/c-third.iirds", third)))
+    monkeypatch.setattr(container_rules, "MAX_METADATA_BYTES", bound)
+    found = profile_findings(path)
+    assert [f.violation.detail.split(",")[0] for f in found] == ["content/c-third.iirds"]
+    assert "are read to %d bytes together" % bound in found[0].violation.detail
+
+
+@pytest.mark.parametrize("method,said", [(zipfile.ZIP_BZIP2, "bzip2 (method 12)"),
+                                         (zipfile.ZIP_LZMA, "lzma (method 14)")],
+                         ids=["bzip2", "lzma"])
+def test_a_packed_entry_stored_with_a_method_not_read_is_reported(tmp_path, method, said):
+    """An entry named as an archive inside an iiRDS/A container and stored
+    with a compression method this reader does not decompress is not opened --
+    S14's reason, one level down -- so whether it is an iiRDS/A package is not
+    known, and the finding says why rather than passing it."""
+    middle = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                    ("META-INF/metadata.rdf", package_rdf("urn:test:middle", "A"), zipfile.ZIP_DEFLATED),
+                    ("content/inner.iirds", holding(tmp_path, "inner", package_rdf("urn:test:inner", "H")),
+                     method))
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds", middle),))
+    found = profile_findings(path)
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
+            "compression method %s -- whether it is a package was not read" % said
+            in found[0].violation.detail)

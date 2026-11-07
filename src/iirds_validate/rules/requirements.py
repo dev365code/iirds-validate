@@ -608,7 +608,12 @@ def r9_a_handover_package_does_not_nest(ctx):
                                    "hierarchies with component trees instead" % name)
     for name in children:
         for inside, parent in _packed_with_parents(nesting, name):
-            if parent is not None and _detect(parent)[1] == "H":
+            if parent is not None and _detect(parent)[1] == "H" and inside.unopened:
+                yield Violation("a handover package contains an entry named as an iiRDS ZIP archive "
+                                "that was not opened, so whether it nests a package is not known",
+                                subject=name, detail="%s; %s; section 8.3.1.2"
+                                % (_packed_where(inside.path), inside.why))
+            elif parent is not None and _detect(parent)[1] == "H":
                 yield Violation("a handover package must not contain another iiRDS ZIP archive",
                                 subject=name,
                                 detail="%s; section 8.3.1.2; use a component tree for the "

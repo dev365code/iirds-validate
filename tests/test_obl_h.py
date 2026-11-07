@@ -1394,3 +1394,29 @@ def test_a_second_package_of_a_handover_childs_own_is_not_one_it_nests(tmp_path)
                                  archive(tmp_path, "middle",
                                          second_own_package("H", "urn:test:other"))),))
     assert findings(path, "R9") == []
+
+
+@pytest.mark.parametrize("method,said", [("ZIP_BZIP2", "bzip2 (method 12)"),
+                                         ("ZIP_LZMA", "lzma (method 14)")], ids=["bzip2", "lzma"])
+def test_a_handover_package_holding_an_entry_it_cannot_open_says_so(tmp_path, method, said):
+    """An entry named as an archive inside an iiRDS/H container and stored with
+    a compression method this reader does not decompress is not opened. Its
+    name is then the only evidence that it is an iiRDS ZIP archive, and the
+    finding says so rather than passing it or calling it one."""
+    import zipfile
+
+    from conftest import MIMETYPE
+    from test_nested_profiles import holding, package_rdf, zipped
+
+    middle = zipped(("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+                    ("META-INF/metadata.rdf", package_rdf("urn:test:middle", "H"), zipfile.ZIP_DEFLATED),
+                    ("content/inner.iirds", holding(tmp_path, "inner", package_rdf("urn:test:inner")),
+                     getattr(zipfile, method)))
+    found = findings(build_package(tmp_path, "top.iirds",
+                                   metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                                   extra=(("content/middle.iirds", middle),)), "R9")
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert "not opened" in found[0].violation.message
+    assert found[0].violation.detail.startswith(
+        "content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
+        "compression method %s -- whether it is a package was not read" % said)

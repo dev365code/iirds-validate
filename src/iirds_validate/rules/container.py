@@ -37,7 +37,7 @@ from ..model import (
     PACKAGE_BASE,
     Violation,
 )
-from ..package import Package, entry_named, nested_containers
+from ..package import CONTAINER_SUFFIX, Package, entry_named, nested_containers
 from ..registry import rule
 from .handover_html import content_list_document
 
@@ -605,8 +605,10 @@ def _own_metadata(package, name: str, limit=None, past=None, kept=None):
     The container is read whole, bounded as a metadata file is, because a ZIP
     names its entries at its end. Not charged to the content budget, for the
     reason `_jsonld_metadata_elsewhere` gives. A container packed inside
-    another is read to what is left of the bound they share (`limit`), and
-    `past` says so; `kept` is given the bytes, which `_packed_inside` opens.
+    another is read to what is left of the bound they share (`limit`), its
+    metadata.rdf within what is left after it, and `past` says so; `kept` is
+    given what was read -- the container's bytes, which `_packed_inside`
+    opens, then its metadata.rdf's -- so all of it is taken from that bound.
     """
     try:
         raw, oversize = package.read_bounded(
@@ -625,7 +627,12 @@ def _own_metadata(package, name: str, limit=None, past=None, kept=None):
                 return None, None, "its %s is stored with %s, which is not read" % (
                     METADATA_RDF, method)
             with inner.open(info) as handle:
-                data = handle.read(MAX_METADATA_BYTES + 1)
+                data = handle.read(MAX_METADATA_BYTES + 1 if limit is None
+                                   else min(MAX_METADATA_BYTES, limit - len(raw)) + 1)
+        if kept is not None:
+            kept.append(data)
+        if limit is not None and len(data) > limit - len(raw):
+            return None, None, past
         if len(data) > MAX_METADATA_BYTES:
             return None, None, ("its %s is past the %d byte bound a metadata file is read to"
                                 % (METADATA_RDF, MAX_METADATA_BYTES))
@@ -653,6 +660,7 @@ class _Inside(NamedTuple):
     own: object
     graph: object
     why: object
+    unopened: bool = False  # named as an archive, stored with a method not read
 
 
 def _packed_inside(outer: str, raw: bytes) -> list:
@@ -669,7 +677,10 @@ def _packed_inside(outer: str, raw: bytes) -> list:
     reading stops, and what is left is reported as not read. A container
     whose bytes are those of one packing it -- a ZIP archive can be written to
     contain itself -- is that container again: it is compared with the one
-    packing it, and not opened again.
+    packing it, and not opened again. An entry named as an archive and stored
+    with a compression method this reader does not decompress is not opened
+    either, and is recorded as not read: its name is the only evidence that it
+    is one.
     """
     found, room = [], MAX_METADATA_BYTES
     past = ("the containers packed inside %s are read to %d bytes together, and this one "
@@ -682,7 +693,18 @@ def _packed_inside(outer: str, raw: bytes) -> list:
         except Exception:                     # what does not open packs nothing read here
             continue
         with held:
-            for name in nested_containers(held):
+            # An entry named as an archive and stored with a method this reader
+            # does not decompress cannot be opened, so it is not read either.
+            unopened = {name: unreadable_method(held.info(name)) for name in held.files
+                        if name.endswith(CONTAINER_SUFFIX)}
+            unopened = {name: method for name, method in unopened.items() if method}
+            for name in sorted(set(nested_containers(held)) | set(unopened)):
+                if name in unopened:
+                    found.append(_Inside(path + (name,), None, None,
+                                         "named *.iirds; not opened: compression method %s -- "
+                                         "whether it is a package was not read" % unopened[name],
+                                         True))
+                    continue
                 if room <= 0:                 # past the bound: what is left is not read
                     found.append(_Inside(path + (name,), None, None, past))
                     continue
@@ -690,7 +712,7 @@ def _packed_inside(outer: str, raw: bytes) -> list:
                 own, graph, why = _own_metadata(held, name, room, past, kept)
                 found.append(_Inside(path + (name,), own, graph, why))
                 if kept:
-                    room -= len(kept[0])
+                    room -= sum(len(part) for part in kept)
                     mark = hashlib.sha256(kept[0]).digest()
                     if mark not in enclosing:
                         queue.append((path + (name,), kept[0], enclosing | {mark}))

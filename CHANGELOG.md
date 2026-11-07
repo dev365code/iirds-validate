@@ -9,14 +9,16 @@ changes in the library is recorded beside what changes in the checker.
 Coverage of the standard grows from 187 to 190 of 280 obligations, with
 R9 also claiming the iiRDS/H nesting sentence it already enforces.
 
-R9 now also reports an iiRDS/H package nested in the top archive that declares
-a package of its own -- packed beside it, where section 6.3.3 puts a
-grandchild, packed inside it, or only declared -- and an iiRDS/H package
-nested at any depth that packs an iiRDS ZIP archive inside itself,
-declared or not, whatever the top package's profile is. A finding about
-a package packed inside another names the container in the top archive
-as its subject and the packed one in its detail. The finding is an
-error, so a package that previously passed can now exit 1.
+R9 now also reports an iiRDS/H package nested in the top archive that
+declares a package of its own -- packed beside it, where section 6.3.3
+puts a grandchild, packed inside it, or only declared -- and an iiRDS/H
+package nested at any depth that packs an iiRDS ZIP archive inside itself,
+declared or not, whatever the top package's profile is. A finding about a
+package packed inside another names the container in the top archive as
+its subject and the packed one in its detail; one that holds an entry
+named as an archive that it cannot open is told so, the name being the
+only evidence. The finding is an error, so a package that previously
+passed can now exit 1.
 
 For iiRDS 1.3, R75 reports an iiRDS/A package that nests a package that is
 not iiRDS/A: a child whose own metadata declares iiRDS/H, another value or
@@ -40,11 +42,12 @@ container packed inside a nested one rather than beside it is compared
 with the package packing it, at any depth, declared or not, and reported
 when its metadata cannot be read; everything packed inside one nested
 container is read to 64 MiB together, and what is past that is reported as
-not read. Use an iiRDS/A child, or remove the parent's iiRDS/A restriction
-if the delivery does not conform to it. Change a child's profile
-declaration only when its content conforms, and write it as
-iirds:formatRestriction A. An R75 error makes validation exit 1 when the
-package previously passed.
+not read, as is an entry packed inside that is named as an archive and
+stored with a compression method this validator does not read. Use an
+iiRDS/A child, or remove the parent's iiRDS/A restriction if the delivery
+does not conform to it. Change a child's profile declaration only when its
+content conforms, and write it as iirds:formatRestriction A. An R75 error
+makes validation exit 1 when the package previously passed.
 
 For every edition, R76 checks each proprietary subproperty against the
 iiRDS property it refines -- the nearest bundled one above it -- using the

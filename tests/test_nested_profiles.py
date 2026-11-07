@@ -63,15 +63,40 @@ def declared_child(tmp_path, child_rdf, parent_profile="A"):
                          extra=(("content/child.iirds", archive(tmp_path, "child", child_rdf)),))
 
 
-def side_by_side(tmp_path, top=None, middle="A", grand="H"):
+def side_by_side(tmp_path, top=None, middle="A", grand="H", grand_part_of=None, grand_rdf=None,
+                 extra=()):
     """Section 6.3.3's layout: the grandchild packed beside its parent in the
-    top archive and declared in its parent's own metadata.rdf."""
+    top archive and declared in its parent's own metadata.rdf -- and, given
+    `grand_part_of`, declared in the top's metadata.rdf as well, part of that
+    package."""
     middle_rdf = package_rdf("urn:test:middle", middle, declares=(("urn:test:grand", None),))
-    return build_package(tmp_path, "top.iirds",
-                         metadata=package_rdf(profile=top, declares=(("urn:test:middle", None),)),
+    top_rdf = package_rdf(profile=top, declares=(("urn:test:middle", None),))
+    if grand_part_of is not None:
+        top_rdf = top_rdf.replace(
+            "</rdf:RDF>", '<iirds:Package rdf:about="urn:test:grand"><iirds:iiRDSVersion>1.3'
+                          '</iirds:iiRDSVersion><iirds:is-part-of-package rdf:resource="%s"/>'
+                          '</iirds:Package></rdf:RDF>' % grand_part_of)
+    if grand_rdf is None:
+        grand_rdf = package_rdf("urn:test:grand", grand)
+    return build_package(tmp_path, "top.iirds", metadata=top_rdf,
                          extra=(("content/middle.iirds", archive(tmp_path, "middle", middle_rdf)),
-                                ("content/grand.iirds",
-                                 archive(tmp_path, "grand", package_rdf("urn:test:grand", grand)))))
+                                ("content/grand.iirds", archive(tmp_path, "grand", grand_rdf)))
+                         + tuple(extra))
+
+
+def two_parents(tmp_path, first, second, grand="H"):
+    """Two middle containers side by side, each declaring the one grandchild
+    packed beside them."""
+    middles = tuple(("content/%s-middle.iirds" % letter,
+                     archive(tmp_path, "m" + letter,
+                             package_rdf("urn:test:m" + letter, profile,
+                                         declares=(("urn:test:grand", None),))))
+                    for letter, profile in (("a", first), ("b", second)))
+    return build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:ma", None), ("urn:test:mb", None))),
+                         extra=middles + (("content/grand.iirds",
+                                           archive(tmp_path, "grand",
+                                                   package_rdf("urn:test:grand", grand))),))
 
 
 @pytest.mark.parametrize("child_profile", ["H", None])
@@ -222,6 +247,64 @@ def test_a_grandchild_beside_its_parent_is_compared_with_that_parent(tmp_path, t
 @pytest.mark.parametrize("top,middle,grand", [(None, "A", "A"), (None, None, "H"), ("A", "A", "A")])
 def test_a_grandchild_its_parent_may_nest_is_not_reported(tmp_path, top, middle, grand):
     assert profile_findings(side_by_side(tmp_path, top, middle, grand)) == []
+
+
+@pytest.mark.parametrize("grand", ["H", "A"])
+@pytest.mark.parametrize("grand_part_of", ["urn:test:package", "urn:test:middle"],
+                         ids=["as-the-tops", "as-the-middles"])
+def test_a_grandchild_the_top_declares_as_well_is_held_to_its_parent(tmp_path, grand_part_of,
+                                                                      grand):
+    """A second declaration in the top's metadata.rdf does not take the
+    grandchild from the iiRDS/A package beside it that declares it: every
+    package that declares a child is one that nests it, and the iiRDS/A one
+    among them asks for an iiRDS/A child."""
+    found = profile_findings(side_by_side(tmp_path, grand=grand, grand_part_of=grand_part_of))
+    assert [f.violation.subject for f in found] == (["content/grand.iirds"] if grand == "H"
+                                                    else [])
+    assert all("content/middle.iirds" in f.violation.detail for f in found)
+
+
+@pytest.mark.parametrize("first,second,declarer", [
+    ("A", None, "content/a-middle.iirds"),
+    (None, "A", "content/b-middle.iirds"),
+    (None, None, None),
+], ids=["A-sorts-first", "A-sorts-second", "neither-A"])
+def test_every_package_declaring_a_grandchild_is_compared(tmp_path, first, second, declarer):
+    """Two packages beside each other can both declare one grandchild. The
+    iiRDS/A one asks for an iiRDS/A child, whichever name sorts first."""
+    found = profile_findings(two_parents(tmp_path, first, second))
+    assert [f.violation.subject for f in found] == ([] if declarer is None
+                                                    else ["content/grand.iirds"])
+    assert all(declarer in f.violation.detail for f in found)
+
+
+@pytest.mark.parametrize("middle,grand_part_of,reported", [
+    ("A", None, True),
+    ("A", "urn:test:package", True),
+    (None, "urn:test:package", False),
+], ids=["A-middle-declares-it", "the-top-declares-it-as-well", "no-A-package"])
+def test_an_unread_grandchild_beside_an_a_parent_is_reported(tmp_path, middle, grand_part_of,
+                                                             reported):
+    """The grandchild's metadata does not parse, so its IRI is not known and no
+    declaration can be matched to it. The iiRDS/A package beside it declares
+    a package that no container read here is, which the grandchild can be:
+    nothing then shows that the iiRDS/A package nests only iiRDS/A packages."""
+    found = profile_findings(side_by_side(tmp_path, middle=middle, grand_part_of=grand_part_of,
+                                          grand_rdf="<rdf"))
+    assert [f.violation.subject for f in found] == (["content/grand.iirds"] if reported else [])
+    assert all("does not parse" in f.violation.detail
+               and "content/middle.iirds" in f.violation.detail for f in found)
+
+
+def test_an_unread_container_no_a_declaration_is_left_for_goes_to_r60(tmp_path):
+    """Every package the iiRDS/A middle declares is a container read here, so
+    none of its declarations is left for the unread container beside them:
+    R60 reports that one, as it does with no middle at all."""
+    unread = archive(tmp_path, "other", "<rdf")
+    found = runner.check(side_by_side(tmp_path, grand="A",
+                                      extra=(("content/other.iirds", unread),))).findings
+    assert [f.violation.subject for f in found if f.rule.id == "R75"] == []
+    assert [f.violation.subject for f in found if f.rule.id == "R60"] == ["content/other.iirds"]
 
 
 @pytest.mark.parametrize("child_profile,said", [

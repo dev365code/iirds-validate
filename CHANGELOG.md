@@ -24,9 +24,13 @@ holds no metadata.rdf, or holds one that is stored with a compression
 method this validator does not read, does not parse or is refused, or the
 child or its metadata.rdf is larger than the 64 MiB this validator reads
 either to -- since nothing then shows that it is iiRDS/A. Each nested
-container is compared with the package that declares it, so a grandchild
-packed beside its parent, where section 6.3.3 puts it, is held to that
-parent's profile whatever the top package's is. Use an iiRDS/A child, or
+container is compared with every package that declares it -- the top
+package, a package beside it, or both -- so a grandchild packed beside its
+parent, where section 6.3.3 puts it, is held to that parent's profile
+whatever the top package's is. A child that cannot be read has no IRI to
+match a declaration by, so an iiRDS/A package beside it whose metadata
+declares a package that none of the containers read is counts as
+declaring it. Use an iiRDS/A child, or
 remove the parent's iiRDS/A restriction if the delivery does not conform
 to it. Change a child's profile declaration only when its content
 conforms, and write it as iirds:formatRestriction A. An R75 error makes

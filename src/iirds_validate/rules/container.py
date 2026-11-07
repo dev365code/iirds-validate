@@ -677,10 +677,10 @@ def _packed_inside(outer: str, raw: bytes) -> list:
     reading stops, and what is left is reported as not read. A container
     whose bytes are those of one packing it -- a ZIP archive can be written to
     contain itself -- is that container again: it is compared with the one
-    packing it, and not opened again. An entry named as an archive and stored
-    with a compression method this reader does not decompress is not opened
-    either, and is recorded as not read: its name is the only evidence that it
-    is one.
+    packing it, and not opened again. An entry named as an archive that cannot
+    be opened -- a compression method this reader does not decompress, an
+    entry the archive will not give back -- is not read either, and is
+    recorded as such: its name is the only evidence that it is one.
     """
     found, room = [], MAX_METADATA_BYTES
     past = ("the containers packed inside %s are read to %d bytes together, and this one "
@@ -693,17 +693,17 @@ def _packed_inside(outer: str, raw: bytes) -> list:
         except Exception:                     # what does not open packs nothing read here
             continue
         with held:
-            # An entry named as an archive and stored with a method this reader
-            # does not decompress cannot be opened, so it is not read either.
-            unopened = {name: unreadable_method(held.info(name)) for name in held.files
-                        if name.endswith(CONTAINER_SUFFIX)}
-            unopened = {name: method for name, method in unopened.items() if method}
-            for name in sorted(set(nested_containers(held)) | set(unopened)):
+            # An entry named as an archive that cannot be opened at all is not
+            # read either: `nested_containers` leaves out what it cannot read.
+            detected = nested_containers(held)
+            unopened = {name: _not_opened(held, name) for name in held.files
+                        if name.endswith(CONTAINER_SUFFIX) and name not in detected}
+            unopened = {name: why for name, why in unopened.items() if why}
+            for name in sorted(set(detected) | set(unopened)):
                 if name in unopened:
                     found.append(_Inside(path + (name,), None, None,
-                                         "named *.iirds; not opened: compression method %s -- "
-                                         "whether it is a package was not read" % unopened[name],
-                                         True))
+                                         "named *.iirds; not opened: %s -- whether it is a "
+                                         "package was not read" % unopened[name], True))
                     continue
                 if room <= 0:                 # past the bound: what is left is not read
                     found.append(_Inside(path + (name,), None, None, past))
@@ -719,6 +719,22 @@ def _packed_inside(outer: str, raw: bytes) -> list:
                 elif why == past:
                     room = 0                  # that read went past what was left
     return found
+
+
+def _not_opened(held, name):
+    """Why an entry named as an archive cannot be opened at all, or None where
+    it can: a compression method this reader does not decompress, or an entry
+    the archive will not give back -- one whose local header names another
+    file, say. One that opens and does not begin as an iiRDS archive does is
+    no container, and is left out as the top archive's are."""
+    method = unreadable_method(held.info(name))
+    if method:
+        return "compression method %s" % method
+    try:
+        held.read_bounded(name, 0)
+    except Exception:                         # refused when opened
+        return "the entry could not be read from the archive"
+    return None
 
 
 def _packed_where(path) -> str:

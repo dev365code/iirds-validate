@@ -727,3 +727,38 @@ def test_a_packed_entry_stored_with_a_method_not_read_is_reported(tmp_path, meth
     assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
             "compression method %s -- whether it is a package was not read" % said
             in found[0].violation.detail)
+
+
+def renamed_in_its_local_header(archive_bytes, name, other):
+    """The archive with the local header of entry `name` naming `other` instead,
+    the central directory left as it was -- a reader that compares the two
+    refuses the entry."""
+    assert len(other) == len(name)
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
+        at = zf.getinfo(name).header_offset + 30
+    raw = bytearray(archive_bytes)
+    assert raw[at:at + len(name)] == name.encode()
+    raw[at:at + len(name)] = other.encode()
+    return bytes(raw)
+
+
+@pytest.mark.parametrize("middle,rule", [("A", "R75"), ("H", "R9")])
+def test_a_packed_entry_the_archive_will_not_give_back_is_reported(tmp_path, middle, rule):
+    """An entry named as an archive whose local header names another file is
+    refused when it is opened, so it is not opened either -- under an iiRDS/A
+    package R75 says so, under an iiRDS/H one R9, as for a compression method
+    this reader does not decompress."""
+    archive_bytes = zipped(
+        ("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+        ("META-INF/metadata.rdf", package_rdf("urn:test:middle", middle), zipfile.ZIP_DEFLATED),
+        ("content/inner.iirds", holding(tmp_path, "inner", package_rdf("urn:test:inner", "H")),
+         zipfile.ZIP_DEFLATED))
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds", renamed_in_its_local_header(
+                             archive_bytes, "content/inner.iirds", "content/innex.iirds")),))
+    found = [f for f in runner.check(path).findings if f.rule.id == rule]
+    assert [f.violation.subject for f in found] == ["content/middle.iirds"]
+    assert ("content/inner.iirds, packed inside content/middle.iirds; named *.iirds; not opened: "
+            "the entry could not be read from the archive -- whether it is a package was not read"
+            in found[0].violation.detail)

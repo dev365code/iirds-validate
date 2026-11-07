@@ -43,11 +43,12 @@ with the package packing it, at any depth, declared or not, and reported
 when its metadata cannot be read; everything packed inside one nested
 container is read to 64 MiB together, and what is past that is reported as
 not read, as is an entry packed inside that is named as an archive and
-stored with a compression method this validator does not read. Use an
-iiRDS/A child, or remove the parent's iiRDS/A restriction if the delivery
-does not conform to it. Change a child's profile declaration only when its
-content conforms, and write it as iirds:formatRestriction A. An R75 error
-makes validation exit 1 when the package previously passed.
+stored with a compression method this validator does not read or that the
+archive will not give back. Use an iiRDS/A child, or remove the parent's
+iiRDS/A restriction if the delivery does not conform to it. Change a
+child's profile declaration only when its content conforms, and write it
+as iirds:formatRestriction A. An R75 error makes validation exit 1 when
+the package previously passed.
 
 For every edition, R76 checks each proprietary subproperty against the
 iiRDS property it refines -- the nearest bundled one above it -- using the

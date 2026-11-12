@@ -481,6 +481,27 @@ def test_every_corpus_fixture_the_document_names_is_in_the_corpus():
         "fixture" % gone)
 
 
+def test_the_official_samples_page_is_the_verdict_of_this_version():
+    """`docs/official-samples.md` publishes what this tool says about the
+    Consortium's own sample packages, and which version said it. The packages
+    cannot be kept in this repository, so nothing here reruns the page: a
+    release that moves the number and leaves the page standing would publish
+    one version's verdicts under the next one's name.
+
+    Held to the package's version, the page goes red at every release until
+    somebody runs the samples again and either finds the same answers or
+    writes the new ones down.
+    """
+    from iirds_validate import __version__
+
+    page = (ROOT / "docs" / "official-samples.md").read_text("utf-8")
+    named = re.findall(r"Verdicts?(?: of|,) version (\d+\.\d+\.\d+)", page)
+    assert named, "docs/official-samples.md no longer says which version gave its verdicts"
+    assert set(named) == {__version__}, (
+        "docs/official-samples.md gives the verdicts of %s; this is %s"
+        % (", ".join(sorted(set(named))), __version__))
+
+
 #: Prose this project publishes, read from what git tracks rather than from a
 #: glob. A glob over `*.md` also finds `.claude/RESUME.md`, `build/lib/...`
 #: and `.pytest_cache/README.md` -- none of them published, none of them the

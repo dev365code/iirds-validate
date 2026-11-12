@@ -18,7 +18,7 @@ judged.
 | `iirds-sample-1.iirds` | iiRDS 1.0, iiRDS/A | exit 1 — 1 error, 6 warnings | exit 0 — 1 warning | M22.1 ×1, B10 ×6, L10 ×1 |
 | `iirds-sample-2.iirds` | iiRDS 1.0, iiRDS/A | exit 1 — 1 error, 5 warnings | exit 0 — 1 warning, 5 info | M18 ×1, B10 ×5, L1 ×1, L8 ×5 |
 
-Verdicts of version 0.9.1. `iirds all` runs both at once; on these packages its
+Verdicts of version 0.10.0. `iirds all` runs both at once; on these packages its
 findings are the two lists together, and it exits `1` on each. Exit `1` is at
 least one error and `0` none; a warning moves it only under `-W`. Each package
 is judged against the edition it declares: the rules that iiRDS 1.0 or iiRDS/A
@@ -38,7 +38,7 @@ that folder does not hold the two packages.
 
 - In the Sample Content ZIP. 3,517,236 bytes, sha256 `9f5f90bfcdf9e9ff4babc2d3c5ad821070ed0b208283d028d60c243cf28e9bba`.
 - The description: "An iiRDS/A package, containing all topics of PI-Fan for the X5-DH2 product variant in iiRDS XHTML5 format."
-- Verdict, version 0.9.1: `iirds check` exit 1 — 1 error, 6 warnings; `iirds lint` exit 0 — 1 warning.
+- Verdict, version 0.10.0: `iirds check` exit 1 — 1 error, 6 warnings; `iirds lint` exit 0 — 1 warning.
 
 | Rule | Severity | Source | Reads from | Findings |
 |---|---|---|---|---|
@@ -50,7 +50,7 @@ that folder does not hold the two packages.
 
 - In the Sample Content ZIP. 2,713,076 bytes, sha256 `6a7d7fdff6c8ee7ba881fff19fa5dd8ae4caa3b753392902ac5732ef050846b0`.
 - The description: "An iiRDS/A package, containing a collection of topics relevant for operation of the product."
-- Verdict, version 0.9.1: `iirds check` exit 1 — 1 error, 5 warnings; `iirds lint` exit 0 — 1 warning, 5 info.
+- Verdict, version 0.10.0: `iirds check` exit 1 — 1 error, 5 warnings; `iirds lint` exit 0 — 1 warning, 5 info.
 
 | Rule | Severity | Source | Reads from | Findings |
 |---|---|---|---|---|

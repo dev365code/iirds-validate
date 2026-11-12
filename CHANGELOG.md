@@ -4,7 +4,17 @@ The `iirds` library shipped on its own as 0.1.0 to 0.3.2; that history is in
 [docs/library-changelog.md](docs/library-changelog.md). From here on, what
 changes in the library is recorded beside what changes in the checker.
 
-## 0.10.0 — unreleased
+## 0.10.0 — 2026-11-13
+
+Who should take this release: anyone checking packages that nest other
+packages or that declare proprietary properties. In iiRDS 1.3 a nested
+package is now compared with the profile of every package that declares it
+or packs it inside itself, and in every edition a proprietary property with
+the domain and range of the iiRDS property it refines; a package that breaks
+either gets an error and exits 1, as does one holding what this
+validator cannot decide: a nested container it cannot open or whose own
+metadata it cannot read, or proprietary declarations whose check reaches
+its closure ceiling.
 
 Coverage of the standard grows from 187 to 190 of 280 obligations, with
 R9 also claiming the iiRDS/H nesting sentence it already enforces.
@@ -73,6 +83,23 @@ and stating the rdfs:subClassOf edge beside the definition answers it.
 When a package declares an edition with no bundled ontology, the run's note
 now names property domains and ranges beside the class hierarchy it takes
 from 1.3.
+
+**Figures for this release, measured on this build.**
+Coverage of the standard is 190 of 280, of which 155 are held by a package;
+0.9.1 stated 187 and 152. R75 and R76 are the two rules added,
+so the rule count goes to 254. `iirds check` checks a conformant package
+with the same rules as a directory or an archive but for the archive's nine,
+which an unpacked container names under `notApplicable` as `unpacked`:
+the same package packed -- `204 rules checked` on this build -- and
+unpacked, where the count moves from 204 to 195. A conformance run says it
+for the fifteen lint rules it does not ask -- the interoperability rules less
+the two that are marked conformance, which it does ask. The reasons a report
+can give come to seven. The iiRDS/H reading asks the handover rules the
+iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
+reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
+R45, the iiRDS/A content formats. `toolVersion` still moves only at a
+release: over this project's whole history, no commit that changed
+a rule file has ever moved it.
 
 ## 0.9.1 — 2026-10-26
 

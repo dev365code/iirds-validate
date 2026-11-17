@@ -98,7 +98,7 @@ can give come to seven. The iiRDS/H reading asks the handover rules the
 iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
 reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
 R45, the iiRDS/A content formats. `toolVersion` still moves only at a
-release: over this project's whole history, no commit that changed
+release: over the main branch's history, no commit that changed
 a rule file has ever moved it.
 
 ## 0.9.1 — 2026-10-26
@@ -233,7 +233,7 @@ can give come to seven. The iiRDS/H reading asks the handover rules the
 iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
 reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
 R45, the iiRDS/A content formats. `toolVersion` still moves only at a
-release: over this project's whole history, no commit that changed
+release: over the main branch's history, no commit that changed
 a rule file has ever moved it.
 
 ## 0.9.0 — 2026-10-08
@@ -346,7 +346,7 @@ can give come to seven. The iiRDS/H reading asks the handover rules the
 iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
 reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
 R45, the iiRDS/A content formats. `toolVersion` still moves only at a
-release: over this project's whole history, no commit that changed
+release: over the main branch's history, no commit that changed
 a rule file has ever moved it.
 
 ## 0.8.0 — 2026-09-30
@@ -729,7 +729,7 @@ can give come to seven. The iiRDS/H reading asks the handover rules the
 iiRDS/A reading does not, and the iiRDS/A reading asks six rules the iiRDS/H
 reading does not: `C11.1`, whose handover counterpart is `C11.1H`, and R41 to
 R45, the iiRDS/A content formats. `toolVersion` still moves only at a
-release: over this project's whole history, no commit that changed
+release: over the main branch's history, no commit that changed
 a rule file has ever moved it.
 
 ## 0.7.1 — 2026-09-23
@@ -1088,7 +1088,7 @@ a digest of nothing.
 
 Beside it, a digest of the rule sources. The rule-set digest is over registered
 identities and cannot see a rule's implementation, and `toolVersion` moves
-only at a release — over this project's whole history, no commit that changed
+only at a release — over the main branch's history, no commit that changed
 a rule file has ever moved it. This is the field that can say the bodies
 differ. It is hashed with line endings normalised, so a
 Windows checkout and a Linux one of the same release agree, and it is null with

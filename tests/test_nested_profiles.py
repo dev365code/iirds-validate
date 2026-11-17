@@ -769,6 +769,27 @@ def test_a_packed_entry_the_archive_will_not_give_back_is_reported(tmp_path, mid
     assert "metadata readable" not in found[0].fix
 
 
+@pytest.mark.parametrize("inner", ["text", "zip"])
+@pytest.mark.parametrize("middle,rule", [("A", "R75"), ("H", "R9")])
+def test_a_packed_entry_named_as_an_archive_that_is_none_is_left_out(tmp_path, middle, rule, inner):
+    """An entry named *.iirds inside a nested container that opens, and does
+    not begin as an iiRDS archive does, is no container, and is left out as
+    the top archive's are: R75 under an iiRDS/A package and R9 under an
+    iiRDS/H one say nothing of it, rather than calling it an archive that was
+    not opened."""
+    payload = (b"plain text, which opens and is no archive" if inner == "text"
+               else zipped(("readme.txt", b"a ZIP archive that is no iiRDS package",
+                            zipfile.ZIP_DEFLATED)))
+    archive_bytes = zipped(
+        ("mimetype", MIMETYPE, zipfile.ZIP_STORED),
+        ("META-INF/metadata.rdf", package_rdf("urn:test:middle", middle), zipfile.ZIP_DEFLATED),
+        ("content/inner.iirds", payload, zipfile.ZIP_DEFLATED))
+    path = build_package(tmp_path, "top.iirds",
+                         metadata=package_rdf(declares=(("urn:test:middle", None),)),
+                         extra=(("content/middle.iirds", archive_bytes),))
+    assert [f for f in runner.check(path).findings if f.rule.id == rule] == []
+
+
 def test_a_container_two_levels_down_that_packs_itself_is_compared_once(tmp_path, monkeypatch):
     """The bytes of every container packing one are kept for each level below
     it: an iiRDS/H container inside the middle one that packs itself is

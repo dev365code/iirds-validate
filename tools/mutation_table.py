@@ -378,6 +378,14 @@ TABLE = [
      '        return None\n',
      ['tests/test_nested_profiles.py'],
      'an entry packed inside that the archive will not give back is reported as not read'),
+    ('earned/r75-packed-entry-that-is-no-archive-called-unopened',
+     'src/iirds_validate/rules/container.py',
+     '        return "the entry could not be read from the archive"\n'
+     '    return None\n',
+     '        return "the entry could not be read from the archive"\n'
+     '    return "it does not begin as an iiRDS ZIP archive"\n',
+     ['tests/test_nested_profiles.py'],
+     'an entry packed inside that is named *.iirds and opens as no iiRDS archive is left out'),
     ('earned/r75-enclosing-not-grown-per-level',
      'src/iirds_validate/rules/container.py',
      '                        queue.append((path + (name,), kept[0], enclosing | {mark}))',

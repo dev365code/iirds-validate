@@ -3,7 +3,7 @@
   "branch": 2,
   "finding": 1,
   "other": 2,
-  "silent": 25
+  "silent": 24
  },
  "tree": {
   "__init__.py": "bd4a22bf2e71f3152e3aed168cf4ffedc28800124749ce8ad192c5bbcc9e2348",
@@ -19,9 +19,6 @@
   "system.py": "ec8b5146ea02f78244a031b8dc935fd2bbefd5fb7ae562c4b10c5a53f1bd0bad"
  },
  "unreached": {
-  "container.py": {
-   "_not_opened :: return None": "silent"
-  },
   "content.py": {
    "_attributes_at :: return None [2]": "silent",
    "_attributes_at :: return None [3]": "silent",

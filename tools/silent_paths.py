@@ -41,9 +41,17 @@ by what the line does:
 The baseline is not a target, for the same reason `rule_coverage.py` says: it
 records what is currently unreached so the number cannot grow quietly.
 
-Tracing is `sys.settrace`, not a dependency. `coverage.py` would do this better
-and this repository ships and tests offline with one runtime dependency; a
-tool that only maintainers run is not worth a second one.
+Tracing is the standard library's, not a dependency. `coverage.py` would do this
+better and this repository ships and tests offline with one runtime
+dependency; a tool that only maintainers run is not worth a second one. Where
+Python has `sys.monitoring` (3.12 and later) the tracer uses it, and
+`sys.settrace` elsewhere; `SILENT_PATHS_TRACER=settrace` asks for the older one
+on any Python. Over this suite the two write the same record, and
+`tests/test_silent_paths_tracer.py` holds them to the same lines over the
+shapes a rule is made of. They can differ both ways: `sys.settrace` follows
+no thread started with `_thread` and nothing after a test clears it, and
+`sys.monitoring` does not see a frame that began before the tracer and
+resumes after it.
 """
 from __future__ import annotations
 
@@ -51,6 +59,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -75,10 +84,7 @@ _seen = {}
 _known = {}
 
 
-def _trace(frame, event, arg):
-    if event != "call":
-        return None
-    filename = frame.f_code.co_filename
+def _key(filename):
     key = _known.get(filename, 0)
     if key == 0:
         try:
@@ -87,6 +93,13 @@ def _trace(frame, event, arg):
             real = None
         key = real if real and real.startswith(_WANT) else None
         _known[filename] = key
+    return key
+
+
+def _trace(frame, event, arg):
+    if event != "call":
+        return None
+    key = _key(frame.f_code.co_filename)
     if key is None:
         return None
     lines = _seen.setdefault(key, set())
@@ -99,7 +112,55 @@ def _trace(frame, event, arg):
     return _line
 
 
+# sys.settrace calls _trace on every function call in the process, rule module
+# or not, and pySHACL and rdflib make a great many: the suite ran several times
+# as long under it as without. sys.monitoring calls only for the events asked of
+# it. Here every function is looked at once, when it first starts, and a
+# function outside the rule modules is never looked at again (DISABLE); a rule
+# line is recorded the first time it runs and not reported again either. When
+# a function starts, the line of the instruction it starts at is added, as
+# _trace adds frame.f_lineno at a call: the first line of a function, and 0
+# for a module.
+_MONITORING = getattr(sys, "monitoring", None)
+if os.environ.get("SILENT_PATHS_TRACER") == "settrace":
+    _MONITORING = None
+_TOOL = None
+
+
+def _started(code, offset):
+    key = _key(code.co_filename)
+    if key is not None:
+        lines = _seen.setdefault(key, set())
+        for start, end, line in code.co_lines():
+            if start <= offset < end:
+                if line is not None:
+                    lines.add(line)
+                break
+        _MONITORING.set_local_events(_TOOL, code, _MONITORING.events.LINE)
+    return _MONITORING.DISABLE
+
+
+def _ran(code, line):
+    _seen[_known[code.co_filename]].add(line)
+    return _MONITORING.DISABLE
+
+
 def pytest_configure(config):
+    global _TOOL
+    if _MONITORING is not None:
+        for tool in (_MONITORING.COVERAGE_ID, 3, 4):
+            try:
+                _MONITORING.use_tool_id(tool, "silent_paths")
+            except ValueError:
+                continue
+            _TOOL = tool
+            break
+    if _TOOL is not None:
+        events = _MONITORING.events
+        _MONITORING.register_callback(_TOOL, events.PY_START, _started)
+        _MONITORING.register_callback(_TOOL, events.LINE, _ran)
+        _MONITORING.set_events(_TOOL, events.PY_START)
+        return
     sys.settrace(_trace)
     threading = sys.modules.get("threading")
     if threading is not None:
@@ -107,7 +168,14 @@ def pytest_configure(config):
 
 
 def pytest_unconfigure(config):
-    sys.settrace(None)
+    if _TOOL is not None:
+        events = _MONITORING.events
+        _MONITORING.set_events(_TOOL, 0)
+        _MONITORING.register_callback(_TOOL, events.PY_START, None)
+        _MONITORING.register_callback(_TOOL, events.LINE, None)
+        _MONITORING.free_tool_id(_TOOL)
+    else:
+        sys.settrace(None)
     with open(os.environ["SILENT_PATHS_OUT"], "w") as handle:
         json.dump({k: sorted(v) for k, v in _seen.items()}, handle)
 '''
@@ -184,6 +252,23 @@ def fingerprint():
             for path in sorted(RULES.glob("*.py"))}
 
 
+def child_env(plugin_dir: Path, seen_file: Path) -> dict:
+    """The environment the suite runs in under the tracer: built here, so
+    that the caller's settings do not change what is recorded. Of the
+    caller's it keeps HOME, which `Path.home()` reads, and a choice of
+    tracer (`SILENT_PATHS_TRACER`)."""
+    env = {
+        "SILENT_PATHS_DIR": str(RULES),
+        "SILENT_PATHS_OUT": str(seen_file),
+        "PYTHONPATH": "%s:%s" % (ROOT / "src", plugin_dir),
+        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        "HOME": str(Path.home()),
+    }
+    if os.environ.get("SILENT_PATHS_TRACER"):
+        env["SILENT_PATHS_TRACER"] = os.environ["SILENT_PATHS_TRACER"]
+    return env
+
+
 def measure(out_dir: Path, extra_args):
     """Run the suite under the tracer and return {file: {line: kind}} unreached.
 
@@ -202,13 +287,7 @@ def measure(out_dir: Path, extra_args):
     plugin_dir = out_dir
     (plugin_dir / "silent_paths_plugin.py").write_text(PLUGIN, "utf-8")
     seen_file = plugin_dir / "seen.json"
-    env = {
-        "SILENT_PATHS_DIR": str(RULES),
-        "SILENT_PATHS_OUT": str(seen_file),
-        "PYTHONPATH": "%s:%s" % (ROOT / "src", plugin_dir),
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
-        "HOME": str(Path.home()),
-    }
+    env = child_env(plugin_dir, seen_file)
     cmd = [sys.executable, "-m", "pytest", "-q", "-p", "silent_paths_plugin",
            "-p", "no:cacheprovider", *extra_args]
     before = fingerprint()
